@@ -12,7 +12,10 @@ return new class extends Migration
             $table->foreignId('person_id')->nullable()->after('id')->constrained('persons')->nullOnDelete();
             $table->string('phone')->nullable()->after('email');
             $table->string('status')->default('active')->after('phone');
-            $table->foreignId('created_by')->nullable()->after('status')->constrained('users')->nullOnDelete();
+            $table->string('provider')->nullable()->after('status');
+            $table->string('provider_id')->nullable()->after('provider');
+            $table->timestamp('onboarded_at')->nullable()->after('provider_id');
+            $table->foreignId('created_by')->nullable()->after('onboarded_at')->constrained('users')->nullOnDelete();
             $table->softDeletes();
         });
     }
@@ -23,6 +26,9 @@ return new class extends Migration
             $table->dropConstrainedForeignId('person_id');
             $table->dropColumn('phone');
             $table->dropColumn('status');
+            $table->dropColumn('provider');
+            $table->dropColumn('provider_id');
+            $table->dropColumn('onboarded_at');
             $table->dropConstrainedForeignId('created_by');
             $table->dropSoftDeletes();
         });
