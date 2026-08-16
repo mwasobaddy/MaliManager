@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Tenant\ImpersonationController;
 use App\Support\TenancyContext;
 use Illuminate\Support\Facades\Route;
 use Stancl\Tenancy\Middleware\InitializeTenancyByDomain;
@@ -38,4 +39,7 @@ Route::middleware([
             'domain' => TenancyContext::domain()?->domain,
         ]);
     })->name('tenant.status');
+
+    Route::get('/impersonate/{token}', [ImpersonationController::class, 'login'])
+        ->name('tenant.impersonate');
 });
