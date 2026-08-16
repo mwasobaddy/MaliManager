@@ -95,9 +95,9 @@ export default function Onboarding({ user, hasOrganization, organization, plans 
                 <Form {...complete.form()} className="flex flex-col gap-6">
                     {({ processing, errors }) => (
                         <>
-                            {step === 'account-type' && (
+                            <div hidden={step !== 'account-type'}>
+                                <input type="hidden" name="account_type" value={accountType} />
                                 <div className="grid gap-3">
-                                    <input type="hidden" name="account_type" value={accountType} />
                                     {([
                                         ['occupant', 'I rent a property', "I'm an occupant looking to manage my rental."],
                                         ['organization', 'I own or manage properties', "I'm a landlord or property manager."],
@@ -121,130 +121,124 @@ export default function Onboarding({ user, hasOrganization, organization, plans 
                                         ),
                                     )}
                                 </div>
-                            )}
+                            </div>
 
-                            {step === 'profile' && (
-                                <>
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="name">Your full name</Label>
-                                        <Input
-                                            id="name"
-                                            name="name"
-                                            type="text"
-                                            required
-                                            defaultValue={user.name}
-                                            autoComplete="name"
-                                        />
-                                        <InputError message={errors.name} />
-                                    </div>
+                            <div hidden={step !== 'profile'} className="grid gap-6">
+                                <div className="grid gap-2">
+                                    <Label htmlFor="name">Your full name</Label>
+                                    <Input
+                                        id="name"
+                                        name="name"
+                                        type="text"
+                                        required
+                                        defaultValue={user.name}
+                                        autoComplete="name"
+                                    />
+                                    <InputError message={errors.name} />
+                                </div>
 
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="phone">Phone number (optional)</Label>
-                                        <Input
-                                            id="phone"
-                                            name="phone"
-                                            type="tel"
-                                            defaultValue={user.phone ?? ''}
-                                            autoComplete="tel"
-                                            placeholder="+254 712 345 678"
-                                        />
-                                        <InputError message={errors.phone} />
-                                    </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="phone">Phone number (optional)</Label>
+                                    <Input
+                                        id="phone"
+                                        name="phone"
+                                        type="tel"
+                                        defaultValue={user.phone ?? ''}
+                                        autoComplete="tel"
+                                        placeholder="+254 712 345 678"
+                                    />
+                                    <InputError message={errors.phone} />
+                                </div>
 
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="password">Password</Label>
-                                        <Input
-                                            id="password"
-                                            name="password"
-                                            type="password"
-                                            required
-                                            autoComplete="new-password"
-                                        />
-                                        <InputError message={errors.password} />
-                                    </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="password">Password</Label>
+                                    <Input
+                                        id="password"
+                                        name="password"
+                                        type="password"
+                                        required
+                                        autoComplete="new-password"
+                                    />
+                                    <InputError message={errors.password} />
+                                </div>
 
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="password_confirmation">
-                                            Confirm password
-                                        </Label>
-                                        <Input
-                                            id="password_confirmation"
-                                            name="password_confirmation"
-                                            type="password"
-                                            required
-                                            autoComplete="new-password"
-                                        />
-                                        <InputError message={errors.password_confirmation} />
-                                    </div>
-                                </>
-                            )}
+                                <div className="grid gap-2">
+                                    <Label htmlFor="password_confirmation">
+                                        Confirm password
+                                    </Label>
+                                    <Input
+                                        id="password_confirmation"
+                                        name="password_confirmation"
+                                        type="password"
+                                        required
+                                        autoComplete="new-password"
+                                    />
+                                    <InputError message={errors.password_confirmation} />
+                                </div>
+                            </div>
 
-                            {step === 'organization' && (
-                                <>
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="organization_name">
-                                            Organization name
-                                        </Label>
-                                        <Input
-                                            id="organization_name"
-                                            name="organization_name"
-                                            type="text"
-                                            required
-                                            defaultValue={organization?.name ?? ''}
-                                            autoComplete="organization"
-                                        />
-                                        <InputError message={errors.organization_name} />
-                                    </div>
+                            <div hidden={step !== 'organization'} className="grid gap-6">
+                                <div className="grid gap-2">
+                                    <Label htmlFor="organization_name">
+                                        Organization name
+                                    </Label>
+                                    <Input
+                                        id="organization_name"
+                                        name="organization_name"
+                                        type="text"
+                                        required
+                                        defaultValue={organization?.name ?? ''}
+                                        autoComplete="organization"
+                                    />
+                                    <InputError message={errors.organization_name} />
+                                </div>
 
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="currency">Default currency</Label>
-                                        <input type="hidden" name="currency" value={currency} />
-                                        <Select value={currency} onValueChange={setCurrency}>
-                                            <SelectTrigger id="currency">
-                                                <SelectValue placeholder="Select currency" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {currencies.map((code) => (
-                                                    <SelectItem key={code} value={code}>
-                                                        {code}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                        <InputError message={errors.currency} />
-                                    </div>
-                                </>
-                            )}
+                                <div className="grid gap-2">
+                                    <Label htmlFor="currency">Default currency</Label>
+                                    <input type="hidden" name="currency" value={currency} />
+                                    <Select value={currency} onValueChange={setCurrency}>
+                                        <SelectTrigger id="currency">
+                                            <SelectValue placeholder="Select currency" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {currencies.map((code) => (
+                                                <SelectItem key={code} value={code}>
+                                                    {code}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <InputError message={errors.currency} />
+                                </div>
+                            </div>
 
-                            {step === 'plan' && (
-                                <>
-                                    <input type="hidden" name="plan_slug" value={planSlug} />
-                                    <div className="grid gap-3">
-                                        {plans.map((plan) => (
-                                            <button
-                                                key={plan.id}
-                                                type="button"
-                                                onClick={() => setPlanSlug(plan.slug)}
-                                                className={`rounded-lg border p-4 text-left transition-colors ${
-                                                    planSlug === plan.slug
-                                                        ? 'border-primary bg-primary/5'
-                                                        : 'border-input hover:bg-muted'
-                                                }`}
-                                            >
-                                                <div className="flex items-center justify-between">
-                                                    <span className="font-medium">{plan.name}</span>
-                                                    <span className="text-sm text-muted-foreground">
-                                                        {plan.price_label}
-                                                    </span>
-                                                </div>
-                                                <p className="mt-1 text-sm text-muted-foreground">
-                                                    {plan.description}
-                                                </p>
-                                            </button>
-                                        ))}
-                                    </div>
-                                </>
-                            )}
+                            <div hidden={step !== 'plan'}>
+                                <input type="hidden" name="plan_slug" value={planSlug} />
+                                <div className="grid gap-3">
+                                    {plans.map((plan) => (
+                                        <button
+                                            key={plan.id}
+                                            type="button"
+                                            onClick={() => setPlanSlug(plan.slug)}
+                                            className={`rounded-lg border p-4 text-left transition-colors ${
+                                                planSlug === plan.slug
+                                                    ? 'border-primary bg-primary/5'
+                                                    : 'border-input hover:bg-muted'
+                                            }`}
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <span className="font-medium">{plan.name}</span>
+                                                <span className="text-sm text-muted-foreground">
+                                                    {plan.price_label}
+                                                </span>
+                                            </div>
+                                            <p className="mt-1 text-sm text-muted-foreground">
+                                                {plan.description}
+                                            </p>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
 
                             <div className="flex gap-3">
                                 {index > 0 && (
