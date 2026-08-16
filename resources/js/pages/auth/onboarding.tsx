@@ -92,7 +92,7 @@ export default function Onboarding({ user, hasOrganization, organization, plans 
                     ))}
                 </ol>
 
-                <Form {...complete.form()} className="flex flex-col gap-6">
+                <Form {...complete.form()} noValidate className="flex flex-col gap-6">
                     {({ processing, errors }) => (
                         <>
                             <div hidden={step !== 'account-type'}>
