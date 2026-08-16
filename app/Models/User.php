@@ -26,6 +26,9 @@ use Spatie\Permission\Traits\HasRoles;
  * @property string $email
  * @property string|null $phone
  * @property string $status
+ * @property string|null $provider
+ * @property string|null $provider_id
+ * @property Carbon|null $onboarded_at
  * @property Carbon|null $email_verified_at
  * @property string $password
  * @property string|null $two_factor_secret
@@ -35,7 +38,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['name', 'email', 'phone', 'password', 'person_id', 'status', 'created_by'])]
+#[Fillable(['name', 'email', 'phone', 'password', 'person_id', 'status', 'provider', 'provider_id', 'onboarded_at', 'created_by'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable implements PasskeyUser
 {
@@ -52,6 +55,7 @@ class User extends Authenticatable implements PasskeyUser
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'onboarded_at' => 'datetime',
             'two_factor_confirmed_at' => 'datetime',
         ];
     }
@@ -72,6 +76,17 @@ class User extends Authenticatable implements PasskeyUser
             ->using(OrganizationUser::class)
             ->withPivot('sub_role_id', 'is_owner', 'status')
             ->withTimestamps();
+    }
+
+    public function isOnboarded(): bool
+    {
+        return $this->onboarded_at !== null;
+    }
+
+    public function markOnboarded(): void
+    {
+        $this->onboarded_at = now();
+        $this->save();
     }
 
     /**
