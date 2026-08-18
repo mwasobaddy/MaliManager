@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Tenant\ImpersonationController;
+use App\Http\Controllers\Tenant\PropertyController;
+use App\Http\Controllers\Tenant\UnitController;
 use App\Support\TenancyContext;
 use Illuminate\Support\Facades\Route;
 use Stancl\Tenancy\Middleware\InitializeTenancyByDomain;
@@ -42,4 +44,17 @@ Route::middleware([
 
     Route::get('/impersonate/{token}', [ImpersonationController::class, 'login'])
         ->name('tenant.impersonate');
+
+    Route::middleware(['auth', 'has-property'])->group(function () {
+        Route::get('/properties', [PropertyController::class, 'index'])
+            ->name('tenant.properties.index');
+        Route::get('/properties/create', [PropertyController::class, 'create'])
+            ->name('tenant.properties.create');
+        Route::post('/properties', [PropertyController::class, 'store'])
+            ->name('tenant.properties.store');
+        Route::get('/properties/{property:slug}', [PropertyController::class, 'show'])
+            ->name('tenant.properties.show');
+        Route::post('/properties/{property:slug}/units', [UnitController::class, 'store'])
+            ->name('tenant.properties.units.store');
+    });
 });
