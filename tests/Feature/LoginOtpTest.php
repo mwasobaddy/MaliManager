@@ -123,7 +123,7 @@ test('used code cannot be reused', function () {
     session(['login.email' => 'existing@example.com']);
     $this->post(route('login.otp.verify'), ['code' => $code])->assertRedirect();
 
-    $this->post('/logout');
+    $this->post(route('logout'));
 
     session(['login.email' => 'existing@example.com']);
     $this->post(route('login.otp.verify'), ['code' => $code])
