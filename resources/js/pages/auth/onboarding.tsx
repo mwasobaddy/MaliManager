@@ -1,6 +1,7 @@
 import { Form, Head } from '@inertiajs/react';
 import { useState } from 'react';
 import InputError from '@/components/input-error';
+import PasswordInput from '@/components/password-input';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -37,27 +38,108 @@ type Plan = {
 
 type AccountType = 'organization' | 'occupant';
 
+type FieldErrors = Partial<Record<'name' | 'phone' | 'password' | 'password_confirmation' | 'organization_name', string>>;
+
 const currencies = ['KES', 'USD', 'UGX', 'TZS', 'RWF', 'NGN', 'GBP', 'EUR'];
 
 export default function Onboarding({ user, hasOrganization, organization, plans }: Props) {
     const [accountType, setAccountType] = useState<AccountType>(
         hasOrganization ? 'organization' : 'occupant',
     );
+    const [name, setName] = useState(user.name);
+    const [phone, setPhone] = useState(user.phone ?? '');
+    const [password, setPassword] = useState('');
+    const [passwordConfirmation, setPasswordConfirmation] = useState('');
+    const [organizationName, setOrganizationName] = useState(organization?.name ?? '');
     const [currency, setCurrency] = useState(organization?.currency ?? 'KES');
     const [planSlug, setPlanSlug] = useState(
         hasOrganization ? plans[0]?.slug ?? '' : '',
     );
+    const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+    const [touched, setTouched] = useState<Record<string, boolean>>({});
 
     const isOrganization = hasOrganization || accountType === 'organization';
     const steps = hasOrganization ? ['profile', 'organization', 'plan'] : isOrganization ? ['account-type', 'profile', 'organization', 'plan'] : ['account-type', 'profile'];
     const [index, setIndex] = useState(0);
     const step = steps[index];
 
-    const canProceed =
-        step === 'account-type' ||
-        step === 'profile' ||
-        step === 'organization' ||
-        (step === 'plan' && planSlug !== '');
+    const validateField = (field: keyof FieldErrors, value: string): string | undefined => {
+        switch (field) {
+            case 'name':
+                return value.trim() === '' ? 'Your full name is required.' : undefined;
+            case 'phone':
+                return value.trim() !== '' && value.length > 20
+                    ? 'Phone number must be 20 characters or fewer.'
+                    : undefined;
+            case 'password':
+                if (value === '') {
+                    return 'A password is required.';
+                }
+
+                if (value.length < 8) {
+                    return 'Password must be at least 8 characters.';
+                }
+
+                return undefined;
+            case 'password_confirmation':
+                return value !== password ? 'Passwords do not match.' : undefined;
+            case 'organization_name':
+                return value.trim() === '' ? 'Organization name is required.' : undefined;
+        }
+    };
+
+    const validateStep = (): FieldErrors => {
+        const nextErrors: FieldErrors = {};
+
+        if (step === 'profile') {
+            nextErrors.name = validateField('name', name);
+            nextErrors.phone = validateField('phone', phone);
+            nextErrors.password = validateField('password', password);
+            nextErrors.password_confirmation = validateField(
+                'password_confirmation',
+                passwordConfirmation,
+            );
+        }
+
+        if (step === 'organization') {
+            nextErrors.organization_name = validateField('organization_name', organizationName);
+        }
+
+        return Object.fromEntries(
+            Object.entries(nextErrors).filter(([, message]) => message !== undefined),
+        ) as FieldErrors;
+    };
+
+    const stepValid = (() => {
+        if (step === 'account-type') {
+return true;
+}
+
+        if (step === 'profile') {
+            return (
+                name.trim() !== '' &&
+                validateField('phone', phone) === undefined &&
+                password.length >= 8 &&
+                passwordConfirmation === password
+            );
+        }
+
+        if (step === 'organization') {
+            return organizationName.trim() !== '';
+        }
+
+        return step === 'plan' && planSlug !== '';
+    })();
+
+    const handleBlur = (field: keyof FieldErrors, value: string) => {
+        setTouched((prev) => ({ ...prev, [field]: true }));
+        setFieldErrors((prev) => ({ ...prev, [field]: validateField(field, value) }));
+    };
+
+    const handleNext = () => {
+        setFieldErrors(validateStep());
+        setIndex(index + 1);
+    };
 
     return (
         <>
@@ -131,10 +213,18 @@ export default function Onboarding({ user, hasOrganization, organization, plans 
                                         name="name"
                                         type="text"
                                         required
-                                        defaultValue={user.name}
                                         autoComplete="name"
+                                        value={name}
+                                        onChange={(e) => setName(e.target.value)}
+                                        onBlur={() => handleBlur('name', name)}
                                     />
-                                    <InputError message={errors.name} />
+                                    {touched.name && fieldErrors.name ? (
+                                        <p className="text-sm text-destructive" data-test="name-invalid">
+                                            {fieldErrors.name}
+                                        </p>
+                                    ) : (
+                                        <InputError message={errors.name} />
+                                    )}
                                 </div>
 
                                 <div className="grid gap-2">
@@ -143,37 +233,66 @@ export default function Onboarding({ user, hasOrganization, organization, plans 
                                         id="phone"
                                         name="phone"
                                         type="tel"
-                                        defaultValue={user.phone ?? ''}
                                         autoComplete="tel"
                                         placeholder="+254 712 345 678"
+                                        value={phone}
+                                        onChange={(e) => setPhone(e.target.value)}
+                                        onBlur={() => handleBlur('phone', phone)}
                                     />
-                                    <InputError message={errors.phone} />
+                                    {touched.phone && fieldErrors.phone ? (
+                                        <p className="text-sm text-destructive" data-test="phone-invalid">
+                                            {fieldErrors.phone}
+                                        </p>
+                                    ) : (
+                                        <InputError message={errors.phone} />
+                                    )}
                                 </div>
 
                                 <div className="grid gap-2">
                                     <Label htmlFor="password">Password</Label>
-                                    <Input
+                                    <PasswordInput
                                         id="password"
                                         name="password"
-                                        type="password"
                                         required
                                         autoComplete="new-password"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        onBlur={() => handleBlur('password', password)}
                                     />
-                                    <InputError message={errors.password} />
+                                    {touched.password && fieldErrors.password ? (
+                                        <p className="text-sm text-destructive" data-test="password-invalid">
+                                            {fieldErrors.password}
+                                        </p>
+                                    ) : (
+                                        <InputError message={errors.password} />
+                                    )}
                                 </div>
 
                                 <div className="grid gap-2">
                                     <Label htmlFor="password_confirmation">
                                         Confirm password
                                     </Label>
-                                    <Input
+                                    <PasswordInput
                                         id="password_confirmation"
                                         name="password_confirmation"
-                                        type="password"
                                         required
                                         autoComplete="new-password"
+                                        value={passwordConfirmation}
+                                        onChange={(e) => setPasswordConfirmation(e.target.value)}
+                                        onBlur={() =>
+                                            handleBlur('password_confirmation', passwordConfirmation)
+                                        }
                                     />
-                                    <InputError message={errors.password_confirmation} />
+                                    {touched.password_confirmation && fieldErrors.password_confirmation ? (
+                                        <p
+                                            className="text-sm text-destructive"
+                                            data-test="password-confirmation-invalid"
+                                        >
+                                            {fieldErrors.password_confirmation}
+                                        </p>
+                                    ) : (
+                                        <InputError message={errors.password_confirmation} />
+                                    )}
                                 </div>
                             </div>
 
@@ -187,10 +306,23 @@ export default function Onboarding({ user, hasOrganization, organization, plans 
                                         name="organization_name"
                                         type="text"
                                         required
-                                        defaultValue={organization?.name ?? ''}
                                         autoComplete="organization"
+                                        value={organizationName}
+                                        onChange={(e) => setOrganizationName(e.target.value)}
+                                        onBlur={() =>
+                                            handleBlur('organization_name', organizationName)
+                                        }
                                     />
-                                    <InputError message={errors.organization_name} />
+                                    {touched.organization_name && fieldErrors.organization_name ? (
+                                        <p
+                                            className="text-sm text-destructive"
+                                            data-test="organization-name-invalid"
+                                        >
+                                            {fieldErrors.organization_name}
+                                        </p>
+                                    ) : (
+                                        <InputError message={errors.organization_name} />
+                                    )}
                                 </div>
 
                                 <div className="grid gap-2">
@@ -255,8 +387,8 @@ export default function Onboarding({ user, hasOrganization, organization, plans 
                                     <Button
                                         type="button"
                                         className="w-full"
-                                        disabled={!canProceed}
-                                        onClick={() => setIndex(index + 1)}
+                                        disabled={!stepValid}
+                                        onClick={handleNext}
                                     >
                                         Continue
                                     </Button>
@@ -264,7 +396,7 @@ export default function Onboarding({ user, hasOrganization, organization, plans 
                                     <Button
                                         type="submit"
                                         className="w-full"
-                                        disabled={processing || !canProceed}
+                                        disabled={processing || !stepValid}
                                     >
                                         {processing && <Spinner />}
                                         {isOrganization ? 'Finish setup' : 'Complete'}

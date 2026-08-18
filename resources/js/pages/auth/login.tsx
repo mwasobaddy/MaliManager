@@ -1,4 +1,5 @@
 import { Form, Head } from '@inertiajs/react';
+import { useState } from 'react';
 import { GoogleIcon } from '@/components/google-icon';
 import InputError from '@/components/input-error';
 import PasskeyVerify from '@/components/passkey-verify';
@@ -14,7 +15,14 @@ type Props = {
     canResetPassword: boolean;
 };
 
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export default function Login({ status }: Props) {
+    const [email, setEmail] = useState('');
+    const [touched, setTouched] = useState(false);
+
+    const emailValid = emailPattern.test(email);
+
     return (
         <>
             <Head title="Log in" />
@@ -47,15 +55,24 @@ export default function Login({ status }: Props) {
                                     tabIndex={1}
                                     autoComplete="email"
                                     placeholder="email@example.com"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    onBlur={() => setTouched(true)}
                                 />
-                                <InputError message={errors.email} />
+                                {touched && !emailValid ? (
+                                    <p className="text-sm text-destructive" data-test="email-invalid">
+                                        Please enter a valid email address.
+                                    </p>
+                                ) : (
+                                    <InputError message={errors.email} />
+                                )}
                             </div>
 
                             <Button
                                 type="submit"
                                 className="mt-4 w-full"
                                 tabIndex={2}
-                                disabled={processing}
+                                disabled={processing || !emailValid}
                                 data-test="login-button"
                             >
                                 {processing && <Spinner />}
