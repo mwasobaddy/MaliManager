@@ -71,4 +71,9 @@ class Organization extends Model
     {
         return $this->hasMany(SubRole::class);
     }
+
+    public function properties(): HasMany
+    {
+        return $this->hasMany(Property::class);
+    }
 }
