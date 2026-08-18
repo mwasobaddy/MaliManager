@@ -49,7 +49,16 @@ export default function Otp({ email, status }: Props) {
                                     placeholder="123456"
                                     className="text-center text-lg tracking-widest"
                                 />
-                                <InputError message={errors.code} />
+                                {code.length > 0 && code.length < 6 ? (
+                                    <p
+                                        className="text-sm text-destructive"
+                                        data-test="code-incomplete"
+                                    >
+                                        Code must be 6 digits.
+                                    </p>
+                                ) : (
+                                    <InputError message={errors.code} />
+                                )}
                             </div>
 
                             <Button
