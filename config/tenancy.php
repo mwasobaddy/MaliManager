@@ -32,6 +32,12 @@ return [
     ],
 
     /**
+     * The base domain under which each organization gets a subdomain
+     * (e.g. "sunset" becomes "sunset.malimanager.test").
+     */
+    'subdomain_base' => env('TENANT_SUBDOMAIN_BASE', 'malimanager.test'),
+
+    /**
      * Tenancy bootstrappers are executed when tenancy is initialized.
      * Their responsibility is making Laravel features tenant-aware.
      *

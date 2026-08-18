@@ -53,7 +53,7 @@ test('organization onboarding creates a tenant, org, sub-roles and owner', funct
             'organization_name' => 'Sunset Apartments',
             'currency' => 'KES',
             'plan_slug' => 'free',
-        ])->assertRedirect(route('dashboard'));
+        ])->assertRedirect('http://sunset-apartments.malimanager.test/properties/create');
 
     $user->refresh();
     expect($user->isOnboarded())->toBeTrue()
@@ -64,7 +64,9 @@ test('organization onboarding creates a tenant, org, sub-roles and owner', funct
         ->and($organization->plan->slug)->toBe('free')
         ->and($organization->settings['currency'])->toBe('KES')
         ->and($organization->users)->toHaveCount(1)
-        ->and($organization->users->first()->pivot->is_owner)->toBeTrue();
+        ->and($organization->users->first()->pivot->is_owner)->toBeTrue()
+        ->and($organization->tenant->domains()->value('domain'))
+        ->toBe('sunset-apartments.malimanager.test');
 });
 
 test('occupant onboarding creates a person and links it to the user', function () {
@@ -121,7 +123,7 @@ test('existing organization owners can update their settings', function () {
             'organization_name' => 'Sunset Apartments Ltd',
             'currency' => 'KES',
             'plan_slug' => 'free',
-        ])->assertRedirect(route('dashboard'));
+        ])->assertRedirect('http://sunset-apartments.malimanager.test/properties/create');
 
     $organization->refresh();
     expect($organization->name)->toBe('Sunset Apartments Ltd')

@@ -37,6 +37,10 @@ class TenantService extends Service
                 'created_by' => $owner->id,
             ]));
 
+            $tenant->domains()->create([
+                'domain' => $organization->slug.'.'.config('tenancy.subdomain_base'),
+            ]);
+
             DefaultSubRoles::createFor($organization, $owner->id);
 
             $organization->users()->attach($owner->id, [
