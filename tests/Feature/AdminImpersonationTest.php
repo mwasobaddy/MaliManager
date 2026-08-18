@@ -106,6 +106,6 @@ test('impersonated user is logged in on the tenant domain', function () {
 
     $response = $this->get("http://acme.malimanager.test/impersonate/{$token->token}");
 
-    $response->assertRedirect('http://acme.malimanager.test/dashboard');
+    $response->assertRedirect('http://acme.malimanager.test/properties');
     $this->assertAuthenticatedAs($member);
 });
