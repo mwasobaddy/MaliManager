@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Auth\OtpVerifyRequest;
 use App\Models\User;
+use App\Support\AuthLanding;
 use App\Support\OtpService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -27,7 +29,7 @@ class OtpController extends Controller
         ]);
     }
 
-    public function verify(Request $request, OtpService $otpService): RedirectResponse
+    public function verify(OtpVerifyRequest $request, OtpService $otpService): RedirectResponse
     {
         $email = $request->session()->get('login.email');
 
@@ -35,9 +37,7 @@ class OtpController extends Controller
             return redirect()->route('login');
         }
 
-        $validated = $request->validate([
-            'code' => ['required', 'string', 'digits:6'],
-        ]);
+        $validated = $request->validated();
 
         $user = User::where('email', $email)->first();
 
@@ -55,9 +55,11 @@ class OtpController extends Controller
 
         Auth::login($user);
 
-        return redirect()->intended(
-            $user->isOnboarded() ? route('dashboard') : route('onboarding.show'),
-        );
+        $landing = $user->isOnboarded()
+            ? AuthLanding::for($user, $request)
+            : route('onboarding.show');
+
+        return redirect()->intended($landing);
     }
 
     public function resend(Request $request, OtpService $otpService): RedirectResponse
