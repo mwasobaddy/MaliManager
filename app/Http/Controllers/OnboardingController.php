@@ -3,13 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Enums\PlatformRole;
+use App\Http\Requests\Auth\OnboardingCompleteRequest;
 use App\Models\Person;
 use App\Models\Plan;
 use App\Services\TenantService;
+use App\Support\AuthLanding;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
-use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -20,7 +20,7 @@ class OnboardingController extends Controller
         $user = $request->user();
 
         if ($user->isOnboarded()) {
-            return redirect()->route('dashboard');
+            return redirect()->to(AuthLanding::for($user, $request));
         }
 
         $organization = $user->organizations()->wherePivot('is_owner', true)->first();
@@ -44,32 +44,11 @@ class OnboardingController extends Controller
         ]);
     }
 
-    public function complete(Request $request, TenantService $tenantService): RedirectResponse
+    public function complete(OnboardingCompleteRequest $request, TenantService $tenantService): RedirectResponse
     {
         $user = $request->user();
+        $validated = $request->validated();
         $organization = $user->organizations()->wherePivot('is_owner', true)->first();
-
-        $rules = [
-            'name' => ['required', 'string', 'max:255'],
-            'phone' => ['nullable', 'string', 'max:20'],
-            'password' => ['required', 'confirmed', Password::defaults()],
-        ];
-
-        if ($organization) {
-            $rules['organization_name'] = ['required', 'string', 'max:255'];
-            $rules['currency'] = ['required', 'string', 'size:3'];
-            $rules['plan_slug'] = ['required', 'string', 'exists:plans,slug'];
-        } else {
-            $rules['account_type'] = ['required', Rule::in(['organization', 'occupant'])];
-
-            if ($request->input('account_type') === 'organization') {
-                $rules['organization_name'] = ['required', 'string', 'max:255'];
-                $rules['currency'] = ['required', 'string', 'size:3'];
-                $rules['plan_slug'] = ['required', 'string', 'exists:plans,slug'];
-            }
-        }
-
-        $validated = $request->validate($rules);
 
         $user->update([
             'name' => $validated['name'],
@@ -77,7 +56,8 @@ class OnboardingController extends Controller
             'password' => $validated['password'],
         ]);
 
-        $isOrganization = $organization !== null || ($validated['account_type'] ?? null) === 'organization';
+        $isOrganization = ($validated['account_type'] ?? null) === 'organization'
+            || $organization !== null;
 
         if ($isOrganization) {
             if ($organization) {
@@ -126,6 +106,6 @@ class OnboardingController extends Controller
 
         $user->markOnboarded();
 
-        return redirect()->route('dashboard');
+        return redirect()->to(AuthLanding::for($user, $request));
     }
 }

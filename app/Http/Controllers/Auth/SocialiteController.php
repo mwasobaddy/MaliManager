@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Support\AuthLanding;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -34,9 +35,11 @@ class SocialiteController extends Controller
 
         Auth::login($user);
 
-        return redirect()->intended(
-            $user->isOnboarded() ? route('dashboard') : route('onboarding.show'),
-        );
+        $landing = $user->isOnboarded()
+            ? AuthLanding::for($user, $request)
+            : route('onboarding.show');
+
+        return redirect()->intended($landing);
     }
 
     private function findOrCreateUser(string $provider, SocialiteUser $socialUser): User
