@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureOrganizationHasProperty;
 use App\Http\Middleware\EnsureUserIsOnboarded;
 use App\Http\Middleware\EnsureUserIsPlatformAdmin;
 use App\Http\Middleware\HandleAppearance;
@@ -28,6 +29,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'onboarded' => EnsureUserIsOnboarded::class,
             'admin' => EnsureUserIsPlatformAdmin::class,
+            'has-property' => EnsureOrganizationHasProperty::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
