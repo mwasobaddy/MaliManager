@@ -10,11 +10,11 @@ use Illuminate\Support\Facades\Route;
 Route::inertia('/', 'welcome')->name('home');
 
 Route::middleware(['guest'])->group(function () {
-    Route::post('login', [LoginController::class, 'store'])->middleware('throttle:login')->name('login.store');
+    Route::post('auth/login', [LoginController::class, 'store'])->middleware('throttle:login')->name('login.store');
 
-    Route::get('login/otp', [OtpController::class, 'show'])->name('login.otp');
-    Route::post('login/otp', [OtpController::class, 'verify'])->middleware('throttle:otp')->name('login.otp.verify');
-    Route::post('login/otp/resend', [OtpController::class, 'resend'])->middleware('throttle:otp')->name('login.otp.resend');
+    Route::get('auth/otp', [OtpController::class, 'show'])->name('login.otp');
+    Route::post('auth/otp', [OtpController::class, 'verify'])->middleware('throttle:otp')->name('login.otp.verify');
+    Route::post('auth/otp/resend', [OtpController::class, 'resend'])->middleware('throttle:otp')->name('login.otp.resend');
 
     Route::get('auth/{provider}/redirect', [SocialiteController::class, 'redirect'])
         ->whereIn('provider', ['google'])
@@ -32,8 +32,8 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('onboarding', [OnboardingController::class, 'show'])->name('onboarding.show');
-    Route::post('onboarding', [OnboardingController::class, 'complete'])->name('onboarding.complete');
+    Route::get('auth/onboarding', [OnboardingController::class, 'show'])->name('onboarding.show');
+    Route::post('auth/onboarding', [OnboardingController::class, 'complete'])->name('onboarding.complete');
 
     Route::inertia('dashboard', 'dashboard')->name('dashboard')->middleware('onboarded');
 });
