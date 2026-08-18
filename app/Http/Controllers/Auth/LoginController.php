@@ -3,20 +3,18 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Auth\LoginRequest;
 use App\Models\User;
 use App\Support\OtpService;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class LoginController extends Controller
 {
-    public function store(Request $request, OtpService $otpService): RedirectResponse
+    public function store(LoginRequest $request, OtpService $otpService): RedirectResponse
     {
-        $validated = $request->validate([
-            'email' => ['required', 'string', 'lowercase', 'email', 'max:255'],
-        ]);
+        $validated = $request->validated();
 
         $user = User::where('email', $validated['email'])->first();
 
