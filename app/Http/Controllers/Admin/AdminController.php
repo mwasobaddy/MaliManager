@@ -61,7 +61,7 @@ class AdminController extends Controller
         $token = tenancy()->impersonate(
             $organization->tenant,
             $user->getKey(),
-            '/dashboard',
+            '/properties',
             'web',
         );
 
