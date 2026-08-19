@@ -78,6 +78,39 @@ class User extends Authenticatable implements PasskeyUser
             ->withTimestamps();
     }
 
+    /**
+     * Whether the user is the owner of the given organization.
+     */
+    public function isOwnerOf(Organization $organization): bool
+    {
+        return $this->organizations()
+            ->where('organizations.id', $organization->id)
+            ->wherePivot('is_owner', true)
+            ->exists();
+    }
+
+    /**
+     * The membership pivot for a user in an organization, if any.
+     */
+    public function membershipFor(Organization $organization): ?OrganizationUser
+    {
+        return OrganizationUser::where('organization_id', $organization->id)
+            ->where('user_id', $this->id)
+            ->first();
+    }
+
+    /**
+     * The organization the user works for as staff (non-owner member
+     * with a sub-role), if any.
+     */
+    public function staffOrganization(): ?Organization
+    {
+        return $this->organizations()
+            ->wherePivot('is_owner', false)
+            ->wherePivotNotNull('sub_role_id')
+            ->first();
+    }
+
     public function isOnboarded(): bool
     {
         return $this->onboarded_at !== null;
