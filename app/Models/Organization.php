@@ -76,4 +76,9 @@ class Organization extends Model
     {
         return $this->hasMany(Property::class);
     }
+
+    public function occupants(): HasMany
+    {
+        return $this->hasMany(Occupant::class);
+    }
 }
