@@ -69,6 +69,25 @@ test('organization onboarding creates a tenant, org, sub-roles and owner', funct
         ->toBe('sunset-apartments.malimanager.test');
 });
 
+test('cross-domain redirect to tenant uses 409 X-Inertia-Location for Inertia requests', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->withHeader('X-Inertia', 'true')
+        ->withHeader('X-Inertia-Version', '1')
+        ->post(route('onboarding.complete'), [
+            'account_type' => 'organization',
+            'name' => 'Jane Doe',
+            'phone' => '+254712345678',
+            'password' => 'password',
+            'password_confirmation' => 'password',
+            'organization_name' => 'Sunset Apartments',
+            'currency' => 'KES',
+            'plan_slug' => 'free',
+        ])->assertStatus(409)
+        ->assertHeader('X-Inertia-Location', 'http://sunset-apartments.malimanager.test/properties/create');
+});
+
 test('occupant onboarding creates a person and links it to the user', function () {
     $user = User::factory()->create();
 
@@ -137,4 +156,44 @@ test('onboarding page redirects already onboarded users', function () {
     $this->actingAs($user)
         ->get(route('onboarding.show'))
         ->assertRedirect(route('dashboard'));
+});
+
+test('organization owner with a single property is sent straight into it', function () {
+    $user = User::factory()->create(['onboarded_at' => now()]);
+    $organization = app(TenantService::class)->createOrganization(
+        owner: $user,
+        name: 'Sunset Apartments',
+        plan: Plan::where('slug', 'free')->firstOrFail(),
+    );
+    $organization->properties()->create([
+        'name' => 'Sunset Heights',
+        'slug' => 'sunset-heights',
+        'status' => 'active',
+        'created_by' => $user->id,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('onboarding.show'))
+        ->assertRedirect('http://sunset-apartments.malimanager.test/sunset-heights/dashboard');
+});
+
+test('organization owner with multiple properties lands on the picker', function () {
+    $user = User::factory()->create(['onboarded_at' => now()]);
+    $organization = app(TenantService::class)->createOrganization(
+        owner: $user,
+        name: 'Sunset Apartments',
+        plan: Plan::where('slug', 'starter')->firstOrFail(),
+    );
+    foreach (['sunset-heights', 'ocean-view'] as $slug) {
+        $organization->properties()->create([
+            'name' => ucfirst(str_replace('-', ' ', $slug)),
+            'slug' => $slug,
+            'status' => 'active',
+            'created_by' => $user->id,
+        ]);
+    }
+
+    $this->actingAs($user)
+        ->get(route('onboarding.show'))
+        ->assertRedirect('http://sunset-apartments.malimanager.test/properties');
 });

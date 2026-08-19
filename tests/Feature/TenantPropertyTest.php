@@ -51,7 +51,7 @@ test('organization owner can create a property with units', function () {
                 ['name' => 'A1', 'type' => '1 Bedroom', 'monthly_rent' => 25000],
                 ['name' => 'A2', 'type' => '2 Bedroom', 'monthly_rent' => 45000],
             ],
-        ])->assertRedirect(tenantUrl($organization, '/properties/sunset-heights'));
+        ])->assertRedirect(tenantUrl($organization, '/sunset-heights/dashboard'));
 
     $property = Property::where('slug', 'sunset-heights')->first();
     expect($property)->not->toBeNull()
@@ -95,11 +95,11 @@ test('property page shows units and lets the owner add more', function () {
     ]);
 
     $this->actingAs($user)
-        ->post(tenantUrl($organization, "/properties/{$property->slug}/units"), [
+        ->post(tenantUrl($organization, "/{$property->slug}/units"), [
             'name' => 'B1',
             'type' => 'Studio',
             'monthly_rent' => 15000,
-        ])->assertRedirect(tenantUrl($organization, "/properties/{$property->slug}"))
+        ])->assertRedirect(tenantUrl($organization, "/{$property->slug}/dashboard"))
         ->assertSessionHas('status');
 
     expect($property->units()->where('name', 'B1')->exists())->toBeTrue();
@@ -143,14 +143,14 @@ test('free plan unit limit prevents units beyond the plan allowance', function (
     }
 
     $this->actingAs($user)
-        ->post(tenantUrl($organization, "/properties/{$property->slug}/units"), [
+        ->post(tenantUrl($organization, "/{$property->slug}/units"), [
             'name' => 'U11',
         ])->assertSessionHasErrors('plan');
 
     expect($property->units()->where('name', 'U11')->exists())->toBeFalse();
 });
 
-test('property page is scoped to the current organization', function () {
+test('property dashboard is scoped to the current organization', function () {
     $user = User::factory()->create(['onboarded_at' => now()]);
     $other = User::factory()->create(['onboarded_at' => now()]);
 
@@ -164,8 +164,28 @@ test('property page is scoped to the current organization', function () {
     ]);
 
     $this->actingAs($user)
-        ->get(tenantUrl($organization, '/properties/other-property'))
+        ->get(tenantUrl($organization, '/other-property/dashboard'))
         ->assertNotFound();
+});
+
+test('property dashboard shares the current property and organization to the sidebar', function () {
+    $user = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createTestOrganization($user);
+    $property = $organization->properties()->create([
+        'name' => 'Sunset Heights',
+        'slug' => 'sunset-heights',
+        'status' => 'active',
+        'created_by' => $user->id,
+    ]);
+
+    $this->actingAs($user)
+        ->get(tenantUrl($organization, '/sunset-heights/dashboard'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('tenant/properties/dashboard')
+            ->where('tenant.organization.slug', $organization->slug)
+            ->where('tenant.property.slug', $property->slug)
+            ->where('tenant.property.name', 'Sunset Heights'));
 });
 
 test('unauthenticated guests are redirected from tenant property pages', function () {
