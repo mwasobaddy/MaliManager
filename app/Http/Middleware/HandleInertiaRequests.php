@@ -2,6 +2,8 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Property;
+use App\Support\TenancyContext;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -35,11 +37,20 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
+        $organization = TenancyContext::organization();
+        $property = $request->route('property');
+
         return [
             ...parent::share($request),
             'name' => config('app.name'),
             'auth' => [
                 'user' => $request->user(),
+            ],
+            'tenant' => [
+                'organization' => $organization?->only('id', 'name', 'slug'),
+                'property' => $property instanceof Property
+                    ? $property->only('id', 'name', 'slug')
+                    : null,
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];
