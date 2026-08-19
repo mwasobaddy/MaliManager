@@ -76,7 +76,7 @@ class PropertyController extends Controller
         ))->with('status', 'Property created successfully.');
     }
 
-    public function show(Property $property): Response
+    public function dashboard(Property $property): Response
     {
         $units = $property->units()
             ->orderBy('name')
@@ -89,7 +89,7 @@ class PropertyController extends Controller
                 'monthly_rent' => $unit->monthly_rent,
             ]);
 
-        return Inertia::render('tenant/properties/show', [
+        return Inertia::render('tenant/properties/dashboard', [
             'organization' => TenancyContext::organization()->only('id', 'name', 'slug'),
             'property' => [
                 'id' => $property->id,

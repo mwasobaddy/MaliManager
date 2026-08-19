@@ -52,9 +52,9 @@ Route::middleware([
             ->name('tenant.properties.create');
         Route::post('/properties', [PropertyController::class, 'store'])
             ->name('tenant.properties.store');
-        Route::get('/properties/{property:slug}', [PropertyController::class, 'show'])
-            ->name('tenant.properties.show');
-        Route::post('/properties/{property:slug}/units', [UnitController::class, 'store'])
+        Route::get('/{property:slug}/dashboard', [PropertyController::class, 'dashboard'])
+            ->name('tenant.properties.dashboard');
+        Route::post('/{property:slug}/units', [UnitController::class, 'store'])
             ->name('tenant.properties.units.store');
     });
 });
