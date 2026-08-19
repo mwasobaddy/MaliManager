@@ -38,7 +38,7 @@ type Props = {
     plan: Plan;
 };
 
-export default function PropertiesShow({ property, units, plan }: Props) {
+export default function PropertiesDashboard({ property, units, plan }: Props) {
     const [addUnit, setAddUnit] = useState(false);
     const atUnitLimit =
         plan.units_limit !== null && units.length >= plan.units_limit;
@@ -198,14 +198,14 @@ export default function PropertiesShow({ property, units, plan }: Props) {
     );
 }
 
-PropertiesShow.layout = {
+PropertiesDashboard.layout = {
     breadcrumbs: [
         {
             title: 'Properties',
             href: index(),
         },
         {
-            title: 'Property details',
+            title: 'Dashboard',
             href: '',
         },
     ],

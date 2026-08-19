@@ -3,7 +3,7 @@ import { Building2, Plus } from 'lucide-react';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { create, show } from '@/routes/tenant/properties';
+import { create, dashboard } from '@/routes/tenant/properties';
 
 type Organization = {
     id: number;
@@ -68,7 +68,7 @@ export default function PropertiesIndex({ organization, properties, canCreatePro
                         {properties.map((property) => (
                             <Link
                                 key={property.id}
-                                href={show(property.slug)}
+                                href={dashboard(property.slug)}
                                 className="rounded-xl border border-input bg-card transition-colors hover:bg-muted"
                             >
                                 <Card className="border-0 bg-transparent shadow-none">

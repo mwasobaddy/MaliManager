@@ -1,5 +1,5 @@
-import { Link } from '@inertiajs/react';
-import { BookOpen, FolderGit2, LayoutGrid } from 'lucide-react';
+import { Link, usePage } from '@inertiajs/react';
+import { BookOpen, Building2, FolderGit2, LayoutGrid, ArrowLeftRight } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
@@ -13,16 +13,9 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import { dashboard } from '@/routes';
+import { dashboard as centralDashboard } from '@/routes';
+import { dashboard as propertyDashboard, index as propertiesIndex } from '@/routes/tenant/properties';
 import type { NavItem } from '@/types';
-
-const mainNavItems: NavItem[] = [
-    {
-        title: 'Dashboard',
-        href: dashboard(),
-        icon: LayoutGrid,
-    },
-];
 
 const footerNavItems: NavItem[] = [
     {
@@ -38,13 +31,40 @@ const footerNavItems: NavItem[] = [
 ];
 
 export function AppSidebar() {
+    const { tenant } = usePage().props;
+    const property = tenant?.property;
+
+    const mainNavItems: NavItem[] = property
+        ? [
+              {
+                  title: 'Dashboard',
+                  href: propertyDashboard(property.slug),
+                  icon: LayoutGrid,
+              },
+              {
+                  title: 'Switch property',
+                  href: propertiesIndex(),
+                  icon: ArrowLeftRight,
+              },
+          ]
+        : [
+              {
+                  title: 'Dashboard',
+                  href: centralDashboard(),
+                  icon: LayoutGrid,
+              },
+          ];
+
     return (
         <Sidebar collapsible="icon" variant="inset">
             <SidebarHeader>
                 <SidebarMenu>
                     <SidebarMenuItem>
                         <SidebarMenuButton size="lg" asChild>
-                            <Link href={dashboard()} prefetch>
+                            <Link
+                                href={property ? propertyDashboard(property.slug) : centralDashboard()}
+                                prefetch
+                            >
                                 <AppLogo />
                             </Link>
                         </SidebarMenuButton>
@@ -53,6 +73,18 @@ export function AppSidebar() {
             </SidebarHeader>
 
             <SidebarContent>
+                {property && (
+                    <SidebarMenu>
+                        <SidebarMenuItem>
+                            <SidebarMenuButton asChild className="text-sm">
+                                <Link href={propertyDashboard(property.slug)}>
+                                    <Building2 className="size-4" />
+                                    {property.name}
+                                </Link>
+                            </SidebarMenuButton>
+                        </SidebarMenuItem>
+                    </SidebarMenu>
+                )}
                 <NavMain items={mainNavItems} />
             </SidebarContent>
 
