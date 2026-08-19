@@ -38,9 +38,11 @@ class AuthLanding
 
         $scheme = $request->secure() ? 'https' : 'http';
 
-        $path = $organization->properties()->exists()
-            ? 'properties'
-            : 'properties/create';
+        $path = match (true) {
+            $organization->properties()->doesntExist() => 'properties/create',
+            $organization->properties()->count() === 1 => $organization->properties()->value('slug').'/dashboard',
+            default => 'properties',
+        };
 
         return "{$scheme}://{$domain}/{$path}";
     }
@@ -58,6 +60,6 @@ class AuthLanding
 
         $scheme = $request->secure() ? 'https' : 'http';
 
-        return "{$scheme}://{$domain}/properties/{$slug}";
+        return "{$scheme}://{$domain}/{$slug}/dashboard";
     }
 }
