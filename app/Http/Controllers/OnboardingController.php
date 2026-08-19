@@ -8,6 +8,7 @@ use App\Models\Person;
 use App\Models\Plan;
 use App\Services\TenantService;
 use App\Support\AuthLanding;
+use App\Support\InertiaRedirect;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -20,7 +21,7 @@ class OnboardingController extends Controller
         $user = $request->user();
 
         if ($user->isOnboarded()) {
-            return redirect()->to(AuthLanding::for($user, $request));
+            return InertiaRedirect::to(AuthLanding::for($user, $request), $request);
         }
 
         $organization = $user->organizations()->wherePivot('is_owner', true)->first();
@@ -44,7 +45,7 @@ class OnboardingController extends Controller
         ]);
     }
 
-    public function complete(OnboardingCompleteRequest $request, TenantService $tenantService): RedirectResponse
+    public function complete(OnboardingCompleteRequest $request, TenantService $tenantService): RedirectResponse|\Illuminate\Http\Response
     {
         $user = $request->user();
         $validated = $request->validated();
@@ -106,6 +107,6 @@ class OnboardingController extends Controller
 
         $user->markOnboarded();
 
-        return redirect()->to(AuthLanding::for($user, $request));
+        return InertiaRedirect::to(AuthLanding::for($user, $request), $request);
     }
 }

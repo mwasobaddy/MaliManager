@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Support\AuthLanding;
+use App\Support\InertiaRedirect;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -39,7 +40,9 @@ class SocialiteController extends Controller
             ? AuthLanding::for($user, $request)
             : route('onboarding.show');
 
-        return redirect()->intended($landing);
+        $intended = $request->session()->get('url.intended');
+
+        return InertiaRedirect::to($intended ?? $landing, $request);
     }
 
     private function findOrCreateUser(string $provider, SocialiteUser $socialUser): User

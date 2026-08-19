@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Organization;
 use App\Models\User;
+use App\Support\InertiaRedirect;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -42,7 +43,7 @@ class AdminController extends Controller
         ]);
     }
 
-    public function impersonate(Request $request, Organization $organization, User $user): RedirectResponse
+    public function impersonate(Request $request, Organization $organization, User $user): RedirectResponse|\Illuminate\Http\Response
     {
         if (! $organization->users()->whereKey($user->id)->exists()) {
             abort(403, 'User is not a member of this organization.');
@@ -67,6 +68,6 @@ class AdminController extends Controller
 
         $scheme = $request->secure() ? 'https' : 'http';
 
-        return redirect("{$scheme}://{$domain->domain}/impersonate/{$token->token}");
+        return InertiaRedirect::to("{$scheme}://{$domain->domain}/impersonate/{$token->token}", $request);
     }
 }

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\OtpVerifyRequest;
 use App\Models\User;
 use App\Support\AuthLanding;
+use App\Support\InertiaRedirect;
 use App\Support\OtpService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -59,7 +60,9 @@ class OtpController extends Controller
             ? AuthLanding::for($user, $request)
             : route('onboarding.show');
 
-        return redirect()->intended($landing);
+        $intended = $request->session()->get('url.intended');
+
+        return InertiaRedirect::to($intended ?? $landing, $request);
     }
 
     public function resend(Request $request, OtpService $otpService): RedirectResponse
