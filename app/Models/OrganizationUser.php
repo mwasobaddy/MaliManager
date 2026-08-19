@@ -19,6 +19,10 @@ class OrganizationUser extends Pivot
 {
     protected $table = 'organization_user';
 
+    public $incrementing = true;
+
+    protected $keyType = 'int';
+
     protected $casts = [
         'is_owner' => 'boolean',
     ];
