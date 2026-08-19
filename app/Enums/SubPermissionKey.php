@@ -51,6 +51,11 @@ enum SubPermissionKey: string
     case MaintenanceDelete = 'maintenance.delete';
     case MaintenanceDelegate = 'maintenance.delegate';
 
+    case StaffManage = 'staff.manage';
+    case StaffCreate = 'staff.create';
+    case StaffEdit = 'staff.edit';
+    case StaffDelete = 'staff.delete';
+
     /**
      * The module label for grouping in the UI.
      */
@@ -66,6 +71,7 @@ enum SubPermissionKey: string
             self::PaymentManage => 'payment',
             self::ExpenseManage => 'expense',
             self::MaintenanceManage, self::MaintenanceCreate, self::MaintenanceEdit, self::MaintenanceDelete, self::MaintenanceDelegate => 'maintenance',
+            self::StaffManage, self::StaffCreate, self::StaffEdit, self::StaffDelete => 'staff',
         };
     }
 
@@ -109,6 +115,10 @@ enum SubPermissionKey: string
             self::MaintenanceEdit => 'Edit maintenance requests',
             self::MaintenanceDelete => 'Delete maintenance requests',
             self::MaintenanceDelegate => 'Delegate maintenance requests',
+            self::StaffManage => 'Manage staff',
+            self::StaffCreate => 'Create staff',
+            self::StaffEdit => 'Edit staff',
+            self::StaffDelete => 'Delete staff',
         };
     }
 }
