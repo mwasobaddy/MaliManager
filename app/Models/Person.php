@@ -45,4 +45,17 @@ class Person extends Model
     {
         return $this->hasMany(User::class);
     }
+
+    public function occupants(): HasMany
+    {
+        return $this->hasMany(Occupant::class);
+    }
+
+    /**
+     * A display name built from first + last name.
+     */
+    public function getFullNameAttribute(): string
+    {
+        return trim(($this->first_name ?? '').' '.($this->last_name ?? ''));
+    }
 }

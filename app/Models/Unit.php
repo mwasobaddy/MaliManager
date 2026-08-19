@@ -6,6 +6,7 @@ use Database\Factories\UnitFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
@@ -54,6 +55,13 @@ class Unit extends Model
     public function property(): BelongsTo
     {
         return $this->belongsTo(Property::class);
+    }
+
+    public function occupants(): BelongsToMany
+    {
+        return $this->belongsToMany(Occupant::class, 'occupant_unit')
+            ->withPivot('created_by')
+            ->withTimestamps();
     }
 
     public function creator(): BelongsTo
