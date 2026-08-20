@@ -7,19 +7,26 @@ use App\Http\Requests\Tenant\StorePropertyRequest;
 use App\Models\Organization;
 use App\Models\Property;
 use App\Services\PropertyService;
+use App\Services\StaffService;
 use App\Support\AuthLanding;
 use App\Support\TenancyContext;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Throwable;
 
 class PropertyController extends Controller
 {
-    public function index(): Response
+    public function index(Request $request): Response
     {
         $organization = TenancyContext::organization();
 
+        $user = $request->user();
+
         $properties = $organization->properties()
+            ->when(! $user->isOwnerOf($organization), fn ($query) => $query
+                ->whereIn('id', app(StaffService::class)->delegatedPropertyIds($user->membershipFor($organization))))
             ->withCount('units')
             ->orderBy('created_at', 'desc')
             ->get()
@@ -35,13 +42,15 @@ class PropertyController extends Controller
         return Inertia::render('tenant/properties/index', [
             'organization' => $organization->only('id', 'name', 'slug'),
             'properties' => $properties,
-            'canCreateProperty' => $this->canCreateProperty($organization),
+            'canCreateProperty' => $user->isOwnerOf($organization) && $this->canCreateProperty($organization),
         ]);
     }
 
-    public function create(): Response
+    public function create(Request $request): Response
     {
         $organization = TenancyContext::organization();
+
+        $this->authorizePropertyMutation($request, $organization);
 
         return Inertia::render('tenant/properties/create', [
             'organization' => $organization->only('id', 'name', 'slug'),
@@ -57,17 +66,29 @@ class PropertyController extends Controller
     {
         $organization = TenancyContext::organization();
 
+        $this->authorizePropertyMutation($request, $organization);
+
         if (! $this->canCreateProperty($organization)) {
             return back()->withErrors([
                 'plan' => 'Your current plan does not allow adding more properties.',
             ]);
         }
 
-        $property = $propertyService->create(
-            $organization,
-            $request->user(),
-            $request->validated(),
-        );
+        try {
+            $property = $propertyService->create(
+                $organization,
+                $request->user(),
+                $request->validated(),
+            );
+        } catch (\DomainException $e) {
+            return back()->withErrors([
+                'plan' => $e->getMessage(),
+            ]);
+        } catch (Throwable) {
+            return back()->withErrors([
+                'plan' => 'We could not create this property. Please try again.',
+            ]);
+        }
 
         return redirect()->to(AuthLanding::property(
             $organization,
@@ -76,8 +97,10 @@ class PropertyController extends Controller
         ))->with('status', 'Property created successfully.');
     }
 
-    public function dashboard(Property $property): Response
+    public function dashboard(Request $request, Property $property): Response
     {
+        $this->authorizePropertyAccess($request, $property);
+
         $units = $property->units()
             ->orderBy('name')
             ->get()
@@ -111,5 +134,36 @@ class PropertyController extends Controller
         $limit = $organization->plan?->properties_limit;
 
         return $limit === null || $organization->properties()->count() < $limit;
+    }
+
+    /**
+     * Staff may only access properties they are delegated to; owners
+     * and admins can access every property in the organization.
+     */
+    private function authorizePropertyAccess(Request $request, Property $property): void
+    {
+        $user = $request->user();
+
+        if ($user->isOwnerOf($property->organization)) {
+            return;
+        }
+
+        $membership = $user->membershipFor($property->organization);
+
+        if ($membership && in_array($property->id, app(StaffService::class)->delegatedPropertyIds($membership))) {
+            return;
+        }
+
+        abort(404);
+    }
+
+    /**
+     * Only owners may create or edit organization-level structure.
+     */
+    private function authorizePropertyMutation(Request $request, Organization $organization): void
+    {
+        if (! $request->user()->isOwnerOf($organization)) {
+            abort(403);
+        }
     }
 }

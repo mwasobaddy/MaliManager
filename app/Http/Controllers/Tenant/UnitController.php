@@ -6,13 +6,18 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Tenant\StoreUnitRequest;
 use App\Models\Property;
 use App\Services\PropertyService;
+use App\Services\StaffService;
 use App\Support\AuthLanding;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Throwable;
 
 class UnitController extends Controller
 {
     public function store(Property $property, StoreUnitRequest $request, PropertyService $propertyService): RedirectResponse
     {
+        $this->authorizePropertyAccess($request, $property);
+
         try {
             $propertyService->addUnit(
                 $property,
@@ -23,6 +28,10 @@ class UnitController extends Controller
             return back()->withErrors([
                 'plan' => $e->getMessage(),
             ]);
+        } catch (Throwable) {
+            return back()->withErrors([
+                'plan' => 'We could not add this unit. Please try again.',
+            ]);
         }
 
         return redirect()->to(AuthLanding::property(
@@ -30,5 +39,22 @@ class UnitController extends Controller
             $property->slug,
             $request,
         ))->with('status', 'Unit added successfully.');
+    }
+
+    private function authorizePropertyAccess(Request $request, Property $property): void
+    {
+        $user = $request->user();
+
+        if ($user->isOwnerOf($property->organization)) {
+            return;
+        }
+
+        $membership = $user->membershipFor($property->organization);
+
+        if ($membership && in_array($property->id, app(StaffService::class)->delegatedPropertyIds($membership))) {
+            return;
+        }
+
+        abort(404);
     }
 }
