@@ -15,6 +15,7 @@ declare module '@inertiajs/core' {
             tenant: {
                 organization: { id: number; name: string; slug: string } | null;
                 property: { id: number; name: string; slug: string } | null;
+                permissions: string[];
             };
             sidebarOpen: boolean;
             [key: string]: unknown;
