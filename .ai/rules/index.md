@@ -12,3 +12,4 @@ Before planning or editing, find the row whose globs match the file's path and r
 | routes/web.php, routes/tenant.php | .ai/rules/routes.md |
 | app/Services/**, app/Services/TenantService.php | .ai/rules/services.md |
 | app/Http/Controllers/Tenant/** | .ai/rules/tenant.md |
+| resources/js/** | .ai/rules/frontend.md |
