@@ -53,7 +53,7 @@ class DefaultSubRoles
             ],
             self::CARETAKER => [
                 'name' => 'Caretaker',
-                'description' => 'Day-to-day operations: occupants, units, leases, maintenance.',
+                'description' => 'Day-to-day operations: occupants, units, leases, maintenance, and staff.',
                 'permissions' => [
                     SubPermissionKey::OccupantManage,
                     SubPermissionKey::OccupantCreate,
@@ -65,6 +65,9 @@ class DefaultSubRoles
                     SubPermissionKey::MaintenanceManage,
                     SubPermissionKey::MaintenanceCreate,
                     SubPermissionKey::MaintenanceEdit,
+                    SubPermissionKey::StaffManage,
+                    SubPermissionKey::StaffCreate,
+                    SubPermissionKey::StaffEdit,
                 ],
             ],
             self::AGENT => [
