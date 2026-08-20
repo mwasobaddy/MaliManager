@@ -3,7 +3,9 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Tenant\ImpersonationController;
+use App\Http\Controllers\Tenant\OccupantController;
 use App\Http\Controllers\Tenant\PropertyController;
+use App\Http\Controllers\Tenant\StaffController;
 use App\Http\Controllers\Tenant\UnitController;
 use App\Support\TenancyContext;
 use Illuminate\Support\Facades\Route;
@@ -56,5 +58,55 @@ Route::middleware([
             ->name('tenant.properties.dashboard');
         Route::post('/{property:slug}/units', [UnitController::class, 'store'])
             ->name('tenant.properties.units.store');
+
+        Route::middleware('sub-permission:occupant.manage')->group(function () {
+            Route::get('/{property:slug}/occupants', [OccupantController::class, 'index'])
+                ->name('tenant.occupants.index');
+        });
+
+        Route::middleware('sub-permission:occupant.create')->group(function () {
+            Route::get('/{property:slug}/occupants/create', [OccupantController::class, 'create'])
+                ->name('tenant.occupants.create');
+            Route::post('/{property:slug}/occupants', [OccupantController::class, 'store'])
+                ->name('tenant.occupants.store');
+        });
+
+        Route::middleware('sub-permission:occupant.edit')->group(function () {
+            Route::get('/{property:slug}/occupants/{occupant}/edit', [OccupantController::class, 'edit'])
+                ->name('tenant.occupants.edit');
+            Route::put('/{property:slug}/occupants/{occupant}', [OccupantController::class, 'update'])
+                ->name('tenant.occupants.update');
+        });
+
+        Route::middleware('sub-permission:occupant.delete')->group(function () {
+            Route::delete('/{property:slug}/occupants/{occupant}', [OccupantController::class, 'destroy'])
+                ->name('tenant.occupants.destroy');
+        });
+    });
+
+    Route::middleware(['auth'])->group(function () {
+        Route::middleware('sub-permission:staff.manage')->group(function () {
+            Route::get('/staff', [StaffController::class, 'index'])
+                ->name('tenant.staff.index');
+        });
+
+        Route::middleware('sub-permission:staff.create')->group(function () {
+            Route::get('/staff/create', [StaffController::class, 'create'])
+                ->name('tenant.staff.create');
+            Route::post('/staff', [StaffController::class, 'store'])
+                ->name('tenant.staff.store');
+        });
+
+        Route::middleware('sub-permission:staff.edit')->group(function () {
+            Route::get('/staff/{staff}/edit', [StaffController::class, 'edit'])
+                ->name('tenant.staff.edit');
+            Route::put('/staff/{staff}', [StaffController::class, 'update'])
+                ->name('tenant.staff.update');
+        });
+
+        Route::middleware('sub-permission:staff.delete')->group(function () {
+            Route::delete('/staff/{staff}', [StaffController::class, 'destroy'])
+                ->name('tenant.staff.destroy');
+        });
     });
 });
