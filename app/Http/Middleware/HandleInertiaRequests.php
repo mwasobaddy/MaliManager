@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Enums\SubPermissionKey;
 use App\Models\Property;
 use App\Support\TenancyContext;
 use Illuminate\Http\Request;
@@ -39,20 +40,50 @@ class HandleInertiaRequests extends Middleware
     {
         $organization = TenancyContext::organization();
         $property = $request->route('property');
+        $user = $request->user();
 
         return [
             ...parent::share($request),
             'name' => config('app.name'),
             'auth' => [
-                'user' => $request->user(),
+                'user' => $user,
             ],
             'tenant' => [
                 'organization' => $organization?->only('id', 'name', 'slug'),
                 'property' => $property instanceof Property
                     ? $property->only('id', 'name', 'slug')
                     : null,
+                'permissions' => $this->permissions($user, $organization),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];
+    }
+
+    /**
+     * The sub-permission keys the current user holds in the active
+     * tenancy. Owners implicitly hold every permission.
+     *
+     * @return array<int, string>
+     */
+    private function permissions(?object $user, ?object $organization): array
+    {
+        if (! $user || ! $organization) {
+            return [];
+        }
+
+        if ($user->isOwnerOf($organization)) {
+            return array_map(fn (SubPermissionKey $key) => $key->value, SubPermissionKey::cases());
+        }
+
+        $membership = $user->membershipFor($organization);
+
+        if (! $membership?->sub_role_id) {
+            return [];
+        }
+
+        return $membership->subRole
+            ->subPermissions()
+            ->pluck('key')
+            ->all();
     }
 }
