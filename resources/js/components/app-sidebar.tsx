@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import { BookOpen, Building2, FolderGit2, LayoutGrid, ArrowLeftRight } from 'lucide-react';
+import { BookOpen, Building2, FolderGit2, LayoutGrid, ArrowLeftRight, Users, UserRound } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
@@ -14,7 +14,9 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard as centralDashboard } from '@/routes';
+import { index as occupantsIndex } from '@/routes/tenant/occupants';
 import { dashboard as propertyDashboard, index as propertiesIndex } from '@/routes/tenant/properties';
+import { index as staffIndex } from '@/routes/tenant/staff';
 import type { NavItem } from '@/types';
 
 const footerNavItems: NavItem[] = [
@@ -33,6 +35,9 @@ const footerNavItems: NavItem[] = [
 export function AppSidebar() {
     const { tenant } = usePage().props;
     const property = tenant?.property;
+    const organization = tenant?.organization;
+    const canManageStaff = tenant?.permissions?.includes('staff.manage') ?? false;
+    const canManageOccupants = tenant?.permissions?.includes('occupant.manage') ?? false;
 
     const mainNavItems: NavItem[] = property
         ? [
@@ -41,19 +46,60 @@ export function AppSidebar() {
                   href: propertyDashboard(property.slug),
                   icon: LayoutGrid,
               },
+              ...(canManageOccupants
+                  ? [
+                        {
+                            title: 'Occupants',
+                            href: occupantsIndex(property.slug),
+                            icon: UserRound,
+                        },
+                    ]
+                  : []),
               {
                   title: 'Switch property',
                   href: propertiesIndex(),
                   icon: ArrowLeftRight,
               },
+              ...(canManageStaff
+                  ? [
+                        {
+                            title: 'Staff',
+                            href: staffIndex(),
+                            icon: Users,
+                        },
+                    ]
+                  : []),
           ]
-        : [
-              {
-                  title: 'Dashboard',
-                  href: centralDashboard(),
-                  icon: LayoutGrid,
-              },
-          ];
+        : organization
+          ? [
+                {
+                    title: 'Properties',
+                    href: propertiesIndex(),
+                    icon: ArrowLeftRight,
+                },
+                ...(canManageStaff
+                    ? [
+                          {
+                              title: 'Staff',
+                              href: staffIndex(),
+                              icon: Users,
+                          },
+                      ]
+                    : []),
+            ]
+          : [
+                {
+                    title: 'Dashboard',
+                    href: centralDashboard(),
+                    icon: LayoutGrid,
+                },
+            ];
+
+    const homeHref = property
+        ? propertyDashboard(property.slug)
+        : organization
+          ? propertiesIndex()
+          : centralDashboard();
 
     return (
         <Sidebar collapsible="icon" variant="inset">
@@ -61,10 +107,7 @@ export function AppSidebar() {
                 <SidebarMenu>
                     <SidebarMenuItem>
                         <SidebarMenuButton size="lg" asChild>
-                            <Link
-                                href={property ? propertyDashboard(property.slug) : centralDashboard()}
-                                prefetch
-                            >
+                            <Link href={homeHref} prefetch>
                                 <AppLogo />
                             </Link>
                         </SidebarMenuButton>
