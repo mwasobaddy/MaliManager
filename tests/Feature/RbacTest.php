@@ -19,8 +19,8 @@ beforeEach(function () {
 });
 
 test('platform roles are created by the seeder', function () {
-    expect(Role::count())->toBe(3)
-        ->and(Role::pluck('name'))->toContain('admin', 'organization-owner', 'tenant');
+    expect(Role::count())->toBe(4)
+        ->and(Role::pluck('name'))->toContain('admin', 'organization-owner', 'tenant', 'occupant');
 });
 
 test('sub-permission catalog is seeded', function () {
@@ -30,8 +30,10 @@ test('sub-permission catalog is seeded', function () {
 test('default sub-roles bundle their expected permissions', function () {
     $caretaker = $this->organization->subRoles()->where('slug', 'caretaker')->first();
 
-    expect($caretaker->subPermissions()->count())->toBe(10)
+    expect($caretaker->subPermissions()->count())->toBe(13)
         ->and($caretaker->hasSubPermissionFor(SubPermissionKey::UnitManage))->toBeTrue()
+        ->and($caretaker->hasSubPermissionFor(SubPermissionKey::StaffManage))->toBeTrue()
+        ->and($caretaker->hasSubPermissionFor(SubPermissionKey::StaffDelete))->toBeFalse()
         ->and($caretaker->hasSubPermissionFor(SubPermissionKey::UserManage))->toBeFalse();
 });
 
