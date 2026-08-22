@@ -13,6 +13,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Throwable;
 
 class OnboardingController extends Controller
 {
@@ -51,62 +52,85 @@ class OnboardingController extends Controller
         $validated = $request->validated();
         $organization = $user->organizations()->wherePivot('is_owner', true)->first();
 
-        $user->update([
-            'name' => $validated['name'],
-            'phone' => $validated['phone'] ?? null,
-            'password' => $validated['password'],
-        ]);
-
-        $isOrganization = ($validated['account_type'] ?? null) === 'organization'
-            || $organization !== null;
-
-        if ($isOrganization) {
-            if ($organization) {
-                $plan = Plan::where('slug', $validated['plan_slug'])->firstOrFail();
-
-                $organization->update([
-                    'name' => $validated['organization_name'],
-                    'plan_id' => $plan->id,
-                    'settings' => array_merge($organization->settings ?? [], [
-                        'currency' => $validated['currency'],
-                    ]),
-                ]);
-            } else {
-                $plan = Plan::where('slug', $validated['plan_slug'])->firstOrFail();
-
-                $organization = $tenantService->createOrganization(
-                    owner: $user,
-                    name: $validated['organization_name'],
-                    plan: $plan,
-                    email: $user->email,
-                    phone: $validated['phone'] ?? null,
-                );
-
-                $organization->update([
-                    'settings' => [
-                        'currency' => $validated['currency'],
-                    ],
-                ]);
-            }
-        } else {
-            $person = Person::create([
-                'first_name' => $validated['name'],
-                'email' => $user->email,
-                'phone' => $validated['phone'] ?? null,
-                'status' => 'active',
-                'created_by' => $user->id,
-            ]);
-
+        try {
             $user->update([
-                'person_id' => $person->id,
-                'created_by' => $user->id,
+                'name' => $validated['name'],
+                'phone' => $validated['phone'] ?? null,
+                'password' => $validated['password'],
             ]);
 
-            $user->assignRole(PlatformRole::Tenant->value);
+            $isOrganization = ($validated['account_type'] ?? null) === 'organization'
+                || $organization !== null;
+
+            if ($isOrganization) {
+                if ($organization) {
+                    $plan = Plan::where('slug', $validated['plan_slug'])->firstOrFail();
+
+                    $organization->update([
+                        'name' => $validated['organization_name'],
+                        'plan_id' => $plan->id,
+                        'settings' => array_merge($organization->settings ?? [], [
+                            'currency' => $validated['currency'],
+                        ]),
+                    ]);
+                } else {
+                    $plan = Plan::where('slug', $validated['plan_slug'])->firstOrFail();
+
+                    $organization = $tenantService->createOrganization(
+                        owner: $user,
+                        name: $validated['organization_name'],
+                        plan: $plan,
+                        email: $user->email,
+                        phone: $validated['phone'] ?? null,
+                    );
+
+                    $organization->update([
+                        'settings' => [
+                            'currency' => $validated['currency'],
+                        ],
+                    ]);
+                }
+            } else {
+                $person = Person::create([
+                    'first_name' => $validated['name'],
+                    'email' => $user->email,
+                    'phone' => $validated['phone'] ?? null,
+                    'status' => 'active',
+                    'created_by' => $user->id,
+                ]);
+
+                $user->update([
+                    'person_id' => $person->id,
+                    'created_by' => $user->id,
+                ]);
+
+                $user->assignRole(PlatformRole::Tenant->value);
+            }
+
+            $user->markOnboarded();
+
+            return InertiaRedirect::to(AuthLanding::for($user, $request), $request);
+        } catch (Throwable $e) {
+            report($e);
+
+            Inertia::flash('toast', ['type' => 'error', 'message' => 'We could not complete your onboarding. Please try again.']);
+
+            return redirect()->route('onboarding.show');
         }
+    }
 
-        $user->markOnboarded();
+    public function firstAsset(Request $request): Response
+    {
+        $organization = $request->user()
+            ->organizations()
+            ->wherePivot('is_owner', true)
+            ->first();
 
-        return InertiaRedirect::to(AuthLanding::for($user, $request), $request);
+        return Inertia::render('auth/first-asset', [
+            'organization' => $organization ? [
+                'id' => $organization->id,
+                'name' => $organization->name,
+            ] : null,
+        ]);
     }
 }
