@@ -45,6 +45,7 @@ test('socialite callback redirects back to login on failure', function () {
     );
 
     $this->get(route('auth.socialite.callback', ['provider' => 'google']))
-        ->assertRedirect(route('login'))
-        ->assertSessionHasErrors('email');
+        ->assertRedirect(route('login'));
+
+    assertErrorToast();
 });

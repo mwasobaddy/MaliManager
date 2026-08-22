@@ -53,7 +53,7 @@ test('organization onboarding creates a tenant, org, sub-roles and owner', funct
             'organization_name' => 'Sunset Apartments',
             'currency' => 'KES',
             'plan_slug' => 'free',
-        ])->assertRedirect('http://sunset-apartments.malimanager.test/properties/create');
+        ])->assertRedirect('http://sunset-apartments.malimanager.test/setup/first-asset');
 
     $user->refresh();
     expect($user->isOnboarded())->toBeTrue()
@@ -85,7 +85,7 @@ test('cross-domain redirect to tenant uses 409 X-Inertia-Location for Inertia re
             'currency' => 'KES',
             'plan_slug' => 'free',
         ])->assertStatus(409)
-        ->assertHeader('X-Inertia-Location', 'http://sunset-apartments.malimanager.test/properties/create');
+        ->assertHeader('X-Inertia-Location', 'http://sunset-apartments.malimanager.test/setup/first-asset');
 });
 
 test('occupant onboarding creates a person and links it to the user', function () {
@@ -142,7 +142,7 @@ test('existing organization owners can update their settings', function () {
             'organization_name' => 'Sunset Apartments Ltd',
             'currency' => 'KES',
             'plan_slug' => 'free',
-        ])->assertRedirect('http://sunset-apartments.malimanager.test/properties/create');
+        ])->assertRedirect('http://sunset-apartments.malimanager.test/setup/first-asset');
 
     $organization->refresh();
     expect($organization->name)->toBe('Sunset Apartments Ltd')
@@ -196,4 +196,15 @@ test('organization owner with multiple properties lands on the picker', function
     $this->actingAs($user)
         ->get(route('onboarding.show'))
         ->assertRedirect('http://sunset-apartments.malimanager.test/properties');
+});
+
+test('first asset page offers both building and land parcel', function () {
+    $user = User::factory()->create(['onboarded_at' => now()]);
+
+    $this->actingAs($user)
+        ->get(route('onboarding.first-asset'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('auth/first-asset')
+            ->has('organization'));
 });

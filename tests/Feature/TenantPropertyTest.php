@@ -118,8 +118,9 @@ test('free plan property limit prevents a second property', function () {
     $this->actingAs($user)
         ->post(tenantUrl($organization, '/properties'), [
             'name' => 'Second Property',
-        ])->assertSessionHasErrors('plan')
-        ->assertRedirect();
+        ])->assertRedirect();
+
+    assertErrorToast();
 
     expect(Property::where('slug', 'second-property')->exists())->toBeFalse();
 });
@@ -145,7 +146,9 @@ test('free plan unit limit prevents units beyond the plan allowance', function (
     $this->actingAs($user)
         ->post(tenantUrl($organization, "/{$property->slug}/units"), [
             'name' => 'U11',
-        ])->assertSessionHasErrors('plan');
+        ])->assertRedirect();
+
+    assertErrorToast();
 
     expect($property->units()->where('name', 'U11')->exists())->toBeFalse();
 });

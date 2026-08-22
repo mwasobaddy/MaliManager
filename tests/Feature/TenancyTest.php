@@ -35,6 +35,16 @@ test('central domain is blocked from tenant routes', function () {
         ->assertStatus(404);
 });
 
+test('unknown organization subdomain redirects to login with an error toast', function () {
+    $response = $this->get('http://does-not-exist.malimanager.test/tenant/status');
+    $response->assertRedirect(route('login'));
+    assertErrorToast();
+
+    $response = $this->get('http://does-not-exist.malimanager.test/lucius-joyce/occupants');
+    $response->assertRedirect(route('login'));
+    assertErrorToast();
+});
+
 test('tenancy context resolves the tenant organization', function () {
     $organization = Organization::factory()->for($this->tenant, 'tenant')->create();
 

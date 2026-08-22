@@ -53,7 +53,8 @@ test('staff index requires the staff.manage sub-permission', function () {
 
     $this->actingAs($agent)
         ->get(staffTenantUrl($organization, '/staff'))
-        ->assertForbidden();
+        ->assertRedirect();
+    assertErrorToast();
 });
 
 test('staff with the staff.manage sub-permission can view the index', function () {
@@ -102,7 +103,8 @@ test('creating staff requires the staff.create sub-permission', function () {
             'name' => 'New Staff',
             'email' => 'new@acme.test',
             'sub_role_id' => $organization->subRoles()->where('slug', 'caretaker')->first()->id,
-        ])->assertForbidden();
+        ])->assertRedirect();
+    assertErrorToast();
 });
 
 test('owner can add a new staff member with assigned properties', function () {
@@ -173,7 +175,8 @@ test('editing staff requires the staff.edit sub-permission', function () {
 
     $this->actingAs($agent)
         ->get(staffTenantUrl($organization, "/staff/{$staff->id}/edit"))
-        ->assertForbidden();
+        ->assertRedirect();
+    assertErrorToast();
 });
 
 test('owner can update staff role and property assignments', function () {
@@ -222,7 +225,8 @@ test('removing staff requires the staff.delete sub-permission', function () {
     $this->actingAs($caretaker)
         ->delete(staffTenantUrl($organization, "/staff/{$staff->id}"), [
             'password' => 'secret-pass',
-        ])->assertForbidden();
+        ])->assertRedirect();
+    assertErrorToast();
 });
 
 test('owner can remove a staff member with their current password', function () {
@@ -358,5 +362,6 @@ test('staff cannot open a property dashboard they are not delegated to', functio
 
     $this->actingAs($staff)
         ->get(staffTenantUrl($organization, '/restricted/dashboard'))
-        ->assertNotFound();
+        ->assertRedirect();
+    assertErrorToast();
 });

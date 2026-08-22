@@ -18,7 +18,8 @@ test('non-admin users are forbidden from the admin dashboard', function () {
 
     $this->actingAs($user)
         ->get(route('admin.dashboard'))
-        ->assertForbidden();
+        ->assertRedirect();
+    assertErrorToast();
 });
 
 test('platform admins can view the admin dashboard', function () {
@@ -72,7 +73,8 @@ test('admins cannot impersonate users outside the organization', function () {
 
     $this->actingAs($admin)
         ->post(route('admin.impersonate', [$organization, $stranger]))
-        ->assertForbidden();
+        ->assertRedirect();
+    assertErrorToast();
 });
 
 test('admins cannot impersonate other admins', function () {
@@ -87,7 +89,8 @@ test('admins cannot impersonate other admins', function () {
 
     $this->actingAs($admin)
         ->post(route('admin.impersonate', [$organization, $otherAdmin]))
-        ->assertForbidden();
+        ->assertRedirect();
+    assertErrorToast();
 });
 
 test('impersonated user is logged in on the tenant domain', function () {
