@@ -11,6 +11,9 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -38,4 +41,35 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
+
+        $exceptions->respond(function (Response $response, Throwable $e, Request $request): Response {
+            if ($request->expectsJson() || $request->is('api/*')) {
+                return $response;
+            }
+
+            if ($e instanceof HttpException && $e->getStatusCode() === 403) {
+                $message = $e->getMessage() !== ''
+                    ? $e->getMessage()
+                    : 'You do not have permission to perform this action.';
+
+                $redirect = $request->headers->get('referer')
+                    ? redirect()->back()
+                    : redirect()->route('dashboard');
+
+                Inertia::flash('toast', ['type' => 'error', 'message' => $message]);
+
+                return $redirect;
+            }
+
+            if ($response->getStatusCode() === 500 && ! config('app.debug')) {
+                Inertia::flash('toast', [
+                    'type' => 'error',
+                    'message' => 'Something went wrong. Please try again.',
+                ]);
+
+                return redirect()->back();
+            }
+
+            return $response;
+        });
     })->create();
