@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Tenant\ImpersonationController;
+use App\Http\Controllers\Tenant\LandParcelController;
 use App\Http\Controllers\Tenant\OccupantController;
 use App\Http\Controllers\Tenant\PropertyController;
 use App\Http\Controllers\Tenant\StaffController;
@@ -85,6 +86,35 @@ Route::middleware([
     });
 
     Route::middleware(['auth'])->group(function () {
+        Route::middleware('sub-permission:land_parcel.manage')->group(function () {
+            Route::get('/land-parcels', [LandParcelController::class, 'index'])
+                ->name('tenant.land-parcels.index');
+        });
+
+        Route::middleware('sub-permission:land_parcel.create')->group(function () {
+            Route::get('/land-parcels/create', [LandParcelController::class, 'create'])
+                ->name('tenant.land-parcels.create');
+            Route::post('/land-parcels', [LandParcelController::class, 'store'])
+                ->name('tenant.land-parcels.store');
+        });
+
+        Route::middleware('sub-permission:land_parcel.manage')->group(function () {
+            Route::get('/land-parcels/{land_parcel}', [LandParcelController::class, 'show'])
+                ->name('tenant.land-parcels.show');
+        });
+
+        Route::middleware('sub-permission:land_parcel.edit')->group(function () {
+            Route::get('/land-parcels/{land_parcel}/edit', [LandParcelController::class, 'edit'])
+                ->name('tenant.land-parcels.edit');
+            Route::put('/land-parcels/{land_parcel}', [LandParcelController::class, 'update'])
+                ->name('tenant.land-parcels.update');
+        });
+
+        Route::middleware('sub-permission:land_parcel.delete')->group(function () {
+            Route::delete('/land-parcels/{land_parcel}', [LandParcelController::class, 'destroy'])
+                ->name('tenant.land-parcels.destroy');
+        });
+
         Route::middleware('sub-permission:staff.manage')->group(function () {
             Route::get('/staff', [StaffController::class, 'index'])
                 ->name('tenant.staff.index');
