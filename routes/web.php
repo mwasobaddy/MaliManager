@@ -36,6 +36,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('auth/onboarding', [OnboardingController::class, 'complete'])->name('onboarding.complete');
 
     Route::inertia('dashboard', 'dashboard')->name('dashboard')->middleware('onboarded');
+
+    Route::get('setup/first-asset', [OnboardingController::class, 'firstAsset'])
+        ->name('onboarding.first-asset')
+        ->middleware('onboarded');
 });
 
 require __DIR__.'/settings.php';
