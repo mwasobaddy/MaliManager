@@ -77,6 +77,11 @@ class Organization extends Model
         return $this->hasMany(Property::class);
     }
 
+    public function landParcels(): HasMany
+    {
+        return $this->hasMany(LandParcel::class);
+    }
+
     public function occupants(): HasMany
     {
         return $this->hasMany(Occupant::class);
