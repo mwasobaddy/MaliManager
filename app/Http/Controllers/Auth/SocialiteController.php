@@ -10,6 +10,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Inertia\Inertia;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\User as SocialiteUser;
 
@@ -27,9 +28,9 @@ class SocialiteController extends Controller
         } catch (\Throwable $e) {
             Log::warning('OAuth callback failed', ['provider' => $provider, 'error' => $e->getMessage()]);
 
-            return redirect()->route('login')->withErrors([
-                'email' => 'Unable to sign in with '.ucfirst($provider).'. Please try again.',
-            ]);
+            Inertia::flash('toast', ['type' => 'error', 'message' => 'Unable to sign in with '.ucfirst($provider).'. Please try again.']);
+
+            return redirect()->route('login');
         }
 
         $user = $this->findOrCreateUser($provider, $socialUser);

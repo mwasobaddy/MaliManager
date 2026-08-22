@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use Throwable;
 
 class OtpController extends Controller
 {
@@ -48,21 +49,31 @@ class OtpController extends Controller
             ]);
         }
 
-        if (! $user->email_verified_at) {
-            $user->forceFill(['email_verified_at' => now()])->save();
+        try {
+            if (! $user->email_verified_at) {
+                $user->forceFill(['email_verified_at' => now()])->save();
+            }
+
+            $request->session()->forget('login.email');
+
+            Auth::login($user);
+
+            $landing = $user->isOnboarded()
+                ? AuthLanding::for($user, $request)
+                : route('onboarding.show');
+
+            $intended = $request->session()->get('url.intended');
+
+            return InertiaRedirect::to($intended ?? $landing, $request);
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (Throwable $e) {
+            report($e);
+
+            Inertia::flash('toast', ['type' => 'error', 'message' => 'We could not verify your code. Please try again.']);
+
+            return back();
         }
-
-        $request->session()->forget('login.email');
-
-        Auth::login($user);
-
-        $landing = $user->isOnboarded()
-            ? AuthLanding::for($user, $request)
-            : route('onboarding.show');
-
-        $intended = $request->session()->get('url.intended');
-
-        return InertiaRedirect::to($intended ?? $landing, $request);
     }
 
     public function resend(Request $request, OtpService $otpService): RedirectResponse
@@ -79,8 +90,16 @@ class OtpController extends Controller
             return redirect()->route('login');
         }
 
-        $otpService->issue($user);
+        try {
+            $otpService->issue($user);
 
-        return back()->with('status', 'A new code has been sent to your email.');
+            return back()->with('status', 'A new code has been sent to your email.');
+        } catch (Throwable $e) {
+            report($e);
+
+            Inertia::flash('toast', ['type' => 'error', 'message' => 'We could not send a new code. Please try again.']);
+
+            return back();
+        }
     }
 }

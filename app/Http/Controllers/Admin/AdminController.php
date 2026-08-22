@@ -10,6 +10,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Throwable;
 
 class AdminController extends Controller
 {
@@ -59,15 +60,23 @@ class AdminController extends Controller
             abort(422, 'Organization has no domain configured yet.');
         }
 
-        $token = tenancy()->impersonate(
-            $organization->tenant,
-            $user->getKey(),
-            '/properties',
-            'web',
-        );
+        try {
+            $token = tenancy()->impersonate(
+                $organization->tenant,
+                $user->getKey(),
+                '/properties',
+                'web',
+            );
 
-        $scheme = $request->secure() ? 'https' : 'http';
+            $scheme = $request->secure() ? 'https' : 'http';
 
-        return InertiaRedirect::to("{$scheme}://{$domain->domain}/impersonate/{$token->token}", $request);
+            return InertiaRedirect::to("{$scheme}://{$domain->domain}/impersonate/{$token->token}", $request);
+        } catch (Throwable $e) {
+            report($e);
+
+            Inertia::flash('toast', ['type' => 'error', 'message' => 'We could not start impersonation. Please try again.']);
+
+            return redirect()->back();
+        }
     }
 }

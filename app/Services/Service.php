@@ -26,7 +26,13 @@ abstract class Service
      */
     protected function transaction(callable $callback): mixed
     {
-        return DB::transaction($callback);
+        try {
+            return DB::transaction($callback);
+        } catch (Throwable $e) {
+            report($e);
+
+            throw $e;
+        }
     }
 
     /**
