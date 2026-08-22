@@ -71,9 +71,14 @@ class AuthLanding
 
         $scheme = $request->secure() ? 'https' : 'http';
 
+        $propertyCount = $organization->properties()->count();
+        $parcelCount = $organization->landParcels()->count();
+
         $path = match (true) {
-            $organization->properties()->doesntExist() => 'properties/create',
-            $organization->properties()->count() === 1 => $organization->properties()->value('slug').'/dashboard',
+            $propertyCount === 0 && $parcelCount === 0 => 'setup/first-asset',
+            $propertyCount + $parcelCount === 1 => $propertyCount === 1
+                ? $organization->properties()->value('slug').'/dashboard'
+                : 'land-parcels/'.$organization->landParcels()->value('slug'),
             default => 'properties',
         };
 
