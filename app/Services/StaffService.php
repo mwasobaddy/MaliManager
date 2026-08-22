@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Delegation;
+use App\Models\LandParcel;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\Property;
@@ -180,6 +181,24 @@ class StaffService extends Service
 
         return Delegation::where('organization_user_id', $membership->id)
             ->where('delegatable_type', Property::class)
+            ->pluck('delegatable_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+    }
+
+    /**
+     * The ids of land parcels a staff member is delegated to.
+     *
+     * @return array<int, int>
+     */
+    public function delegatedLandParcelIds(?OrganizationUser $membership): array
+    {
+        if (! $membership) {
+            return [];
+        }
+
+        return Delegation::where('organization_user_id', $membership->id)
+            ->where('delegatable_type', LandParcel::class)
             ->pluck('delegatable_id')
             ->map(fn ($id) => (int) $id)
             ->all();
