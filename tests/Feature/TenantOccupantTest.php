@@ -113,7 +113,8 @@ test('occupants index requires the occupant.manage sub-permission', function () 
 
     $this->actingAs($member)
         ->get(occupantTenantUrl($organization, '/sunset-heights/occupants'))
-        ->assertForbidden();
+        ->assertRedirect();
+    assertErrorToast();
 });
 
 test('occupants index is scoped to the property and lists occupants with their units', function () {
@@ -177,7 +178,8 @@ test('staff without delegation cannot view occupants of a property', function ()
 
     $this->actingAs($caretaker)
         ->get(occupantTenantUrl($organization, '/sunset-heights/occupants'))
-        ->assertNotFound();
+        ->assertRedirect();
+    assertErrorToast();
 });
 
 test('creating an occupant requires the occupant.create sub-permission', function () {
@@ -194,7 +196,8 @@ test('creating an occupant requires the occupant.create sub-permission', functio
             'email' => 'jane@acme.test',
             'status' => 'active',
             'unit_ids' => [],
-        ])->assertForbidden();
+        ])->assertRedirect();
+    assertErrorToast();
 });
 
 test('owner can add an occupant assigned to a unit', function () {
@@ -334,7 +337,8 @@ test('editing an occupant requires the occupant.edit sub-permission', function (
 
     $this->actingAs($agent)
         ->get(occupantTenantUrl($organization, "/sunset-heights/occupants/{$occupant->id}/edit"))
-        ->assertForbidden();
+        ->assertRedirect();
+    assertErrorToast();
 });
 
 test('owner can update occupant details and unit assignments', function () {
@@ -403,7 +407,8 @@ test('removing an occupant requires the occupant.delete sub-permission', functio
     $this->actingAs($caretaker)
         ->delete(occupantTenantUrl($organization, "/sunset-heights/occupants/{$occupant->id}"), [
             'password' => 'secret-pass',
-        ])->assertForbidden();
+        ])->assertRedirect();
+    assertErrorToast();
 });
 
 test('owner can remove an occupant with their current password', function () {

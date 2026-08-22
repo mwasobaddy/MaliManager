@@ -48,3 +48,15 @@ function something()
 {
     // ..
 }
+
+/**
+ * Assert that an error toast was flashed for the previous (non-Inertia-JSON)
+ * request. Permission denials and caught exceptions now flash an error toast
+ * and redirect instead of rendering an error page.
+ */
+function assertErrorToast(): void
+{
+    $flash = session()->get('inertia.flash_data', []);
+
+    expect($flash['toast']['type'] ?? null)->toBe('error');
+}
