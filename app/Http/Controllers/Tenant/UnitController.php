@@ -10,6 +10,7 @@ use App\Services\StaffService;
 use App\Support\AuthLanding;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
 use Throwable;
 
 class UnitController extends Controller
@@ -25,13 +26,13 @@ class UnitController extends Controller
                 $request->validated(),
             );
         } catch (\DomainException $e) {
-            return back()->withErrors([
-                'plan' => $e->getMessage(),
-            ]);
+            Inertia::flash('toast', ['type' => 'error', 'message' => $e->getMessage()]);
+
+            return back();
         } catch (Throwable) {
-            return back()->withErrors([
-                'plan' => 'We could not add this unit. Please try again.',
-            ]);
+            Inertia::flash('toast', ['type' => 'error', 'message' => 'We could not add this unit. Please try again.']);
+
+            return back();
         }
 
         return redirect()->to(AuthLanding::property(
@@ -55,6 +56,6 @@ class UnitController extends Controller
             return;
         }
 
-        abort(404);
+        abort(403);
     }
 }

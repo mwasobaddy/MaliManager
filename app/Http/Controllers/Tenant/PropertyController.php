@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers\Tenant;
 
+use App\Enums\SubPermissionKey;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Tenant\StorePropertyRequest;
+use App\Models\LandParcel;
 use App\Models\Organization;
 use App\Models\Property;
 use App\Services\PropertyService;
@@ -39,10 +41,29 @@ class PropertyController extends Controller
                 'units_count' => $property->units_count,
             ]);
 
+        $landParcels = $organization->landParcels()
+            ->when(! $user->isOwnerOf($organization), fn ($query) => $query
+                ->whereIn('id', app(StaffService::class)->delegatedLandParcelIds($user->membershipFor($organization))))
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(fn (LandParcel $parcel) => [
+                'id' => $parcel->id,
+                'name' => $parcel->name,
+                'slug' => $parcel->slug,
+                'city' => $parcel->city,
+                'status' => $parcel->status,
+                'zoning' => $parcel->zoning,
+            ]);
+
         return Inertia::render('tenant/properties/index', [
             'organization' => $organization->only('id', 'name', 'slug'),
             'properties' => $properties,
+            'land_parcels' => $landParcels,
             'canCreateProperty' => $user->isOwnerOf($organization) && $this->canCreateProperty($organization),
+            'canManageLandParcels' => $user->isOwnerOf($organization)
+                || $user->hasSubPermission($organization, SubPermissionKey::LandParcelManage),
+            'canCreateLandParcel' => $user->isOwnerOf($organization)
+                || $user->hasSubPermission($organization, SubPermissionKey::LandParcelCreate),
         ]);
     }
 
@@ -69,9 +90,9 @@ class PropertyController extends Controller
         $this->authorizePropertyMutation($request, $organization);
 
         if (! $this->canCreateProperty($organization)) {
-            return back()->withErrors([
-                'plan' => 'Your current plan does not allow adding more properties.',
-            ]);
+            Inertia::flash('toast', ['type' => 'error', 'message' => 'Your current plan does not allow adding more properties.']);
+
+            return back();
         }
 
         try {
@@ -81,13 +102,13 @@ class PropertyController extends Controller
                 $request->validated(),
             );
         } catch (\DomainException $e) {
-            return back()->withErrors([
-                'plan' => $e->getMessage(),
-            ]);
+            Inertia::flash('toast', ['type' => 'error', 'message' => $e->getMessage()]);
+
+            return back();
         } catch (Throwable) {
-            return back()->withErrors([
-                'plan' => 'We could not create this property. Please try again.',
-            ]);
+            Inertia::flash('toast', ['type' => 'error', 'message' => 'We could not create this property. Please try again.']);
+
+            return back();
         }
 
         return redirect()->to(AuthLanding::property(
@@ -154,7 +175,7 @@ class PropertyController extends Controller
             return;
         }
 
-        abort(404);
+        abort(403);
     }
 
     /**

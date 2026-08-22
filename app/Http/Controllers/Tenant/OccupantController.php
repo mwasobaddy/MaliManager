@@ -13,7 +13,6 @@ use App\Services\StaffService;
 use App\Support\TenancyContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
 use Throwable;
@@ -62,16 +61,9 @@ class OccupantController extends Controller
                 $request->validated(),
             );
         } catch (Throwable $e) {
-            Log::error('Failed to add occupant.', [
-                'organization_id' => $property->organization_id,
-                'property_id' => $property->id,
-                'email' => $request->validated('email'),
-                'error' => $e->getMessage(),
-            ]);
+            Inertia::flash('toast', ['type' => 'error', 'message' => 'We could not add this occupant. Please try again.']);
 
-            return back()->withErrors([
-                'email' => 'We could not add this occupant. Please try again.',
-            ]);
+            return back();
         }
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Occupant added.']);
@@ -83,7 +75,7 @@ class OccupantController extends Controller
     {
         $this->authorizePropertyAccess($request, $property);
 
-        abort_if($occupant->organization_id !== $property->organization_id, 404);
+        abort_if($occupant->organization_id !== $property->organization_id, 403);
 
         return Inertia::render('tenant/occupants/edit', [
             'organization' => TenancyContext::organization()->only('id', 'name', 'slug'),
@@ -106,20 +98,14 @@ class OccupantController extends Controller
     {
         $this->authorizePropertyAccess($request, $property);
 
-        abort_if($occupant->organization_id !== $property->organization_id, 404);
+        abort_if($occupant->organization_id !== $property->organization_id, 403);
 
         try {
             $occupantService->update($occupant, $property, $request->user(), $request->validated());
         } catch (Throwable $e) {
-            Log::error('Failed to update occupant.', [
-                'organization_id' => $property->organization_id,
-                'occupant_id' => $occupant->id,
-                'error' => $e->getMessage(),
-            ]);
+            Inertia::flash('toast', ['type' => 'error', 'message' => 'We could not update this occupant. Please try again.']);
 
-            return back()->withErrors([
-                'email' => 'We could not update this occupant. Please try again.',
-            ]);
+            return back();
         }
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Occupant updated.']);
@@ -131,20 +117,14 @@ class OccupantController extends Controller
     {
         $this->authorizePropertyAccess($request, $property);
 
-        abort_if($occupant->organization_id !== $property->organization_id, 404);
+        abort_if($occupant->organization_id !== $property->organization_id, 403);
 
         try {
             $occupantService->softDelete($occupant);
         } catch (Throwable $e) {
-            Log::error('Failed to delete occupant.', [
-                'organization_id' => $property->organization_id,
-                'occupant_id' => $occupant->id,
-                'error' => $e->getMessage(),
-            ]);
+            Inertia::flash('toast', ['type' => 'error', 'message' => 'We could not delete this occupant. Please try again.']);
 
-            return back()->withErrors([
-                'password' => 'We could not delete this occupant. Please try again.',
-            ]);
+            return back();
         }
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Occupant removed.']);
@@ -219,6 +199,6 @@ class OccupantController extends Controller
             return;
         }
 
-        abort(404);
+        abort(403);
     }
 }
