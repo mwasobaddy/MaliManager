@@ -21,6 +21,8 @@ createInertiaApp({
                 return [AppLayout, SettingsLayout];
             case name === 'tenant/properties/index':
             case name === 'tenant/properties/create':
+            case name === 'tenant/land-parcels/index':
+            case name === 'tenant/land-parcels/create':
                 return TenantPickerLayout;
             default:
                 return AppLayout;

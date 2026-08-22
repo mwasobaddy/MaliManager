@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import { BookOpen, Building2, FolderGit2, LayoutGrid, ArrowLeftRight, Users, UserRound } from 'lucide-react';
+import { BookOpen, Building2, FolderGit2, LayoutGrid, ArrowLeftRight, Map, Users, UserRound } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
@@ -14,6 +14,7 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard as centralDashboard } from '@/routes';
+import { index as landParcelsIndex } from '@/routes/tenant/land-parcels';
 import { index as occupantsIndex } from '@/routes/tenant/occupants';
 import { dashboard as propertyDashboard, index as propertiesIndex } from '@/routes/tenant/properties';
 import { index as staffIndex } from '@/routes/tenant/staff';
@@ -38,6 +39,7 @@ export function AppSidebar() {
     const organization = tenant?.organization;
     const canManageStaff = tenant?.permissions?.includes('staff.manage') ?? false;
     const canManageOccupants = tenant?.permissions?.includes('occupant.manage') ?? false;
+    const canManageLandParcels = tenant?.permissions?.includes('land_parcel.manage') ?? false;
 
     const mainNavItems: NavItem[] = property
         ? [
@@ -47,19 +49,28 @@ export function AppSidebar() {
                   icon: LayoutGrid,
               },
               ...(canManageOccupants
-                  ? [
-                        {
-                            title: 'Occupants',
-                            href: occupantsIndex(property.slug),
-                            icon: UserRound,
-                        },
-                    ]
-                  : []),
-              {
-                  title: 'Switch property',
-                  href: propertiesIndex(),
-                  icon: ArrowLeftRight,
-              },
+                   ? [
+                         {
+                             title: 'Occupants',
+                             href: occupantsIndex(property.slug),
+                             icon: UserRound,
+                         },
+                     ]
+                   : []),
+               ...(canManageLandParcels
+                   ? [
+                         {
+                             title: 'Land parcels',
+                             href: landParcelsIndex(),
+                             icon: Map,
+                         },
+                     ]
+                   : []),
+               {
+                   title: 'Switch property',
+                   href: propertiesIndex(),
+                   icon: ArrowLeftRight,
+               },
               ...(canManageStaff
                   ? [
                         {
@@ -70,23 +81,32 @@ export function AppSidebar() {
                     ]
                   : []),
           ]
-        : organization
-          ? [
-                {
-                    title: 'Properties',
-                    href: propertiesIndex(),
-                    icon: ArrowLeftRight,
-                },
-                ...(canManageStaff
-                    ? [
-                          {
-                              title: 'Staff',
-                              href: staffIndex(),
-                              icon: Users,
-                          },
-                      ]
-                    : []),
-            ]
+          : organization
+           ? [
+                 {
+                     title: 'Properties',
+                     href: propertiesIndex(),
+                     icon: ArrowLeftRight,
+                 },
+                 ...(canManageLandParcels
+                     ? [
+                           {
+                               title: 'Land parcels',
+                               href: landParcelsIndex(),
+                               icon: Map,
+                           },
+                       ]
+                     : []),
+                 ...(canManageStaff
+                     ? [
+                           {
+                               title: 'Staff',
+                               href: staffIndex(),
+                               icon: Users,
+                           },
+                       ]
+                     : []),
+             ]
           : [
                 {
                     title: 'Dashboard',
