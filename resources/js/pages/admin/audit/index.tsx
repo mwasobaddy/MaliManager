@@ -1,4 +1,4 @@
-import { Head, Link, router, useForm } from '@inertiajs/react';
+import { Head, router, useForm } from '@inertiajs/react';
 import { Download, Shield } from 'lucide-react';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
@@ -47,12 +47,12 @@ export default function AdminAuditIndex({ audits, filters, canExport, options }:
     });
 
     const submit = () => {
-        form.get(adminAuditIndex(), { preserveState: true, replace: true });
+        form.get(adminAuditIndex().url, { preserveState: true, replace: true });
     };
 
     const goToPage = (page: number) => {
         router.get(
-            adminAuditIndex(),
+            adminAuditIndex().url,
             { ...form.data, page },
             { preserveState: true, replace: true },
         );
@@ -71,7 +71,7 @@ export default function AdminAuditIndex({ audits, filters, canExport, options }:
                     />
                     {canExport && (
                         <Button asChild variant="outline">
-                            <a href={adminAuditExport({ query: form.data })}>
+                            <a href={adminAuditExport({ query: form.data }).url}>
                                 <Download className="size-4" />
                                 Export CSV
                             </a>
@@ -146,7 +146,7 @@ export default function AdminAuditIndex({ audits, filters, canExport, options }:
                                 variant="ghost"
                                 onClick={() => {
                                     form.reset();
-                                    form.get(adminAuditIndex(), { preserveState: true, replace: true });
+                                    form.get(adminAuditIndex().url, { preserveState: true, replace: true });
                                 }}
                             >
                                 Clear

@@ -14,6 +14,7 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard as centralDashboard } from '@/routes';
+import { index as rolesIndex } from '@/routes/settings/roles';
 import { index as auditIndex } from '@/routes/tenant/audit';
 import { index as landParcelsIndex } from '@/routes/tenant/land-parcels';
 import { index as occupantsIndex } from '@/routes/tenant/occupants';
@@ -42,6 +43,10 @@ export function AppSidebar() {
     const canManageOccupants = tenant?.permissions?.includes('occupant.manage') ?? false;
     const canManageLandParcels = tenant?.permissions?.includes('land_parcel.manage') ?? false;
     const canViewAudit = tenant?.permissions?.includes('audit.view') ?? false;
+    const authUser = (
+            usePage().props.auth as unknown as { user?: { can(gate: string): boolean } | null }
+        )?.user;
+    const canManageRoles = authUser?.can('manageRoles') ?? false;
 
     const mainNavItems: NavItem[] = property
         ? [
@@ -127,7 +132,16 @@ export function AppSidebar() {
                           ]
                         : []),
               ]
-           : [
+            : [
+                ...(canManageRoles
+                    ? [
+                          {
+                              title: 'Roles',
+                              href: rolesIndex(),
+                              icon: UserRound,
+                          },
+                      ]
+                    : []),
                 {
                     title: 'Dashboard',
                     href: centralDashboard(),

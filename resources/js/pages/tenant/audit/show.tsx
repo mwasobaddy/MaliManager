@@ -69,7 +69,10 @@ export default function AuditShow({ audit }: Props) {
                         </CardHeader>
                         <CardContent className="text-sm">
                             <Row label="Subject type" value={audit.subject_type ?? '—'} />
-                            <Row label="Subject id" value={audit.subject_id ?? '—'} />
+                            <Row
+                                label="Subject id"
+                                value={audit.subject_id != null ? String(audit.subject_id) : '—'}
+                            />
                             {audit.properties && (
                                 <pre className="mt-3 overflow-x-auto rounded bg-muted p-3 text-xs">
                                     {JSON.stringify(audit.properties, null, 2)}
