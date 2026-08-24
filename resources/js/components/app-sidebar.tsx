@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/sidebar';
 import { dashboard as centralDashboard } from '@/routes';
 import { index as platformAuditIndex } from '@/routes/platform/audit';
+import { rentals as searcherRentals } from '@/routes/searcher';
 import { index as rolesIndex } from '@/routes/settings/roles';
 import { index as auditIndex } from '@/routes/tenant/audit';
 import { index as landParcelsIndex } from '@/routes/tenant/land-parcels';
@@ -153,12 +154,17 @@ export function AppSidebar() {
                            },
                        ]
                      : []),
-                 {
-                     title: 'Dashboard',
-                     href: centralDashboard(),
-                     icon: LayoutGrid,
-                 },
-             ];
+                  {
+                      title: 'Dashboard',
+                      href: centralDashboard(),
+                      icon: LayoutGrid,
+                  },
+                  {
+                      title: 'My rentals',
+                      href: searcherRentals(),
+                      icon: Building2,
+                  },
+              ];
 
     const homeHref = property
         ? propertyDashboard(property.slug)
