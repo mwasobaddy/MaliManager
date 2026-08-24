@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\LogsTenantActivity;
 use App\Support\TenancyContext;
 use Database\Factories\OccupantFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -22,7 +23,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  */
 class Occupant extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, LogsTenantActivity, SoftDeletes;
 
     protected $fillable = [
         'organization_id',

@@ -109,6 +109,11 @@ class OnboardingController extends Controller
 
             $user->markOnboarded();
 
+            activity()->inLog('onboarding')
+                ->causedBy($user)
+                ->event('onboarding.completed')
+                ->log('Completed onboarding');
+
             return InertiaRedirect::to(AuthLanding::for($user, $request), $request);
         } catch (Throwable $e) {
             report($e);

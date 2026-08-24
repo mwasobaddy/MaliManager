@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\LogsTenantActivity;
 use App\Support\TenancyContext;
 use Database\Factories\LandParcelFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -35,7 +36,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
  */
 class LandParcel extends Model implements HasMedia
 {
-    use HasFactory, InteractsWithMedia, SoftDeletes;
+    use HasFactory, InteractsWithMedia, LogsTenantActivity, SoftDeletes;
 
     protected $fillable = [
         'organization_id',
