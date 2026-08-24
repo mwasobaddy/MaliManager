@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Controllers\Admin;
+namespace App\Http\Controllers\Audit;
 
 use App\Http\Controllers\Controller;
 use App\Models\Audit;
@@ -12,7 +12,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
-class AdminAuditController extends Controller
+class PlatformAuditController extends Controller
 {
     public function __construct(private AuditService $service) {}
 
@@ -26,10 +26,10 @@ class AdminAuditController extends Controller
 
         $audits->getCollection()->transform(fn (Audit $audit) => $this->service->transform($audit));
 
-        return Inertia::render('admin/audit/index', [
+        return Inertia::render('platform/audit/index', [
             'audits' => $audits,
             'filters' => $filters,
-            'canExport' => true,
+            'canExport' => $request->user()?->can('exportAudit') ?? false,
             'options' => [
                 'events' => $this->service->distinctEvents(null),
                 'subjectTypes' => $this->service->distinctSubjectTypes(null),

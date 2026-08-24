@@ -1,7 +1,7 @@
 <?php
 
-use App\Http\Controllers\Admin\AdminAuditController;
 use App\Http\Controllers\Admin\AdminController;
+use App\Http\Controllers\Audit\PlatformAuditController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\OtpController;
 use App\Http\Controllers\Auth\SocialiteController;
@@ -34,11 +34,16 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
 
 // Platform-wide audit view is gated by the central `viewAnyAudit` gate
 // (see App\Providers\AuthServiceProvider), not the `admin` middleware.
+// Export is separately gated by `exportAudit` so viewing does not imply
+// exporting.
 Route::middleware(['auth', 'verified', 'can:viewAnyAudit'])->group(function () {
-    Route::get('admin/audit', [AdminAuditController::class, 'index'])
-        ->name('admin.audit.index');
-    Route::get('admin/audit/export', [AdminAuditController::class, 'export'])
-        ->name('admin.audit.export');
+    Route::get('platform/audit', [PlatformAuditController::class, 'index'])
+        ->name('platform.audit.index');
+});
+
+Route::middleware(['auth', 'verified', 'can:exportAudit'])->group(function () {
+    Route::get('platform/audit/export', [PlatformAuditController::class, 'export'])
+        ->name('platform.audit.export');
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {

@@ -3,7 +3,7 @@ import { Download, Shield } from 'lucide-react';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { exportMethod as adminAuditExport, index as adminAuditIndex } from '@/routes/admin/audit';
+import { exportMethod as platformAuditExport, index as platformAuditIndex } from '@/routes/platform/audit';
 
 type Causer = { id: number; name: string; email: string } | null;
 type Subject = { type: string; id: number } | null;
@@ -47,12 +47,12 @@ export default function AdminAuditIndex({ audits, filters, canExport, options }:
     });
 
     const submit = () => {
-        form.get(adminAuditIndex().url, { preserveState: true, replace: true });
+        form.get(platformAuditIndex().url, { preserveState: true, replace: true });
     };
 
     const goToPage = (page: number) => {
         router.get(
-            adminAuditIndex().url,
+            platformAuditIndex().url,
             { ...form.data, page },
             { preserveState: true, replace: true },
         );
@@ -71,7 +71,7 @@ export default function AdminAuditIndex({ audits, filters, canExport, options }:
                     />
                     {canExport && (
                         <Button asChild variant="outline">
-                            <a href={adminAuditExport({ query: form.data }).url}>
+                            <a href={platformAuditExport({ query: form.data }).url}>
                                 <Download className="size-4" />
                                 Export CSV
                             </a>
@@ -146,7 +146,7 @@ export default function AdminAuditIndex({ audits, filters, canExport, options }:
                                 variant="ghost"
                                 onClick={() => {
                                     form.reset();
-                                    form.get(adminAuditIndex().url, { preserveState: true, replace: true });
+                                    form.get(platformAuditIndex().url, { preserveState: true, replace: true });
                                 }}
                             >
                                 Clear
