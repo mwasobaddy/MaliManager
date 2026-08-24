@@ -30,7 +30,11 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     Route::get('admin', [AdminController::class, 'index'])->name('admin.dashboard');
     Route::post('admin/impersonate/{organization}/{user}', [AdminController::class, 'impersonate'])
         ->name('admin.impersonate');
+});
 
+// Platform-wide audit view is gated by the central `viewAnyAudit` gate
+// (see App\Providers\AuthServiceProvider), not the `admin` middleware.
+Route::middleware(['auth', 'verified', 'can:viewAnyAudit'])->group(function () {
     Route::get('admin/audit', [AdminAuditController::class, 'index'])
         ->name('admin.audit.index');
     Route::get('admin/audit/export', [AdminAuditController::class, 'export'])
