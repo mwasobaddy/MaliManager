@@ -5,6 +5,7 @@ use App\Http\Controllers\Audit\PlatformAuditController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\OtpController;
 use App\Http\Controllers\Auth\SocialiteController;
+use App\Http\Controllers\LeaseController;
 use App\Http\Controllers\OnboardingController;
 use Illuminate\Support\Facades\Route;
 
@@ -55,6 +56,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('setup/first-asset', [OnboardingController::class, 'firstAsset'])
         ->name('onboarding.first-asset')
         ->middleware('onboarded');
+
+    // Searchers (and any user with a linked person) can review their own
+    // rental history across every organization.
+    Route::get('searcher/rentals', [LeaseController::class, 'index'])
+        ->name('searcher.rentals');
 });
 
 require __DIR__.'/settings.php';
