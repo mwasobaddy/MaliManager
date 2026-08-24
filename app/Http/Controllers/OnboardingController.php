@@ -104,7 +104,7 @@ class OnboardingController extends Controller
                     'created_by' => $user->id,
                 ]);
 
-                $user->assignRole(PlatformRole::Tenant->value);
+                $user->assignRole(PlatformRole::Searcher->value);
             }
 
             $user->markOnboarded();

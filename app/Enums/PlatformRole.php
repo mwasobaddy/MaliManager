@@ -10,6 +10,6 @@ enum PlatformRole: string
 {
     case Admin = 'admin';
     case OrganizationOwner = 'organization-owner';
-    case Tenant = 'tenant';
+    case Searcher = 'searcher';
     case Occupant = 'occupant';
 }

@@ -77,7 +77,7 @@ test('admin can assign a user to a different platform role after confirming pass
     $admin = User::factory()->create();
     $admin->assignRole(PlatformRole::Admin->value);
     $tenant = User::factory()->create(['onboarded_at' => now()]);
-    $tenant->assignRole(PlatformRole::Tenant->value);
+    $tenant->assignRole(PlatformRole::Searcher->value);
 
     $this->actingAs($admin)
         ->withSession(['auth.password_confirmed_at' => now()->timestamp])
@@ -94,6 +94,6 @@ test('a user granted the view audit permission can access the admin audit log', 
     $user->givePermissionTo(PlatformPermissionKey::ViewAudit->value);
 
     $this->actingAs($user)
-        ->get(route('admin.audit.index'))
+        ->get(route('platform.audit.index'))
         ->assertOk();
 });

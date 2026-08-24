@@ -30,7 +30,7 @@ class OnboardingCompleteRequest extends FormRequest
         ];
 
         if (! $this->ownsOrganization()) {
-            $rules['account_type'] = ['required', Rule::in(['organization', 'occupant'])];
+            $rules['account_type'] = ['required', Rule::in(['organization', 'searcher'])];
 
             if ($this->input('account_type') === 'organization') {
                 $this->addOrganizationRules($rules);

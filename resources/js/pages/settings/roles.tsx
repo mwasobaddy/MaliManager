@@ -17,7 +17,7 @@ type Props = {
     isAdmin: boolean;
 };
 
-const ROLE_OPTIONS = ['admin', 'organization-owner', 'tenant', 'occupant'] as const;
+const ROLE_OPTIONS = ['admin', 'organization-owner', 'searcher', 'occupant'] as const;
 
 export default function RolesIndex({ roles, permissions, users }: Props) {
     const roleForm = useForm<{ role: string }>({ role: '' });
