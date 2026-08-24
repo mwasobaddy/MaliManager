@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Models\Concerns;
 
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
-use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Support\LogOptions;
 
 /**
  * Logs create/update/delete events for a tenant-scoped model as a plain
@@ -21,11 +21,24 @@ trait LogsTenantActivity
         return LogOptions::defaults()
             ->logOnly([])
             ->setDescriptionForEvent(fn (string $event): string => match ($event) {
-                'created' => 'created',
-                'updated' => 'updated',
-                'deleted' => 'deleted',
-                'restored' => 'restored',
-                default => $event,
+                'created' => "Created {$this->auditName()}",
+                'updated' => "Updated {$this->auditName()}",
+                'deleted' => "Deleted {$this->auditName()}",
+                'restored' => "Restored {$this->auditName()}",
+                default => "{$event} {$this->auditName()}",
             });
+    }
+
+    protected function auditName(): string
+    {
+        if (! empty($this->name)) {
+            return $this->name;
+        }
+
+        if (! empty($this->first_name) || ! empty($this->last_name)) {
+            return trim(($this->first_name ?? '').' '.($this->last_name ?? ''));
+        }
+
+        return class_basename($this);
     }
 }

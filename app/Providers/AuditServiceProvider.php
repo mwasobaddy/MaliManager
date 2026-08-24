@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Models\Audit;
+use App\Support\TenancyContext;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Request;
 use Illuminate\Support\ServiceProvider;
 
 class AuditServiceProvider extends ServiceProvider
@@ -50,7 +52,7 @@ class AuditServiceProvider extends ServiceProvider
     protected function resolveTenantId(): ?string
     {
         if (tenancy()->initialized) {
-            return tenancy()->tenantId();
+            return TenancyContext::tenantId();
         }
 
         $user = Auth::user();

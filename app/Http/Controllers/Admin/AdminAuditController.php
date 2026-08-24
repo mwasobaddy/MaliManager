@@ -14,9 +14,7 @@ use Inertia\Response;
 
 class AdminAuditController extends Controller
 {
-    public function __construct(private AuditService $service)
-    {
-    }
+    public function __construct(private AuditService $service) {}
 
     public function index(Request $request): Response
     {
@@ -47,6 +45,6 @@ class AdminAuditController extends Controller
     {
         $audits = $this->service->query($this->service->filtersFromRequest($request), null)->get();
 
-        return $this->service->toCsv($audits, 'audit-log-all.csv');
+        return $this->service->toCsv($audits, 'audit-log.csv');
     }
 }
