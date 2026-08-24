@@ -116,7 +116,12 @@ class TenancyServiceProvider extends ServiceProvider
                 'message' => "We couldn't find an organization at \"{$subdomain}\". Check the address or sign in to reach your organization.",
             ]);
 
-            return redirect()->route('login');
+            // Force the central domain: the request host is the (non-existent)
+            // organization subdomain, so route('login') would otherwise keep
+            // the visitor trapped on it.
+            $loginPath = parse_url(route('login'), PHP_URL_PATH) ?: '/auth/login';
+
+            return redirect()->to("{$request->getScheme()}://".config('tenancy.subdomain_base').$loginPath);
         };
 
         Middleware\InitializeTenancyByDomain::$onFail = $onFail;

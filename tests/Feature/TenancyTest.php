@@ -36,12 +36,14 @@ test('central domain is blocked from tenant routes', function () {
 });
 
 test('unknown organization subdomain redirects to login with an error toast', function () {
+    $centralLogin = 'http://'.config('tenancy.subdomain_base').parse_url(route('login'), PHP_URL_PATH);
+
     $response = $this->get('http://does-not-exist.malimanager.test/tenant/status');
-    $response->assertRedirect(route('login'));
+    $response->assertRedirect($centralLogin);
     assertErrorToast();
 
     $response = $this->get('http://does-not-exist.malimanager.test/lucius-joyce/occupants');
-    $response->assertRedirect(route('login'));
+    $response->assertRedirect($centralLogin);
     assertErrorToast();
 });
 
