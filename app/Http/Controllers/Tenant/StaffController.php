@@ -63,12 +63,18 @@ class StaffController extends Controller
         $organization = TenancyContext::organization();
 
         try {
-            $staffService->create($organization, $request->user(), $request->validated());
+            $user = $staffService->create($organization, $request->user(), $request->validated());
         } catch (Throwable $e) {
             Inertia::flash('toast', ['type' => 'error', 'message' => 'We could not add this staff member. Please try again.']);
 
             return back();
         }
+
+        activity()->inLog('staff')
+            ->causedBy($request->user())
+            ->performedOn($user)
+            ->event('staff.created')
+            ->log('Added staff member '.$user->email);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Staff member added.']);
 
@@ -112,6 +118,12 @@ class StaffController extends Controller
             return back();
         }
 
+        activity()->inLog('staff')
+            ->causedBy($request->user())
+            ->performedOn($staff)
+            ->event('staff.updated')
+            ->log('Updated staff member '.$staff->email);
+
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Staff member updated.']);
 
         return redirect()->route('tenant.staff.index');
@@ -128,6 +140,12 @@ class StaffController extends Controller
 
             return back();
         }
+
+        activity()->inLog('staff')
+            ->causedBy($request->user())
+            ->performedOn($staff)
+            ->event('staff.deleted')
+            ->log('Removed staff member '.$staff->email);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Staff member removed.']);
 

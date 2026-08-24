@@ -68,6 +68,15 @@ class AdminController extends Controller
                 'web',
             );
 
+            activity()->inLog('auth')
+                ->causedBy($request->user())
+                ->performedOn($user)
+                ->event('impersonation.started')
+                ->tap(function ($activity) use ($organization) {
+                    $activity->tenant_id = $organization->tenant_id;
+                })
+                ->log('Started impersonating '.$user->email);
+
             $scheme = $request->secure() ? 'https' : 'http';
 
             return InertiaRedirect::to("{$scheme}://{$domain->domain}/impersonate/{$token->token}", $request);

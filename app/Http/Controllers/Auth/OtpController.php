@@ -58,6 +58,11 @@ class OtpController extends Controller
 
             Auth::login($user);
 
+            activity()->inLog('auth')
+                ->causedBy($user)
+                ->event('otp.verified')
+                ->log('Verified one-time code');
+
             $landing = $user->isOnboarded()
                 ? AuthLanding::for($user, $request)
                 : route('onboarding.show');

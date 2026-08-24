@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\LogsTenantActivity;
 use Database\Factories\UnitFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -24,7 +25,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  */
 class Unit extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, LogsTenantActivity, SoftDeletes;
 
     protected $fillable = [
         'property_id',

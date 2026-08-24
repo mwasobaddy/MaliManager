@@ -37,6 +37,11 @@ class SocialiteController extends Controller
 
         Auth::login($user);
 
+        activity()->inLog('auth')
+            ->causedBy($user)
+            ->event('login.socialite')
+            ->log('Signed in with '.ucfirst($provider));
+
         $landing = $user->isOnboarded()
             ? AuthLanding::for($user, $request)
             : route('onboarding.show');
