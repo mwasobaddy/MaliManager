@@ -37,6 +37,8 @@ type Props = {
 export default function OccupantCreate({ property, units }: Props) {
     const [status, setStatus] = useState('active');
     const [unitIds, setUnitIds] = useState<number[]>([]);
+    const [rentFrequency, setRentFrequency] = useState('monthly');
+    const [currency, setCurrency] = useState('KES');
 
     const toggleUnit = (id: number) => {
         setUnitIds((prev) =>
@@ -140,6 +142,99 @@ export default function OccupantCreate({ property, units }: Props) {
                                         </SelectContent>
                                     </Select>
                                     <InputError message={errors.status} />
+                                </div>
+                            </div>
+
+                            <div className="space-y-4 rounded-xl border border-input p-6">
+                                <Heading
+                                    variant="small"
+                                    title="Lease details"
+                                    description="Capture the rental terms. These power the renter's rental history."
+                                />
+                                <div className="grid gap-6 md:grid-cols-2">
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="lease.starts_at">Lease start date</Label>
+                                        <Input
+                                            id="lease.starts_at"
+                                            name="lease[starts_at]"
+                                            type="date"
+                                        />
+                                        <InputError message={errors['lease.starts_at']} />
+                                    </div>
+
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="lease.rent_frequency">Rent frequency</Label>
+                                        <input type="hidden" name="lease[rent_frequency]" value={rentFrequency} />
+                                        <Select value={rentFrequency} onValueChange={setRentFrequency}>
+                                            <SelectTrigger id="lease.rent_frequency" className="w-full">
+                                                <SelectValue placeholder="Select frequency" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="daily">Daily</SelectItem>
+                                                <SelectItem value="weekly">Weekly</SelectItem>
+                                                <SelectItem value="monthly">Monthly</SelectItem>
+                                                <SelectItem value="yearly">Yearly</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <InputError message={errors['lease.rent_frequency']} />
+                                    </div>
+
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="lease.rent_amount">Rent amount</Label>
+                                        <Input
+                                            id="lease.rent_amount"
+                                            name="lease[rent_amount]"
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            placeholder="25000"
+                                        />
+                                        <InputError message={errors['lease.rent_amount']} />
+                                    </div>
+
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="lease.deposit">Deposit</Label>
+                                        <Input
+                                            id="lease.deposit"
+                                            name="lease[deposit]"
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            placeholder="25000"
+                                        />
+                                        <InputError message={errors['lease.deposit']} />
+                                    </div>
+
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="lease.currency">Currency</Label>
+                                        <input type="hidden" name="lease[currency]" value={currency} />
+                                        <Select value={currency} onValueChange={setCurrency}>
+                                            <SelectTrigger id="lease.currency" className="w-full">
+                                                <SelectValue placeholder="Select currency" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="KES">KES</SelectItem>
+                                                <SelectItem value="USD">USD</SelectItem>
+                                                <SelectItem value="EUR">EUR</SelectItem>
+                                                <SelectItem value="GBP">GBP</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <InputError message={errors['lease.currency']} />
+                                    </div>
+
+                                    <div className="grid gap-2 md:col-span-2">
+                                        <Label htmlFor="lease.agreement_text">
+                                            Agreement notes (optional)
+                                        </Label>
+                                        <textarea
+                                            id="lease.agreement_text"
+                                            name="lease[agreement_text]"
+                                            rows={3}
+                                            className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                            placeholder="Any standing agreement details for this rental."
+                                        />
+                                        <InputError message={errors['lease.agreement_text']} />
+                                    </div>
                                 </div>
                             </div>
 
