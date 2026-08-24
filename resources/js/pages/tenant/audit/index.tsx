@@ -47,7 +47,7 @@ export default function AuditIndex({ audits, filters, canExport, options }: Prop
     });
 
     const submit = () => {
-        form.get(auditIndex(), { preserveState: true, replace: true });
+                                    form.get(auditIndex().url, { preserveState: true, replace: true });
     };
 
     const goToPage = (page: number) => {
@@ -71,7 +71,7 @@ export default function AuditIndex({ audits, filters, canExport, options }: Prop
                     />
                     {canExport && (
                         <Button asChild variant="outline">
-                            <a href={auditExport({ query: form.data })}>
+                            <a href={auditExport({ query: form.data }).url}>
                                 <Download className="size-4" />
                                 Export CSV
                             </a>
@@ -140,7 +140,7 @@ export default function AuditIndex({ audits, filters, canExport, options }: Prop
                                 variant="ghost"
                                 onClick={() => {
                                     form.reset();
-                                    form.get(auditIndex(), { preserveState: true, replace: true });
+        form.get(auditIndex().url, { preserveState: true, replace: true });
                                 }}
                             >
                                 Clear
