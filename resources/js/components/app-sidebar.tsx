@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import { BookOpen, Building2, FolderGit2, LayoutGrid, ArrowLeftRight, Map, Users, UserRound } from 'lucide-react';
+import { BookOpen, Building2, FolderGit2, History, LayoutGrid, ArrowLeftRight, Map, Users, UserRound } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
@@ -14,6 +14,7 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard as centralDashboard } from '@/routes';
+import { index as auditIndex } from '@/routes/tenant/audit';
 import { index as landParcelsIndex } from '@/routes/tenant/land-parcels';
 import { index as occupantsIndex } from '@/routes/tenant/occupants';
 import { dashboard as propertyDashboard, index as propertiesIndex } from '@/routes/tenant/properties';
@@ -40,6 +41,7 @@ export function AppSidebar() {
     const canManageStaff = tenant?.permissions?.includes('staff.manage') ?? false;
     const canManageOccupants = tenant?.permissions?.includes('occupant.manage') ?? false;
     const canManageLandParcels = tenant?.permissions?.includes('land_parcel.manage') ?? false;
+    const canViewAudit = tenant?.permissions?.includes('audit.view') ?? false;
 
     const mainNavItems: NavItem[] = property
         ? [
@@ -71,18 +73,27 @@ export function AppSidebar() {
                    href: propertiesIndex(),
                    icon: ArrowLeftRight,
                },
-              ...(canManageStaff
-                  ? [
-                        {
-                            title: 'Staff',
-                            href: staffIndex(),
-                            icon: Users,
-                        },
-                    ]
-                  : []),
-          ]
-          : organization
-           ? [
+                ...(canManageStaff
+                    ? [
+                          {
+                              title: 'Staff',
+                              href: staffIndex(),
+                              icon: Users,
+                          },
+                      ]
+                    : []),
+                ...(canViewAudit
+                    ? [
+                          {
+                              title: 'Audit log',
+                              href: auditIndex(),
+                              icon: History,
+                          },
+                      ]
+                    : []),
+           ]
+           : organization
+            ? [
                  {
                      title: 'Properties',
                      href: propertiesIndex(),
@@ -97,17 +108,26 @@ export function AppSidebar() {
                            },
                        ]
                      : []),
-                 ...(canManageStaff
-                     ? [
-                           {
-                               title: 'Staff',
-                               href: staffIndex(),
-                               icon: Users,
-                           },
-                       ]
-                     : []),
-             ]
-          : [
+                  ...(canManageStaff
+                        ? [
+                              {
+                                  title: 'Staff',
+                                  href: staffIndex(),
+                                  icon: Users,
+                              },
+                          ]
+                        : []),
+                  ...(canViewAudit
+                        ? [
+                              {
+                                  title: 'Audit log',
+                                  href: auditIndex(),
+                                  icon: History,
+                              },
+                          ]
+                        : []),
+              ]
+           : [
                 {
                     title: 'Dashboard',
                     href: centralDashboard(),
