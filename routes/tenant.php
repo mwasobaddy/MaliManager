@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Tenant\AuditController;
 use App\Http\Controllers\Tenant\ImpersonationController;
 use App\Http\Controllers\Tenant\LandParcelController;
 use App\Http\Controllers\Tenant\OccupantController;
@@ -137,6 +138,15 @@ Route::middleware([
         Route::middleware('sub-permission:staff.delete')->group(function () {
             Route::delete('/staff/{staff}', [StaffController::class, 'destroy'])
                 ->name('tenant.staff.destroy');
+        });
+
+        Route::middleware('sub-permission:audit.view')->group(function () {
+            Route::get('/audit', [AuditController::class, 'index'])
+                ->name('tenant.audit.index');
+            Route::get('/audit/export', [AuditController::class, 'export'])
+                ->name('tenant.audit.export');
+            Route::get('/audit/{activity}', [AuditController::class, 'show'])
+                ->name('tenant.audit.show');
         });
     });
 });

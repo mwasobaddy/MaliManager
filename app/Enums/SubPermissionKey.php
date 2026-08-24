@@ -56,6 +56,8 @@ enum SubPermissionKey: string
     case StaffEdit = 'staff.edit';
     case StaffDelete = 'staff.delete';
 
+    case AuditView = 'audit.view';
+
     /**
      * The module label for grouping in the UI.
      */
@@ -72,6 +74,7 @@ enum SubPermissionKey: string
             self::ExpenseManage => 'expense',
             self::MaintenanceManage, self::MaintenanceCreate, self::MaintenanceEdit, self::MaintenanceDelete, self::MaintenanceDelegate => 'maintenance',
             self::StaffManage, self::StaffCreate, self::StaffEdit, self::StaffDelete => 'staff',
+            self::AuditView => 'audit',
         };
     }
 
@@ -119,6 +122,7 @@ enum SubPermissionKey: string
             self::StaffCreate => 'Create staff',
             self::StaffEdit => 'Edit staff',
             self::StaffDelete => 'Delete staff',
+            self::AuditView => 'View audit log',
         };
     }
 }

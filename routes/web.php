@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AdminAuditController;
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\OtpController;
@@ -29,6 +30,11 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     Route::get('admin', [AdminController::class, 'index'])->name('admin.dashboard');
     Route::post('admin/impersonate/{organization}/{user}', [AdminController::class, 'impersonate'])
         ->name('admin.impersonate');
+
+    Route::get('admin/audit', [AdminAuditController::class, 'index'])
+        ->name('admin.audit.index');
+    Route::get('admin/audit/export', [AdminAuditController::class, 'export'])
+        ->name('admin.audit.export');
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
