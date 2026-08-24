@@ -68,8 +68,8 @@ type Props = {
 };
 
 export default function OccupantEdit({ organization, property, occupant, units }: Props) {
-    const { tenant } = usePage().props;
-    const permissions = tenant?.permissions ?? [];
+    const { context } = usePage().props;
+    const permissions = context?.permissions ?? [];
     const canDelete = permissions.includes('occupant.delete');
     const passwordInput = useRef<HTMLInputElement>(null);
     const [status, setStatus] = useState(occupant.status);
