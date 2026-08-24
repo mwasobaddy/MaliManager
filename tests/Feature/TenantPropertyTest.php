@@ -186,9 +186,9 @@ test('property dashboard shares the current property and organization to the sid
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('tenant/properties/dashboard')
-            ->where('tenant.organization.slug', $organization->slug)
-            ->where('tenant.property.slug', $property->slug)
-            ->where('tenant.property.name', 'Sunset Heights'));
+            ->where('context.organization.slug', $organization->slug)
+            ->where('context.property.slug', $property->slug)
+            ->where('context.property.name', 'Sunset Heights'));
 });
 
 test('unauthenticated guests are redirected from tenant property pages', function () {

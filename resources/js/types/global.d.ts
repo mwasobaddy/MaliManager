@@ -12,7 +12,7 @@ declare module '@inertiajs/core' {
         sharedPageProps: {
             name: string;
             auth: Auth;
-            tenant: {
+            context: {
                 organization: { id: number; name: string; slug: string } | null;
                 property: { id: number; name: string; slug: string } | null;
                 permissions: string[];

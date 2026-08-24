@@ -48,7 +48,7 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $user,
             ],
-            'tenant' => [
+            'context' => [
                 'organization' => $organization?->only('id', 'name', 'slug'),
                 'property' => $property instanceof Property
                     ? $property->only('id', 'name', 'slug')

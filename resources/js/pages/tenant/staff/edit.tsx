@@ -60,8 +60,8 @@ type Props = {
 };
 
 export default function StaffEdit({ organization, staff, sub_roles, properties }: Props) {
-    const { tenant } = usePage().props;
-    const permissions = tenant?.permissions ?? [];
+    const { context } = usePage().props;
+    const permissions = context?.permissions ?? [];
     const canDelete = permissions.includes('staff.delete');
     const passwordInput = useRef<HTMLInputElement>(null);
     const [subRoleId, setSubRoleId] = useState(staff.sub_role_id ? String(staff.sub_role_id) : '');

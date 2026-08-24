@@ -40,8 +40,8 @@ type Props = {
 };
 
 export default function StaffIndex({ organization, staff }: Props) {
-    const { tenant } = usePage().props;
-    const permissions = tenant?.permissions ?? [];
+    const { context } = usePage().props;
+    const permissions = context?.permissions ?? [];
     const canCreate = permissions.includes('staff.create');
     const canEdit = permissions.includes('staff.edit');
     const canDelete = permissions.includes('staff.delete');

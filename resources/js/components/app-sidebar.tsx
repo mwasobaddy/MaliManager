@@ -14,6 +14,7 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard as centralDashboard } from '@/routes';
+import { index as platformAuditIndex } from '@/routes/platform/audit';
 import { index as rolesIndex } from '@/routes/settings/roles';
 import { index as auditIndex } from '@/routes/tenant/audit';
 import { index as landParcelsIndex } from '@/routes/tenant/land-parcels';
@@ -36,17 +37,18 @@ const footerNavItems: NavItem[] = [
 ];
 
 export function AppSidebar() {
-    const { tenant } = usePage().props;
-    const property = tenant?.property;
-    const organization = tenant?.organization;
-    const canManageStaff = tenant?.permissions?.includes('staff.manage') ?? false;
-    const canManageOccupants = tenant?.permissions?.includes('occupant.manage') ?? false;
-    const canManageLandParcels = tenant?.permissions?.includes('land_parcel.manage') ?? false;
-    const canViewAudit = tenant?.permissions?.includes('audit.view') ?? false;
+    const { context } = usePage().props;
+    const property = context?.property;
+    const organization = context?.organization;
+    const canManageStaff = context?.permissions?.includes('staff.manage') ?? false;
+    const canManageOccupants = context?.permissions?.includes('occupant.manage') ?? false;
+    const canManageLandParcels = context?.permissions?.includes('land_parcel.manage') ?? false;
+    const canViewAudit = context?.permissions?.includes('audit.view') ?? false;
     const authUser = (
             usePage().props.auth as unknown as { user?: { can(gate: string): boolean } | null }
         )?.user;
     const canManageRoles = authUser?.can('manageRoles') ?? false;
+    const canViewAnyAudit = authUser?.can('viewAnyAudit') ?? false;
 
     const mainNavItems: NavItem[] = property
         ? [
@@ -133,21 +135,30 @@ export function AppSidebar() {
                         : []),
               ]
             : [
-                ...(canManageRoles
-                    ? [
-                          {
-                              title: 'Roles',
-                              href: rolesIndex(),
-                              icon: UserRound,
-                          },
-                      ]
-                    : []),
-                {
-                    title: 'Dashboard',
-                    href: centralDashboard(),
-                    icon: LayoutGrid,
-                },
-            ];
+                 ...(canManageRoles
+                     ? [
+                           {
+                               title: 'Roles',
+                               href: rolesIndex(),
+                               icon: UserRound,
+                           },
+                       ]
+                     : []),
+                 ...(canViewAnyAudit
+                     ? [
+                           {
+                               title: 'Platform audit',
+                               href: platformAuditIndex(),
+                               icon: History,
+                           },
+                       ]
+                     : []),
+                 {
+                     title: 'Dashboard',
+                     href: centralDashboard(),
+                     icon: LayoutGrid,
+                 },
+             ];
 
     const homeHref = property
         ? propertyDashboard(property.slug)
