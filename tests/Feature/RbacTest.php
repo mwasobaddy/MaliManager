@@ -20,7 +20,7 @@ beforeEach(function () {
 
 test('platform roles are created by the seeder', function () {
     expect(Role::count())->toBe(4)
-        ->and(Role::pluck('name'))->toContain('admin', 'organization-owner', 'tenant', 'occupant');
+        ->and(Role::pluck('name'))->toContain('admin', 'organization-owner', 'searcher', 'occupant');
 });
 
 test('sub-permission catalog is seeded', function () {

@@ -88,12 +88,12 @@ test('cross-domain redirect to tenant uses 409 X-Inertia-Location for Inertia re
         ->assertHeader('X-Inertia-Location', 'http://sunset-apartments.malimanager.test/setup/first-asset');
 });
 
-test('occupant onboarding creates a person and links it to the user', function () {
+test('searcher onboarding creates a person and links it to the user', function () {
     $user = User::factory()->create();
 
     $this->actingAs($user)
         ->post(route('onboarding.complete'), [
-            'account_type' => 'occupant',
+            'account_type' => 'searcher',
             'name' => 'Bob Tenant',
             'phone' => '+254700000000',
             'password' => 'password',
@@ -102,7 +102,7 @@ test('occupant onboarding creates a person and links it to the user', function (
 
     $user->refresh();
     expect($user->isOnboarded())->toBeTrue()
-        ->and($user->hasRole(PlatformRole::Tenant->value))->toBeTrue();
+        ->and($user->hasRole(PlatformRole::Searcher->value))->toBeTrue();
 
     $person = Person::where('email', $user->email)->first();
     expect($person)->not->toBeNull()

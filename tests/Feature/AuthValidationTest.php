@@ -37,7 +37,7 @@ test('onboarding requires a password of at least eight characters', function () 
 
     $this->actingAs($user)
         ->post(route('onboarding.complete'), [
-            'account_type' => 'occupant',
+            'account_type' => 'searcher',
             'name' => 'Jane Doe',
             'password' => 'short',
             'password_confirmation' => 'short',

@@ -36,7 +36,7 @@ type Plan = {
     price_label: string;
 };
 
-type AccountType = 'organization' | 'occupant';
+type AccountType = 'organization' | 'searcher';
 
 type FieldErrors = Partial<Record<'name' | 'phone' | 'password' | 'password_confirmation' | 'organization_name', string>>;
 
@@ -44,7 +44,7 @@ const currencies = ['KES', 'USD', 'UGX', 'TZS', 'RWF', 'NGN', 'GBP', 'EUR'];
 
 export default function Onboarding({ user, hasOrganization, organization, plans }: Props) {
     const [accountType, setAccountType] = useState<AccountType>(
-        hasOrganization ? 'organization' : 'occupant',
+        hasOrganization ? 'organization' : 'searcher',
     );
     const [name, setName] = useState(user.name);
     const [phone, setPhone] = useState(user.phone ?? '');
@@ -181,7 +181,7 @@ return true;
                                 <input type="hidden" name="account_type" value={accountType} />
                                 <div className="grid gap-3">
                                     {([
-                                        ['occupant', 'I rent a property', "I'm an occupant looking to manage my rental."],
+                                        ['searcher', 'I rent a property', "I'm an occupant looking to manage my rental."],
                                         ['organization', 'I own or manage properties', "I'm a landlord or property manager."],
                                     ] as [AccountType, string, string][]).map(
                                         ([value, title, description]) => (
