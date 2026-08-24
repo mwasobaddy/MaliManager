@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Settings\ProfileController;
+use App\Http\Controllers\Settings\RolesController;
 use App\Http\Controllers\Settings\SecurityController;
 use Illuminate\Auth\Middleware\RequirePassword;
 use Illuminate\Support\Facades\Route;
@@ -32,3 +33,17 @@ Route::get('.well-known/passkey-endpoints', function () {
         'manage' => route('security.edit'),
     ]);
 })->name('well-known.passkeys');
+
+// Platform role & central-permission management (admin via PlatformPermissionKey::ManageRoles).
+Route::middleware(['auth', 'verified', 'can:manageRoles'])->group(function () {
+    Route::get('settings/roles', [RolesController::class, 'index'])->name('settings.roles.index');
+
+    Route::get('settings/roles/{role}/edit', [RolesController::class, 'edit'])->name('settings.roles.edit');
+    Route::patch('settings/roles/{role}', [RolesController::class, 'update'])
+        ->middleware(RequirePassword::class)
+        ->name('settings.roles.update');
+
+    Route::patch('settings/users/{user}/role', [RolesController::class, 'assignRole'])
+        ->middleware(RequirePassword::class)
+        ->name('settings.users.role');
+});
