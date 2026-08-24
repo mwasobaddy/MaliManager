@@ -9,20 +9,17 @@ use App\Models\Audit;
 use App\Models\User;
 use App\Services\AuditService;
 use App\Support\TenancyContext;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class AuditController extends Controller
 {
-    public function __construct(private AuditService $service)
-    {
-    }
+    public function __construct(private AuditService $service) {}
 
     public function index(Request $request): Response
     {
-        $tenantId = tenancy()->tenantId();
+        $tenantId = TenancyContext::tenantId();
         $organization = TenancyContext::organization();
 
         $filters = $this->service->filtersFromRequest($request);
@@ -51,7 +48,7 @@ class AuditController extends Controller
 
     public function show(Request $request, Audit $activity): Response
     {
-        if ($activity->tenant_id !== tenancy()->tenantId()) {
+        if ($activity->tenant_id !== TenancyContext::tenantId()) {
             abort(404);
         }
 
@@ -67,11 +64,11 @@ class AuditController extends Controller
 
     public function export(Request $request)
     {
-        $tenantId = tenancy()->tenantId();
+        $tenantId = TenancyContext::tenantId();
 
         $audits = $this->service->query($this->service->filtersFromRequest($request), $tenantId)
             ->get();
 
-        return $this->service->toCsv($audits, 'audit-log-'.tenancy()->tenantId().'.csv');
+        return $this->service->toCsv($audits, 'audit-log.csv');
     }
 }
