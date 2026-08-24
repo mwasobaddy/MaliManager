@@ -6,7 +6,9 @@ namespace App\Providers;
 
 use App\Enums\PlatformPermissionKey;
 use App\Enums\SubPermissionKey;
+use App\Models\Lease;
 use App\Models\User;
+use App\Policies\LeasePolicy;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
@@ -39,5 +41,7 @@ class AuthServiceProvider extends ServiceProvider
         });
 
         Gate::define('manageRoles', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::ManageRoles->value));
+
+        Gate::policy(Lease::class, LeasePolicy::class);
     }
 }
