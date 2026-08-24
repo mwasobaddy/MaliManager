@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Tenant;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Tenant\DestroyOccupantRequest;
+use App\Http\Requests\Tenant\MoveOutOccupantRequest;
 use App\Http\Requests\Tenant\StoreOccupantRequest;
 use App\Http\Requests\Tenant\UpdateOccupantRequest;
+use App\Models\Lease;
 use App\Models\Occupant;
 use App\Models\Property;
 use App\Services\OccupantService;
@@ -89,6 +91,10 @@ class OccupantController extends Controller
                 'national_id' => $occupant->person->national_id,
                 'status' => $occupant->status,
                 'unit_ids' => $occupantService->unitsForProperty($occupant, $property)->pluck('id')->all(),
+                'lease' => Lease::where('occupant_id', $occupant->id)
+                    ->where('property_id', $property->id)
+                    ->where('status', 'active')
+                    ->first(['starts_at', 'rent_amount', 'rent_frequency', 'deposit', 'currency', 'agreement_text']),
             ],
             'units' => $this->units($property),
         ]);
@@ -128,6 +134,25 @@ class OccupantController extends Controller
         }
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Occupant removed.']);
+
+        return redirect()->route('tenant.occupants.index', $property);
+    }
+
+    public function moveOut(MoveOutOccupantRequest $request, Property $property, Occupant $occupant, OccupantService $occupantService): RedirectResponse
+    {
+        $this->authorizePropertyAccess($request, $property);
+
+        abort_if($occupant->organization_id !== $property->organization_id, 403);
+
+        try {
+            $occupantService->moveOut($occupant, $property, $request->user());
+        } catch (Throwable $e) {
+            Inertia::flash('toast', ['type' => 'error', 'message' => 'We could not move this occupant out. Please try again.']);
+
+            return back();
+        }
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Occupant moved out. Their rental history is preserved.']);
 
         return redirect()->route('tenant.occupants.index', $property);
     }

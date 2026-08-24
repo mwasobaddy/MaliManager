@@ -26,6 +26,13 @@ class UpdateOccupantRequest extends FormRequest
             'status' => ['required', 'string', Rule::in(['active', 'inactive', 'moved_out'])],
             'unit_ids' => ['required', 'array', 'min:1'],
             'unit_ids.*' => ['integer', Rule::exists('units', 'id')->where(fn ($query) => $query->where('property_id', $this->propertyId($property)))],
+            'lease' => ['nullable', 'array'],
+            'lease.starts_at' => ['nullable', 'date'],
+            'lease.rent_amount' => ['nullable', 'numeric', 'min:0'],
+            'lease.rent_frequency' => ['nullable', 'string', Rule::in(['daily', 'weekly', 'monthly', 'yearly'])],
+            'lease.deposit' => ['nullable', 'numeric', 'min:0'],
+            'lease.currency' => ['nullable', 'string', 'size:3'],
+            'lease.agreement_text' => ['nullable', 'string'],
         ];
     }
 
