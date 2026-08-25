@@ -25,11 +25,23 @@ return new class extends Migration
             $table->softDeletes();
 
             $table->foreign('tenant_id')->references('id')->on('tenants')->onUpdate('cascade')->onDelete('cascade');
+
+            $table->index('plan_id');
+
+            if (in_array(Schema::getConnection()->getDriverName(), ['mysql', 'mariadb'], true)) {
+                $table->fullText(['name', 'slug', 'email'], 'organizations_fulltext_search');
+            }
         });
     }
 
     public function down(): void
     {
+        if (in_array(Schema::getConnection()->getDriverName(), ['mysql', 'mariadb'], true)) {
+            Schema::table('organizations', function (Blueprint $table) {
+                $table->dropFullText('organizations_fulltext_search');
+            });
+        }
+
         Schema::dropIfExists('organizations');
     }
 };
