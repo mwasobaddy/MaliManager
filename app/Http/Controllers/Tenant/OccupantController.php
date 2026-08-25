@@ -7,17 +7,18 @@ use App\Http\Requests\Tenant\DestroyOccupantRequest;
 use App\Http\Requests\Tenant\MoveOutOccupantRequest;
 use App\Http\Requests\Tenant\StoreOccupantRequest;
 use App\Http\Requests\Tenant\UpdateOccupantRequest;
+use App\Models\AgreementTemplate;
 use App\Models\Lease;
 use App\Models\Occupant;
 use App\Models\Property;
 use App\Services\OccupantService;
 use App\Services\StaffService;
+use App\Support\LeaseAgreementTemplate;
 use App\Support\TenancyContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
-use Throwable;
 
 class OccupantController extends Controller
 {
@@ -48,6 +49,7 @@ class OccupantController extends Controller
             'organization' => TenancyContext::organization()->only('id', 'name', 'slug'),
             'property' => $this->property($property),
             'units' => $this->units($property),
+            'templates' => $this->agreementTemplates($property),
         ]);
     }
 
@@ -55,18 +57,14 @@ class OccupantController extends Controller
     {
         $this->authorizePropertyAccess($request, $property);
 
-        try {
-            $occupantService->create(
-                $property->organization,
-                $property,
-                $request->user(),
-                $request->validated(),
-            );
-        } catch (Throwable $e) {
-            Inertia::flash('toast', ['type' => 'error', 'message' => 'We could not add this occupant. Please try again.']);
+        $occupant = $occupantService->create(
+            $property->organization,
+            $property,
+            $request->user(),
+            $request->validated(),
+        );
 
-            return back();
-        }
+        $this->syncAgreementDocument($request, $occupant, $property);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Occupant added.']);
 
@@ -91,12 +89,10 @@ class OccupantController extends Controller
                 'national_id' => $occupant->person->national_id,
                 'status' => $occupant->status,
                 'unit_ids' => $occupantService->unitsForProperty($occupant, $property)->pluck('id')->all(),
-                'lease' => Lease::where('occupant_id', $occupant->id)
-                    ->where('property_id', $property->id)
-                    ->where('status', 'active')
-                    ->first(['starts_at', 'rent_amount', 'rent_frequency', 'deposit', 'currency', 'agreement_text']),
+                'lease' => $this->activeLease($occupant, $property),
             ],
             'units' => $this->units($property),
+            'templates' => $this->agreementTemplates($property),
         ]);
     }
 
@@ -106,13 +102,9 @@ class OccupantController extends Controller
 
         abort_if($occupant->organization_id !== $property->organization_id, 403);
 
-        try {
-            $occupantService->update($occupant, $property, $request->user(), $request->validated());
-        } catch (Throwable $e) {
-            Inertia::flash('toast', ['type' => 'error', 'message' => 'We could not update this occupant. Please try again.']);
+        $occupantService->update($occupant, $property, $request->user(), $request->validated());
 
-            return back();
-        }
+        $this->syncAgreementDocument($request, $occupant, $property);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Occupant updated.']);
 
@@ -125,13 +117,7 @@ class OccupantController extends Controller
 
         abort_if($occupant->organization_id !== $property->organization_id, 403);
 
-        try {
-            $occupantService->softDelete($occupant);
-        } catch (Throwable $e) {
-            Inertia::flash('toast', ['type' => 'error', 'message' => 'We could not delete this occupant. Please try again.']);
-
-            return back();
-        }
+        $occupantService->softDelete($occupant);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Occupant removed.']);
 
@@ -144,13 +130,7 @@ class OccupantController extends Controller
 
         abort_if($occupant->organization_id !== $property->organization_id, 403);
 
-        try {
-            $occupantService->moveOut($occupant, $property, $request->user());
-        } catch (Throwable $e) {
-            Inertia::flash('toast', ['type' => 'error', 'message' => 'We could not move this occupant out. Please try again.']);
-
-            return back();
-        }
+        $occupantService->moveOut($occupant, $property, $request->user());
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Occupant moved out. Their rental history is preserved.']);
 
@@ -163,6 +143,107 @@ class OccupantController extends Controller
     private function property(Property $property): array
     {
         return $property->only('id', 'name', 'slug');
+    }
+
+    /**
+     * The occupant's active lease in this property together with the
+     * uploaded agreement document (if any) for the edit form.
+     */
+    private function activeLease(Occupant $occupant, Property $property): ?array
+    {
+        $lease = Lease::query()
+            ->where('occupant_id', $occupant->id)
+            ->where('property_id', $property->id)
+            ->where('status', 'active')
+            ->first();
+
+        if (! $lease) {
+            return null;
+        }
+
+        $document = $lease->getFirstMedia('agreement');
+
+        return [
+            'starts_at' => $lease->starts_at?->toDateString(),
+            'rent_amount' => $lease->rent_amount,
+            'rent_frequency' => $lease->rent_frequency,
+            'deposit' => $lease->deposit,
+            'currency' => $lease->currency,
+            'agreement_text' => $lease->agreement_text,
+            'agreement_document_name' => $document?->file_name,
+            'agreement_document_url' => $document?->getUrl(),
+        ];
+    }
+
+    public function agreement(Request $request, Property $property, Occupant $occupant): Response
+    {
+        $this->authorizePropertyAccess($request, $property);
+
+        abort_if($occupant->organization_id !== $property->organization_id, 403);
+
+        $lease = Lease::query()
+            ->where('occupant_id', $occupant->id)
+            ->where('property_id', $property->id)
+            ->where('status', 'active')
+            ->first();
+
+        abort_if(! $lease, 404);
+
+        return Inertia::render('tenant/occupants/agreement', [
+            'agreementHtml' => LeaseAgreementTemplate::render((string) $lease->agreement_text, $lease),
+            'documentUrl' => $lease->getFirstMedia('agreement')?->getUrl(),
+            'occupantName' => trim(($occupant->person->first_name ?? '').' '.($occupant->person->last_name ?? '')),
+        ]);
+    }
+
+    /**
+     * The organization's saved agreement templates, offered on the
+     * occupant form to pre-fill the agreement editor.
+     *
+     * @return array<int, array{id: int, name: string, body_html: string}>
+     */
+    private function agreementTemplates(Property $property): array
+    {
+        return AgreementTemplate::query()
+            ->where('organization_id', $property->organization_id)
+            ->orderBy('name')
+            ->get(['id', 'name', 'body_html'])
+            ->map(fn (AgreementTemplate $template) => [
+                'id' => $template->id,
+                'name' => $template->name,
+                'body_html' => $template->body_html,
+            ])
+            ->all();
+    }
+
+    /**
+     * Attach (or remove) the uploaded agreement document on every active
+     * lease of this occupant within the property. singleFile() semantics
+     * mean a fresh upload replaces any previous document.
+     */
+    private function syncAgreementDocument(Request $request, Occupant $occupant, Property $property): void
+    {
+        $leases = Lease::query()
+            ->where('occupant_id', $occupant->id)
+            ->where('property_id', $property->id)
+            ->where('status', 'active')
+            ->get();
+
+        if ($request->boolean('lease.remove_agreement_document')) {
+            $leases->each->clearMediaCollection('agreement');
+
+            return;
+        }
+
+        if (! $request->hasFile('lease.agreement_document')) {
+            return;
+        }
+
+        foreach ($leases as $lease) {
+            $lease
+                ->addMediaFromRequest('lease.agreement_document')
+                ->toMediaCollection('agreement');
+        }
     }
 
     /**

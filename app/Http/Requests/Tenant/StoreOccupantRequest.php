@@ -33,7 +33,27 @@ class StoreOccupantRequest extends FormRequest
             'lease.deposit' => ['nullable', 'numeric', 'min:0'],
             'lease.currency' => ['nullable', 'string', 'size:3'],
             'lease.agreement_text' => ['nullable', 'string'],
+            'lease.agreement_document' => ['nullable', 'file', 'mimes:pdf,doc,docx', 'max:10240'],
+            'lease.remove_agreement_document' => ['nullable', 'boolean'],
         ];
+    }
+
+    /**
+     * The rich-text editor produces HTML; keep only a safe formatting
+     * allowlist so the stored agreement can be rendered without risk.
+     */
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('lease.agreement_text')) {
+            $this->merge([
+                'lease' => array_merge($this->input('lease', []), [
+                    'agreement_text' => strip_tags(
+                        (string) $this->input('lease.agreement_text'),
+                        '<p><br><b><strong><i><em><u><s><ul><ol><li><h1><h2><h3><blockquote><code>',
+                    ),
+                ]),
+            ]);
+        }
     }
 
     private function propertyId(?Property $property): ?int

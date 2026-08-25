@@ -2,6 +2,7 @@
 
 use App\Enums\PlatformRole;
 use App\Models\Delegation;
+use App\Models\Lease;
 use App\Models\Occupant;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
@@ -14,6 +15,7 @@ use App\Services\OccupantService;
 use App\Services\TenantService;
 use Database\Seeders\PlansSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
+use Illuminate\Http\Testing\File;
 
 beforeEach(function () {
     (new RolesAndPermissionsSeeder)->run();
@@ -504,4 +506,130 @@ test('occupant only appears in the property they are assigned to', function () {
         ->get(occupantTenantUrl($organization, '/ocean-view/occupants'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page->has('occupants', 0));
+});
+
+test('creating an occupant stores sanitized agreement html and uploads a document', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createOccupantOrganization($owner);
+
+    $property = $organization->properties()->create([
+        'name' => 'Sunset Heights',
+        'slug' => 'sunset-heights',
+        'status' => 'active',
+        'created_by' => $owner->id,
+    ]);
+
+    $unit = $property->units()->create([
+        'name' => 'Unit A1',
+        'status' => 'vacant',
+        'created_by' => $owner->id,
+    ]);
+
+    $upload = File::fake()->createWithContent(
+        'agreement.pdf',
+        '%PDF-1.4 test agreement content',
+    );
+
+    $this->actingAs($owner)
+        ->post(occupantTenantUrl($organization, '/sunset-heights/occupants'), [
+            'first_name' => 'Jane',
+            'email' => 'jane.lease@acme.test',
+            'status' => 'active',
+            'unit_ids' => [$unit->id],
+            'lease' => [
+                'rent_amount' => 25000,
+                'currency' => 'KES',
+                'agreement_text' => '<p>Rent is due <b>monthly</b>.</p><script>alert(1)</script>',
+                'agreement_document' => $upload,
+            ],
+        ])->assertRedirect(occupantTenantUrl($organization, '/sunset-heights/occupants'));
+
+    $lease = Lease::where('unit_id', $unit->id)->first();
+    $media = $lease->getFirstMedia('agreement');
+
+    expect($lease)->not->toBeNull()
+        ->and($lease->agreement_text)->toBe('<p>Rent is due <b>monthly</b>.</p>alert(1)')
+        ->and($media)->not->toBeNull()
+        ->and($media->file_name)->toEndWith('.pdf');
+});
+
+test('updating with remove flag deletes the uploaded agreement document', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createOccupantOrganization($owner);
+
+    $property = $organization->properties()->create([
+        'name' => 'Sunset Heights',
+        'slug' => 'sunset-heights',
+        'status' => 'active',
+        'created_by' => $owner->id,
+    ]);
+
+    $unit = $property->units()->create([
+        'name' => 'Unit A1',
+        'status' => 'vacant',
+        'created_by' => $owner->id,
+    ]);
+
+    $occupant = addOccupant($organization, $owner, $property, [], [$unit->id]);
+    $lease = Lease::where('unit_id', $unit->id)->first();
+    $lease->addMedia(File::fake()->createWithContent(
+        'agreement.pdf',
+        '%PDF-1.4 test agreement content',
+    ))->toMediaCollection('agreement');
+
+    expect($lease->getMedia('agreement'))->toHaveCount(1);
+
+    $this->actingAs($owner)
+        ->put(occupantTenantUrl($organization, "/sunset-heights/occupants/{$occupant->id}"), [
+            'first_name' => 'Jane',
+            'email' => 'jane@acme.test',
+            'status' => 'active',
+            'unit_ids' => [$unit->id],
+            'lease' => [
+                'remove_agreement_document' => '1',
+            ],
+        ])->assertRedirect();
+
+    expect($lease->fresh()->getMedia('agreement'))->toHaveCount(0);
+});
+
+test('agreement placeholders are merged from lease data on the print page', function () {
+    $owner = User::factory()->create(['onboarded_at' => now(), 'phone' => '0712345678']);
+    $organization = createOccupantOrganization($owner);
+
+    $property = $organization->properties()->create([
+        'name' => 'Sunset Heights',
+        'slug' => 'sunset-heights',
+        'status' => 'active',
+        'created_by' => $owner->id,
+    ]);
+
+    $unit = $property->units()->create([
+        'name' => 'Unit A1',
+        'status' => 'occupied',
+        'created_by' => $owner->id,
+    ]);
+
+    addOccupant($organization, $owner, $property, [], [$unit->id]);
+
+    $lease = Lease::where('unit_id', $unit->id)->first();
+    $lease->update([
+        'rent_amount' => 25000,
+        'currency' => 'KES',
+        'starts_at' => '2026-01-01',
+        'agreement_text' => '<p>{{occupant_name}} rents {{unit_name}} at {{property_name}} for {{rent_amount}} {{currency}} from {{start_date}}. Contact {{landlord_unknown_token}}.</p>',
+    ]);
+
+    $this->actingAs($owner)
+        ->get(occupantTenantUrl($organization, "/sunset-heights/occupants/{$lease->occupant_id}/agreement"))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('tenant/occupants/agreement')
+            ->where('agreementHtml', fn (string $html) => str_contains($html, 'Jane Wanjiru')
+                && str_contains($html, 'Unit A1')
+                && str_contains($html, 'Sunset Heights')
+                && str_contains($html, '25,000.00 KES')
+                && str_contains($html, '2026-01-01')
+                // Unknown tokens are left intact so authors spot typos.
+                && str_contains($html, '{{landlord_unknown_token}}')));
 });

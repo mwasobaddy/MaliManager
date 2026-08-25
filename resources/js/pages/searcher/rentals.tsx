@@ -180,9 +180,11 @@ export default function SearcherRentals({ leases }: Props) {
                                                 <p className="mb-1 text-muted-foreground">
                                                     Agreement
                                                 </p>
-                                                <p className="whitespace-pre-wrap text-xs">
-                                                    {lease.agreement_text}
-                                                </p>
+                                                {/* Sanitized server-side on save (formatting allowlist). */}
+                                                <div
+                                                    className="prose prose-sm max-w-none text-xs"
+                                                    dangerouslySetInnerHTML={{ __html: lease.agreement_text }}
+                                                />
                                             </div>
                                         </>
                                     ) : null}
