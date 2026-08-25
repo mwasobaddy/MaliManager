@@ -2,10 +2,13 @@
 
 namespace App\Http\Middleware;
 
+use App\Enums\PlatformPermissionKey;
 use App\Enums\SubPermissionKey;
 use App\Models\Property;
+use App\Services\PropertyAccessService;
 use App\Support\TenancyContext;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\App;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -47,6 +50,10 @@ class HandleInertiaRequests extends Middleware
             'name' => config('app.name'),
             'auth' => [
                 'user' => $user,
+                'permissions' => $this->centralPermissions($user),
+                'organizations' => $user
+                    ? App::make(PropertyAccessService::class)->organizationsWithProperties($user)
+                    : [],
             ],
             'context' => [
                 'organization' => $organization?->only('id', 'name', 'slug'),
@@ -85,5 +92,27 @@ class HandleInertiaRequests extends Middleware
             ->subPermissions()
             ->pluck('key')
             ->all();
+    }
+
+    /**
+     * The central (platform-wide) permission keys the current user holds,
+     * available on every page regardless of the active tenancy. Exposed to the
+     * frontend as an array so views can check membership without relying on a
+     * server-side `can()` call.
+     *
+     * @return array<int, string>
+     */
+    private function centralPermissions(?object $user): array
+    {
+        if (! $user) {
+            return [];
+        }
+
+        return array_values(array_filter(
+            array_map(
+                fn (PlatformPermissionKey $key): ?string => $user->can($key->value) ? $key->value : null,
+                PlatformPermissionKey::cases(),
+            ),
+        ));
     }
 }
