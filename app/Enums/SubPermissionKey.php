@@ -35,6 +35,7 @@ enum SubPermissionKey: string
     case LeaseCreate = 'lease.create';
     case LeaseEdit = 'lease.edit';
     case LeaseDelete = 'lease.delete';
+    case LeaseManageTemplates = 'lease.manage_templates';
 
     case PaymentManage = 'payment.manage';
 
@@ -63,7 +64,7 @@ enum SubPermissionKey: string
             self::UnitManage, self::UnitCreate, self::UnitEdit, self::UnitDelete, self::UnitDelegate => 'unit',
             self::LandParcelManage, self::LandParcelCreate, self::LandParcelEdit, self::LandParcelDelete, self::LandParcelDelegate => 'land_parcel',
             self::OccupantManage, self::OccupantCreate, self::OccupantEdit, self::OccupantDelete => 'occupant',
-            self::LeaseManage, self::LeaseCreate, self::LeaseEdit, self::LeaseDelete => 'lease',
+            self::LeaseManage, self::LeaseCreate, self::LeaseEdit, self::LeaseDelete, self::LeaseManageTemplates => 'lease',
             self::PaymentManage => 'payment',
             self::ExpenseManage => 'expense',
             self::MaintenanceManage, self::MaintenanceCreate, self::MaintenanceEdit, self::MaintenanceDelete, self::MaintenanceDelegate => 'maintenance',
@@ -101,6 +102,7 @@ enum SubPermissionKey: string
             self::LeaseCreate => 'Create leases',
             self::LeaseEdit => 'Edit leases',
             self::LeaseDelete => 'Delete leases',
+            self::LeaseManageTemplates => 'Manage agreement templates',
             self::PaymentManage => 'Manage payments',
             self::ExpenseManage => 'Manage expenses',
             self::MaintenanceManage => 'Manage maintenance requests',
