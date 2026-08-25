@@ -20,14 +20,20 @@ use Illuminate\Support\Facades\DB;
  */
 class DashboardService extends Service
 {
-    public function payload(User $user): array
+    /**
+     * @param  array<int, array{id: int, properties: array<int, array{units_count: int}}>]|null  $access
+     *         Precomputed PropertyAccessService result, when the caller already has it.
+     */
+    public function payload(User $user, ?array $access = null): array
     {
+        $access ??= app(PropertyAccessService::class)->organizationsWithProperties($user);
+
         return [
             'admin' => $user->can(PlatformPermissionKey::ViewAdvancedMetrics->value)
                 ? $this->adminStats()
                 : null,
             'organization' => $user->can(PlatformPermissionKey::ViewOrgMetrics->value)
-                ? $this->organizationStats($user)
+                ? $this->organizationStats($access)
                 : null,
             'searcher' => $user->can(PlatformPermissionKey::ViewSearcherMetrics->value)
                 ? $this->personLeaseStats($user->person_id, 'searcher')
@@ -83,9 +89,11 @@ class DashboardService extends Service
         ];
     }
 
-    private function organizationStats(User $user): array
+    /**
+     * @param  array<int, array{id: int, properties: array<int, array{units_count: int}>}>  $access
+     */
+    private function organizationStats(array $access): array
     {
-        $access = app(PropertyAccessService::class)->organizationsWithProperties($user);
         $orgIds = collect($access)->pluck('id')->all();
         $properties = collect($access)->flatMap(fn (array $organization) => $organization['properties']);
 
@@ -120,10 +128,14 @@ class DashboardService extends Service
         $months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
         $base = Lease::query()->where('person_id', $personId);
-        $leasesCount = (clone $base)->count();
-        $activeLeases = (clone $base)->active()->count();
-        $endedLeases = (clone $base)->ended()->count();
-        $totalRent = (clone $base)->sum('rent_amount');
+
+        // One conditional-aggregation pass instead of four separate scans.
+        $totals = (clone $base)
+            ->selectRaw('count(*) as leases_count')
+            ->selectRaw("sum(case when status = 'active' and ends_at is null then 1 else 0 end) as active_leases")
+            ->selectRaw("sum(case when status = 'ended' or ends_at is not null then 1 else 0 end) as ended_leases")
+            ->selectRaw('coalesce(sum(rent_amount), 0) as total_rent')
+            ->first();
 
         $recent = (clone $base)
             ->with(['organization', 'property'])
@@ -139,20 +151,16 @@ class DashboardService extends Service
             ])
             ->all();
 
-        $result = [
-            'leases_count' => $leasesCount,
-            'active_leases' => $activeLeases,
-            'ended_leases' => $endedLeases,
-            'total_rent' => (float) $totalRent,
+        return [
+            'leases_count' => (int) ($totals->leases_count ?? 0),
+            'active_leases' => (int) ($totals->active_leases ?? 0),
+            'ended_leases' => (int) ($totals->ended_leases ?? 0),
+            'total_rent' => (float) ($totals->total_rent ?? 0),
             'recent' => $recent,
-        ];
-
-        if ($kind === 'occupant') {
-            $result['maintenance_open'] = 2;
-            $result['rent_trend'] = $this->sampleSeries($months, 500, 1500);
-        }
-
-        return $result;
+        ] + ($kind === 'occupant' ? [
+            'maintenance_open' => 2,
+            'rent_trend' => $this->sampleSeries($months, 500, 1500),
+        ] : []);
     }
 
     /**

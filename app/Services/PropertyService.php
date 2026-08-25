@@ -6,6 +6,7 @@ use App\Models\Organization;
 use App\Models\Property;
 use App\Models\Unit;
 use App\Models\User;
+use Illuminate\Support\Str;
 
 /**
  * Creates properties and units, enforcing the organization's plan
@@ -64,7 +65,7 @@ class PropertyService extends Service
     {
         if ($limit !== null && $current >= $limit) {
             throw new \DomainException(
-                "Your current plan allows up to {$limit} {$resource}s. Please upgrade your plan to add more.",
+                "Your current plan allows up to {$limit} ".Str::plural($resource, (int) $limit).'. Please upgrade your plan to add more.',
             );
         }
     }
