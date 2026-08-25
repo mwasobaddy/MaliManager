@@ -158,7 +158,7 @@ test('onboarding page redirects already onboarded users', function () {
         ->assertRedirect(route('dashboard'));
 });
 
-test('organization owner with a single property is sent straight into it', function () {
+test('organization owner with a single property lands on the picker', function () {
     $user = User::factory()->create(['onboarded_at' => now()]);
     $organization = app(TenantService::class)->createOrganization(
         owner: $user,
@@ -174,7 +174,7 @@ test('organization owner with a single property is sent straight into it', funct
 
     $this->actingAs($user)
         ->get(route('onboarding.show'))
-        ->assertRedirect('http://sunset-apartments.malimanager.test/sunset-heights/dashboard');
+        ->assertRedirect(route('dashboard'));
 });
 
 test('organization owner with multiple properties lands on the picker', function () {

@@ -7,10 +7,11 @@ use App\Models\SubRole;
 use App\Models\User;
 use App\Services\PropertyAccessService;
 use App\Support\AuthLanding;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
-uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
+uses(RefreshDatabase::class);
 
 function onboardedUser(): User
 {
@@ -83,19 +84,39 @@ it('redirects to the central dashboard when the user has multiple properties', f
     expect(Str::contains($landing, 'dashboard'))->toBeTrue();
 });
 
-it('redirects straight to the single property tenant domain', function () {
+it('lands on the central dashboard with the picker when there is a single property', function () {
     $user = onboardedUser();
     $org = Organization::factory()->create();
 
     $user->organizations()->attach($org->id, ['is_owner' => true, 'status' => 'active']);
 
-    $property = Property::factory()->for($org)->create();
-    $org->tenant->domains()->create(['domain' => $org->slug.'.malimanager.test']);
+    Property::factory()->for($org)->create();
 
     $landing = AuthLanding::for($user, Request::create('/'));
 
-    expect(Str::contains($landing, $property->slug.'/dashboard'))->toBeTrue();
-    expect(Str::contains($landing, $org->slug.'.malimanager.test'))->toBeTrue();
+    expect(route('dashboard'))->toBe($landing);
+});
+
+it('auto-opens the picker on the dashboard for any accessible property', function () {
+    $user = onboardedUser();
+    $org = Organization::factory()->create();
+
+    $user->organizations()->attach($org->id, ['is_owner' => true, 'status' => 'active']);
+    Property::factory()->for($org)->create();
+
+    $this->actingAs($user)
+        ->get(route('dashboard'))
+        ->assertInertia(fn ($page) => $page->component('dashboard')
+            ->where('autoOpenPropertyPicker', true));
+});
+
+it('does not auto-open the picker without accessible properties', function () {
+    $user = onboardedUser();
+
+    $this->actingAs($user)
+        ->get(route('dashboard'))
+        ->assertInertia(fn ($page) => $page->component('dashboard')
+            ->where('autoOpenPropertyPicker', false));
 });
 
 it('returns the dashboard when the user has no accessible properties', function () {

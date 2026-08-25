@@ -280,7 +280,7 @@ test('staff with no assigned properties lands on the picker with a toast', funct
         ->assertSessionHas('inertia.flash_data', fn (array $flash) => ($flash['toast']['type'] ?? null) === 'warning');
 });
 
-test('staff with a single assigned property lands on its dashboard', function () {
+test('staff with a single assigned property lands on the picker', function () {
     $owner = User::factory()->create(['onboarded_at' => now()]);
     $organization = createStaffOrganization($owner);
 
@@ -295,7 +295,7 @@ test('staff with a single assigned property lands on its dashboard', function ()
 
     $this->actingAs($staff)
         ->get(route('onboarding.show'))
-        ->assertRedirect(staffTenantUrl($organization, '/sunset-heights/dashboard'));
+        ->assertRedirect(route('dashboard'));
 });
 
 test('staff with several assigned properties lands on the picker', function () {
