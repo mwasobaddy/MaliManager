@@ -37,14 +37,14 @@ test('default sub-roles bundle their expected permissions', function () {
         ->and($caretaker->hasSubPermissionFor(SubPermissionKey::LandParcelDelete))->toBeFalse()
         ->and($caretaker->hasSubPermissionFor(SubPermissionKey::StaffManage))->toBeTrue()
         ->and($caretaker->hasSubPermissionFor(SubPermissionKey::StaffDelete))->toBeFalse()
-        ->and($caretaker->hasSubPermissionFor(SubPermissionKey::UserManage))->toBeFalse();
+        ->and($caretaker->hasSubPermissionFor(SubPermissionKey::OccupantDelete))->toBeFalse();
 });
 
 test('owners bypass sub-permission checks', function () {
     $owner = User::factory()->create();
     $this->organization->users()->attach($owner->id, ['is_owner' => true]);
 
-    expect($owner->hasSubPermission($this->organization, SubPermissionKey::UserManage))->toBeTrue();
+    expect($owner->hasSubPermission($this->organization, SubPermissionKey::OccupantManage))->toBeTrue();
 });
 
 test('members without a sub-role have no access', function () {
