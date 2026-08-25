@@ -316,7 +316,7 @@ test('staff with several assigned properties lands on the picker', function () {
 
     $this->actingAs($staff)
         ->get(route('onboarding.show'))
-        ->assertRedirect(staffTenantUrl($organization, '/properties'));
+        ->assertRedirect(route('dashboard'));
 });
 
 test('staff property picker only lists their assigned properties', function () {

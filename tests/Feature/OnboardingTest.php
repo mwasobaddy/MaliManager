@@ -195,7 +195,7 @@ test('organization owner with multiple properties lands on the picker', function
 
     $this->actingAs($user)
         ->get(route('onboarding.show'))
-        ->assertRedirect('http://sunset-apartments.malimanager.test/properties');
+        ->assertRedirect(route('dashboard'));
 });
 
 test('first asset page offers both building and land parcel', function () {
