@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Organizations;
 
 use App\Enums\PlatformRole;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Organizations\DestroyOrganizationRequest;
 use App\Http\Requests\Organizations\StoreOrganizationRequest;
 use App\Http\Requests\Organizations\UpdateOrganizationRequest;
 use App\Models\Organization;
@@ -11,6 +12,7 @@ use App\Models\Plan;
 use App\Models\User;
 use App\Services\OrganizationManagementService;
 use App\Services\UserService;
+use App\Support\Search;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -26,14 +28,10 @@ class OrganizationController extends Controller
     public function index(Request $request): Response
     {
         $organizations = Organization::query()
-            ->with(['plan:id,slug,name', 'tenant'])
+            ->with(['plan:id,slug,name', 'tenant.domains'])
             ->withCount('users')
             ->when($request->string('search')->trim(), function ($query, string $search) {
-                $query->where(function ($query) use ($search) {
-                    $query->where('name', 'like', "%{$search}%")
-                        ->orWhere('slug', 'like', "%{$search}%")
-                        ->orWhere('email', 'like', "%{$search}%");
-                });
+                Search::apply($query, $search, ['name', 'slug', 'email']);
             })
             ->when($request->string('status')->toString() !== '', fn ($query) => $query->where('status', $request->string('status')))
             ->orderByDesc('created_at')
@@ -48,7 +46,7 @@ class OrganizationController extends Controller
                 'status' => $organization->status,
                 'plan' => $organization->plan?->name,
                 'plan_id' => $organization->plan_id,
-                'domain' => $organization->tenant?->domains()->value('domain'),
+                'domain' => $organization->tenant?->domains->first()?->domain,
                 'users_count' => $organization->users_count,
                 'created_at' => $organization->created_at?->toDateTimeString(),
             ]);
@@ -127,7 +125,7 @@ class OrganizationController extends Controller
         return redirect()->route('organizations.index');
     }
 
-    public function destroy(Request $request, Organization $organization): RedirectResponse
+    public function destroy(DestroyOrganizationRequest $request, Organization $organization): RedirectResponse
     {
         $this->service->deleteOrganization($organization, $request->user());
 

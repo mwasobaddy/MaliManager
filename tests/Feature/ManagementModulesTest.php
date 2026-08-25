@@ -7,6 +7,7 @@ use App\Models\SubPermission;
 use App\Models\User;
 use App\Services\TenantService;
 use App\Services\UserService;
+use Database\Seeders\PlansSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -90,25 +91,62 @@ it('creates a person and user account together, deduping by email', function () 
         ->and($second->person_id)->toBe($user->person_id);
 });
 
-it('prevents admins from deleting their own account', function () {
+it('prevents admins from deleting their own account with a toast', function () {
     $admin = seededAdmin();
 
     $this->actingAs($admin)
-        ->delete(route('users.destroy', $admin))
-        ->assertStatus(422);
+        ->delete(route('users.destroy', $admin), ['password' => 'password'])
+        ->assertRedirect()
+        ->assertSessionHas('inertia.flash_data', fn (array $flash) => ($flash['toast']['message'] ?? null) === 'You cannot delete your own account.');
 
     expect($admin->refresh()->trashed())->toBeFalse();
 });
 
-it('allows a permitted admin to delete another user', function () {
+it('requires the current password to delete a user', function () {
     $admin = seededAdmin();
     $other = User::factory()->create(['onboarded_at' => now(), 'status' => 'active']);
 
     $this->actingAs($admin)
-        ->delete(route('users.destroy', $other))
+        ->delete(route('users.destroy', $other), ['password' => 'wrong-password'])
+        ->assertSessionHasErrors('password');
+
+    expect($other->refresh()->trashed())->toBeFalse();
+});
+
+it('allows a permitted admin to delete another user with their password', function () {
+    $admin = seededAdmin();
+    $other = User::factory()->create(['onboarded_at' => now(), 'status' => 'active']);
+
+    $this->actingAs($admin)
+        ->delete(route('users.destroy', $other), ['password' => 'password'])
         ->assertRedirect();
 
     expect($other->refresh()->trashed())->toBeTrue();
+});
+
+it('requires the current password to delete an organization', function () {
+    (new RolesAndPermissionsSeeder)->run();
+    (new PlansSeeder)->run();
+    $admin = platformAdmin();
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $plan = Plan::where('slug', 'free')->firstOrFail();
+    $organization = app(TenantService::class)->createOrganization(
+        owner: $owner,
+        name: 'Doomed Estates',
+        plan: $plan,
+    );
+
+    $this->actingAs($admin)
+        ->delete(route('organizations.destroy', $organization), ['password' => 'wrong-password'])
+        ->assertSessionHasErrors('password');
+
+    expect($organization->refresh()->trashed())->toBeFalse();
+
+    $this->actingAs($admin)
+        ->delete(route('organizations.destroy', $organization), ['password' => 'password'])
+        ->assertRedirect(route('organizations.index'));
+
+    expect($organization->refresh()->trashed())->toBeTrue();
 });
 
 it('exports users as csv', function () {
@@ -186,4 +224,33 @@ it('retires stale sub-permissions from the catalog on seeding', function () {
 
     expect(SubPermission::where('key', 'user.manage')->exists())->toBeFalse()
         ->and(SubPermission::where('key', 'staff.manage')->exists())->toBeTrue();
+});
+
+it('filters the users index by a partial search term', function () {
+    $admin = seededAdmin();
+    User::factory()->create(['name' => 'Jane Doe', 'email' => 'jane.doe@example.test', 'onboarded_at' => now()]);
+    User::factory()->create(['name' => 'John Smith', 'email' => 'john.smith@example.test', 'onboarded_at' => now()]);
+
+    $this->actingAs($admin)
+        ->get(route('users.index', ['search' => 'jane.doe']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('users/index')
+            ->where('users.data', fn ($rows) => count($rows) === 1 && str_contains($rows[0]['email'], 'jane.doe')));
+});
+
+it('filters the organizations index by a partial search term', function () {
+    (new PlansSeeder)->run();
+    $admin = seededAdmin();
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $plan = Plan::where('slug', 'free')->firstOrFail();
+    app(TenantService::class)->createOrganization(owner: $owner, name: 'Zebra Holdings', plan: $plan);
+    app(TenantService::class)->createOrganization(owner: $admin, name: 'Aardvark Group', plan: $plan);
+
+    $this->actingAs($admin)
+        ->get(route('organizations.index', ['search' => 'zebra']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('organizations/index')
+            ->where('organizations.data', fn ($rows) => count($rows) === 1));
 });

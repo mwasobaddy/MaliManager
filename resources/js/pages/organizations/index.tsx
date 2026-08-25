@@ -1,7 +1,9 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { usePage } from '@inertiajs/react';
 import { Building2, Download, Pencil, Plus, Search } from 'lucide-react';
+import { useState } from 'react';
 import Heading from '@/components/heading';
+import { PasswordConfirmDialog } from '@/components/password-confirm-dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import * as orgRoutes from '@/routes/organizations';
@@ -47,13 +49,7 @@ export default function OrganizationsIndex({ organizations, filters }: Props) {
         status: filters.status,
     });
 
-    const remove = (organization: OrganizationRow) => {
-        if (!window.confirm(`Delete ${organization.name}? Its tenant will no longer be reachable.`)) {
-            return;
-        }
-
-        router.delete(orgRoutes.destroy(organization.id), { preserveScroll: true });
-    };
+    const [deleteTarget, setDeleteTarget] = useState<OrganizationRow | null>(null);
 
     return (
         <>
@@ -168,7 +164,7 @@ export default function OrganizationsIndex({ organizations, filters }: Props) {
                                                         <Button
                                                             variant="ghost"
                                                             size="sm"
-                                                            onClick={() => remove(organization)}
+                                                            onClick={() => setDeleteTarget(organization)}
                                                             className="text-red-600"
                                                         >
                                                             Delete
@@ -210,6 +206,18 @@ export default function OrganizationsIndex({ organizations, filters }: Props) {
                     </div>
                 )}
             </div>
+
+            <PasswordConfirmDialog
+                open={deleteTarget !== null}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setDeleteTarget(null);
+                    }
+                }}
+                formAction={orgRoutes.destroy.form(deleteTarget?.id ?? 0)}
+                title={`Delete ${deleteTarget?.name ?? ''}?`}
+                description="This soft-deletes the organization and its tenant will no longer be reachable. Please enter your password to confirm."
+            />
         </>
     );
 }
