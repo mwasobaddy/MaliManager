@@ -8,6 +8,8 @@ use App\Http\Controllers\Auth\SocialiteController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LeaseController;
 use App\Http\Controllers\OnboardingController;
+use App\Http\Controllers\Organizations\OrganizationController;
+use App\Http\Controllers\Users\UserController;
 use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'welcome')->name('home');
@@ -46,6 +48,29 @@ Route::middleware(['auth', 'verified', 'can:viewAnyAudit'])->group(function () {
 Route::middleware(['auth', 'verified', 'can:exportAudit'])->group(function () {
     Route::get('platform/audit/export', [PlatformAuditController::class, 'export'])
         ->name('platform.audit.export');
+});
+
+// Central user management module, gated by central user.* permissions.
+Route::middleware(['auth', 'verified', 'can:manageUsers'])->group(function () {
+    Route::get('users', [UserController::class, 'index'])->name('users.index');
+    Route::get('users/export', [UserController::class, 'export'])->name('users.export')->middleware('can:exportUsers');
+    Route::get('users/create', [UserController::class, 'create'])->name('users.create')->middleware('can:createUsers');
+    Route::post('users', [UserController::class, 'store'])->name('users.store')->middleware('can:createUsers');
+    Route::get('users/{user}/edit', [UserController::class, 'edit'])->name('users.edit')->middleware('can:editUsers');
+    Route::patch('users/{user}', [UserController::class, 'update'])->name('users.update')->middleware('can:editUsers');
+    Route::patch('users/{user}/status', [UserController::class, 'setStatus'])->name('users.status')->middleware('can:editUsers');
+    Route::delete('users/{user}', [UserController::class, 'destroy'])->name('users.destroy')->middleware('can:deleteUsers');
+});
+
+// Central organization management module, gated by central organization.* permissions.
+Route::middleware(['auth', 'verified', 'can:manageOrganizations'])->group(function () {
+    Route::get('organizations', [OrganizationController::class, 'index'])->name('organizations.index');
+    Route::get('organizations/export', [OrganizationController::class, 'export'])->name('organizations.export')->middleware('can:exportOrganizations');
+    Route::get('organizations/create', [OrganizationController::class, 'create'])->name('organizations.create')->middleware('can:createOrganizations');
+    Route::post('organizations', [OrganizationController::class, 'store'])->name('organizations.store')->middleware('can:createOrganizations');
+    Route::get('organizations/{organization}/edit', [OrganizationController::class, 'edit'])->name('organizations.edit')->middleware('can:editOrganizations');
+    Route::patch('organizations/{organization}', [OrganizationController::class, 'update'])->name('organizations.update')->middleware('can:editOrganizations');
+    Route::delete('organizations/{organization}', [OrganizationController::class, 'destroy'])->name('organizations.destroy')->middleware('can:deleteOrganizations');
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
