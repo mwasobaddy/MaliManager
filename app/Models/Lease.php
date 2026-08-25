@@ -143,8 +143,10 @@ class Lease extends Model implements HasMedia
         return $query->where('status', 'ended')->orWhereNotNull('ends_at');
     }
 
-    public function scopeForPerson(Builder $query, int $personId): Builder
+    public function scopeForPerson(Builder $query, int|Person $person): Builder
     {
+        $personId = $person instanceof Person ? $person->id : $person;
+
         return $query->where('person_id', $personId);
     }
 }

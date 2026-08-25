@@ -32,6 +32,7 @@ class Person extends Model
         'email',
         'phone',
         'national_id',
+        'gender',
         'status',
         'created_by',
     ];
