@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\DashboardService;
 use App\Services\PropertyAccessService;
 use App\Support\TenancyContext;
 use Illuminate\Http\Request;
@@ -11,9 +12,10 @@ use Inertia\Response;
 class DashboardController extends Controller
 {
     /**
-     * The central landing page. When the authenticated user can access more
-     * than one property across their organizations, the cross-organization
-     * property picker is opened automatically so they can choose where to go.
+     * The central landing page. When the authenticated user can access any
+     * property across their organizations, the cross-organization property
+     * picker is opened automatically so they can choose between staying on
+     * the admin dashboard or entering a property.
      */
     public function index(Request $request): Response
     {
@@ -26,8 +28,11 @@ class DashboardController extends Controller
 
         $properties = app(PropertyAccessService::class)->allProperties($user);
 
-        return Inertia::render('dashboard', [
-            'autoOpenPropertyPicker' => $properties->count() > 1,
-        ]);
+        return Inertia::render('dashboard', array_merge(
+            app(DashboardService::class)->payload($user),
+            [
+                'autoOpenPropertyPicker' => $properties->isNotEmpty(),
+            ],
+        ));
     }
 }
