@@ -45,11 +45,9 @@ export function AppSidebar() {
     const canManageOccupants = context?.permissions?.includes('occupant.manage') ?? false;
     const canManageLandParcels = context?.permissions?.includes('land_parcel.manage') ?? false;
     const canViewAudit = context?.permissions?.includes('audit.view') ?? false;
-    const authUser = (
-            usePage().props.auth as unknown as { user?: { can(gate: string): boolean } | null }
-        )?.user;
-    const canManageRoles = authUser?.can('manageRoles') ?? false;
-    const canViewAnyAudit = authUser?.can('viewAnyAudit') ?? false;
+    const authPermissions = usePage().props.auth?.permissions ?? [];
+    const canManageRoles = authPermissions.includes('manage roles');
+    const canViewAnyAudit = authPermissions.includes('view audit');
 
     const mainNavItems: NavItem[] = property
         ? [
