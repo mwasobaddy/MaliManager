@@ -21,7 +21,9 @@ type Audit = {
 
 type Paginator = {
     data: Audit[];
-    meta: { current_page: number; last_page: number; total: number };
+    current_page: number;
+    last_page: number;
+    total: number;
 };
 
 type Props = {
@@ -205,25 +207,25 @@ export default function AdminAuditIndex({ audits, filters, canExport, options }:
                             </div>
                         )}
 
-                        {audits.meta.last_page > 1 && (
+                        {audits.last_page > 1 && (
                             <div className="mt-4 flex items-center justify-between text-sm">
                                 <span className="text-muted-foreground">
-                                    Page {audits.meta.current_page} of {audits.meta.last_page}
+                                    Page {audits.current_page} of {audits.last_page}
                                 </span>
                                 <div className="flex gap-2">
                                     <Button
                                         variant="outline"
                                         size="sm"
-                                        disabled={audits.meta.current_page <= 1}
-                                        onClick={() => goToPage(audits.meta.current_page - 1)}
+                                        disabled={audits.current_page <= 1}
+                                        onClick={() => goToPage(audits.current_page - 1)}
                                     >
                                         Previous
                                     </Button>
                                     <Button
                                         variant="outline"
                                         size="sm"
-                                        disabled={audits.meta.current_page >= audits.meta.last_page}
-                                        onClick={() => goToPage(audits.meta.current_page + 1)}
+                                        disabled={audits.current_page >= audits.last_page}
+                                        onClick={() => goToPage(audits.current_page + 1)}
                                     >
                                         Next
                                     </Button>
