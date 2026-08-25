@@ -8,11 +8,6 @@ namespace App\Enums;
  */
 enum SubPermissionKey: string
 {
-    case UserManage = 'user.manage';
-    case UserCreate = 'user.create';
-    case UserEdit = 'user.edit';
-    case UserDelete = 'user.delete';
-
     case PropertyManage = 'property.manage';
     case PropertyCreate = 'property.create';
     case PropertyEdit = 'property.edit';
@@ -64,7 +59,6 @@ enum SubPermissionKey: string
     public function module(): string
     {
         return match ($this) {
-            self::UserManage, self::UserCreate, self::UserEdit, self::UserDelete => 'user',
             self::PropertyManage, self::PropertyCreate, self::PropertyEdit, self::PropertyDelete, self::PropertyDelegate => 'property',
             self::UnitManage, self::UnitCreate, self::UnitEdit, self::UnitDelete, self::UnitDelegate => 'unit',
             self::LandParcelManage, self::LandParcelCreate, self::LandParcelEdit, self::LandParcelDelete, self::LandParcelDelegate => 'land_parcel',
@@ -84,10 +78,6 @@ enum SubPermissionKey: string
     public function label(): string
     {
         return match ($this) {
-            self::UserManage => 'Manage users',
-            self::UserCreate => 'Create users',
-            self::UserEdit => 'Edit users',
-            self::UserDelete => 'Delete users',
             self::PropertyManage => 'Manage properties',
             self::PropertyCreate => 'Create properties',
             self::PropertyEdit => 'Edit properties',

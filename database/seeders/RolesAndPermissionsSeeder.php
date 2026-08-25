@@ -38,6 +38,13 @@ class RolesAndPermissionsSeeder extends Seeder
             $adminRole->permissions()->sync($permissionIds, detaching: false);
         }
 
+        // Each non-admin platform role gets the metrics permission that
+        // unlocks its dashboard tab. Owners and staff share the org tab;
+        // searchers and occupants get their own.
+        $this->grant($permissionIds, PlatformRole::OrganizationOwner, PlatformPermissionKey::ViewOrgMetrics);
+        $this->grant($permissionIds, PlatformRole::Searcher, PlatformPermissionKey::ViewSearcherMetrics);
+        $this->grant($permissionIds, PlatformRole::Occupant, PlatformPermissionKey::ViewOccupantMetrics);
+
         $sortOrder = 0;
         foreach (SubPermissionKey::cases() as $key) {
             SubPermission::withTrashed()->updateOrCreate(
@@ -48,6 +55,23 @@ class RolesAndPermissionsSeeder extends Seeder
                     'sort_order' => $sortOrder++,
                 ]
             );
+        }
+
+        // Retire catalog entries whose keys were removed from the enum
+        // (e.g. the user.* keys promoted to central permissions).
+        SubPermission::whereNotIn('key', array_column(SubPermissionKey::cases(), 'value'))->delete();
+    }
+
+    /**
+     * Give a single platform permission to a platform role without
+     * disturbing any other permissions it may hold.
+     */
+    private function grant(array $permissionIds, PlatformRole $role, PlatformPermissionKey $key): void
+    {
+        $roleModel = Role::where('name', $role->value)->first();
+
+        if ($roleModel) {
+            $roleModel->permissions()->syncWithoutDetaching([$permissionIds[$key->value]]);
         }
     }
 }
