@@ -8,6 +8,7 @@ use App\Support\AuthLanding;
 use App\Support\InertiaRedirect;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
@@ -21,7 +22,7 @@ class SocialiteController extends Controller
         return Socialite::driver($provider)->redirect();
     }
 
-    public function callback(Request $request, string $provider): RedirectResponse
+    public function callback(Request $request, string $provider): RedirectResponse|HttpResponse
     {
         try {
             $socialUser = Socialite::driver($provider)->user();
