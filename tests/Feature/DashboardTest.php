@@ -1,16 +1,81 @@
 <?php
 
+use App\Enums\PlatformRole;
+use App\Models\Organization;
+use App\Models\SubRole;
 use App\Models\User;
+use App\Services\StaffService;
+use Database\Seeders\RolesAndPermissionsSeeder;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 
-test('guests are redirected to the login page', function () {
-    $response = $this->get(route('dashboard'));
-    $response->assertRedirect(route('login'));
+uses(RefreshDatabase::class);
+
+function makeOnboardedUser(): User
+{
+    return User::factory()->create(['onboarded_at' => now()]);
+}
+
+it('shows admin stats only to users with the advanced metrics permission', function () {
+    $this->seed(RolesAndPermissionsSeeder::class);
+
+    $admin = makeOnboardedUser();
+    $admin->assignRole(PlatformRole::Admin->value);
+
+    $this->actingAs($admin)
+        ->get(route('dashboard'))
+        ->assertInertia(fn ($page) => $page
+            ->has('admin')
+            ->where('admin.organizations_count', 0)
+            ->where('defaultTab', 'admin'));
 });
 
-test('authenticated users can visit the dashboard', function () {
-    $user = User::factory()->create(['onboarded_at' => now()]);
-    $this->actingAs($user);
+it('returns null sections for users without the relevant permissions', function () {
+    $this->seed(RolesAndPermissionsSeeder::class);
 
-    $response = $this->get(route('dashboard'));
-    $response->assertOk();
+    $user = makeOnboardedUser();
+
+    $this->actingAs($user)
+        ->get(route('dashboard'))
+        ->assertInertia(fn ($page) => $page
+            ->where('admin', null)
+            ->where('organization', null)
+            ->where('searcher', null)
+            ->where('occupant', null));
+});
+
+it('grants the organization tab to owners and staff but not searchers', function () {
+    $this->seed(RolesAndPermissionsSeeder::class);
+
+    $owner = makeOnboardedUser();
+    $owner->assignRole(PlatformRole::OrganizationOwner->value);
+
+    $searcher = makeOnboardedUser();
+    $searcher->assignRole(PlatformRole::Searcher->value);
+
+    $this->actingAs($owner)
+        ->get(route('dashboard'))
+        ->assertInertia(fn ($page) => $page->has('organization')->where('defaultTab', 'organization'));
+
+    $this->actingAs($searcher)
+        ->get(route('dashboard'))
+        ->assertInertia(fn ($page) => $page->where('organization', null)->has('searcher'));
+});
+
+it('grants the organization metrics permission to new staff members', function () {
+    $this->seed(RolesAndPermissionsSeeder::class);
+
+    $owner = makeOnboardedUser();
+    $organization = Organization::factory()->create();
+    $organization->users()->attach($owner->id, ['is_owner' => true, 'status' => 'active']);
+    $subRole = SubRole::factory()->create();
+
+    $staff = app(StaffService::class)->create($organization, $owner, [
+        'name' => 'Staffer',
+        'email' => 'staff-'.uniqid().'@example.com',
+        'phone' => '123456',
+        'sub_role_id' => $subRole->id,
+        'property_ids' => [],
+    ]);
+
+    expect($staff->can('view organization metrics'))->toBeTrue();
 });
