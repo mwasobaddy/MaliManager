@@ -18,7 +18,6 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
-use Throwable;
 
 class LandParcelController extends Controller
 {
@@ -59,14 +58,8 @@ class LandParcelController extends Controller
     {
         $organization = TenancyContext::organization();
 
-        try {
-            $parcel = $service->create($organization, $request->user(), $request->validated());
-            $this->attachImages($parcel, $request);
-        } catch (Throwable $e) {
-            Inertia::flash('toast', ['type' => 'error', 'message' => 'We could not create this land parcel. Please try again.']);
-
-            return back();
-        }
+        $parcel = $service->create($organization, $request->user(), $request->validated());
+        $this->attachImages($parcel, $request);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Land parcel created.']);
 
@@ -109,14 +102,8 @@ class LandParcelController extends Controller
     {
         $this->authorizeAccess($request, $landParcel);
 
-        try {
-            $service->update($landParcel, $request->user(), $request->validated());
-            $this->syncImages($landParcel, $request);
-        } catch (Throwable $e) {
-            Inertia::flash('toast', ['type' => 'error', 'message' => 'We could not update this land parcel. Please try again.']);
-
-            return back();
-        }
+        $service->update($landParcel, $request->user(), $request->validated());
+        $this->syncImages($landParcel, $request);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Land parcel updated.']);
 
@@ -129,13 +116,7 @@ class LandParcelController extends Controller
     {
         $this->authorizeAccess($request, $landParcel);
 
-        try {
-            $service->softDelete($landParcel);
-        } catch (Throwable $e) {
-            Inertia::flash('toast', ['type' => 'error', 'message' => 'We could not delete this land parcel. Please try again.']);
-
-            return back();
-        }
+        $service->softDelete($landParcel);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Land parcel removed.']);
 

@@ -15,7 +15,6 @@ use App\Support\TenancyContext;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 use Inertia\Response;
-use Throwable;
 
 class StaffController extends Controller
 {
@@ -62,13 +61,7 @@ class StaffController extends Controller
     {
         $organization = TenancyContext::organization();
 
-        try {
-            $user = $staffService->create($organization, $request->user(), $request->validated());
-        } catch (Throwable $e) {
-            Inertia::flash('toast', ['type' => 'error', 'message' => 'We could not add this staff member. Please try again.']);
-
-            return back();
-        }
+        $user = $staffService->create($organization, $request->user(), $request->validated());
 
         activity()->inLog('staff')
             ->causedBy($request->user())
@@ -110,13 +103,7 @@ class StaffController extends Controller
     {
         $organization = TenancyContext::organization();
 
-        try {
-            $staffService->update($organization, $staff, $request->user(), $request->validated());
-        } catch (Throwable $e) {
-            Inertia::flash('toast', ['type' => 'error', 'message' => 'We could not update this staff member. Please try again.']);
-
-            return back();
-        }
+        $staffService->update($organization, $staff, $request->user(), $request->validated());
 
         activity()->inLog('staff')
             ->causedBy($request->user())
@@ -133,13 +120,7 @@ class StaffController extends Controller
     {
         $organization = TenancyContext::organization();
 
-        try {
-            $staffService->softDelete($organization, $staff, $request->user());
-        } catch (Throwable $e) {
-            Inertia::flash('toast', ['type' => 'error', 'message' => 'We could not delete this staff member. Please try again.']);
-
-            return back();
-        }
+        $staffService->softDelete($organization, $staff, $request->user());
 
         activity()->inLog('staff')
             ->causedBy($request->user())

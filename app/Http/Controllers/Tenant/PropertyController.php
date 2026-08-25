@@ -16,7 +16,6 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
-use Throwable;
 
 class PropertyController extends Controller
 {
@@ -95,21 +94,11 @@ class PropertyController extends Controller
             return back();
         }
 
-        try {
-            $property = $propertyService->create(
-                $organization,
-                $request->user(),
-                $request->validated(),
-            );
-        } catch (\DomainException $e) {
-            Inertia::flash('toast', ['type' => 'error', 'message' => $e->getMessage()]);
-
-            return back();
-        } catch (Throwable) {
-            Inertia::flash('toast', ['type' => 'error', 'message' => 'We could not create this property. Please try again.']);
-
-            return back();
-        }
+        $property = $propertyService->create(
+            $organization,
+            $request->user(),
+            $request->validated(),
+        );
 
         return redirect()->to(AuthLanding::property(
             $organization,

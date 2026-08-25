@@ -198,3 +198,29 @@ test('unauthenticated guests are redirected from tenant property pages', functio
     $this->get(tenantUrl($organization, '/properties'))
         ->assertRedirect(route('login'));
 });
+
+test('exceeding the plan unit limit surfaces a toast from the global handler', function () {
+    $user = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createTestOrganization($user);
+    $property = $organization->properties()->create([
+        'name' => 'First Estate',
+        'slug' => 'first-estate',
+        'status' => 'active',
+        'created_by' => $user->id,
+    ]);
+    for ($i = 1; $i <= 10; $i++) {
+        $property->units()->create(['name' => 'U'.$i]);
+    }
+
+    $this->actingAs($user)
+        ->post(tenantUrl($organization, '/first-estate/units'), [
+            'name' => 'Overflow Unit',
+        ])
+        ->assertRedirect()
+        ->assertSessionHas('inertia.flash_data', fn (array $flash) => str_contains(
+            $flash['toast']['message'] ?? '',
+            'allows up to 10 units',
+        ));
+
+    expect($property->units()->count())->toBe(10);
+});

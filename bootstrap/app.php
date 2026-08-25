@@ -47,18 +47,33 @@ return Application::configure(basePath: dirname(__DIR__))
                 return $response;
             }
 
-            if ($e instanceof HttpException && $e->getStatusCode() === 403) {
-                $message = $e->getMessage() !== ''
-                    ? $e->getMessage()
-                    : 'You do not have permission to perform this action.';
-
-                $redirect = $request->headers->get('referer')
-                    ? redirect()->back()
-                    : redirect()->route('dashboard');
-
+            $toastBack = function (string $message) use ($request): Response {
                 Inertia::flash('toast', ['type' => 'error', 'message' => $message]);
 
-                return $redirect;
+                return $request->headers->get('referer')
+                    ? redirect()->back()
+                    : redirect()->route('dashboard');
+            };
+
+            // Domain-rule failures thrown by services surface as a toast.
+            if ($e instanceof DomainException) {
+                return $toastBack($e->getMessage());
+            }
+
+            if ($e instanceof HttpException && $e->getStatusCode() === 403) {
+                return $toastBack(
+                    $e->getMessage() !== ''
+                        ? $e->getMessage()
+                        : 'You do not have permission to perform this action.',
+                );
+            }
+
+            // Custom aborts carrying a user-facing message (e.g. self-delete
+            // guards) become toasts as well; framework pages like 404/429
+            // remain real responses. ValidationException is not an
+            // HttpException and keeps rendering inline form errors.
+            if ($e instanceof HttpException && $e->getStatusCode() === 422 && $e->getMessage() !== '') {
+                return $toastBack($e->getMessage());
             }
 
             if ($response->getStatusCode() === 500 && ! config('app.debug')) {
