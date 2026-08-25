@@ -1,8 +1,9 @@
-import { Form, Head, Link } from '@inertiajs/react';
+import { Form, Head, Link, usePage } from '@inertiajs/react';
 import { DoorOpen } from 'lucide-react';
 import { useState } from 'react';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
+import RichTextEditor from '@/components/rich-text-editor';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -14,6 +15,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import agreementTemplates from '@/routes/tenant/agreement-templates';
 import { index as occupantsIndex, store } from '@/routes/tenant/occupants';
 
 type Property = {
@@ -29,16 +31,71 @@ type Unit = {
     status: string;
 };
 
+type AgreementTemplateOption = {
+    id: number;
+    name: string;
+    body_html: string;
+};
+
 type Props = {
     property: Property;
     units: Unit[];
+    templates: AgreementTemplateOption[];
 };
 
-export default function OccupantCreate({ property, units }: Props) {
+export default function OccupantCreate({ property, units, templates }: Props) {
+    const { context } = usePage().props;
+    const canManageTemplates = (context?.permissions ?? []).includes('lease.manage_templates');
+    const [templateList, setTemplateList] = useState<AgreementTemplateOption[]>(templates);
+    const [selectedTemplateId, setSelectedTemplateId] = useState('');
+    const [newTemplateName, setNewTemplateName] = useState('');
+    const [savingTemplate, setSavingTemplate] = useState(false);
     const [status, setStatus] = useState('active');
     const [unitIds, setUnitIds] = useState<number[]>([]);
     const [rentFrequency, setRentFrequency] = useState('monthly');
     const [currency, setCurrency] = useState('KES');
+    const [agreementText, setAgreementText] = useState('<p></p>');
+
+    const applyTemplate = (id: string) => {
+        setSelectedTemplateId(id);
+
+        if (!id) {
+            return;
+        }
+
+        const template = templateList.find((t) => String(t.id) === id);
+
+        if (template) {
+            setAgreementText(template.body_html);
+        }
+    };
+
+    const saveAsTemplate = () => {
+        if (!newTemplateName.trim()) {
+            return;
+        }
+
+        const csrf = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '';
+
+        setSavingTemplate(true);
+        fetch(agreementTemplates.store({ property: property.slug }).url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+                'X-CSRF-TOKEN': csrf,
+            },
+            body: JSON.stringify({ name: newTemplateName.trim(), body_html: agreementText }),
+        })
+            .then((response) => response.json())
+            .then((data: { template: AgreementTemplateOption }) => {
+                setTemplateList((prev) => [...prev, data.template]);
+                setSelectedTemplateId(String(data.template.id));
+                setNewTemplateName('');
+            })
+            .finally(() => setSavingTemplate(false));
+    };
+
 
     const toggleUnit = (id: number) => {
         setUnitIds((prev) =>
@@ -224,15 +281,73 @@ export default function OccupantCreate({ property, units }: Props) {
 
                                     <div className="grid gap-2 md:col-span-2">
                                         <Label htmlFor="lease.agreement_text">
-                                            Agreement notes (optional)
+                                            Lease agreement (optional)
                                         </Label>
-                                        <textarea
-                                            id="lease.agreement_text"
+
+                                        {templateList.length > 0 && (
+                                            <div className="grid gap-1">
+                                                <Label htmlFor="template_picker" className="text-xs text-muted-foreground">
+                                                    Start from a saved template
+                                                </Label>
+                                                <Select value={selectedTemplateId} onValueChange={applyTemplate}>
+                                                    <SelectTrigger id="template_picker">
+                                                        <SelectValue placeholder="Pick a template…" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {templateList.map((template) => (
+                                                            <SelectItem key={template.id} value={String(template.id)}>
+                                                                {template.name}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                        )}
+
+                                        <RichTextEditor
                                             name="lease[agreement_text]"
-                                            rows={3}
-                                            className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                                            placeholder="Any standing agreement details for this rental."
+                                            value={agreementText}
+                                            onChange={setAgreementText}
+                                            placeholder="Write the lease agreement. Formatting is preserved."
                                         />
+
+                                        {canManageTemplates && (
+                                            <div className="flex items-end gap-2">
+                                                <div className="grid flex-1 gap-1">
+                                                    <Label htmlFor="new_template_name" className="text-xs text-muted-foreground">
+                                                        Save current text as template
+                                                    </Label>
+                                                    <Input
+                                                        id="new_template_name"
+                                                        value={newTemplateName}
+                                                        onChange={(e) => setNewTemplateName(e.target.value)}
+                                                        placeholder="Template name"
+                                                    />
+                                                </div>
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    disabled={savingTemplate || !newTemplateName.trim()}
+                                                    onClick={saveAsTemplate}
+                                                >
+                                                    Save template
+                                                </Button>
+                                            </div>
+                                        )}
+
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="lease.agreement_document">
+                                                Or upload a ready-made agreement (PDF/DOCX, max 10MB)
+                                            </Label>
+                                            <Input
+                                                id="lease.agreement_document"
+                                                name="lease[agreement_document]"
+                                                type="file"
+                                                accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                                            />
+                                            <InputError message={errors['lease.agreement_document']} />
+                                        </div>
+
                                         <InputError message={errors['lease.agreement_text']} />
                                     </div>
                                 </div>

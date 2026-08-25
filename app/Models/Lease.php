@@ -38,6 +38,19 @@ class Lease extends Model implements HasMedia
 {
     use HasFactory, InteractsWithMedia, LogsTenantActivity;
 
+    public function registerMediaCollections(): void
+    {
+        // A ready-made lease agreement uploaded by the owner. Single file:
+        // a newly uploaded agreement replaces the previous one.
+        $this->addMediaCollection('agreement')
+            ->singleFile()
+            ->acceptsMimeTypes([
+                'application/pdf',
+                'application/msword',
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            ]);
+    }
+
     protected $fillable = [
         'person_id',
         'organization_id',
@@ -140,7 +153,11 @@ class Lease extends Model implements HasMedia
 
     public function scopeEnded(Builder $query): Builder
     {
-        return $query->where('status', 'ended')->orWhereNotNull('ends_at');
+        // Parenthesized so the orWhere cannot escape surrounding constraints
+        // (e.g. a person_id filter) via operator precedence.
+        return $query->where(function (Builder $inner): void {
+            $inner->where('status', 'ended')->orWhereNotNull('ends_at');
+        });
     }
 
     public function scopeForPerson(Builder $query, int|Person $person): Builder

@@ -4,6 +4,7 @@ import { useRef, useState } from 'react';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import PasswordInput from '@/components/password-input';
+import RichTextEditor from '@/components/rich-text-editor';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -24,7 +25,9 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import agreementTemplatesRoutes from '@/routes/tenant/agreement-templates';
 import {
+    agreement as agreementRoute,
     destroy as destroyOccupant,
     index as occupantsIndex,
     moveOut,
@@ -57,6 +60,14 @@ type Lease = {
     deposit: number | null;
     currency: string | null;
     agreement_text: string | null;
+    agreement_document_name?: string | null;
+    agreement_document_url?: string | null;
+};
+
+type AgreementTemplateOption = {
+    id: number;
+    name: string;
+    body_html: string;
 };
 
 type Occupant = {
@@ -76,23 +87,70 @@ type Props = {
     property: Property;
     occupant: Occupant;
     units: Unit[];
+    templates: AgreementTemplateOption[];
 };
 
-export default function OccupantEdit({ organization, property, occupant, units }: Props) {
+export default function OccupantEdit({ organization, property, occupant, units, templates }: Props) {
     const { context } = usePage().props;
     const permissions = context?.permissions ?? [];
     const canDelete = permissions.includes('occupant.delete');
     const canMoveOut = permissions.includes('occupant.edit');
+    const canManageTemplates = permissions.includes('lease.manage_templates');
     const passwordInput = useRef<HTMLInputElement>(null);
+    const [templateList, setTemplateList] = useState<AgreementTemplateOption[]>(templates);
+    const [selectedTemplateId, setSelectedTemplateId] = useState('');
+    const [newTemplateName, setNewTemplateName] = useState('');
+    const [savingTemplate, setSavingTemplate] = useState(false);
     const [status, setStatus] = useState(occupant.status);
     const [unitIds, setUnitIds] = useState<number[]>(occupant.unit_ids);
     const [rentFrequency, setRentFrequency] = useState(occupant.lease?.rent_frequency ?? 'monthly');
     const [currency, setCurrency] = useState(occupant.lease?.currency ?? 'KES');
+    const [agreementText, setAgreementText] = useState(occupant.lease?.agreement_text ?? '<p></p>');
 
     const toggleUnit = (id: number) => {
         setUnitIds((prev) =>
             prev.includes(id) ? prev.filter((uid) => uid !== id) : [...prev, id],
         );
+    };
+
+    const applyTemplate = (id: string) => {
+        setSelectedTemplateId(id);
+
+        if (!id) {
+            return;
+        }
+
+        const template = templateList.find((t) => String(t.id) === id);
+
+        if (template) {
+            setAgreementText(template.body_html);
+        }
+    };
+
+    const saveAsTemplate = () => {
+        if (!newTemplateName.trim()) {
+            return;
+        }
+
+        const csrf = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '';
+
+        setSavingTemplate(true);
+        fetch(agreementTemplatesRoutes.store({ property: property.slug }).url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+                'X-CSRF-TOKEN': csrf,
+            },
+            body: JSON.stringify({ name: newTemplateName.trim(), body_html: agreementText }),
+        })
+            .then((response) => response.json())
+            .then((data: { template: AgreementTemplateOption }) => {
+                setTemplateList((prev) => [...prev, data.template]);
+                setSelectedTemplateId(String(data.template.id));
+                setNewTemplateName('');
+            })
+            .finally(() => setSavingTemplate(false));
     };
 
     return (
@@ -274,17 +332,121 @@ export default function OccupantEdit({ organization, property, occupant, units }
 
                                     <div className="grid gap-2 md:col-span-2">
                                         <Label htmlFor="lease.agreement_text">
-                                            Agreement notes (optional)
+                                            Lease agreement (optional)
                                         </Label>
-                                        <textarea
-                                            id="lease.agreement_text"
+
+                                        {templateList.length > 0 && (
+                                            <div className="grid gap-1">
+                                                <Label htmlFor="template_picker" className="text-xs text-muted-foreground">
+                                                    Start from a saved template
+                                                </Label>
+                                                <Select value={selectedTemplateId} onValueChange={applyTemplate}>
+                                                    <SelectTrigger id="template_picker">
+                                                        <SelectValue placeholder="Pick a template…" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {templateList.map((template) => (
+                                                            <SelectItem key={template.id} value={String(template.id)}>
+                                                                {template.name}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                        )}
+
+                                        <RichTextEditor
                                             name="lease[agreement_text]"
-                                            rows={3}
-                                            defaultValue={occupant.lease?.agreement_text ?? ''}
-                                            className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                                            placeholder="Any standing agreement details for this rental."
+                                            value={agreementText}
+                                            onChange={setAgreementText}
+                                            placeholder="Write the lease agreement. Formatting is preserved."
                                         />
+
+                                        {occupant.lease?.agreement_document_url && (
+                                            <div className="flex items-center gap-3 text-sm">
+                                                <a
+                                                    href={occupant.lease.agreement_document_url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-primary underline"
+                                                >
+                                                    {occupant.lease.agreement_document_name ?? 'Uploaded agreement'}
+                                                </a>
+                                                <label className="flex items-center gap-1 text-muted-foreground">
+                                                    <input
+                                                        type="checkbox"
+                                                        name="lease[remove_agreement_document]"
+                                                        value="1"
+                                                    />
+                                                    Remove
+                                                </label>
+                                            </div>
+                                        )}
+
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="lease.agreement_document">
+                                                {occupant.lease?.agreement_document_url
+                                                    ? 'Replace with a new file (PDF/DOCX, max 10MB)'
+                                                    : 'Or upload a ready-made agreement (PDF/DOCX, max 10MB)'}
+                                            </Label>
+                                            <Input
+                                                id="lease.agreement_document"
+                                                name="lease[agreement_document]"
+                                                type="file"
+                                                accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                                            />
+                                            <InputError message={errors['lease.agreement_document']} />
+                                        </div>
+
                                         <InputError message={errors['lease.agreement_text']} />
+
+                                        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                                            <span>
+                                                Placeholders: <code>{'{{occupant_name}}'}</code>,{' '}
+                                                <code>{'{{property_name}}'}</code>,{' '}
+                                                <code>{'{{unit_name}}'}</code>,{' '}
+                                                <code>{'{{rent_amount}}'}</code>,{' '}
+                                                <code>{'{{currency}}'}</code>,{' '}
+                                                <code>{'{{start_date}}'}</code>…
+                                            </span>
+
+                                            {canManageTemplates && (
+                                                <div className="flex items-end gap-2">
+                                                    <div className="grid gap-1">
+                                                        <Label htmlFor="new_template_name" className="sr-only">
+                                                            Template name
+                                                        </Label>
+                                                        <Input
+                                                            id="new_template_name"
+                                                            value={newTemplateName}
+                                                            onChange={(e) => setNewTemplateName(e.target.value)}
+                                                            placeholder="Template name"
+                                                        />
+                                                    </div>
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        size="sm"
+                                                        disabled={savingTemplate || !newTemplateName.trim()}
+                                                        onClick={saveAsTemplate}
+                                                    >
+                                                        Save as template
+                                                    </Button>
+                                                </div>
+                                            )}
+
+                                            {permissions.includes('occupant.edit') && (
+                                                <a
+                                                    href={agreementRoute({ property: property.slug, occupant: occupant.id }).url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-primary underline"
+                                                    data-test="print-agreement-link"
+                                                >
+                                                    View / print filled agreement
+                                                </a>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
