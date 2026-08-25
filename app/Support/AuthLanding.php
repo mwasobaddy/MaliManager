@@ -15,14 +15,14 @@ use Inertia\Inertia;
  * onboarding:
  *
  *  - un-onboarded users go to the onboarding wizard
- *  - organization owners go to their tenant subdomain (property
- *    picker each visit; a fresh org with no properties lands on the
- *    mandatory "add your first property" page)
- *  - staff (non-owner members with a sub-role) go to their org's
- *    subdomain: straight to their single assigned property, or the
- *    property picker when they manage several, or the picker with a
- *    toast when nothing is assigned yet
- *  - occupants go to the central dashboard
+ *  - anyone with at least one accessible property goes to the central
+ *    dashboard, which opens the property picker so they can choose to
+ *    stay on the admin dashboard or enter any property
+ *  - owners of a fresh org with no properties land on the mandatory
+ *    "add your first property" page
+ *  - staff with no delegations go to their org's properties page with
+ *    a warning toast
+ *  - occupants and everyone else go to the central dashboard
  */
 class AuthLanding
 {
@@ -36,17 +36,11 @@ class AuthLanding
         $organizations = $access->organizationsWithProperties($user);
         $properties = self::flattenProperties($organizations);
 
-        if ($properties->count() === 1) {
-            $property = $properties->first();
-            $organization = self::organizationForProperty($organizations, $property['id']);
-
-            return self::property(Organization::find($organization['id']), $property['slug'], $request);
-        }
-
-        if ($properties->count() > 1) {
-            // More than one accessible property across all organizations:
-            // send the user to the central dashboard, which surfaces the
-            // cross-organization property picker.
+        if ($properties->isNotEmpty()) {
+            // The user can access at least one property across their
+            // organizations: land on the central dashboard, which opens the
+            // cross-organization property picker so they can choose between
+            // staying on the admin dashboard or entering a property.
             return route('dashboard');
         }
 
@@ -73,16 +67,6 @@ class AuthLanding
     private static function flattenProperties(array $organizations): Collection
     {
         return collect($organizations)->flatMap(fn (array $organization): array => $organization['properties']);
-    }
-
-    /**
-     * @param  array<int, array{id: int, properties: array<int, array{id: int}>}>  $organizations
-     * @return array{id: int}
-     */
-    private static function organizationForProperty(array $organizations, int $propertyId): array
-    {
-        return collect($organizations)
-            ->first(fn (array $organization): bool => collect($organization['properties'])->contains('id', $propertyId));
     }
 
     /**
