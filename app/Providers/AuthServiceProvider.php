@@ -41,6 +41,28 @@ class AuthServiceProvider extends ServiceProvider
         });
 
         Gate::define('manageRoles', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::ManageRoles->value));
+        Gate::define('accessAdminDashboard', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::AccessAdminDashboard->value));
+
+        Gate::define('viewAdvancedMetrics', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::ViewAdvancedMetrics->value));
+        Gate::define('viewOrgMetrics', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::ViewOrgMetrics->value));
+        Gate::define('viewSearcherMetrics', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::ViewSearcherMetrics->value));
+        Gate::define('viewOccupantMetrics', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::ViewOccupantMetrics->value));
+
+        // Central user management module.
+        Gate::define('manageUsers', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::UserManage->value));
+        Gate::define('createUsers', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::UserCreate->value));
+        Gate::define('editUsers', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::UserEdit->value));
+        Gate::define('deleteUsers', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::UserDelete->value));
+        Gate::define('exportUsers', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::UserExport->value));
+        Gate::define('importUsers', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::UserImport->value));
+
+        // Central organization management module.
+        Gate::define('manageOrganizations', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::OrganizationManage->value));
+        Gate::define('createOrganizations', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::OrganizationCreate->value));
+        Gate::define('editOrganizations', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::OrganizationEdit->value));
+        Gate::define('deleteOrganizations', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::OrganizationDelete->value));
+        Gate::define('exportOrganizations', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::OrganizationExport->value));
+        Gate::define('importOrganizations', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::OrganizationImport->value));
 
         Gate::policy(Lease::class, LeasePolicy::class);
     }
