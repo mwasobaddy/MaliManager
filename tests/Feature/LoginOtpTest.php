@@ -169,3 +169,20 @@ test('resend generates a new code when the previous one has expired', function (
 test('resend requires a stored email', function () {
     $this->post(route('login.otp.resend'))->assertRedirect(route('login'));
 });
+
+test('verify returns a 409 inertia location when the landing is cross-domain', function () {
+    Mail::fake();
+
+    $user = User::factory()->create(['email' => 'existing@example.com', 'onboarded_at' => now()]);
+    $code = app(OtpService::class)->issue($user);
+
+    session(['login.email' => 'existing@example.com']);
+    session(['url.intended' => 'http://tenant.example.test/dashboard']);
+
+    $this->withHeader('X-Inertia', 'true')
+        ->post(route('login.otp.verify'), ['code' => $code])
+        ->assertStatus(409)
+        ->assertHeader('X-Inertia-Location', 'http://tenant.example.test/dashboard');
+
+    $this->assertAuthenticatedAs($user);
+});

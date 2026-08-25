@@ -10,6 +10,7 @@ use App\Support\InertiaRedirect;
 use App\Support\OtpService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -31,7 +32,7 @@ class OtpController extends Controller
         ]);
     }
 
-    public function verify(OtpVerifyRequest $request, OtpService $otpService): RedirectResponse
+    public function verify(OtpVerifyRequest $request, OtpService $otpService): RedirectResponse|HttpResponse
     {
         $email = $request->session()->get('login.email');
 
