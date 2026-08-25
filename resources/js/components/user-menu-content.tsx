@@ -1,5 +1,6 @@
 import { Link, router } from '@inertiajs/react';
-import { LogOut, Settings } from 'lucide-react';
+import { ArrowLeftRight, LogOut, Settings } from 'lucide-react';
+import { usePropertyPicker } from '@/components/property-picker-dialog';
 import {
     DropdownMenuGroup,
     DropdownMenuItem,
@@ -18,6 +19,7 @@ type Props = {
 
 export function UserMenuContent({ user }: Props) {
     const cleanup = useMobileNavigation();
+    const { open, hasProperties } = usePropertyPicker();
 
     const handleLogout = () => {
         cleanup();
@@ -32,6 +34,20 @@ export function UserMenuContent({ user }: Props) {
                 </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
+            {hasProperties && (
+                <DropdownMenuGroup>
+                    <DropdownMenuItem
+                        className="cursor-pointer"
+                        onSelect={() => {
+                            cleanup();
+                            open();
+                        }}
+                    >
+                        <ArrowLeftRight className="mr-2" />
+                        Switch property
+                    </DropdownMenuItem>
+                </DropdownMenuGroup>
+            )}
             <DropdownMenuGroup>
                 <DropdownMenuItem asChild>
                     <Link
