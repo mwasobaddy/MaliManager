@@ -9,6 +9,7 @@ use App\Services\PropertyAccessService;
 use App\Support\AuthLanding;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 uses(RefreshDatabase::class);
@@ -125,4 +126,55 @@ it('returns the dashboard when the user has no accessible properties', function 
     $landing = AuthLanding::for($user, Request::create('/'));
 
     expect(Str::contains($landing, 'dashboard'))->toBeTrue();
+});
+
+it('resolves property access with a bounded query count regardless of organization count', function () {
+    $owner = onboardedUser();
+    $staff = onboardedUser();
+
+    $organizations = collect([
+        Organization::factory()->create(),
+        Organization::factory()->create(),
+        Organization::factory()->create(),
+        Organization::factory()->create(),
+        Organization::factory()->create(),
+    ]);
+
+    foreach ($organizations as $index => $organization) {
+        $organization->tenant->domains()->create(['domain' => $organization->slug.'.malimanager.test']);
+        $organization->properties()->createMany(collect(range(1, 3))->map(fn (int $i) => [
+            'name' => "Property {$i}",
+            'slug' => "property-{$i}",
+            'status' => 'active',
+            'created_by' => $owner->id,
+        ])->all());
+
+        if ($index === 0) {
+            $organization->users()->attach($owner->id, ['is_owner' => true, 'status' => 'active']);
+
+            continue;
+        }
+
+        $organization->users()->attach($staff->id, ['is_owner' => false, 'status' => 'active']);
+    }
+
+    // The staff member is delegated to one property per staff organization.
+    foreach ($organizations->skip(1) as $organization) {
+        Delegation::create([
+            'organization_user_id' => $staff->membershipFor($organization)->id,
+            'organization_id' => $organization->id,
+            'delegatable_type' => Property::class,
+            'delegatable_id' => $organization->properties()->first()->id,
+        ]);
+    }
+
+    DB::enableQueryLog();
+    app(PropertyAccessService::class)->organizationsWithProperties($owner);
+    app(PropertyAccessService::class)->organizationsWithProperties($staff);
+    $queryCount = count(DB::getQueryLog());
+    DB::disableQueryLog();
+
+    // Bounded regardless of N: orgs+domains, owner properties, delegations,
+    // delegated properties. Grows O(1), not O(N).
+    expect($queryCount)->toBeLessThan(12);
 });

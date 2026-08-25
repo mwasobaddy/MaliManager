@@ -26,10 +26,11 @@ class DashboardController extends Controller
             return Inertia::render('dashboard');
         }
 
-        $properties = app(PropertyAccessService::class)->allProperties($user);
+        $access = app(PropertyAccessService::class)->organizationsWithProperties($user);
+        $properties = collect($access)->flatMap(fn (array $organization) => $organization['properties']);
 
         return Inertia::render('dashboard', array_merge(
-            app(DashboardService::class)->payload($user),
+            app(DashboardService::class)->payload($user, $access),
             [
                 'autoOpenPropertyPicker' => $properties->isNotEmpty(),
             ],
