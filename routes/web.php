@@ -5,6 +5,7 @@ use App\Http\Controllers\Audit\PlatformAuditController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\OtpController;
 use App\Http\Controllers\Auth\SocialiteController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LeaseController;
 use App\Http\Controllers\OnboardingController;
 use Illuminate\Support\Facades\Route;
@@ -51,7 +52,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('auth/onboarding', [OnboardingController::class, 'show'])->name('onboarding.show');
     Route::post('auth/onboarding', [OnboardingController::class, 'complete'])->name('onboarding.complete');
 
-    Route::inertia('dashboard', 'dashboard')->name('dashboard')->middleware('onboarded');
+    Route::get('dashboard', [DashboardController::class, 'index'])
+        ->name('dashboard')
+        ->middleware('onboarded');
 
     Route::get('setup/first-asset', [OnboardingController::class, 'firstAsset'])
         ->name('onboarding.first-asset')
