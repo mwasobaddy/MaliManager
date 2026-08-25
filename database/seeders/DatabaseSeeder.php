@@ -24,5 +24,10 @@ class DatabaseSeeder extends Seeder
 
         $this->call(RolesAndPermissionsSeeder::class);
         $this->call(PlansSeeder::class);
+
+        $this->call(AdminSeeder::class);
+        $this->call(OrganizationSeeder::class);
+        $this->call(StaffSeeder::class);
+        $this->call(OccupantSeeder::class);
     }
 }

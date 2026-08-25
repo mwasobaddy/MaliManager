@@ -9,6 +9,7 @@ use App\Models\SubPermission;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
 
 class RolesAndPermissionsSeeder extends Seeder
 {
@@ -17,6 +18,9 @@ class RolesAndPermissionsSeeder extends Seeder
      */
     public function run(): void
     {
+        // Ensure a stale permission cache doesn't cause duplicate inserts.
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
         foreach (PlatformRole::cases() as $role) {
             Role::findOrCreate($role->value);
         }
