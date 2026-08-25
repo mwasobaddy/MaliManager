@@ -4,10 +4,12 @@ namespace App\Http\Controllers\Users;
 
 use App\Enums\PlatformRole;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Users\DestroyUserRequest;
 use App\Http\Requests\Users\StoreUserRequest;
 use App\Http\Requests\Users\UpdateUserRequest;
 use App\Models\User;
 use App\Services\UserService;
+use App\Support\Search;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -23,11 +25,7 @@ class UserController extends Controller
             ->with('person:id,first_name,last_name,email,phone,national_id,gender,status')
             ->with('roles:id,name')
             ->when($request->string('search')->trim(), function ($query, string $search) {
-                $query->where(function ($query) use ($search) {
-                    $query->where('name', 'like', "%{$search}%")
-                        ->orWhere('email', 'like', "%{$search}%")
-                        ->orWhere('phone', 'like', "%{$search}%");
-                });
+                Search::apply($query, $search, ['name', 'email', 'phone']);
             })
             ->when($request->string('status')->toString() !== '', fn ($query) => $query->where('status', $request->string('status')))
             ->when($request->string('role')->toString() !== '', fn ($query) => $query->whereHas('roles', fn ($q) => $q->where('name', $request->string('role'))))
@@ -112,7 +110,7 @@ class UserController extends Controller
         return back();
     }
 
-    public function destroy(Request $request, User $user): RedirectResponse
+    public function destroy(DestroyUserRequest $request, User $user): RedirectResponse
     {
         $this->service->deleteUser($user, $request->user());
 

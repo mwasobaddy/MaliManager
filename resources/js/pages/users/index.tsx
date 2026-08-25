@@ -1,7 +1,9 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { usePage } from '@inertiajs/react';
 import { Download, Pencil, Plus, Search } from 'lucide-react';
+import { useState } from 'react';
 import Heading from '@/components/heading';
+import { PasswordConfirmDialog } from '@/components/password-confirm-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -72,13 +74,7 @@ export default function UsersIndex({ users, filters, platformRoles }: Props) {
         );
     };
 
-    const remove = (user: UserRow) => {
-        if (!window.confirm(`Delete ${user.email}? This cannot be undone easily.`)) {
-            return;
-        }
-
-        router.delete(usersRoutes.destroy(user.id), { preserveScroll: true });
-    };
+    const [deleteTarget, setDeleteTarget] = useState<UserRow | null>(null);
 
     return (
         <>
@@ -206,7 +202,7 @@ export default function UsersIndex({ users, filters, platformRoles }: Props) {
                                                         </Button>
                                                     )}
                                                     {canDelete && (
-                                                        <Button variant="ghost" size="sm" onClick={() => remove(user)} className="text-red-600">
+                                                        <Button variant="ghost" size="sm" onClick={() => setDeleteTarget(user)} className="text-red-600">
                                                             Delete
                                                         </Button>
                                                     )}
@@ -246,6 +242,18 @@ export default function UsersIndex({ users, filters, platformRoles }: Props) {
                     </div>
                 )}
             </div>
+
+            <PasswordConfirmDialog
+                open={deleteTarget !== null}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setDeleteTarget(null);
+                    }
+                }}
+                formAction={usersRoutes.destroy.form(deleteTarget?.id ?? 0)}
+                title={`Delete ${deleteTarget?.email ?? ''}?`}
+                description="This soft-deletes the user account. Please enter your password to confirm."
+            />
         </>
     );
 }
