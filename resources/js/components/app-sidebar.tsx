@@ -14,6 +14,7 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard as centralDashboard } from '@/routes';
+import { index as organizationsIndex } from '@/routes/organizations';
 import { index as platformAuditIndex } from '@/routes/platform/audit';
 import { rentals as searcherRentals } from '@/routes/searcher';
 import { index as rolesIndex } from '@/routes/settings/roles';
@@ -22,6 +23,7 @@ import { index as landParcelsIndex } from '@/routes/tenant/land-parcels';
 import { index as occupantsIndex } from '@/routes/tenant/occupants';
 import { dashboard as propertyDashboard, index as propertiesIndex } from '@/routes/tenant/properties';
 import { index as staffIndex } from '@/routes/tenant/staff';
+import { index as usersIndex } from '@/routes/users';
 import type { NavItem } from '@/types';
 
 const footerNavItems: NavItem[] = [
@@ -48,6 +50,8 @@ export function AppSidebar() {
     const authPermissions = usePage().props.auth?.permissions ?? [];
     const canManageRoles = authPermissions.includes('manage roles');
     const canViewAnyAudit = authPermissions.includes('view audit');
+    const canManageUsers = authPermissions.includes('user.manage');
+    const canManageOrganizations = authPermissions.includes('organization.manage');
 
     const mainNavItems: NavItem[] = property
         ? [
@@ -134,6 +138,24 @@ export function AppSidebar() {
                         : []),
               ]
             : [
+                 ...(canManageUsers
+                     ? [
+                           {
+                               title: 'Users',
+                               href: usersIndex(),
+                               icon: Users,
+                           },
+                       ]
+                     : []),
+                 ...(canManageOrganizations
+                     ? [
+                           {
+                               title: 'Organizations',
+                               href: organizationsIndex(),
+                               icon: Building2,
+                           },
+                       ]
+                     : []),
                  ...(canManageRoles
                      ? [
                            {
