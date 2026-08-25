@@ -10,8 +10,28 @@ export type User = {
     [key: string]: unknown;
 };
 
+export type PropertySummary = {
+    id: number;
+    name: string;
+    slug: string;
+    city: string | null;
+    status: string;
+    units_count: number;
+};
+
+export type OrganizationSummary = {
+    id: number;
+    name: string;
+    slug: string;
+    domain: string | null;
+    is_owner: boolean;
+    properties: PropertySummary[];
+};
+
 export type Auth = {
     user: User;
+    permissions: string[];
+    organizations: OrganizationSummary[];
 };
 
 export type Passkey = {
