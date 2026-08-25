@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\PlatformPermissionKey;
 use App\Models\Delegation;
 use App\Models\LandParcel;
 use App\Models\Organization;
@@ -9,6 +10,8 @@ use App\Models\OrganizationUser;
 use App\Models\Property;
 use App\Models\User;
 use Illuminate\Support\Collection;
+use Spatie\Permission\Exceptions\PermissionDoesNotExist;
+use Spatie\Permission\PermissionRegistrar;
 
 /**
  * Manages staff members within an organization. A staff member is a
@@ -40,6 +43,19 @@ class StaffService extends Service
             $this->save($membership);
 
             $this->syncPropertyDelegations($membership, $data['property_ids'] ?? [], $actor);
+
+            // Staff share the organization dashboard tab with owners. The
+            // permission record is seeded centrally; if the spatie cache is
+            // stale (e.g. during a fresh seed run) flush and retry once.
+            $permission = PlatformPermissionKey::ViewOrgMetrics->value;
+
+            try {
+                $user->givePermissionTo($permission);
+            } catch (PermissionDoesNotExist) {
+                app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+                $user->givePermissionTo($permission);
+            }
 
             return $user;
         });
