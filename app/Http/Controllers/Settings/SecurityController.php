@@ -10,7 +10,6 @@ use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
 use Inertia\Response;
 use Laravel\Fortify\Features;
-use Throwable;
 
 class SecurityController extends Controller
 {
@@ -56,20 +55,12 @@ class SecurityController extends Controller
      */
     public function update(PasswordUpdateRequest $request): RedirectResponse
     {
-        try {
-            $request->user()->update([
-                'password' => $request->password,
-            ]);
+        $request->user()->update([
+            'password' => $request->password,
+        ]);
 
-            Inertia::flash('toast', ['type' => 'success', 'message' => __('Password updated.')]);
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Password updated.')]);
 
-            return back();
-        } catch (Throwable $e) {
-            report($e);
-
-            Inertia::flash('toast', ['type' => 'error', 'message' => __('We could not update your password. Please try again.')]);
-
-            return back();
-        }
+        return back();
     }
 }

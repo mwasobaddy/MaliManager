@@ -10,8 +10,6 @@ use App\Services\StaffService;
 use App\Support\AuthLanding;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
-use Throwable;
 
 class UnitController extends Controller
 {
@@ -19,21 +17,11 @@ class UnitController extends Controller
     {
         $this->authorizePropertyAccess($request, $property);
 
-        try {
-            $propertyService->addUnit(
-                $property,
-                $request->user(),
-                $request->validated(),
-            );
-        } catch (\DomainException $e) {
-            Inertia::flash('toast', ['type' => 'error', 'message' => $e->getMessage()]);
-
-            return back();
-        } catch (Throwable) {
-            Inertia::flash('toast', ['type' => 'error', 'message' => 'We could not add this unit. Please try again.']);
-
-            return back();
-        }
+        $propertyService->addUnit(
+            $property,
+            $request->user(),
+            $request->validated(),
+        );
 
         return redirect()->to(AuthLanding::property(
             $property->organization,

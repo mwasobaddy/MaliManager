@@ -11,7 +11,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
-use Throwable;
 
 class ProfileController extends Controller
 {
@@ -31,25 +30,17 @@ class ProfileController extends Controller
      */
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
-        try {
-            $request->user()->fill($request->validated());
+        $request->user()->fill($request->validated());
 
-            if ($request->user()->isDirty('email')) {
-                $request->user()->email_verified_at = null;
-            }
-
-            $request->user()->save();
-
-            Inertia::flash('toast', ['type' => 'success', 'message' => __('Profile updated.')]);
-
-            return to_route('profile.edit');
-        } catch (Throwable $e) {
-            report($e);
-
-            Inertia::flash('toast', ['type' => 'error', 'message' => __('We could not update your profile. Please try again.')]);
-
-            return to_route('profile.edit');
+        if ($request->user()->isDirty('email')) {
+            $request->user()->email_verified_at = null;
         }
+
+        $request->user()->save();
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Profile updated.')]);
+
+        return to_route('profile.edit');
     }
 
     /**
@@ -57,23 +48,15 @@ class ProfileController extends Controller
      */
     public function destroy(ProfileDeleteRequest $request): RedirectResponse
     {
-        try {
-            $user = $request->user();
+        $user = $request->user();
 
-            Auth::logout();
+        Auth::logout();
 
-            $user->forceDelete();
+        $user->forceDelete();
 
-            $request->session()->invalidate();
-            $request->session()->regenerateToken();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
 
-            return redirect('/');
-        } catch (Throwable $e) {
-            report($e);
-
-            Inertia::flash('toast', ['type' => 'error', 'message' => __('We could not delete your profile. Please try again.')]);
-
-            return redirect('/');
-        }
+        return redirect('/');
     }
 }
