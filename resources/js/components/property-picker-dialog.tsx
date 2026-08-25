@@ -42,6 +42,7 @@ function tenantUrl(organizationDomain: string | null, propertySlug: string): str
 export function PropertyPickerProvider({ children }: { children: React.ReactNode }) {
     const page = usePage();
     const organizations = (page.props.auth?.organizations ?? []) as OrganizationSummary[];
+    const permissions = (page.props.auth?.permissions ?? []) as string[];
     const autoOpen = page.props.autoOpenPropertyPicker === true;
 
     const [isOpen, setIsOpen] = useState(false);
@@ -58,20 +59,65 @@ export function PropertyPickerProvider({ children }: { children: React.ReactNode
 
     const hasProperties = organizations.some((organization) => organization.properties.length > 0);
 
+    // Only users holding the central "access admin dashboard" permission may
+    // leave the picker without choosing a property. Everyone else must pick
+    // one: any attempt to escape drops them into a random accessible property.
+    const canContinueAsAdmin = permissions.includes('access admin dashboard');
+    const mustChoose = hasProperties && !canContinueAsAdmin;
+
     const selectProperty = (organizationDomain: string | null, propertySlug: string) => {
         setIsOpen(false);
         window.location.assign(tenantUrl(organizationDomain, propertySlug));
     };
 
+    const selectRandomProperty = () => {
+        const choices = organizations.flatMap((organization) =>
+            organization.properties.map((property) => ({
+                domain: organization.domain,
+                slug: property.slug,
+            })),
+        );
+
+        if (choices.length === 0) {
+            return;
+        }
+
+        const choice = choices[Math.floor(Math.random() * choices.length)]!;
+        selectProperty(choice.domain, choice.slug);
+    };
+
     return (
         <PropertyPickerContext.Provider value={{ open, close, organizations, hasProperties }}>
             {children}
-            <Dialog open={isOpen} onOpenChange={setIsOpen}>
-                <DialogContent className="sm:max-w-2xl">
+            <Dialog
+                open={isOpen}
+                onOpenChange={(next) => {
+                    if (!mustChoose || next) {
+                        setIsOpen(next);
+                    }
+                }}
+            >
+                <DialogContent
+                    className="sm:max-w-2xl"
+                    showCloseButton={!mustChoose}
+                    onEscapeKeyDown={(event) => {
+                        if (mustChoose) {
+                            event.preventDefault();
+                            selectRandomProperty();
+                        }
+                    }}
+                    onInteractOutside={(event) => {
+                        if (mustChoose) {
+                            event.preventDefault();
+                        }
+                    }}
+                >
                     <DialogHeader>
                         <DialogTitle>Select a property</DialogTitle>
                         <DialogDescription>
-                            Choose the organization and property you want to manage.
+                            {canContinueAsAdmin
+                                ? 'Continue to the admin dashboard, or choose the organization and property you want to manage.'
+                                : 'Choose the organization and property you want to manage.'}
                         </DialogDescription>
                     </DialogHeader>
 
@@ -126,6 +172,17 @@ export function PropertyPickerProvider({ children }: { children: React.ReactNode
                                     </div>
                                 </div>
                             ))}
+                        </div>
+                    )}
+                    {hasProperties && canContinueAsAdmin && (
+                        <div className="flex justify-end border-t pt-4">
+                            <button
+                                type="button"
+                                onClick={close}
+                                className="inline-flex h-9 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                            >
+                                Continue as admin
+                            </button>
                         </div>
                     )}
                 </DialogContent>
