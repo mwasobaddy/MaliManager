@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Tenant\AgreementTemplateController;
 use App\Http\Controllers\Tenant\AuditController;
 use App\Http\Controllers\Tenant\ImpersonationController;
 use App\Http\Controllers\Tenant\LandParcelController;
@@ -76,8 +77,20 @@ Route::middleware([
         Route::middleware('sub-permission:occupant.edit')->group(function () {
             Route::get('/{property:slug}/occupants/{occupant}/edit', [OccupantController::class, 'edit'])
                 ->name('tenant.occupants.edit');
+            Route::get('/{property:slug}/occupants/{occupant}/agreement', [OccupantController::class, 'agreement'])
+                ->name('tenant.occupants.agreement');
             Route::put('/{property:slug}/occupants/{occupant}', [OccupantController::class, 'update'])
                 ->name('tenant.occupants.update');
+
+            Route::get('/{property:slug}/agreement-templates', [AgreementTemplateController::class, 'index'])
+                ->name('tenant.agreement-templates.index');
+
+            Route::post('/{property:slug}/agreement-templates', [AgreementTemplateController::class, 'store'])
+                ->middleware('sub-permission:lease.manage_templates')
+                ->name('tenant.agreement-templates.store');
+            Route::delete('/{property:slug}/agreement-templates/{template}', [AgreementTemplateController::class, 'destroy'])
+                ->middleware('sub-permission:lease.manage_templates')
+                ->name('tenant.agreement-templates.destroy');
 
             Route::post('/{property:slug}/occupants/{occupant}/move-out', [OccupantController::class, 'moveOut'])
                 ->name('tenant.occupants.move-out');
