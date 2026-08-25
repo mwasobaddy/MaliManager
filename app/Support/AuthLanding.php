@@ -4,8 +4,10 @@ namespace App\Support;
 
 use App\Models\Organization;
 use App\Models\User;
+use App\Services\PropertyAccessService;
 use App\Services\StaffService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Inertia\Inertia;
 
 /**
@@ -30,6 +32,26 @@ class AuthLanding
             return route('onboarding.show');
         }
 
+        $access = app(PropertyAccessService::class);
+        $organizations = $access->organizationsWithProperties($user);
+        $properties = self::flattenProperties($organizations);
+
+        if ($properties->count() === 1) {
+            $property = $properties->first();
+            $organization = self::organizationForProperty($organizations, $property['id']);
+
+            return self::property(Organization::find($organization['id']), $property['slug'], $request);
+        }
+
+        if ($properties->count() > 1) {
+            // More than one accessible property across all organizations:
+            // send the user to the central dashboard, which surfaces the
+            // cross-organization property picker.
+            return route('dashboard');
+        }
+
+        // No accessible properties yet -> fall back to the existing
+        // single-organization landing logic.
         $organization = $user->organizations()->wherePivot('is_owner', true)->first();
 
         if ($organization) {
@@ -43,6 +65,24 @@ class AuthLanding
         }
 
         return route('dashboard');
+    }
+
+    /**
+     * @param  array<int, array{id: int, properties: array<int, array{id: int}>}>  $organizations
+     */
+    private static function flattenProperties(array $organizations): Collection
+    {
+        return collect($organizations)->flatMap(fn (array $organization): array => $organization['properties']);
+    }
+
+    /**
+     * @param  array<int, array{id: int, properties: array<int, array{id: int}>}>  $organizations
+     * @return array{id: int}
+     */
+    private static function organizationForProperty(array $organizations, int $propertyId): array
+    {
+        return collect($organizations)
+            ->first(fn (array $organization): bool => collect($organization['properties'])->contains('id', $propertyId));
     }
 
     /**
