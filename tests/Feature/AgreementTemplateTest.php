@@ -36,7 +36,6 @@ function propertyOf(Organization $organization): Property
         'name' => 'Sunset Heights',
         'slug' => 'sunset-heights',
         'status' => 'active',
-        'created_by' => 1,
     ]);
 }
 
@@ -50,42 +49,49 @@ function templateTenantUrl(Organization $organization, string $path): string
     return "http://{$domain->domain}{$path}";
 }
 
-test('owners can create, list, and delete agreement templates inline', function () {
+test('owners can create, list, and delete organization-wide templates', function () {
     $owner = User::factory()->create(['onboarded_at' => now()]);
     $organization = templateOrganization($owner);
-    $property = propertyOf($organization);
-    $property->update(['created_by' => $owner->id]);
+    propertyOf($organization);
     templateTenantUrl($organization, '');
 
-    $this->actingAs($owner)
-        ->postJson(templateTenantUrl($organization, '/sunset-heights/agreement-templates'), [
+    $response = $this->actingAs($owner)
+        ->postJson(templateTenantUrl($organization, '/agreement-templates'), [
             'name' => 'Standard Residential',
             'body_html' => '<p>{{occupant_name}} agrees.</p><script>x()</script>',
-        ])->assertCreated()
-        ->assertJsonPath('template.name', 'Standard Residential')
-        ->assertJsonPath('template.body_html', fn (string $html) => ! str_contains($html, '<script>'));
-
-    expect(AgreementTemplate::where('organization_id', $organization->id)->count())->toBe(1);
+        ]);
+    fwrite(STDERR, 'STATUS: '.$response->getStatusCode().' LOC: '.$response->headers->get('Location').PHP_EOL);
 
     $template = AgreementTemplate::first();
+    expect($template)->not->toBeNull()
+        ->and($template->organization_id)->toBe($organization->id)
+        ->and($template->property_id)->toBeNull()
+        ->and($template->body_html)->not->toContain('<script>');
 
+    // The grouped picker exposes it under the organization scope.
     $this->actingAs($owner)
-        ->getJson(templateTenantUrl($organization, '/sunset-heights/agreement-templates'))
+        ->getJson(templateTenantUrl($organization, '/sunset-heights/agreement-templates/picker'))
         ->assertOk()
-        ->assertJsonCount(1, 'templates');
+        ->assertJsonCount(1, 'organization')
+        ->assertJsonCount(0, 'property');
+
+    // The management page lists it.
+    $this->actingAs($owner)
+        ->get(templateTenantUrl($organization, '/agreement-templates'))
+        ->assertOk();
 
     $this->actingAs($owner)
-        ->deleteJson(templateTenantUrl($organization, "/sunset-heights/agreement-templates/{$template->id}"))
-        ->assertOk();
+        ->deleteJson(templateTenantUrl($organization, "/agreement-templates/{$template->id}"))
+        ->assertRedirect();
 
     expect(AgreementTemplate::count())->toBe(0);
 });
 
-test('rejects duplicate template names within the same organization', function () {
+test('rejects duplicate template names within the same scope', function () {
     $owner = User::factory()->create(['onboarded_at' => now()]);
     $organization = templateOrganization($owner);
     $property = propertyOf($organization);
-    $property->update(['created_by' => $owner->id]);
+    $domain = templateTenantUrl($organization, '');
 
     AgreementTemplate::create([
         'organization_id' => $organization->id,
@@ -95,18 +101,17 @@ test('rejects duplicate template names within the same organization', function (
     ]);
 
     $this->actingAs($owner)
-        ->postJson(templateTenantUrl($organization, '/sunset-heights/agreement-templates'), [
+        ->postJson("{$domain}/agreement-templates", [
             'name' => 'Standard Residential',
             'body_html' => '<p>Other</p>',
         ])->assertStatus(422)
         ->assertJsonValidationErrors('name');
 });
 
-test('staff can list templates for delegated properties but cannot manage them', function () {
+test('delegated staff can read the picker but cannot manage templates', function () {
     $owner = User::factory()->create(['onboarded_at' => now()]);
     $organization = templateOrganization($owner);
     $property = propertyOf($organization);
-    $property->update(['created_by' => $owner->id]);
     $domain = templateTenantUrl($organization, '');
 
     AgreementTemplate::create([
@@ -126,9 +131,9 @@ test('staff can list templates for delegated properties but cannot manage them',
         ->where('user_id', $staff->id)
         ->first();
 
-    // Not delegated yet: cannot even read (property access fails first).
+    // Not delegated yet: cannot even read.
     $this->actingAs($staff)
-        ->getJson("{$domain}/sunset-heights/agreement-templates")
+        ->getJson("{$domain}/sunset-heights/agreement-templates/picker")
         ->assertForbidden();
 
     Delegation::create([
@@ -139,18 +144,71 @@ test('staff can list templates for delegated properties but cannot manage them',
         'created_by' => $owner->id,
     ]);
 
-    // Delegated staff can read...
+    // Delegated staff can read the grouped picker...
     $this->actingAs($staff)
-        ->getJson("{$domain}/sunset-heights/agreement-templates")
+        ->getJson("{$domain}/sunset-heights/agreement-templates/picker")
         ->assertOk()
-        ->assertJsonCount(1, 'templates');
+        ->assertJsonCount(1, 'organization');
 
-    // ...but management stays blocked without lease.manage_templates.
+    // ...but management pages/endpoints stay blocked.
+    // The global exception handler turns 403s into redirects + toast.
     $this->actingAs($staff)
-        ->postJson("{$domain}/sunset-heights/agreement-templates", [
+        ->get(templateTenantUrl($organization, '/agreement-templates'))
+        ->assertRedirect();
+
+    $this->actingAs($staff)
+        ->postJson("{$domain}/agreement-templates", [
             'name' => 'Staff Template',
             'body_html' => '<p>Nope</p>',
         ])->assertForbidden();
 
     expect(AgreementTemplate::count())->toBe(1);
+});
+
+test('property-scoped templates are separate from organization-wide ones', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = templateOrganization($owner);
+    $property = propertyOf($organization);
+    $domain = templateTenantUrl($organization, '');
+
+    // Org-wide template via the org endpoints.
+    $this->actingAs($owner)
+        ->post(templateTenantUrl($organization, '/agreement-templates'), [
+            'name' => 'Company Wide',
+            'body_html' => '<p>Org body</p>',
+        ])->assertRedirect();
+
+    // Same name is allowed in a different scope.
+    $this->actingAs($owner)
+        ->post("{$domain}/sunset-heights/agreement-templates/manage", [
+            'name' => 'Company Wide',
+            'body_html' => '<p>Property body</p>',
+        ])->assertRedirect();
+
+    expect(AgreementTemplate::count())->toBe(2);
+
+    // Picker groups them separately.
+    $this->actingAs($owner)
+        ->getJson("{$domain}/sunset-heights/agreement-templates/picker")
+        ->assertOk()
+        ->assertJsonCount(1, 'property')
+        ->assertJsonCount(1, 'organization')
+        ->assertJsonPath('property.0.body_html', '<p>Property body</p>')
+        ->assertJsonPath('organization.0.body_html', '<p>Org body</p>');
+
+    // The same name within one scope is still rejected.
+    $this->actingAs($owner)
+        ->post("{$domain}/sunset-heights/agreement-templates/manage", [
+            'name' => 'Company Wide',
+            'body_html' => '<p>Dupe</p>',
+        ])->assertSessionHasErrors('name');
+
+    // The property management page shows only its own templates.
+    $this->actingAs($owner)
+        ->get("{$domain}/sunset-heights/agreement-templates/manage")
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('tenant/agreement-templates/index')
+            ->where('scope', 'property')
+            ->where('templates', fn ($rows) => count($rows) === 1));
 });
