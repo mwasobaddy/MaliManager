@@ -3,6 +3,7 @@
 use App\Models\Delegation;
 use App\Models\LandParcel;
 use App\Models\Organization;
+use App\Models\OrganizationUser;
 use App\Models\Plan;
 use App\Models\User;
 use App\Services\LandParcelService;
@@ -153,7 +154,10 @@ test('delegated non-owner can manage a parcel, undelegated cannot', function () 
         ->assertRedirect();
     assertErrorToast();
 
-    $membershipId = $organization->users()->where('user_id', $caretaker->id)->first()->pivot->id;
+    $membershipId = OrganizationUser::query()
+        ->where('organization_id', $organization->id)
+        ->where('user_id', $caretaker->id)
+        ->value('id');
 
     Delegation::create([
         'organization_id' => $organization->id,
