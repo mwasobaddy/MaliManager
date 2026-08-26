@@ -13,6 +13,7 @@ import {
     XAxis,
     YAxis,
 } from 'recharts';
+import { TriangleAlert } from 'lucide-react';
 import { ChartCard  } from '@/components/dashboard/chart-card';
 import type {SeriesPoint} from '@/components/dashboard/chart-card';
 import { PeriodSelector  } from '@/components/dashboard/period-selector';
@@ -41,6 +42,13 @@ type OrgStats = {
     expenses: SeriesPoint[];
     maintenance_open: number;
     maintenance_series: SeriesPoint[];
+    flags?: PredictiveFlag[];
+    expiring_leases?: {
+        unit: string | null;
+        occupant: string | null;
+        ends_at: string;
+        days_left: number;
+    }[];
 };
 
 type RecentLease = {
@@ -51,6 +59,11 @@ type RecentLease = {
     ends_at?: string | null;
 };
 
+type PredictiveFlag = {
+    severity: string;
+    message: string;
+};
+
 type PersonLeaseStats = {
     leases_count: number;
     active_leases: number;
@@ -59,6 +72,7 @@ type PersonLeaseStats = {
     recent: RecentLease[];
     maintenance_open?: number;
     rent_trend?: SeriesPoint[];
+    flags?: PredictiveFlag[];
 };
 
 type Props = {
@@ -239,6 +253,53 @@ function OrganizationTab({ stats }: { stats: OrgStats }) {
                     color="#f59e0b"
                 />
             </div>
+
+            {(stats.expiring_leases?.length ?? 0) > 0 && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-base font-medium">Leases expiring soon</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <ul className="space-y-2 text-sm">
+                            {stats.expiring_leases!.map((lease) => (
+                                <li key={`${lease.unit}-${lease.ends_at}`} className="flex items-center justify-between gap-2">
+                                    <span>
+                                        {lease.occupant} — {lease.unit}
+                                    </span>
+                                    <span className="text-muted-foreground">
+                                        {lease.ends_at} · {lease.days_left}d left
+                                    </span>
+                                </li>
+                            ))}
+                        </ul>
+                    </CardContent>
+                </Card>
+            )}
+
+            {stats.flags && stats.flags.length > 0 &&(
+                <Card className="border-amber-300 dark:border-amber-800">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-base font-medium">
+                            <TriangleAlert className="size-4 text-amber-600 dark:text-amber-400" />
+                            Needs attention
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <ul className="space-y-1.5 text-sm">
+                            {stats.flags.map((flag, index) => (
+                                <li key={index} className="flex items-start gap-2">
+                                    <span
+                                        className={`mt-1 inline-block size-2 shrink-0 rounded-full ${
+                                            flag.severity === 'high' ? 'bg-red-500' : 'bg-amber-500'
+                                        }`}
+                                    />
+                                    {flag.message}
+                                </li>
+                            ))}
+                        </ul>
+                    </CardContent>
+                </Card>
+            )}
         </div>
     );
 }

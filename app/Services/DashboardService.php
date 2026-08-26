@@ -3,7 +3,9 @@
 namespace App\Services;
 
 use App\Enums\PlatformPermissionKey;
+use App\Models\Expense;
 use App\Models\Lease;
+use App\Models\MaintenanceRequest;
 use App\Models\Organization;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -107,7 +109,105 @@ class DashboardService extends Service
             'expenses' => $this->sampleSeries($months, 10000, 40000),
             'maintenance_open' => 3,
             'maintenance_series' => $this->sampleSeries($months, 0, 25),
+            'flags' => $this->predictiveFlags($orgIds, $properties),
+            'expiring_leases' => $this->expiringLeases($orgIds),
         ];
+    }
+
+    /**
+     * Active leases ending within 60 days (max 5), for the dashboard card.
+     *
+     * @param  array<int, int>  $orgIds
+     * @return array<int, array{unit: string|null, occupant: string|null, ends_at: string, days_left: int}>
+     */
+    private function expiringLeases(array $orgIds): array
+    {
+        return Lease::query()
+            ->whereIn('organization_id', $orgIds)
+            ->where('status', 'active')
+            ->whereNotNull('ends_at')
+            ->whereBetween('ends_at', [now()->toDateString(), now()->addDays(60)->toDateString()])
+            ->with(['unit:id,name', 'person:id,first_name,last_name'])
+            ->orderBy('ends_at')
+            ->limit(5)
+            ->get()
+            ->map(fn (Lease $lease): array => [
+                'unit' => $lease->unit?->name,
+                'occupant' => trim(($lease->person?->first_name ?? '').' '.($lease->person?->last_name ?? '')),
+                'ends_at' => $lease->ends_at?->toDateString(),
+                'days_left' => now()->startOfDay()->diffInDays($lease->ends_at->startOfDay()),
+            ])
+            ->all();
+    }
+
+    /**
+     * Deterministic predictive flags: expense outliers per asset/category
+     * and stale urgent maintenance. The AI layer (R1 drafting/assistant)
+     * can explain these; detection itself stays rule-based.
+     *
+     * @param  array<int, int>  $orgIds
+     * @param  iterable<int, array{id: int, name: string}>  $properties
+     * @return array<int, array{severity: string, message: string}>
+     */
+    private function predictiveFlags(array $orgIds, iterable $properties): array
+    {
+        if ($orgIds === []) {
+            return [];
+        }
+
+        $flags = [];
+
+        // Stale urgent maintenance: urgent requests opened more than 7 days
+        // ago and still not resolved.
+        $staleUrgent = MaintenanceRequest::query()
+            ->whereIn('organization_id', $orgIds)
+            ->where('priority', 'urgent')
+            ->whereIn('status', ['opened', 'assigned', 'in_progress'])
+            ->where('created_at', '<', now()->subDays(7))
+            ->count();
+
+        if ($staleUrgent > 0) {
+            $flags[] = [
+                'severity' => 'high',
+                'message' => "{$staleUrgent} urgent maintenance request".($staleUrgent > 1 ? 's have' : ' has').' been open for over a week.',
+            ];
+        }
+
+        // Expense outliers: latest expense per asset+category deviating >2x
+        // the average of prior expenses for that asset+category.
+        $assets = collect($properties)->pluck('id')->all();
+
+        $recent = Expense::query()
+            ->where('organization_id', $orgIds[0])
+            ->where('expenseable_type', Property::class)
+            ->whereIn('expenseable_id', $assets)
+            ->orderByDesc('spent_on')
+            ->limit(50)
+            ->get(['expenseable_id', 'category', 'amount', 'spent_on']);
+
+        foreach ($recent as $expense) {
+            $average = (float) Expense::query()
+                ->where('organization_id', $orgIds[0])
+                ->where('expenseable_type', Property::class)
+                ->where('expenseable_id', $expense->expenseable_id)
+                ->where('category', $expense->category)
+                ->whereKeyNot($expense->id)
+                ->avg('amount');
+
+            if ($average > 0 && (float) $expense->amount > $average * 2) {
+                $flags[] = [
+                    'severity' => 'medium',
+                    'message' => ucfirst((string) $expense->category).' expense of '.number_format((float) $expense->amount, 2)
+                        .' is more than double the usual for this asset.',
+                ];
+
+                if (count($flags) >= 5) {
+                    break;
+                }
+            }
+        }
+
+        return $flags;
     }
 
     /**
