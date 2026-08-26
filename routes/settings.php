@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Settings\PersonalAiController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\RolesController;
 use App\Http\Controllers\Settings\SecurityController;
@@ -46,4 +47,13 @@ Route::middleware(['auth', 'verified', 'can:manageRoles'])->group(function () {
     Route::patch('settings/users/{user}/role', [RolesController::class, 'assignRole'])
         ->middleware(RequirePassword::class)
         ->name('settings.users.role');
+});
+
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('settings/personal-ai', [PersonalAiController::class, 'edit'])
+        ->name('settings.personal-ai.edit');
+    Route::put('settings/personal-ai', [PersonalAiController::class, 'update'])
+        ->name('settings.personal-ai.update');
+    Route::delete('settings/personal-ai', [PersonalAiController::class, 'destroyKey'])
+        ->name('settings.personal-ai.destroy');
 });

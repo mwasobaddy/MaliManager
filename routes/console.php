@@ -10,3 +10,6 @@ Artisan::command('inspire', function () {
 
 // The activity log grows unbounded otherwise; audit pages filter on it.
 Schedule::command('activity:prune --days=180')->daily();
+
+// Weekly portfolio digest (numbers + AI narrative) to owners and managers.
+Schedule::command('ai:send-digest')->weeklyOn(1, '08:00');

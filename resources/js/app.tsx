@@ -15,6 +15,10 @@ createInertiaApp({
         switch (true) {
             case name === 'welcome':
             case name === 'tenant/occupants/agreement':
+            case name === 'tenant/occupants/agreement':
+            case name === 'tenant/reports/print':
+            case name === 'tenant/inspections/show':
+                return null;
                 return null;
             case name.startsWith('auth/'):
                 return AuthLayout;

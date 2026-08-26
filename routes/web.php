@@ -10,6 +10,7 @@ use App\Http\Controllers\LeaseController;
 use App\Http\Controllers\MyMaintenanceController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\Organizations\OrganizationController;
+use App\Http\Controllers\SearcherAssistantController;
 use App\Http\Controllers\Users\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -97,6 +98,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('searcher.maintenance.index');
     Route::post('searcher/maintenance', [MyMaintenanceController::class, 'store'])
         ->name('searcher.maintenance.store');
+
+    // Occupant AI assistant (own-data scoped).
+    Route::get('searcher/assistant', [SearcherAssistantController::class, 'page'])
+        ->name('searcher.assistant.page');
+    Route::post('searcher/assistant/ask', [SearcherAssistantController::class, 'ask'])
+        ->name('searcher.assistant.ask');
 });
 
 require __DIR__.'/settings.php';
