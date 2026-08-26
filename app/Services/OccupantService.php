@@ -247,6 +247,22 @@ class OccupantService extends Service
     }
 
     /**
+     * Terminate a single lease early: stamp the end date, mark it ended,
+     * and strip the occupant platform role if no active leases remain.
+     */
+    public function terminateLease(Lease $lease): void
+    {
+        $this->transaction(function () use ($lease) {
+            $lease->update([
+                'ends_at' => now(),
+                'status' => 'ended',
+            ]);
+
+            $this->stripOccupantRoleIfNoActiveLeases($lease->person);
+        });
+    }
+
+    /**
      * End any active lease for this person on the given unit.
      */
     private function endLease(Occupant $occupant, int $unitId): void
