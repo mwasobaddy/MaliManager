@@ -2,11 +2,13 @@
 
 namespace App\Http\Middleware;
 
+use App\Enums\AiFeature;
 use App\Enums\PlatformPermissionKey;
 use App\Enums\SubPermissionKey;
 use App\Models\Lease;
 use App\Models\Property;
 use App\Services\PropertyAccessService;
+use App\Support\Ai\AiGateway;
 use App\Support\TenancyContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
@@ -56,6 +58,10 @@ class HandleInertiaRequests extends Middleware
                         ->where('status', 'active')
                         ->whereNull('ends_at')
                         ->exists(),
+                // AI availability for the ask-your-data feature (R0 gate;
+                // other features resolve per-feature when used).
+                'ai_enabled' => $user !== null
+                    && app(AiGateway::class)->canUse($user, AiFeature::AskData, $organization),
                 'permissions' => $this->centralPermissions($user),
                 'organizations' => $user
                     ? App::make(PropertyAccessService::class)->organizationsWithProperties($user)
@@ -63,6 +69,7 @@ class HandleInertiaRequests extends Middleware
             ],
             'context' => [
                 'organization' => $organization?->only('id', 'name', 'slug'),
+                'is_owner' => $user !== null && $organization !== null && $user->isOwnerOf($organization),
                 'property' => $property instanceof Property
                     ? $property->only('id', 'name', 'slug')
                     : null,

@@ -3,14 +3,19 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Tenant\AgreementTemplateController;
+use App\Http\Controllers\Tenant\AiSettingsController;
+use App\Http\Controllers\Tenant\AssistantController;
 use App\Http\Controllers\Tenant\AuditController;
+use App\Http\Controllers\Tenant\DraftingController;
 use App\Http\Controllers\Tenant\ExpenseController;
 use App\Http\Controllers\Tenant\ImpersonationController;
+use App\Http\Controllers\Tenant\InspectionController;
 use App\Http\Controllers\Tenant\LandParcelController;
 use App\Http\Controllers\Tenant\LeaseController;
 use App\Http\Controllers\Tenant\MaintenanceController;
 use App\Http\Controllers\Tenant\OccupantController;
 use App\Http\Controllers\Tenant\PropertyController;
+use App\Http\Controllers\Tenant\ReportController;
 use App\Http\Controllers\Tenant\StaffController;
 use App\Http\Controllers\Tenant\UnitController;
 use App\Support\TenancyContext;
@@ -77,6 +82,21 @@ Route::middleware([
                 ->name('tenant.occupants.store');
         });
 
+        Route::middleware('sub-permission:inspection.manage')->group(function () {
+            Route::get('/{property:slug}/inspections', [InspectionController::class, 'index'])
+                ->name('tenant.inspections.index');
+            Route::get('/{property:slug}/inspections/create', [InspectionController::class, 'create'])
+                ->name('tenant.inspections.create');
+            Route::post('/{property:slug}/inspections', [InspectionController::class, 'store'])
+                ->name('tenant.inspections.store');
+            Route::get('/{property:slug}/inspections/{inspection}', [InspectionController::class, 'show'])
+                ->name('tenant.inspections.show');
+            Route::post('/{property:slug}/inspections/{inspection}/report', [InspectionController::class, 'generateReport'])
+                ->name('tenant.inspections.report');
+            Route::delete('/{property:slug}/inspections/{inspection}', [InspectionController::class, 'destroy'])
+                ->name('tenant.inspections.destroy');
+        });
+
         Route::middleware('sub-permission:lease.manage')->group(function () {
             Route::get('/{property:slug}/leases', [LeaseController::class, 'index'])
                 ->name('tenant.leases.index');
@@ -87,7 +107,41 @@ Route::middleware([
                 ->name('tenant.leases.end');
         });
 
+        Route::get('/{property:slug}/leases/{lease}/renewal-suggestion', [LeaseController::class, 'renewalSuggestion'])
+            ->middleware('sub-permission:lease.edit')
+            ->name('tenant.leases.renewal-suggestion');
+
         Route::middleware('sub-permission:lease.manage_templates')->group(function () {
+            // Organization reports (CSV + print-to-PDF).
+            Route::get('/reports', [ReportController::class, 'index'])
+                ->name('tenant.reports.index');
+            Route::get('/reports/data', [ReportController::class, 'data'])
+                ->name('tenant.reports.data');
+            Route::get('/reports/csv', [ReportController::class, 'csv'])
+                ->name('tenant.reports.csv');
+            Route::get('/reports/print', [ReportController::class, 'print'])
+                ->name('tenant.reports.print');
+
+            // Ask-your-data assistant.
+            Route::get('/assistant', [AssistantController::class, 'page'])
+                ->name('tenant.assistant.page');
+            Route::post('/assistant/ask', [AssistantController::class, 'ask'])
+                ->name('tenant.assistant.ask');
+
+            // Content drafting studio.
+            Route::get('/drafting', [DraftingController::class, 'page'])
+                ->name('tenant.drafting.page');
+            Route::post('/drafting/generate', [DraftingController::class, 'generate'])
+                ->name('tenant.drafting.generate');
+
+            // Organization AI settings (owner-only).
+            Route::get('/ai-settings', [AiSettingsController::class, 'edit'])
+                ->name('tenant.ai-settings.edit');
+            Route::put('/ai-settings', [AiSettingsController::class, 'update'])
+                ->name('tenant.ai-settings.update');
+            Route::delete('/ai-settings/key', [AiSettingsController::class, 'destroyKey'])
+                ->name('tenant.ai-settings.destroy');
+
             // Organization-level expense records (target properties or land parcels).
             Route::get('/expenses', [ExpenseController::class, 'index'])
                 ->middleware('sub-permission:expense.manage')

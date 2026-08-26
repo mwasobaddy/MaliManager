@@ -52,6 +52,8 @@ enum SubPermissionKey: string
     case StaffEdit = 'staff.edit';
     case StaffDelete = 'staff.delete';
 
+    case InspectionManage = 'inspection.manage';
+
     case AuditView = 'audit.view';
 
     /**
@@ -69,6 +71,7 @@ enum SubPermissionKey: string
             self::ExpenseManage => 'expense',
             self::MaintenanceManage, self::MaintenanceCreate, self::MaintenanceEdit, self::MaintenanceDelete, self::MaintenanceDelegate => 'maintenance',
             self::StaffManage, self::StaffCreate, self::StaffEdit, self::StaffDelete => 'staff',
+            self::InspectionManage => 'inspection',
             self::AuditView => 'audit',
         };
     }
@@ -110,6 +113,7 @@ enum SubPermissionKey: string
             self::MaintenanceEdit => 'Edit maintenance requests',
             self::MaintenanceDelete => 'Delete maintenance requests',
             self::MaintenanceDelegate => 'Delegate maintenance requests',
+            self::InspectionManage => 'Manage inspections',
             self::StaffManage => 'Manage staff',
             self::StaffCreate => 'Create staff',
             self::StaffEdit => 'Edit staff',

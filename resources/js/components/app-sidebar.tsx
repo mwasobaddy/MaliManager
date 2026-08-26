@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import { BookOpen, Building2, FileText, FolderGit2, History, LayoutGrid, ArrowLeftRight, Map, ReceiptText, ScrollText, Users, UserRound, Wrench } from 'lucide-react';
+import { BarChart3, BookOpen, Building2, FileText, FolderGit2, History, LayoutGrid, MessageCircle, ArrowLeftRight, Map, ReceiptText, ScrollText, Sparkles, Users, UserRound, Wand2, Wrench , ClipboardCheck } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
@@ -19,13 +19,19 @@ import { index as organizationsIndex } from '@/routes/organizations';
 import { index as platformAuditIndex } from '@/routes/platform/audit';
 import { rentals as searcherRentals } from '@/routes/searcher';
 import { index as maintenanceRoute } from '@/routes/searcher/maintenance';
+import { page as searcherAssistantPage } from '@/routes/searcher/assistant';
 import { index as rolesIndex } from '@/routes/settings/roles';
 import agreementTemplates, { orgIndex as agreementTemplatesIndex } from '@/routes/tenant/agreement-templates';
+import { edit as aiSettingsEdit } from '@/routes/tenant/ai-settings';
 import { index as auditIndex } from '@/routes/tenant/audit';
 import { index as expensesIndex } from '@/routes/tenant/expenses';
+import { index as inspectionsIndex } from '@/routes/tenant/inspections';
 import { index as landParcelsIndex } from '@/routes/tenant/land-parcels';
 import { index as leasesIndex } from '@/routes/tenant/leases';
+import { page as assistantPageIndex } from '@/routes/tenant/assistant';
+import { page as draftingPageIndex } from '@/routes/tenant/drafting';
 import { index as maintenanceIndex } from '@/routes/tenant/maintenance';
+import { index as reportsNavIndex } from '@/routes/tenant/reports';
 import { index as occupantsIndex } from '@/routes/tenant/occupants';
 import { dashboard as propertyDashboard, index as propertiesIndex } from '@/routes/tenant/properties';
 import { index as staffIndex } from '@/routes/tenant/staff';
@@ -52,12 +58,20 @@ export function AppSidebar() {
     const canManageStaff = context?.permissions?.includes('staff.manage') ?? false;
     const canManageOccupants = context?.permissions?.includes('occupant.manage') ?? false;
     const canManageLandParcels = context?.permissions?.includes('land_parcel.manage') ?? false;
+    const canManageInspections = context?.permissions?.includes('inspection.manage') ?? false;
     const canViewLeases = context?.permissions?.includes('lease.manage') ?? false;
     const canManageTemplates = context?.permissions?.includes('lease.manage_templates') ?? false;
     const canManageExpenses = context?.permissions?.includes('expense.manage') ?? false;
+    const isOwner = (context as { is_owner?: boolean } | undefined)?.is_owner ?? false;
     const canManageMaintenance = context?.permissions?.includes('maintenance.manage') ?? false;
+    const canViewReports =
+        (context as { is_owner?: boolean } | undefined)?.is_owner ||
+        ['expense.manage', 'maintenance.manage', 'lease.manage', 'occupant.manage'].some((key) =>
+            (context?.permissions ?? []).includes(key),
+        );
     const canViewAudit = context?.permissions?.includes('audit.view') ?? false;
     const canRaiseMaintenance = usePage().props.auth?.canRaiseMaintenance ?? false;
+    const aiEnabled = usePage().props.auth?.ai_enabled ?? false;
     const authPermissions = usePage().props.auth?.permissions ?? [];
     const canManageRoles = authPermissions.includes('manage roles');
     const canViewAnyAudit = authPermissions.includes('view audit');
@@ -95,6 +109,9 @@ export function AppSidebar() {
                                   ...(canViewLeases
                                       ? [item('Leases', leasesIndex({ property: slug }), ScrollText)]
                                       : []),
+                                  ...(canManageInspections
+                                      ? [item('Inspections', inspectionsIndex(slug), ClipboardCheck)]
+                                      : []),
                               ]),
                           ]
                         : []),
@@ -106,6 +123,9 @@ export function AppSidebar() {
                 items: [
                     item('Switch property', propertiesIndex(), ArrowLeftRight),
                     ...(canManageStaff ? [dropdown('Team', Users, [item('Staff', staffIndex(), Users)])] : []),
+                    ...(isOwner
+                        ? [item('AI settings', aiSettingsEdit(), Sparkles)]
+                        : []),
                     ...(canManageTemplates
                         ? [
                               item(
@@ -116,6 +136,15 @@ export function AppSidebar() {
                           ]
                         : []),
                     ...(canViewAudit ? [item('Audit log', auditIndex(), History)] : []),
+                    ...(aiEnabled
+                        ? [
+                              item('AI assistant', assistantPageIndex(), MessageCircle),
+                              item('AI drafting', draftingPageIndex(), Wand2),
+                          ]
+                        : []),
+                    ...(canViewReports
+                        ? [item('Reports', reportsNavIndex(), BarChart3)]
+                        : []),
                 ],
             },
         ];
@@ -135,6 +164,15 @@ export function AppSidebar() {
                     ...(canManageExpenses ? [item('Expenses', expensesIndex(), ReceiptText)] : []),
                     ...(canManageMaintenance
                         ? [dropdown('Maintenance', Wrench, [item('All requests', maintenanceIndex(), Wrench)])]
+                        : []),
+                    ...(canViewReports
+                        ? [item('Reports', reportsNavIndex(), BarChart3)]
+                        : []),
+                    ...(aiEnabled
+                        ? [
+                              item('AI assistant', assistantPageIndex(), MessageCircle),
+                              item('AI drafting', draftingPageIndex(), Wand2),
+                          ]
                         : []),
                 ],
             },
