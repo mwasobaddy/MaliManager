@@ -98,7 +98,7 @@ class MaintenanceController extends Controller
         return User::query()
             ->whereHas('organizations', fn ($query) => $query
                 ->whereKey($organization->id)
-                ->wherePivot('status', 'active'))
+                ->where('organization_user.status', 'active'))
             ->get(['id', 'name'])
             ->map(fn (User $user) => ['id' => $user->id, 'name' => $user->name])
             ->all();

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Tenant\StoreMaintenanceRequest;
+use App\Jobs\TriageMaintenanceRequest;
 use App\Models\Lease;
 use App\Models\MaintenanceRequest;
 use App\Services\MaintenanceRequestService;
@@ -70,6 +71,8 @@ class MyMaintenanceController extends Controller
                 $record->addMedia($photo)->toMediaCollection('photos');
             }
         }
+
+        TriageMaintenanceRequest::dispatch($record);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Maintenance request submitted.']);
 
