@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Tenant;
 use App\Http\Controllers\Controller;
 use App\Models\AgreementTemplate;
 use App\Models\Property;
+use App\Services\AgreementTemplateService;
 use App\Services\StaffService;
 use App\Support\LeaseAgreementTemplate;
 use App\Support\TenancyContext;
@@ -22,6 +23,7 @@ use Inertia\Response;
  */
 class AgreementTemplateController extends Controller
 {
+    public function __construct(private AgreementTemplateService $templates) {}
     // ── Organization scope ────────────────────────────────────────────────
 
     public function orgIndex(): Response
@@ -131,13 +133,13 @@ class AgreementTemplateController extends Controller
     {
         $validated = $this->validateTemplate($request, $property->organization_id, null, $property->id);
 
-        $template = AgreementTemplate::create([
-            'organization_id' => $property->organization_id,
-            'property_id' => $property->id,
-            'name' => $validated['name'],
-            'body_html' => LeaseAgreementTemplate::sanitize($validated['body_html']),
-            'created_by' => $request->user()->id,
-        ]);
+        $template = $this->templates->create(
+            $request->user(),
+            $property->organization_id,
+            $property->id,
+            $validated['name'],
+            $validated['body_html'],
+        );
 
         $this->syncDocument($request, $template);
 
@@ -170,10 +172,7 @@ class AgreementTemplateController extends Controller
 
         $validated = $this->validateTemplate($request, $property->organization_id, $template->id, $property->id);
 
-        $template->update([
-            'name' => $validated['name'],
-            'body_html' => LeaseAgreementTemplate::sanitize($validated['body_html']),
-        ]);
+        $this->templates->update($template, $request->user(), $validated['name'], $validated['body_html']);
 
         $this->syncDocument($request, $template);
 
