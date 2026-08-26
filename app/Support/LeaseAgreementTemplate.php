@@ -12,6 +12,16 @@ use App\Models\Lease;
 class LeaseAgreementTemplate
 {
     /**
+     * The formatting tags preserved when saving editor HTML.
+     */
+    public const ALLOWED_TAGS = '<p><br><b><strong><i><em><u><s><ul><ol><li><h1><h2><h3><blockquote><code>';
+
+    public static function sanitize(string $html): string
+    {
+        return strip_tags($html, self::ALLOWED_TAGS);
+    }
+
+    /**
      * @return array<int, array{token: string, description: string}>
      */
     public static function availableTokens(): array
