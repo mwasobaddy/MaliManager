@@ -117,6 +117,17 @@ GOOGLE_REDIRECT_URI=https://malimanager.test/auth/google/callback
 
 # Passkeys user-handle secret (generate once, keep stable)
 PASSKEYS_USER_HANDLE_SECRET=...
+
+# Filesystem — tenant documents (lease agreements, template files) go through
+# the default disk. Local dev uses 'local'; production should use S3.
+FILESYSTEM_DISK=s3
+MEDIA_DISK=s3
+AWS_ACCESS_KEY_ID=...
+AWS_SECRET_ACCESS_KEY=...
+AWS_DEFAULT_REGION=...
+AWS_BUCKET=malimanager-production
+AWS_URL=...                  # optional (CloudFront / custom endpoint)
+AWS_USE_ACCELERATOR=false
 ```
 
 ### `SESSION_DOMAIN` — why it matters
@@ -193,6 +204,30 @@ php artisan queue:work --tries=3
 
 Add the queue worker under a process manager (Supervisor) so it auto-restarts.
 
+The scheduler runs **`activity:prune --days=180` daily** — the audit log
+(`activity_log`) grows unbounded otherwise and the audit pages query it. Verify
+the first scheduled run happened after go-live (`schedule:interrupted`/log tail).
+
+### Tenant document storage layout (S3)
+
+All tenant documents are written through `Storage::disk(config('filesystems.default'))`
+via `App\Support\StorageLayout` + medialibrary's `TenantPathGenerator`:
+
+```
+{organization-slug}/templates/lease/         agreement template documents
+{organization-slug}/{property-slug}/lease/   uploaded lease agreements (per media id)
+```
+
+- Folders are keyed by **slug at creation time** and are never moved on rename.
+  Renaming an organization or property leaves existing files in place.
+- `.keep` marker files create the skeleton when an organization/property is
+  created; they can be ignored by lifecycle rules but don't delete the folders.
+- On S3, set an S3 **lifecycle policy only if you intend it** — nothing in the
+  app expires these files.
+- Existing media created before this layout (e.g. land-parcel photos under the
+  default `{media-id}/` paths) stays where it is; only new uploads use tenant
+  paths. Do not run ad-hoc S3 syncs/moves without updating `media` rows.
+
 ### Server notes
 
 - Serve the site for **both** `malimanager.test` **and** `*.malimanager.test`
@@ -209,10 +244,13 @@ Add the queue worker under a process manager (Supervisor) so it auto-restarts.
   implemented*. When it is: dedicated DB provisioning + per-tenant DB migrations
   will require the `DatabaseTenancyBootstrapper` to be enabled for those tenants,
   and custom domains will need SAN certs / validation.
-- **Sub-permission gating** on org roles is only partially enforced; org owners
-  currently bypass all checks. Revisit before opening the app to non-owner staff.
 - **Rate limiters** already exist for `login` and `otp` (`routes/web.php`); tune
   values once real traffic exists.
+- **Spatie permission cache** uses the default cache store. With `CACHE_STORE=redis`
+  this is fine; if you ever switch the cache driver, run
+  `php artisan cache:clear` after deploy so role/permission lookups don't serve
+  a stale set (a stale empty set surfaces as
+  `PermissionDoesNotExist` during seeding/grants).
 
 ---
 
@@ -224,6 +262,10 @@ Add the queue worker under a process manager (Supervisor) so it auto-restarts.
 - [ ] `.env`: real DB, Redis (cache/session/queue), SMTP mail credentials
 - [ ] `GOOGLE_REDIRECT_URI` registered in the Google Cloud Console
 - [ ] `PASSKEYS_USER_HANDLE_SECRET` set to a stable random value
+- [ ] `FILESYSTEM_DISK=s3` + AWS bucket credentials set (tenant documents live there)
+- [ ] S3 bucket reachable: create an organization + property and confirm
+      `{org}/templates/lease/.keep` and `{org}/{property}/lease/.keep` appear
+- [ ] First scheduled run executed (`activity:prune` daily)
 - [ ] `domains` table rows match the production base domain (see §6)
 - [ ] `php artisan migrate --force` + config/route/view/event caches built
 - [ ] Queue worker running under Supervisor; cron for the scheduler
