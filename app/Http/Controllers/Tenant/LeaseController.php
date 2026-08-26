@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Tenant\EndLeaseRequest;
 use App\Models\Lease;
 use App\Models\Property;
+use App\Services\AiRenewalService;
 use App\Services\OccupantService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -24,10 +26,16 @@ class LeaseController extends Controller
         $this->authorizePropertyAccess($request, $property);
 
         $status = $request->string('status')->toString();
+        $expiring = $request->boolean('expiring');
 
         $leases = Lease::query()
             ->where('property_id', $property->id)
             ->when(in_array($status, ['active', 'ended'], true), fn ($query) => $query->where('status', $status))
+            // Expiring = active with an end date inside the next 60 days.
+            ->when($expiring, fn ($query) => $query
+                ->where('status', 'active')
+                ->whereNotNull('ends_at')
+                ->whereBetween('ends_at', [now()->toDateString(), now()->addDays(60)->toDateString()]))
             ->with(['person:id,first_name,last_name,email', 'unit:id,name'])
             ->orderByDesc('starts_at')
             ->paginate(15)
@@ -42,7 +50,10 @@ class LeaseController extends Controller
                 'starts_at' => $lease->starts_at?->toDateString(),
                 'ends_at' => $lease->ends_at?->toDateString(),
                 'status' => $lease->status,
-                'is_active' => $lease->isActive(),
+                'property_name' => $lease->property?->name,
+                'expiring_soon' => $lease->status === 'active'
+                    && $lease->ends_at !== null
+                    && $lease->ends_at->between(now(), now()->addDays(60)),
                 'has_agreement_text' => (bool) $lease->agreement_text,
                 'has_agreement_document' => $lease->getFirstMedia('agreement') !== null,
             ]);
@@ -78,5 +89,19 @@ class LeaseController extends Controller
         }
 
         abort(403);
+    }
+
+    public function renewalSuggestion(Request $request, Property $property, Lease $lease, AiRenewalService $service): JsonResponse
+    {
+        $this->authorizePropertyAccess($request, $property);
+
+        abort_if($lease->property_id !== $property->id, 403);
+        abort_if($lease->status !== 'active', 422, 'Only active leases can be renewed.');
+
+        try {
+            return response()->json($service->suggest($request->user(), $property, $lease));
+        } catch (\RuntimeException $e) {
+            return response()->json(['error' => $e->getMessage()], 403);
+        }
     }
 }
