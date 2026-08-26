@@ -7,6 +7,7 @@ use App\Http\Controllers\Auth\OtpController;
 use App\Http\Controllers\Auth\SocialiteController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LeaseController;
+use App\Http\Controllers\MyMaintenanceController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\Organizations\OrganizationController;
 use App\Http\Controllers\Users\UserController;
@@ -89,6 +90,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // rental history across every organization.
     Route::get('searcher/rentals', [LeaseController::class, 'index'])
         ->name('searcher.rentals');
+
+    // Occupant-side maintenance requests (active-lease holders only; the
+    // service enforces the lease requirement).
+    Route::get('searcher/maintenance', [MyMaintenanceController::class, 'index'])
+        ->name('searcher.maintenance.index');
+    Route::post('searcher/maintenance', [MyMaintenanceController::class, 'store'])
+        ->name('searcher.maintenance.store');
 });
 
 require __DIR__.'/settings.php';
