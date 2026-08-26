@@ -6,6 +6,7 @@ use App\Http\Controllers\Tenant\AgreementTemplateController;
 use App\Http\Controllers\Tenant\AuditController;
 use App\Http\Controllers\Tenant\ImpersonationController;
 use App\Http\Controllers\Tenant\LandParcelController;
+use App\Http\Controllers\Tenant\LeaseController;
 use App\Http\Controllers\Tenant\OccupantController;
 use App\Http\Controllers\Tenant\PropertyController;
 use App\Http\Controllers\Tenant\StaffController;
@@ -74,6 +75,52 @@ Route::middleware([
                 ->name('tenant.occupants.store');
         });
 
+        Route::middleware('sub-permission:lease.manage')->group(function () {
+            Route::get('/{property:slug}/leases', [LeaseController::class, 'index'])
+                ->name('tenant.leases.index');
+        });
+
+        Route::middleware('sub-permission:lease.delete')->group(function () {
+            Route::post('/{property:slug}/leases/{lease}/end', [LeaseController::class, 'end'])
+                ->name('tenant.leases.end');
+        });
+
+        Route::middleware('sub-permission:lease.manage_templates')->group(function () {
+            // Organization-wide templates.
+            Route::get('/agreement-templates', [AgreementTemplateController::class, 'orgIndex'])
+                ->name('tenant.agreement-templates.org-index');
+            Route::get('/agreement-templates/create', [AgreementTemplateController::class, 'create'])
+                ->name('tenant.agreement-templates.create');
+            Route::post('/agreement-templates', [AgreementTemplateController::class, 'store'])
+                ->name('tenant.agreement-templates.store');
+            Route::get('/agreement-templates/{template}/edit', [AgreementTemplateController::class, 'edit'])
+                ->name('tenant.agreement-templates.edit');
+            Route::put('/agreement-templates/{template}', [AgreementTemplateController::class, 'update'])
+                ->name('tenant.agreement-templates.update');
+            Route::delete('/agreement-templates/{template}', [AgreementTemplateController::class, 'destroy'])
+                ->name('tenant.agreement-templates.destroy');
+
+            // Property-scoped templates.
+            Route::get('/{property:slug}/agreement-templates/manage', [AgreementTemplateController::class, 'propertyIndex'])
+                ->name('tenant.agreement-templates.property-index');
+            Route::get('/{property:slug}/agreement-templates/manage/create', [AgreementTemplateController::class, 'createForProperty'])
+                ->name('tenant.agreement-templates.property-create');
+            Route::post('/{property:slug}/agreement-templates/manage', [AgreementTemplateController::class, 'storeForProperty'])
+                ->name('tenant.agreement-templates.property-store');
+            Route::get('/{property:slug}/agreement-templates/manage/{template}/edit', [AgreementTemplateController::class, 'editForProperty'])
+                ->name('tenant.agreement-templates.property-edit');
+            Route::put('/{property:slug}/agreement-templates/manage/{template}', [AgreementTemplateController::class, 'updateForProperty'])
+                ->name('tenant.agreement-templates.property-update');
+            Route::delete('/{property:slug}/agreement-templates/manage/{template}', [AgreementTemplateController::class, 'destroyForProperty'])
+                ->name('tenant.agreement-templates.property-destroy');
+
+            // Grouped picker data for the occupant form.
+            Route::get('/{property:slug}/agreement-templates/picker', [AgreementTemplateController::class, 'picker'])
+                ->withoutMiddleware('sub-permission:lease.manage_templates')
+                ->middleware('sub-permission:occupant.edit')
+                ->name('tenant.agreement-templates.picker.index');
+        });
+
         Route::middleware('sub-permission:occupant.edit')->group(function () {
             Route::get('/{property:slug}/occupants/{occupant}/edit', [OccupantController::class, 'edit'])
                 ->name('tenant.occupants.edit');
@@ -81,16 +128,6 @@ Route::middleware([
                 ->name('tenant.occupants.agreement');
             Route::put('/{property:slug}/occupants/{occupant}', [OccupantController::class, 'update'])
                 ->name('tenant.occupants.update');
-
-            Route::get('/{property:slug}/agreement-templates', [AgreementTemplateController::class, 'index'])
-                ->name('tenant.agreement-templates.index');
-
-            Route::post('/{property:slug}/agreement-templates', [AgreementTemplateController::class, 'store'])
-                ->middleware('sub-permission:lease.manage_templates')
-                ->name('tenant.agreement-templates.store');
-            Route::delete('/{property:slug}/agreement-templates/{template}', [AgreementTemplateController::class, 'destroy'])
-                ->middleware('sub-permission:lease.manage_templates')
-                ->name('tenant.agreement-templates.destroy');
 
             Route::post('/{property:slug}/occupants/{occupant}/move-out', [OccupantController::class, 'moveOut'])
                 ->name('tenant.occupants.move-out');
