@@ -2,7 +2,10 @@
 
 namespace App\Support;
 
+use App\Models\Expense;
+use App\Models\LandParcel;
 use App\Models\Lease;
+use App\Models\MaintenanceRequest;
 use App\Models\Organization;
 use App\Models\Property;
 use Illuminate\Support\Facades\Storage;
@@ -44,6 +47,47 @@ class StorageLayout
         $organizationSlug = $property->organization?->slug ?? $property->organization()->value('slug');
 
         return $organizationSlug.'/'.$property->slug.'/lease';
+    }
+
+    /**
+     * Folder for receipts attached to an expense. Expenses target either a
+     * property or a land parcel, so both layouts exist:
+     *   {org}/{property}/expenses   |   {org}/land-parcels/{parcel}/expenses
+     */
+    public static function expenseReceiptsPath(Expense $expense): ?string
+    {
+        $asset = $expense->expenseable;
+
+        if ($asset instanceof Property) {
+            $organizationSlug = $asset->organization?->slug ?? $asset->organization()->value('slug');
+
+            return $organizationSlug.'/'.$asset->slug.'/expenses';
+        }
+
+        if ($asset instanceof LandParcel) {
+            $organizationSlug = $asset->organization?->slug ?? $asset->organization()->value('slug');
+
+            return $organizationSlug.'/land-parcels/'.$asset->slug.'/expenses';
+        }
+
+        return null;
+    }
+
+    /**
+     * Folder for photos attached to a maintenance request:
+     *   {org}/{property}/maintenance
+     */
+    public static function maintenancePhotosPath(MaintenanceRequest $request): ?string
+    {
+        $property = $request->property;
+
+        if ($property === null) {
+            return null;
+        }
+
+        $organizationSlug = $property->organization?->slug ?? $property->organization()->value('slug');
+
+        return $organizationSlug.'/'.$property->slug.'/maintenance';
     }
 
     /**

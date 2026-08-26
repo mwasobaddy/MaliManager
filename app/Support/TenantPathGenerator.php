@@ -3,7 +3,9 @@
 namespace App\Support;
 
 use App\Models\AgreementTemplate;
+use App\Models\Expense;
 use App\Models\Lease;
+use App\Models\MaintenanceRequest;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Spatie\MediaLibrary\Support\PathGenerator\PathGenerator;
 
@@ -50,6 +52,14 @@ class TenantPathGenerator implements PathGenerator
     private function tenantBasePath(Media $media): ?string
     {
         $model = $media->model;
+
+        if ($model instanceof Expense && $media->collection_name === 'receipt') {
+            return StorageLayout::expenseReceiptsPath($model);
+        }
+
+        if ($model instanceof MaintenanceRequest && $media->collection_name === 'photos') {
+            return StorageLayout::maintenancePhotosPath($model);
+        }
 
         if ($model instanceof Lease && $media->collection_name === 'agreement') {
             $property = $model->property;

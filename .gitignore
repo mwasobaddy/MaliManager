@@ -32,3 +32,4 @@ yarn-error.log
 # Custom rules
 project.md
 info.md
+storage/tenant*/
