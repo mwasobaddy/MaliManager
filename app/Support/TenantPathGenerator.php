@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\AgreementTemplate;
 use App\Models\Expense;
+use App\Models\Inspection;
 use App\Models\Lease;
 use App\Models\MaintenanceRequest;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
@@ -55,6 +56,10 @@ class TenantPathGenerator implements PathGenerator
 
         if ($model instanceof Expense && $media->collection_name === 'receipt') {
             return StorageLayout::expenseReceiptsPath($model);
+        }
+
+        if ($model instanceof Inspection && $media->collection_name === 'photos') {
+            return StorageLayout::inspectionPhotosPath($model);
         }
 
         if ($model instanceof MaintenanceRequest && $media->collection_name === 'photos') {

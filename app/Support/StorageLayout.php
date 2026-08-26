@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\Expense;
+use App\Models\Inspection;
 use App\Models\LandParcel;
 use App\Models\Lease;
 use App\Models\MaintenanceRequest;
@@ -74,6 +75,23 @@ class StorageLayout
     }
 
     /**
+     * Folder for unit inspection photos:
+     *   {org}/{property}/inspections
+     */
+    public static function inspectionPhotosPath(Inspection $inspection): ?string
+    {
+        $property = $inspection->property;
+
+        if ($property === null) {
+            return null;
+        }
+
+        $organizationSlug = $property->organization?->slug ?? $property->organization()->value('slug');
+
+        return $organizationSlug.'/'.$property->slug.'/inspections';
+    }
+
+    /**
      * Folder for photos attached to a maintenance request:
      *   {org}/{property}/maintenance
      */
@@ -108,7 +126,10 @@ class StorageLayout
      */
     public static function bootstrapProperty(Property $property): void
     {
+        $organizationSlug = $property->organization?->slug ?? $property->organization()->value('slug');
+
         Storage::disk(self::disk())->put(self::propertyLeasePath($property).'/.keep', '');
+        Storage::disk(self::disk())->put($organizationSlug.'/'.$property->slug.'/inspections/.keep', '');
     }
 
     /**
