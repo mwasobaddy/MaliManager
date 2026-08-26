@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\StorageLayout;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -42,6 +43,15 @@ class Organization extends Model
         return [
             'settings' => 'array',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        // Every new organization gets its document folder skeleton on the
+        // configured disk (local in development, S3 in production).
+        static::created(function (Organization $organization): void {
+            StorageLayout::bootstrapOrganization($organization);
+        });
     }
 
     public function tenant(): BelongsTo
