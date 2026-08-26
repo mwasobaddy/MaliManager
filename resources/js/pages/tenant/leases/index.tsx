@@ -1,10 +1,11 @@
 import { Head, router } from '@inertiajs/react';
 import { usePage } from '@inertiajs/react';
-import { Printer } from 'lucide-react';
+import { Printer, Sparkles } from 'lucide-react';
 import { useRef, useState } from 'react';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import PasswordInput from '@/components/password-input';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -22,7 +23,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { index as leasesIndex, end as endLease } from '@/routes/tenant/leases';
+import { page as draftingPage } from '@/routes/tenant/drafting';
+import { end as endLease, index as leasesIndex, renewalSuggestion } from '@/routes/tenant/leases';
 import { agreement as agreementPrintRoute } from '@/routes/tenant/occupants';
 
 type LeaseRow = {
@@ -36,6 +38,8 @@ type LeaseRow = {
     ends_at: string | null;
     status: string;
     is_active: boolean;
+    property_name?: string | null;
+    expiring_soon?: boolean;
     has_agreement_text: boolean;
     has_agreement_document: boolean;
 };
@@ -59,11 +63,33 @@ export default function LeasesIndex({ leases, filters }: Props) {
     const { context } = usePage().props;
     const permissions = context?.permissions ?? [];
     const canEndLease = permissions.includes('lease.delete');
+    const aiEnabled = usePage().props.auth?.ai_enabled ?? false;
 
     const [status, setStatus] = useState(filters.status);
     const [endTarget, setEndTarget] = useState<LeaseRow | null>(null);
     const [passwordError, setPasswordError] = useState('');
+    const [suggestTarget, setSuggestTarget] = useState<LeaseRow | null>(null);
+    const [suggestion, setSuggestion] = useState<{ suggested_rent: number; reasoning: string | null } | null>(null);
+    const [suggestBusy, setSuggestBusy] = useState(false);
     const passwordInput = useRef<HTMLInputElement>(null);
+
+    const fetchSuggestion = () => {
+        if (!suggestTarget) {
+            return;
+        }
+
+        const csrf = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '';
+
+        setSuggestBusy(true);
+
+        fetch(
+            renewalSuggestion({ property: context?.property?.slug ?? '', lease: suggestTarget.id }).url,
+            { headers: { Accept: 'application/json', 'X-CSRF-TOKEN': csrf } },
+        )
+            .then(async (response) => response.json())
+            .then((data) => setSuggestion(data.error ? null : data))
+            .finally(() => setSuggestBusy(false));
+    };
 
     const submitEndLease = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -89,9 +115,15 @@ export default function LeasesIndex({ leases, filters }: Props) {
     };
 
     const applyStatusFilter = (value: string) => {
-        setStatus(value);
+        const expiring = value === '__expiring';
+
+        setStatus(expiring ? 'active' : value);
+
         router.get(
-            leasesIndex.url({ property: context?.property?.slug ?? '' }, { query: { status: value } }),
+            leasesIndex.url(
+                { property: context?.property?.slug ?? '' },
+                { query: { status: expiring ? 'active' : value, expiring: expiring ? '1' : undefined } },
+            ),
             {},
             { preserveState: true, replace: true },
         );
@@ -150,9 +182,29 @@ export default function LeasesIndex({ leases, filters }: Props) {
                                             <span className={`rounded px-1.5 py-0.5 text-xs capitalize ${statusStyles[lease.status] ?? ''}`}>
                                                 {lease.status}
                                             </span>
+                                            {lease.expiring_soon && (
+                                                <Badge className="ml-1 bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+                                                    Expiring soon
+                                                </Badge>
+                                            )}
                                         </td>
                                         <td className="px-3 py-2">
                                             <div className="flex justify-end gap-1">
+                                                {lease.expiring_soon && (
+                                                    <Button asChild variant="ghost" size="sm" data-test={`draft-renewal-${lease.id}`}>
+                                                        <a
+                                                            href={`${draftingPage().url}?${new URLSearchParams({
+                                                                type: 'lease_expiry_notice',
+                                                                tenant_name: lease.occupant_name ?? '',
+                                                                expiry_date: lease.ends_at ?? '',
+                                                            })}`}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                        >
+                                                            Draft renewal
+                                                        </a>
+                                                    </Button>
+                                                )}
                                                 {(lease.has_agreement_text || lease.has_agreement_document) && (
                                                     <Button asChild variant="ghost" size="sm" data-test={`agreement-${lease.id}`}>
                                                         <a
@@ -166,6 +218,19 @@ export default function LeasesIndex({ leases, filters }: Props) {
                                                             <Printer className="size-4" />
                                                             Agreement
                                                         </a>
+                                                    </Button>
+                                                )}
+                                                {lease.expiring_soon && aiEnabled && (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => {
+                                                            setSuggestTarget(lease);
+                                                            setSuggestion(null);
+                                                        }}
+                                                    >
+                                                        <Sparkles className="size-4" />
+                                                        Suggest rent
                                                     </Button>
                                                 )}
                                                 {canEndLease && lease.is_active && (
@@ -244,6 +309,57 @@ export default function LeasesIndex({ leases, filters }: Props) {
                             </Button>
                         </DialogFooter>
                     </form>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={suggestTarget !== null} onOpenChange={(open) => !open && setSuggestTarget(null)}>
+                <DialogContent>
+                    <DialogTitle>
+                        Renewal suggestion — {suggestTarget?.occupant_name}
+                    </DialogTitle>
+                    <DialogDescription>
+                        Unit {suggestTarget?.unit_name}, ends {suggestTarget?.ends_at}. Current rent:{' '}
+                        {suggestTarget?.rent_amount} {suggestTarget?.currency}.
+                    </DialogDescription>
+
+                    {suggestBusy ? (
+                        <p className="text-sm text-muted-foreground">Thinking…</p>
+                    ) : suggestion ? (
+                        <div className="space-y-3">
+                            <p className="text-2xl font-semibold tabular-nums">
+                                {suggestion.suggested_rent} {suggestTarget?.currency}
+                                <span className="ml-1 text-sm font-normal text-muted-foreground">/ month</span>
+                            </p>
+                            {suggestion.reasoning && (
+                                <p className="text-sm text-muted-foreground">{suggestion.reasoning}</p>
+                            )}
+                            <Button asChild size="sm" variant="outline">
+                                <a
+                                    href={`${draftingPage().url}?${new URLSearchParams({
+                                        type: 'lease_expiry_notice',
+                                        tenant_name: suggestTarget?.occupant_name ?? '',
+                                        expiry_date: suggestTarget?.ends_at ?? '',
+                                        suggested_rent: String(suggestion.suggested_rent),
+                                    })}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                >
+                                    Draft renewal letter with this rent
+                                </a>
+                            </Button>
+                        </div>
+                    ) : (
+                        <Button onClick={fetchSuggestion}>
+                            <Sparkles className="size-4" />
+                            Generate suggestion
+                        </Button>
+                    )}
+
+                    <DialogFooter>
+                        <DialogClose asChild>
+                            <Button variant="secondary">Close</Button>
+                        </DialogClose>
+                    </DialogFooter>
                 </DialogContent>
             </Dialog>
         </>
