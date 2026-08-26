@@ -214,8 +214,12 @@ All tenant documents are written through `Storage::disk(config('filesystems.defa
 via `App\Support\StorageLayout` + medialibrary's `TenantPathGenerator`:
 
 ```
-{organization-slug}/templates/lease/         agreement template documents
-{organization-slug}/{property-slug}/lease/   uploaded lease agreements (per media id)
+{organization-slug}/templates/lease/               agreement template documents
+{organization-slug}/{property-slug}/lease/          uploaded lease agreements (per media id)
+{organization-slug}/{property-slug}/inspections/    unit inspection photos
+{organization-slug}/{property-slug}/maintenance/    maintenance request photos
+{organization-slug}/{property-slug}/expenses/       expense receipts
+{organization-slug}/land-parcels/{parcel}/expenses/ land-parcel expense receipts
 ```
 
 - Folders are keyed by **slug at creation time** and are never moved on rename.
@@ -235,6 +239,38 @@ via `App\Support\StorageLayout` + medialibrary's `TenantPathGenerator`:
   Laravel Cloud handle this when you add the wildcard domain.
 - Install a wildcard SSL for the above `server_name`.
 - Ensure `storage/` and `bootstrap/cache/` are writable by the web user.
+
+---
+
+## 7b. AI (bring-your-own-key)
+
+AI features run on **user/org-supplied API keys** — the platform holds none and
+pays nothing for tokens.
+
+- Keys live in the `ai_settings` table, **encrypted at rest**; masked after save.
+  Resolution order per user: personal key (Settings → AI) → organization key
+  (Organization → AI settings) → features hidden if neither exists.
+- Organization keys are gated by feature toggles + a member/role allow-list
+  chosen by the owner. A `monthly_token_limit` soft cap (0 = unlimited) is
+  enforced in `App\Support\Ai\AiGateway::withinMonthlyLimit()`.
+- Every dispatch writes an `ai_usage_logs` row. Owners see per-user totals for
+  the current month on the org AI settings page; users see their own on their
+  profile page.
+- The weekly digest (`ai:send-digest`, Mondays 08:00) includes an AI narrative
+  only when the organization has a key; otherwise it degrades to numbers-only.
+- **NVIDIA caveat**: NIM keys only work for models the account has *activated*.
+  After generating a key at build.nvidia.com, open each desired model page and
+  run one request ("Try it") to unlock it — otherwise calls return
+  `404 Function not found for account` even though `/v1/models` lists them.
+  Models also get **retired** over time (e.g. deepseek-r1, llama-3.3-70b were
+  removed from the hosted catalog): if a configured model starts returning
+  404 for every account, pick a replacement from the current
+  `/v1/models` listing.
+
+No action is needed at deploy time beyond ensuring the scheduler runs (digest)
+and that outbound HTTPS to the configured provider endpoint is permitted
+(OpenAI, Anthropic, DeepSeek, OpenRouter, NVIDIA NIM, Gemini, Groq, Mistral,
+Ollama, Perplexity, xAI, Z.ai — whichever keys your orgs configure).
 
 ---
 
@@ -271,6 +307,7 @@ via `App\Support\StorageLayout` + medialibrary's `TenantPathGenerator`:
 - [ ] Queue worker running under Supervisor; cron for the scheduler
 - [ ] Storage symlink created; `storage/` writable
 - [ ] Log channel tailed after first deploy to catch tenancy bootstrap errors
+- [ ] Optional: verify first `ai:send-digest` Monday run — orgs without keys still get numbers-only digests
 
 ---
 
