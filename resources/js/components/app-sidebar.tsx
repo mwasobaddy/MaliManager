@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import { BookOpen, Building2, FolderGit2, History, LayoutGrid, ArrowLeftRight, Map, Users, UserRound } from 'lucide-react';
+import { BookOpen, Building2, FileText, FolderGit2, History, LayoutGrid, ArrowLeftRight, Map, ScrollText, Users, UserRound } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
@@ -18,8 +18,10 @@ import { index as organizationsIndex } from '@/routes/organizations';
 import { index as platformAuditIndex } from '@/routes/platform/audit';
 import { rentals as searcherRentals } from '@/routes/searcher';
 import { index as rolesIndex } from '@/routes/settings/roles';
+import agreementTemplates, { orgIndex as agreementTemplatesIndex } from '@/routes/tenant/agreement-templates';
 import { index as auditIndex } from '@/routes/tenant/audit';
 import { index as landParcelsIndex } from '@/routes/tenant/land-parcels';
+import { index as leasesIndex } from '@/routes/tenant/leases';
 import { index as occupantsIndex } from '@/routes/tenant/occupants';
 import { dashboard as propertyDashboard, index as propertiesIndex } from '@/routes/tenant/properties';
 import { index as staffIndex } from '@/routes/tenant/staff';
@@ -46,6 +48,8 @@ export function AppSidebar() {
     const canManageStaff = context?.permissions?.includes('staff.manage') ?? false;
     const canManageOccupants = context?.permissions?.includes('occupant.manage') ?? false;
     const canManageLandParcels = context?.permissions?.includes('land_parcel.manage') ?? false;
+    const canViewLeases = context?.permissions?.includes('lease.manage') ?? false;
+    const canManageTemplates = context?.permissions?.includes('lease.manage_templates') ?? false;
     const canViewAudit = context?.permissions?.includes('audit.view') ?? false;
     const authPermissions = usePage().props.auth?.permissions ?? [];
     const canManageRoles = authPermissions.includes('manage roles');
@@ -68,7 +72,25 @@ export function AppSidebar() {
                              icon: UserRound,
                          },
                      ]
-                   : []),
+                 : []),
+               ...(canViewLeases
+                    ? [
+                          {
+                              title: 'Leases',
+                              href: leasesIndex({ property: property.slug }),
+                              icon: ScrollText,
+                          },
+                      ]
+                  : []),
+               ...(canManageTemplates
+                    ? [
+                          {
+                              title: 'Agreement templates',
+                              href: agreementTemplates.propertyIndex({ property: property.slug }),
+                              icon: FileText,
+                          },
+                      ]
+                  : []),
                ...(canManageLandParcels
                    ? [
                          {
@@ -102,22 +124,31 @@ export function AppSidebar() {
                       ]
                     : []),
            ]
-           : organization
-            ? [
-                 {
-                     title: 'Properties',
-                     href: propertiesIndex(),
-                     icon: ArrowLeftRight,
-                 },
-                 ...(canManageLandParcels
-                     ? [
-                           {
-                               title: 'Land parcels',
-                               href: landParcelsIndex(),
-                               icon: Map,
-                           },
-                       ]
-                     : []),
+             : organization
+             ? [
+                  {
+                      title: 'Properties',
+                      href: propertiesIndex(),
+                      icon: ArrowLeftRight,
+                  },
+                  ...(canManageLandParcels
+                      ? [
+                            {
+                                title: 'Land parcels',
+                                href: landParcelsIndex(),
+                                icon: Map,
+                            },
+                        ]
+                    : []),
+                  ...(canManageTemplates
+                      ? [
+                            {
+                                title: 'Agreement templates',
+                                href: agreementTemplatesIndex(),
+                                icon: FileText,
+                            },
+                        ]
+                    : []),
                   ...(canManageStaff
                         ? [
                               {
