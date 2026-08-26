@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Enums\PlatformPermissionKey;
 use App\Enums\SubPermissionKey;
+use App\Models\Lease;
 use App\Models\Property;
 use App\Services\PropertyAccessService;
 use App\Support\TenancyContext;
@@ -50,6 +51,11 @@ class HandleInertiaRequests extends Middleware
             'name' => config('app.name'),
             'auth' => [
                 'user' => $user,
+                'canRaiseMaintenance' => $user && $user->person_id
+                    && Lease::query()->where('person_id', $user->person_id)
+                        ->where('status', 'active')
+                        ->whereNull('ends_at')
+                        ->exists(),
                 'permissions' => $this->centralPermissions($user),
                 'organizations' => $user
                     ? App::make(PropertyAccessService::class)->organizationsWithProperties($user)

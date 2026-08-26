@@ -30,6 +30,7 @@ export type OrganizationSummary = {
 
 export type Auth = {
     user: User;
+    canRaiseMaintenance?: boolean;
     permissions: string[];
     organizations: OrganizationSummary[];
 };
