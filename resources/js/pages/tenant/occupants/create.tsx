@@ -1,4 +1,4 @@
-import { Form, Head, Link, usePage } from '@inertiajs/react';
+import { Form, Head, Link } from '@inertiajs/react';
 import { DoorOpen } from 'lucide-react';
 import { useState } from 'react';
 import Heading from '@/components/heading';
@@ -10,12 +10,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
     Select,
+    SelectGroup,
+    SelectLabel,
     SelectContent,
     SelectItem,
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import agreementTemplates from '@/routes/tenant/agreement-templates';
 import { index as occupantsIndex, store } from '@/routes/tenant/occupants';
 
 type Property = {
@@ -37,19 +38,21 @@ type AgreementTemplateOption = {
     body_html: string;
 };
 
+type GroupedTemplates = {
+    property: AgreementTemplateOption[];
+    organization: AgreementTemplateOption[];
+};
+
 type Props = {
     property: Property;
     units: Unit[];
-    templates: AgreementTemplateOption[];
+    templates: GroupedTemplates;
 };
 
 export default function OccupantCreate({ property, units, templates }: Props) {
-    const { context } = usePage().props;
-    const canManageTemplates = (context?.permissions ?? []).includes('lease.manage_templates');
-    const [templateList, setTemplateList] = useState<AgreementTemplateOption[]>(templates);
+    const [templateGroups] = useState<GroupedTemplates>(templates);
+    const templateList = [...templateGroups.property, ...templateGroups.organization];
     const [selectedTemplateId, setSelectedTemplateId] = useState('');
-    const [newTemplateName, setNewTemplateName] = useState('');
-    const [savingTemplate, setSavingTemplate] = useState(false);
     const [status, setStatus] = useState('active');
     const [unitIds, setUnitIds] = useState<number[]>([]);
     const [rentFrequency, setRentFrequency] = useState('monthly');
@@ -70,31 +73,6 @@ export default function OccupantCreate({ property, units, templates }: Props) {
         }
     };
 
-    const saveAsTemplate = () => {
-        if (!newTemplateName.trim()) {
-            return;
-        }
-
-        const csrf = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '';
-
-        setSavingTemplate(true);
-        fetch(agreementTemplates.store({ property: property.slug }).url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Accept: 'application/json',
-                'X-CSRF-TOKEN': csrf,
-            },
-            body: JSON.stringify({ name: newTemplateName.trim(), body_html: agreementText }),
-        })
-            .then((response) => response.json())
-            .then((data: { template: AgreementTemplateOption }) => {
-                setTemplateList((prev) => [...prev, data.template]);
-                setSelectedTemplateId(String(data.template.id));
-                setNewTemplateName('');
-            })
-            .finally(() => setSavingTemplate(false));
-    };
 
 
     const toggleUnit = (id: number) => {
@@ -294,11 +272,26 @@ export default function OccupantCreate({ property, units, templates }: Props) {
                                                         <SelectValue placeholder="Pick a template…" />
                                                     </SelectTrigger>
                                                     <SelectContent>
-                                                        {templateList.map((template) => (
-                                                            <SelectItem key={template.id} value={String(template.id)}>
-                                                                {template.name}
-                                                            </SelectItem>
-                                                        ))}
+                                                        {templateGroups.property.length > 0 && (
+                                                            <SelectGroup>
+                                                                <SelectLabel>This property</SelectLabel>
+                                                                {templateGroups.property.map((template) => (
+                                                                    <SelectItem key={template.id} value={String(template.id)}>
+                                                                        {template.name}
+                                                                    </SelectItem>
+                                                                ))}
+                                                            </SelectGroup>
+                                                        )}
+                                                        {templateGroups.organization.length > 0 && (
+                                                            <SelectGroup>
+                                                                <SelectLabel>Organization-wide</SelectLabel>
+                                                                {templateGroups.organization.map((template) => (
+                                                                    <SelectItem key={template.id} value={String(template.id)}>
+                                                                        {template.name}
+                                                                    </SelectItem>
+                                                                ))}
+                                                            </SelectGroup>
+                                                        )}
                                                     </SelectContent>
                                                 </Select>
                                             </div>
@@ -310,30 +303,6 @@ export default function OccupantCreate({ property, units, templates }: Props) {
                                             onChange={setAgreementText}
                                             placeholder="Write the lease agreement. Formatting is preserved."
                                         />
-
-                                        {canManageTemplates && (
-                                            <div className="flex items-end gap-2">
-                                                <div className="grid flex-1 gap-1">
-                                                    <Label htmlFor="new_template_name" className="text-xs text-muted-foreground">
-                                                        Save current text as template
-                                                    </Label>
-                                                    <Input
-                                                        id="new_template_name"
-                                                        value={newTemplateName}
-                                                        onChange={(e) => setNewTemplateName(e.target.value)}
-                                                        placeholder="Template name"
-                                                    />
-                                                </div>
-                                                <Button
-                                                    type="button"
-                                                    variant="outline"
-                                                    disabled={savingTemplate || !newTemplateName.trim()}
-                                                    onClick={saveAsTemplate}
-                                                >
-                                                    Save template
-                                                </Button>
-                                            </div>
-                                        )}
 
                                         <div className="grid gap-2">
                                             <Label htmlFor="lease.agreement_document">

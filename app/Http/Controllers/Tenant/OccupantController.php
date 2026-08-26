@@ -197,23 +197,38 @@ class OccupantController extends Controller
     }
 
     /**
-     * The organization's saved agreement templates, offered on the
-     * occupant form to pre-fill the agreement editor.
+     * The agreement templates offered on the occupant form, grouped by
+     * scope: this property's templates first, then the organization-wide
+     * library.
      *
-     * @return array<int, array{id: int, name: string, body_html: string}>
+     * @return array{property: array<int, array{id: int, name: string, body_html: string}>, organization: array<int, array{id: int, name: string, body_html: string}>}
      */
     private function agreementTemplates(Property $property): array
     {
-        return AgreementTemplate::query()
-            ->where('organization_id', $property->organization_id)
-            ->orderBy('name')
-            ->get(['id', 'name', 'body_html'])
-            ->map(fn (AgreementTemplate $template) => [
-                'id' => $template->id,
-                'name' => $template->name,
-                'body_html' => $template->body_html,
-            ])
-            ->all();
+        return [
+            'property' => AgreementTemplate::query()
+                ->where('organization_id', $property->organization_id)
+                ->where('property_id', $property->id)
+                ->orderBy('name')
+                ->get(['id', 'name', 'body_html'])
+                ->map(fn (AgreementTemplate $template) => [
+                    'id' => $template->id,
+                    'name' => $template->name,
+                    'body_html' => $template->body_html,
+                ])
+                ->all(),
+            'organization' => AgreementTemplate::query()
+                ->where('organization_id', $property->organization_id)
+                ->whereNull('property_id')
+                ->orderBy('name')
+                ->get(['id', 'name', 'body_html'])
+                ->map(fn (AgreementTemplate $template) => [
+                    'id' => $template->id,
+                    'name' => $template->name,
+                    'body_html' => $template->body_html,
+                ])
+                ->all(),
+        ];
     }
 
     /**

@@ -20,12 +20,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
     Select,
+    SelectGroup,
+    SelectLabel,
     SelectContent,
     SelectItem,
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import agreementTemplatesRoutes from '@/routes/tenant/agreement-templates';
 import {
     agreement as agreementRoute,
     destroy as destroyOccupant,
@@ -70,6 +71,11 @@ type AgreementTemplateOption = {
     body_html: string;
 };
 
+type GroupedTemplates = {
+    property: AgreementTemplateOption[];
+    organization: AgreementTemplateOption[];
+};
+
 type Occupant = {
     id: number;
     first_name: string;
@@ -87,7 +93,7 @@ type Props = {
     property: Property;
     occupant: Occupant;
     units: Unit[];
-    templates: AgreementTemplateOption[];
+    templates: GroupedTemplates;
 };
 
 export default function OccupantEdit({ organization, property, occupant, units, templates }: Props) {
@@ -95,12 +101,10 @@ export default function OccupantEdit({ organization, property, occupant, units, 
     const permissions = context?.permissions ?? [];
     const canDelete = permissions.includes('occupant.delete');
     const canMoveOut = permissions.includes('occupant.edit');
-    const canManageTemplates = permissions.includes('lease.manage_templates');
     const passwordInput = useRef<HTMLInputElement>(null);
-    const [templateList, setTemplateList] = useState<AgreementTemplateOption[]>(templates);
+    const [templateGroups] = useState<GroupedTemplates>(templates);
+    const templateList = [...templateGroups.property, ...templateGroups.organization];
     const [selectedTemplateId, setSelectedTemplateId] = useState('');
-    const [newTemplateName, setNewTemplateName] = useState('');
-    const [savingTemplate, setSavingTemplate] = useState(false);
     const [status, setStatus] = useState(occupant.status);
     const [unitIds, setUnitIds] = useState<number[]>(occupant.unit_ids);
     const [rentFrequency, setRentFrequency] = useState(occupant.lease?.rent_frequency ?? 'monthly');
@@ -125,32 +129,6 @@ export default function OccupantEdit({ organization, property, occupant, units, 
         if (template) {
             setAgreementText(template.body_html);
         }
-    };
-
-    const saveAsTemplate = () => {
-        if (!newTemplateName.trim()) {
-            return;
-        }
-
-        const csrf = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '';
-
-        setSavingTemplate(true);
-        fetch(agreementTemplatesRoutes.store({ property: property.slug }).url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Accept: 'application/json',
-                'X-CSRF-TOKEN': csrf,
-            },
-            body: JSON.stringify({ name: newTemplateName.trim(), body_html: agreementText }),
-        })
-            .then((response) => response.json())
-            .then((data: { template: AgreementTemplateOption }) => {
-                setTemplateList((prev) => [...prev, data.template]);
-                setSelectedTemplateId(String(data.template.id));
-                setNewTemplateName('');
-            })
-            .finally(() => setSavingTemplate(false));
     };
 
     return (
@@ -345,11 +323,26 @@ export default function OccupantEdit({ organization, property, occupant, units, 
                                                         <SelectValue placeholder="Pick a template…" />
                                                     </SelectTrigger>
                                                     <SelectContent>
-                                                        {templateList.map((template) => (
-                                                            <SelectItem key={template.id} value={String(template.id)}>
-                                                                {template.name}
-                                                            </SelectItem>
-                                                        ))}
+                                                        {templateGroups.property.length > 0 && (
+                                                            <SelectGroup>
+                                                                <SelectLabel>This property</SelectLabel>
+                                                                {templateGroups.property.map((template) => (
+                                                                    <SelectItem key={template.id} value={String(template.id)}>
+                                                                        {template.name}
+                                                                    </SelectItem>
+                                                                ))}
+                                                            </SelectGroup>
+                                                        )}
+                                                        {templateGroups.organization.length > 0 && (
+                                                            <SelectGroup>
+                                                                <SelectLabel>Organization-wide</SelectLabel>
+                                                                {templateGroups.organization.map((template) => (
+                                                                    <SelectItem key={template.id} value={String(template.id)}>
+                                                                        {template.name}
+                                                                    </SelectItem>
+                                                                ))}
+                                                            </SelectGroup>
+                                                        )}
                                                     </SelectContent>
                                                 </Select>
                                             </div>
@@ -409,31 +402,6 @@ export default function OccupantEdit({ organization, property, occupant, units, 
                                                 <code>{'{{currency}}'}</code>,{' '}
                                                 <code>{'{{start_date}}'}</code>…
                                             </span>
-
-                                            {canManageTemplates && (
-                                                <div className="flex items-end gap-2">
-                                                    <div className="grid gap-1">
-                                                        <Label htmlFor="new_template_name" className="sr-only">
-                                                            Template name
-                                                        </Label>
-                                                        <Input
-                                                            id="new_template_name"
-                                                            value={newTemplateName}
-                                                            onChange={(e) => setNewTemplateName(e.target.value)}
-                                                            placeholder="Template name"
-                                                        />
-                                                    </div>
-                                                    <Button
-                                                        type="button"
-                                                        variant="outline"
-                                                        size="sm"
-                                                        disabled={savingTemplate || !newTemplateName.trim()}
-                                                        onClick={saveAsTemplate}
-                                                    >
-                                                        Save as template
-                                                    </Button>
-                                                </div>
-                                            )}
 
                                             {permissions.includes('occupant.edit') && (
                                                 <a
