@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\LogsTenantActivity;
+use App\Support\StorageLayout;
 use App\Support\TenancyContext;
 use Database\Factories\PropertyFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -45,6 +46,15 @@ class Property extends Model
         return [
             'settings' => 'array',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        // Every new property gets its lease document folder on the
+        // configured disk (local in development, S3 in production).
+        static::created(function (Property $property): void {
+            StorageLayout::bootstrapProperty($property);
+        });
     }
 
     /** @use HasFactory<PropertyFactory> */

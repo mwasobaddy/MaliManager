@@ -1,0 +1,78 @@
+<?php
+
+namespace App\Support;
+
+use App\Models\Lease;
+use App\Models\Organization;
+use App\Models\Property;
+use Illuminate\Support\Facades\Storage;
+
+/**
+ * The canonical on-disk layout for tenant documents. Every consumer
+ * (medialibrary path generator, marker files) derives paths from here so
+ * local and S3 disks stay identical in structure:
+ *
+ *   {organization-slug}/templates/lease          org-wide agreement templates
+ *   {organization-slug}/{property-slug}/lease    uploaded lease agreements
+ *
+ * Folders are keyed by slug at creation time and are never moved on rename.
+ */
+class StorageLayout
+{
+    /**
+     * The organization root folder, e.g. "acme-estates".
+     */
+    public static function organizationPrefix(Organization $organization): string
+    {
+        return $organization->slug;
+    }
+
+    /**
+     * Folder for org-wide agreement templates, e.g. "acme-estates/templates/lease".
+     */
+    public static function templatesPath(Organization $organization): string
+    {
+        return self::organizationPrefix($organization).'/templates/lease';
+    }
+
+    /**
+     * Folder for a property's lease documents,
+     * e.g. "acme-estates/sunset-heights/lease".
+     */
+    public static function propertyLeasePath(Property $property): string
+    {
+        $organizationSlug = $property->organization?->slug ?? $property->organization()->value('slug');
+
+        return $organizationSlug.'/'.$property->slug.'/lease';
+    }
+
+    /**
+     * Create the folder skeleton for a new organization. Object storage has
+     * no real directories, so a marker file makes them visible in consoles.
+     */
+    public static function bootstrapOrganization(Organization $organization): void
+    {
+        Storage::disk(self::disk())->put(self::templatesPath($organization).'/.keep', '');
+
+        foreach ($organization->properties as $property) {
+            self::bootstrapProperty($property);
+        }
+    }
+
+    /**
+     * Create the folder skeleton for a new property.
+     */
+    public static function bootstrapProperty(Property $property): void
+    {
+        Storage::disk(self::disk())->put(self::propertyLeasePath($property).'/.keep', '');
+    }
+
+    /**
+     * Everything flows through the default disk: "local" in development,
+     * "s3" in production (FILESYSTEM_DISK).
+     */
+    public static function disk(): string
+    {
+        return (string) config('filesystems.default');
+    }
+}
