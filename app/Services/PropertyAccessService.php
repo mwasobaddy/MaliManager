@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Delegation;
+use App\Models\LandParcel;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\Property;
@@ -18,7 +19,7 @@ use Illuminate\Support\Collection;
 class PropertyAccessService extends Service
 {
     /**
-     * @return array<int, array{id: int, name: string, slug: string, domain: string|null, is_owner: bool, properties: array<int, array{id: int, name: string, slug: string, city: string|null, status: string, units_count: int}>}>
+     * @return array<int, array{id: int, name: string, slug: string, domain: string|null, is_owner: bool, properties: array<int, array{id: int, name: string, slug: string, city: string|null, status: string, units_count: int}>, land_parcels: array<int, array{id: int, name: string, slug: string, city: string|null, status: string, acreage: float|null}>}>
      */
     public function organizationsWithProperties(User $user): array
     {
@@ -82,20 +83,61 @@ class PropertyAccessService extends Service
                 ->keyBy('id');
         }
 
+        // Land parcels of the user's owned organizations in one query.
+        $ownerLandParcels = collect();
+        if ($ownerOrgIds !== []) {
+            $ownerLandParcels = LandParcel::query()
+                ->whereIn('organization_id', $ownerOrgIds)
+                ->get()
+                ->groupBy('organization_id');
+        }
+
+        // Delegated land parcels for staff memberships in at most two queries.
+        $delegatedLand = collect();
+        if ($staffMembershipIds->isNotEmpty()) {
+            $delegatedLand = Delegation::query()
+                ->where('delegatable_type', LandParcel::class)
+                ->whereIn('organization_user_id', $staffMembershipIds)
+                ->get(['organization_user_id', 'delegatable_id'])
+                ->groupBy('organization_user_id');
+        }
+
+        $staffLandIds = $delegatedLand
+            ->flatten(1)
+            ->pluck('delegatable_id')
+            ->unique()
+            ->all();
+
+        $staffLandParcels = collect();
+        if ($staffLandIds !== []) {
+            $staffLandParcels = LandParcel::query()
+                ->whereIn('id', $staffLandIds)
+                ->get()
+                ->keyBy('id');
+        }
+
         return $organizations
-            ->map(function (Organization $organization) use ($memberships, $ownerProperties, $delegatedByMembership, $staffProperties): array {
+            ->map(function (Organization $organization) use ($memberships, $ownerProperties, $delegatedByMembership, $staffProperties, $ownerLandParcels, $delegatedLand, $staffLandParcels): array {
                 $isOwner = (bool) $organization->pivot->is_owner;
 
                 if ($isOwner) {
                     $properties = $ownerProperties->get($organization->id, collect());
+                    $landParcels = $ownerLandParcels->get($organization->id, collect());
                 } else {
                     $membership = $memberships->get($organization->id);
-                    $ids = $membership
+                    $propertyIds = $membership
                         ? $delegatedByMembership->get($membership->id, collect())->pluck('delegatable_id')->all()
                         : [];
+                    $landIds = $membership
+                        ? $delegatedLand->get($membership->id, collect())->pluck('delegatable_id')->all()
+                        : [];
 
-                    $properties = collect($ids)
+                    $properties = collect($propertyIds)
                         ->map(fn (int $id) => $staffProperties->get($id))
+                        ->filter()
+                        ->values();
+                    $landParcels = collect($landIds)
+                        ->map(fn (int $id) => $staffLandParcels->get($id))
                         ->filter()
                         ->values();
                 }
@@ -114,6 +156,16 @@ class PropertyAccessService extends Service
                             'city' => $property->city,
                             'status' => $property->status,
                             'units_count' => (int) ($property->units_count ?? 0),
+                        ];
+                    })->all(),
+                    'land_parcels' => $landParcels->map(function (LandParcel $parcel): array {
+                        return [
+                            'id' => $parcel->id,
+                            'name' => $parcel->name,
+                            'slug' => $parcel->slug,
+                            'city' => $parcel->city,
+                            'status' => $parcel->status,
+                            'acreage' => $parcel->acreage,
                         ];
                     })->all(),
                 ];
