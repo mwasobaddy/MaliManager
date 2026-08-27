@@ -1,5 +1,5 @@
 import { router, usePage } from '@inertiajs/react';
-import { Building2, Layers, MapPin } from 'lucide-react';
+import { Building2, Layers, MapPin, Map } from 'lucide-react';
 import { createContext, useContext, useEffect, useState } from 'react';
 import {
     Dialog,
@@ -15,6 +15,8 @@ type PropertyPickerContextValue = {
     close: () => void;
     organizations: OrganizationSummary[];
     hasProperties: boolean;
+    hasLand: boolean;
+    hasAssets: boolean;
 };
 
 const PropertyPickerContext = createContext<PropertyPickerContextValue | null>(null);
@@ -39,6 +41,16 @@ function tenantUrl(organizationDomain: string | null, propertySlug: string): str
     return `${scheme}//${organizationDomain}/${propertySlug}/dashboard`;
 }
 
+function landUrl(organizationDomain: string | null, landSlug: string): string {
+    if (!organizationDomain) {
+        return `/land-parcels/${landSlug}`;
+    }
+
+    const scheme = window.location.protocol;
+
+    return `${scheme}//${organizationDomain}/land-parcels/${landSlug}`;
+}
+
 export function PropertyPickerProvider({ children }: { children: React.ReactNode }) {
     const page = usePage();
     const organizations = (page.props.auth?.organizations ?? []) as OrganizationSummary[];
@@ -58,12 +70,14 @@ export function PropertyPickerProvider({ children }: { children: React.ReactNode
     const close = () => setIsOpen(false);
 
     const hasProperties = organizations.some((organization) => organization.properties.length > 0);
+    const hasLand = organizations.some((organization) => organization.land_parcels.length > 0);
+    const hasAssets = hasProperties || hasLand;
 
     // Only users holding the central "access admin dashboard" permission may
-    // leave the picker without choosing a property. Everyone else must pick
-    // one: any attempt to escape drops them into a random accessible property.
+    // leave the picker without choosing an asset. Everyone else must pick one:
+    // any attempt to escape drops them into a random accessible asset.
     const canContinueAsAdmin = permissions.includes('access admin dashboard');
-    const mustChoose = hasProperties && !canContinueAsAdmin;
+    const mustChoose = hasAssets && !canContinueAsAdmin;
 
     // Persist that the picker was acknowledged so it does not re-open on the
     // next dashboard load/refresh within this login. The local close happens
@@ -88,24 +102,46 @@ export function PropertyPickerProvider({ children }: { children: React.ReactNode
         acknowledge(navigate);
     };
 
-    const selectRandomProperty = () => {
-        const choices = organizations.flatMap((organization) =>
-            organization.properties.map((property) => ({
-                domain: organization.domain,
-                slug: property.slug,
-            })),
-        );
+    const selectLandParcel = (organizationDomain: string | null, landSlug: string) => {
+        const navigate = () => window.location.assign(landUrl(organizationDomain, landSlug));
+        acknowledge(navigate);
+    };
+
+    const selectRandomAsset = () => {
+        const choices = [
+            ...organizations.flatMap((organization) =>
+                organization.properties.map((property) => ({
+                    type: 'property' as const,
+                    domain: organization.domain,
+                    slug: property.slug,
+                })),
+            ),
+            ...organizations.flatMap((organization) =>
+                organization.land_parcels.map((parcel) => ({
+                    type: 'land' as const,
+                    domain: organization.domain,
+                    slug: parcel.slug,
+                })),
+            ),
+        ];
 
         if (choices.length === 0) {
             return;
         }
 
         const choice = choices[Math.floor(Math.random() * choices.length)]!;
-        selectProperty(choice.domain, choice.slug);
+
+        if (choice.type === 'land') {
+            selectLandParcel(choice.domain, choice.slug);
+        } else {
+            selectProperty(choice.domain, choice.slug);
+        }
     };
 
     return (
-        <PropertyPickerContext.Provider value={{ open, close, organizations, hasProperties }}>
+        <PropertyPickerContext.Provider
+            value={{ open, close, organizations, hasProperties, hasLand, hasAssets }}
+        >
             {children}
             <Dialog
                 open={isOpen}
@@ -121,7 +157,7 @@ export function PropertyPickerProvider({ children }: { children: React.ReactNode
                     onEscapeKeyDown={(event) => {
                         if (mustChoose) {
                             event.preventDefault();
-                            selectRandomProperty();
+                            selectRandomAsset();
                         }
                     }}
                     onInteractOutside={(event) => {
@@ -131,68 +167,120 @@ export function PropertyPickerProvider({ children }: { children: React.ReactNode
                     }}
                 >
                     <DialogHeader>
-                        <DialogTitle>Select a property</DialogTitle>
+                        <DialogTitle>Select a property or land parcel</DialogTitle>
                         <DialogDescription>
                             {canContinueAsAdmin
-                                ? 'Continue to the admin dashboard, or choose the organization and property you want to manage.'
-                                : 'Choose the organization and property you want to manage.'}
+                                ? 'Continue to the admin dashboard, or choose the organization, property, or land parcel you want to manage.'
+                                : 'Choose the organization, property, or land parcel you want to manage.'}
                         </DialogDescription>
                     </DialogHeader>
 
-                    {!hasProperties ? (
+                    {!hasAssets ? (
                         <p className="text-sm text-muted-foreground">
-                            You don't have any properties assigned to you yet.
+                            You don't have any properties or land parcels assigned to you yet.
                         </p>
                     ) : (
                         <div className="max-h-[60vh] space-y-6 overflow-y-auto">
-                            {organizations.map((organization) => (
-                                <div key={organization.id}>
-                                    <div className="mb-2 flex items-center gap-2">
-                                        <h3 className="text-sm font-semibold">
-                                            {organization.name}
-                                        </h3>
-                                        <span className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
-                                            {organization.is_owner ? 'Owner' : 'Staff'}
-                                        </span>
-                                    </div>
+                            {organizations.map((organization) => {
+                                const orgHasAssets =
+                                    organization.properties.length > 0 ||
+                                    organization.land_parcels.length > 0;
 
-                                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                                        {organization.properties.map((property) => (
-                                            <button
-                                                key={property.id}
-                                                type="button"
-                                                onClick={() =>
-                                                    selectProperty(organization.domain, property.slug)
-                                                }
-                                                className="flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-colors hover:border-primary hover:bg-accent"
-                                            >
-                                                <span className="flex items-center gap-2 font-medium">
-                                                    <Building2 className="size-4" />
-                                                    {property.name}
+                                if (!orgHasAssets) {
+                                    return (
+                                        <div key={organization.id}>
+                                            <div className="mb-2 flex items-center gap-2">
+                                                <h3 className="text-sm font-semibold">
+                                                    {organization.name}
+                                                </h3>
+                                                <span className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+                                                    {organization.is_owner ? 'Owner' : 'Staff'}
                                                 </span>
-                                                <span className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                                                    {property.city && (
+                                            </div>
+                                            <p className="text-xs text-muted-foreground">
+                                                No properties or land parcels assigned.
+                                            </p>
+                                        </div>
+                                    );
+                                }
+
+                                return (
+                                    <div key={organization.id}>
+                                        <div className="mb-2 flex items-center gap-2">
+                                            <h3 className="text-sm font-semibold">
+                                                {organization.name}
+                                            </h3>
+                                            <span className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+                                                {organization.is_owner ? 'Owner' : 'Staff'}
+                                            </span>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                            {organization.properties.map((property) => (
+                                                <button
+                                                    key={property.id}
+                                                    type="button"
+                                                    onClick={() =>
+                                                        selectProperty(organization.domain, property.slug)
+                                                    }
+                                                    className="flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-colors hover:border-primary hover:bg-accent"
+                                                >
+                                                    <span className="flex items-center gap-2 font-medium">
+                                                        <Building2 className="size-4" />
+                                                        {property.name}
+                                                    </span>
+                                                    <span className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                                                        {property.city && (
+                                                            <span className="flex items-center gap-1">
+                                                                <MapPin className="size-3" />
+                                                                {property.city}
+                                                            </span>
+                                                        )}
                                                         <span className="flex items-center gap-1">
-                                                            <MapPin className="size-3" />
-                                                            {property.city}
+                                                            <Layers className="size-3" />
+                                                            {property.units_count} units
                                                         </span>
-                                                    )}
-                                                    <span className="flex items-center gap-1">
-                                                        <Layers className="size-3" />
-                                                        {property.units_count} units
+                                                        <span className="capitalize">
+                                                            {property.status}
+                                                        </span>
                                                     </span>
-                                                    <span className="capitalize">
-                                                        {property.status}
+                                                </button>
+                                            ))}
+
+                                            {organization.land_parcels.map((parcel) => (
+                                                <button
+                                                    key={parcel.id}
+                                                    type="button"
+                                                    onClick={() =>
+                                                        selectLandParcel(organization.domain, parcel.slug)
+                                                    }
+                                                    className="flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-colors hover:border-primary hover:bg-accent"
+                                                >
+                                                    <span className="flex items-center gap-2 font-medium">
+                                                        <Map className="size-4" />
+                                                        {parcel.name}
                                                     </span>
-                                                </span>
-                                            </button>
-                                        ))}
+                                                    <span className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                                                        {parcel.city && (
+                                                            <span className="flex items-center gap-1">
+                                                                <MapPin className="size-3" />
+                                                                {parcel.city}
+                                                            </span>
+                                                        )}
+                                                        {parcel.acreage != null && (
+                                                            <span>{parcel.acreage} acres</span>
+                                                        )}
+                                                        <span className="capitalize">{parcel.status}</span>
+                                                    </span>
+                                                </button>
+                                            ))}
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
-                    {hasProperties && canContinueAsAdmin && (
+                    {hasAssets && canContinueAsAdmin && (
                         <div className="flex justify-end border-t pt-4">
                             <button
                                 type="button"
