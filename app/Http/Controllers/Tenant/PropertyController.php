@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Tenant;
 use App\Enums\SubPermissionKey;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Tenant\StorePropertyRequest;
-use App\Models\LandParcel;
 use App\Models\Organization;
 use App\Models\Property;
 use App\Services\PropertyService;
@@ -40,29 +39,12 @@ class PropertyController extends Controller
                 'units_count' => $property->units_count,
             ]);
 
-        $landParcels = $organization->landParcels()
-            ->when(! $user->isOwnerOf($organization), fn ($query) => $query
-                ->whereIn('id', app(StaffService::class)->delegatedLandParcelIds($user->membershipFor($organization))))
-            ->orderBy('created_at', 'desc')
-            ->get()
-            ->map(fn (LandParcel $parcel) => [
-                'id' => $parcel->id,
-                'name' => $parcel->name,
-                'slug' => $parcel->slug,
-                'city' => $parcel->city,
-                'status' => $parcel->status,
-                'zoning' => $parcel->zoning,
-            ]);
-
         return Inertia::render('tenant/properties/index', [
             'organization' => $organization->only('id', 'name', 'slug'),
             'properties' => $properties,
-            'land_parcels' => $landParcels,
-            'canCreateProperty' => $user->isOwnerOf($organization) && $this->canCreateProperty($organization),
-            'canManageLandParcels' => $user->isOwnerOf($organization)
-                || $user->hasSubPermission($organization, SubPermissionKey::LandParcelManage),
-            'canCreateLandParcel' => $user->isOwnerOf($organization)
-                || $user->hasSubPermission($organization, SubPermissionKey::LandParcelCreate),
+            'canCreateProperty' => ($user->isOwnerOf($organization)
+                || $user->hasSubPermission($organization, SubPermissionKey::PropertyCreate))
+                && $this->canCreateProperty($organization),
         ]);
     }
 
@@ -78,7 +60,9 @@ class PropertyController extends Controller
                 'properties_limit' => $organization->plan?->properties_limit,
                 'units_limit' => $organization->plan?->units_limit,
             ],
-            'canCreateProperty' => $this->canCreateProperty($organization),
+            'canCreateProperty' => ($request->user()->isOwnerOf($organization)
+                || $request->user()->hasSubPermission($organization, SubPermissionKey::PropertyCreate))
+                && $this->canCreateProperty($organization),
         ]);
     }
 
@@ -168,11 +152,13 @@ class PropertyController extends Controller
     }
 
     /**
-     * Only owners may create or edit organization-level structure.
+     * Only users with the property.create permission (owners or staff
+     * granted it) may create organization-level structure.
      */
     private function authorizePropertyMutation(Request $request, Organization $organization): void
     {
-        if (! $request->user()->isOwnerOf($organization)) {
+        if (! $request->user()->isOwnerOf($organization)
+            && ! $request->user()->hasSubPermission($organization, SubPermissionKey::PropertyCreate)) {
             abort(403);
         }
     }
