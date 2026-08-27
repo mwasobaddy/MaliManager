@@ -19,6 +19,15 @@ export type PropertySummary = {
     units_count: number;
 };
 
+export type LandParcelSummary = {
+    id: number;
+    name: string;
+    slug: string;
+    city: string | null;
+    status: string;
+    acreage: number | null;
+};
+
 export type OrganizationSummary = {
     id: number;
     name: string;
@@ -26,6 +35,7 @@ export type OrganizationSummary = {
     domain: string | null;
     is_owner: boolean;
     properties: PropertySummary[];
+    land_parcels: LandParcelSummary[];
 };
 
 export type Auth = {
