@@ -1,4 +1,4 @@
-import { router, usePage } from '@inertiajs/react';
+import { usePage } from '@inertiajs/react';
 import { Building2, Layers, MapPin, Map } from 'lucide-react';
 import { createContext, useContext, useEffect, useState } from 'react';
 import {
@@ -82,19 +82,30 @@ export function PropertyPickerProvider({ children }: { children: React.ReactNode
     // Persist that the picker was acknowledged so it does not re-open on the
     // next dashboard load/refresh within this login. The local close happens
     // regardless of the request outcome so the UI never gets stuck.
+    //
+    // This is a plain fetch (not an Inertia visit): the endpoint returns
+    // 204 No Content, which Inertia cannot parse as a visit response and
+    // would surface its error dialog. A background fetch avoids that.
     const acknowledge = (then?: () => void) => {
-        router.post(
-            '/property-picker/acknowledge',
-            {},
-            {
-                preserveScroll: true,
-                preserveState: true,
-                onFinish: () => {
-                    setIsOpen(false);
-                    then?.();
-                },
+        const token = document
+            .querySelector('meta[name="csrf-token"]')
+            ?.getAttribute('content');
+
+        fetch('/property-picker/acknowledge', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': token ?? '',
+                'X-Requested-With': 'XMLHttpRequest',
             },
-        );
+            body: JSON.stringify({}),
+            credentials: 'same-origin',
+        })
+            .catch(() => {})
+            .finally(() => {
+                setIsOpen(false);
+                then?.();
+            });
     };
 
     const selectProperty = (organizationDomain: string | null, propertySlug: string) => {
