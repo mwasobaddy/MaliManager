@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Foundation\TenantAwareVite;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Vite;
 use Illuminate\Support\Facades\Date;
@@ -16,7 +17,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Use the tenant-aware Vite resolver so dev (hot) asset URLs are
+        // emitted on the current request host, keeping Vite module imports
+        // same-origin on tenant subdomains (avoids cross-origin fetch
+        // failures / white screens when switching assets).
+        $this->app->singleton(Vite::class, TenantAwareVite::class);
     }
 
     /**
