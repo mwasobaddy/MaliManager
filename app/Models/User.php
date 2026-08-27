@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Enums\PlatformRole;
 use App\Enums\SubPermissionKey;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -123,11 +124,23 @@ class User extends Authenticatable implements PasskeyUser
     }
 
     /**
+     * Whether the user holds the platform-wide admin role (god access).
+     */
+    public function isPlatformAdmin(): bool
+    {
+        return $this->hasRole(PlatformRole::Admin->value);
+    }
+
+    /**
      * Whether the user has a given sub-permission inside an organization.
-     * Owners bypass sub-permission checks.
+     * Owners and platform admins bypass sub-permission checks.
      */
     public function hasSubPermission(Organization $organization, SubPermissionKey $key): bool
     {
+        if ($this->isPlatformAdmin()) {
+            return true;
+        }
+
         $membership = $this->organizations()
             ->where('organizations.id', $organization->id)
             ->withPivot('is_owner', 'sub_role_id')
