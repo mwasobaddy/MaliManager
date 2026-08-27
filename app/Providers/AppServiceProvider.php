@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use Carbon\CarbonImmutable;
+use Illuminate\Foundation\Vite;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\ServiceProvider;
@@ -24,6 +25,15 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+
+        // Emit Vite asset URLs as root-relative paths so the shared build is
+        // served from the current host. This keeps assets on the tenant
+        // subdomain's scheme (https) instead of an absolute APP_URL, which
+        // would otherwise trigger mixed-content blocks on the tenant pages.
+        // Combined with `asset_helper_tenancy => false`, the frontend never
+        // routes through the tenant asset controller (which only serves
+        // storage/app/public uploads), so the /build assets resolve correctly.
+        app(Vite::class)->createAssetPathsUsing(fn (string $path): string => '/'.ltrim($path, '/'));
     }
 
     /**
