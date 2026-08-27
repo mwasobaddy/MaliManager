@@ -24,6 +24,19 @@ export type NavGroup = {
 function NavItemLink({ item }: { item: NavItem }) {
     const { isCurrentUrl } = useCurrentUrl();
 
+    if (item.onClick) {
+        return (
+            <SidebarMenuButton
+                tooltip={{ children: item.title }}
+                className="cursor-pointer"
+                onClick={item.onClick}
+            >
+                {item.icon && <item.icon />}
+                <span>{item.title}</span>
+            </SidebarMenuButton>
+        );
+    }
+
     return (
         <SidebarMenuButton asChild isActive={isCurrentUrl(item.href)} tooltip={{ children: item.title }}>
             <Link href={item.href} prefetch>
