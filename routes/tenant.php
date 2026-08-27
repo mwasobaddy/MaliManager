@@ -60,10 +60,13 @@ Route::middleware([
 
     Route::middleware(['auth', 'has-property'])->group(function () {
         Route::get('/properties', [PropertyController::class, 'index'])
+            ->middleware('sub-permission:property.manage')
             ->name('tenant.properties.index');
         Route::get('/properties/create', [PropertyController::class, 'create'])
+            ->middleware('sub-permission:property.create')
             ->name('tenant.properties.create');
         Route::post('/properties', [PropertyController::class, 'store'])
+            ->middleware('sub-permission:property.create')
             ->name('tenant.properties.store');
         Route::get('/{property:slug}/dashboard', [PropertyController::class, 'dashboard'])
             ->name('tenant.properties.dashboard');
