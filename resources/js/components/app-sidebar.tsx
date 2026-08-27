@@ -1,6 +1,7 @@
 import { Link, usePage } from '@inertiajs/react';
 import { BarChart3, BookOpen, Building2, FileText, FolderGit2, History, LayoutGrid, MessageCircle, ArrowLeftRight, Map, ReceiptText, ScrollText, Sparkles, Users, UserRound, Wand2, Wrench , ClipboardCheck } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
+import { usePropertyPicker } from '@/components/property-picker-dialog';
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
 import type { NavGroup } from '@/components/nav-main';
@@ -77,12 +78,26 @@ export function AppSidebar() {
     const canViewAnyAudit = authPermissions.includes('view audit');
     const canManageUsers = authPermissions.includes('user.manage');
     const canManageOrganizations = authPermissions.includes('organization.manage');
+    const canAccessAdminDashboard = authPermissions.includes('access admin dashboard');
+    const { open, hasProperties } = usePropertyPicker();
 
-    const item = (title: string, href: NavItem['href'], icon: NavItem['icon']): NavItem => ({
+    const item = (
+        title: string,
+        href: NavItem['href'],
+        icon: NavItem['icon'],
+        onClick?: () => void,
+    ): NavItem => ({
         title,
         href,
         icon,
+        onClick,
     });
+
+    // Opens the cross-organization property picker so an admin can jump to a
+    // different property or land parcel. Only shown when they actually have
+    // properties to switch between.
+    const switchPropertyItem = (): NavItem | null =>
+        hasProperties ? { title: 'Switch property', icon: ArrowLeftRight, onClick: open } : null;
 
     const dropdown = (title: string, icon: NavItem['icon'], children: NavItem[]): NavItem => ({
         title,
@@ -121,7 +136,7 @@ export function AppSidebar() {
             {
                 label: 'Organization',
                 items: [
-                    item('Switch property', propertiesIndex(), ArrowLeftRight),
+                    ...(switchPropertyItem() ? [switchPropertyItem()!] : []),
                     ...(canManageStaff ? [dropdown('Team', Users, [item('Staff', staffIndex(), Users)])] : []),
                     ...(isOwner
                         ? [item('AI settings', aiSettingsEdit(), Sparkles)]
@@ -201,6 +216,7 @@ export function AppSidebar() {
                 label: 'My account',
                 items: [
                     item('Dashboard', centralDashboard(), LayoutGrid),
+                    ...(switchPropertyItem() && canAccessAdminDashboard ? [switchPropertyItem()!] : []),
                     item('My rentals', searcherRentals(), Building2),
                     ...(canRaiseMaintenance
                         ? [item('Maintenance', maintenanceRoute(), Wrench)]
