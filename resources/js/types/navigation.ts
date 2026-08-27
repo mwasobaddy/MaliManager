@@ -8,9 +8,11 @@ export type BreadcrumbItem = {
 
 export type NavItem = {
     title: string;
-    href: NonNullable<InertiaLinkProps['href']>;
+    href?: NonNullable<InertiaLinkProps['href']>;
     icon?: LucideIcon | null;
     isActive?: boolean;
     /** When present, the item renders as a collapsible dropdown of sub-items. */
     children?: NavItem[];
+    /** When present, the item renders as a button that runs this handler instead of navigating. */
+    onClick?: () => void;
 };
