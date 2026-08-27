@@ -19,7 +19,7 @@ type Props = {
 
 export function UserMenuContent({ user }: Props) {
     const cleanup = useMobileNavigation();
-    const { open, hasProperties } = usePropertyPicker();
+    const { open, hasAssets } = usePropertyPicker();
 
     const handleLogout = () => {
         cleanup();
@@ -34,7 +34,7 @@ export function UserMenuContent({ user }: Props) {
                 </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            {hasProperties && (
+            {hasAssets && (
                 <DropdownMenuGroup>
                     <DropdownMenuItem
                         className="cursor-pointer"
@@ -43,8 +43,8 @@ export function UserMenuContent({ user }: Props) {
                             open();
                         }}
                     >
-                        <ArrowLeftRight className="mr-2" />
-                        Switch property
+                                <ArrowLeftRight className="mr-2" />
+                                Switch property or land
                     </DropdownMenuItem>
                 </DropdownMenuGroup>
             )}
