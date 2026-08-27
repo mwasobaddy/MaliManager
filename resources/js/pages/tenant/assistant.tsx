@@ -4,7 +4,7 @@ import { useRef, useState } from 'react';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ask as askRoute, page as assistantPage } from '@/routes/tenant/assistant';
+import { ask as askRoute } from '@/routes/tenant/assistant';
 
 type Message = {
     role: 'user' | 'assistant' | 'error';
@@ -52,6 +52,12 @@ export default function Assistant({ enabled }: Props) {
         })
             .then(async (response) => response.json())
             .then((data) => {
+                if (data.answer) {
+                    setMessages((prev) => [...prev, { role: 'assistant', text: data.answer }]);
+
+                    return;
+                }
+
                 setMessages((prev) => [
                     ...prev,
                     {
@@ -61,6 +67,9 @@ export default function Assistant({ enabled }: Props) {
                             : data.error ?? 'Something went wrong.',
                     },
                 ]);
+            })
+            .catch(() => {
+                setMessages((prev) => [...prev, { role: 'error', text: 'Something went wrong.' }]);
             })
             .finally(() => {
                 setBusy(false);
