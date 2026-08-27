@@ -18,6 +18,7 @@ class LandParcelFactory extends Factory
         return [
             'organization_id' => Organization::factory(),
             'name' => fake()->streetName(),
+            'slug' => fake()->unique()->slug(),
             'title_deed_number' => fake()->bothify('LR-####'),
             'acreage' => fake()->randomFloat(2, 0.1, 500),
             'zoning' => fake()->randomElement(['residential', 'commercial', 'agricultural', 'mixed', 'industrial']),
