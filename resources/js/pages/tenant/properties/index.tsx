@@ -1,10 +1,8 @@
 import { Head, Link } from '@inertiajs/react';
-import { Building2, Map, Plus } from 'lucide-react';
+import { Building2, Plus } from 'lucide-react';
 import Heading from '@/components/heading';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { create as createParcel, show as showParcel } from '@/routes/tenant/land-parcels';
 import { create, dashboard } from '@/routes/tenant/properties';
 
 type Organization = {
@@ -22,31 +20,16 @@ type Property = {
     units_count: number;
 };
 
-type LandParcel = {
-    id: number;
-    name: string;
-    slug: string;
-    city: string | null;
-    status: string;
-    zoning: string;
-};
-
 type Props = {
     organization: Organization;
     properties: Property[];
-    land_parcels: LandParcel[];
     canCreateProperty: boolean;
-    canManageLandParcels: boolean;
-    canCreateLandParcel: boolean;
 };
 
 export default function PropertiesIndex({
     organization,
     properties,
-    land_parcels,
     canCreateProperty,
-    canManageLandParcels,
-    canCreateLandParcel,
 }: Props) {
     return (
         <>
@@ -112,61 +95,6 @@ export default function PropertiesIndex({
                     </div>
                 )}
 
-                {canManageLandParcels && (
-                    <div className="space-y-4">
-                        <div className="flex flex-wrap items-center justify-between gap-4">
-                            <Heading
-                                variant="small"
-                                title="Land parcels"
-                                description="Plots of land you track separately from buildings."
-                            />
-                            {canCreateLandParcel && (
-                                <Button asChild variant="outline">
-                                    <Link href={createParcel()}>
-                                        <Plus className="size-4" />
-                                        Add land parcel
-                                    </Link>
-                                </Button>
-                            )}
-                        </div>
-
-                        {land_parcels.length === 0 ? (
-                            <p className="text-sm text-muted-foreground">
-                                No land parcels yet.
-                            </p>
-                        ) : (
-                            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                                {land_parcels.map((parcel) => (
-                                    <Link
-                                        key={parcel.id}
-                                        href={showParcel(parcel.slug)}
-                                        className="rounded-xl border border-input bg-card transition-colors hover:bg-muted"
-                                    >
-                                        <Card className="border-0 bg-transparent shadow-none">
-                                            <CardHeader>
-                                                <div className="flex items-center gap-2">
-                                                    <Map className="size-4 text-muted-foreground" />
-                                                    <CardTitle>{parcel.name}</CardTitle>
-                                                </div>
-                                                <CardDescription>
-                                                    {parcel.city ? `${parcel.city} · ` : ''}
-                                                    {parcel.zoning}
-                                                </CardDescription>
-                                            </CardHeader>
-                                            <CardContent>
-                                                <Badge
-                                                    variant={parcel.status === 'active' ? 'default' : 'secondary'}
-                                                >
-                                                    {parcel.status}
-                                                </Badge>
-                                            </CardContent>
-                                        </Card>
-                                    </Link>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                )}
             </div>
         </>
     );
