@@ -46,12 +46,14 @@ enum AiProvider: string
 
     /**
      * The Prism driver serving this provider. All values map to their own
-     * native Prism driver except NVIDIA, whose OpenAI-compatible NIM
-     * endpoint routes through the OpenAI driver with a URL override.
+     * native Prism driver except NVIDIA: NIM only implements the OpenAI
+     * Chat Completions API (not the Responses API that Prism's OpenAI
+     * driver uses), so it routes through the OpenAI-compatible OpenRouter
+     * driver with a base-URL override.
      */
     public function prismDriver(): string
     {
-        return $this === self::Nvidia ? 'openai' : $this->value;
+        return $this === self::Nvidia ? 'openrouter' : $this->value;
     }
 
     /**
