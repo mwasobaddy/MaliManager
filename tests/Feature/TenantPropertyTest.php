@@ -3,6 +3,8 @@
 use App\Models\Organization;
 use App\Models\Plan;
 use App\Models\Property;
+use App\Models\SubPermission;
+use App\Models\SubRole;
 use App\Models\User;
 use App\Services\TenantService;
 use Database\Seeders\PlansSeeder;
@@ -223,4 +225,124 @@ test('exceeding the plan unit limit surfaces a toast from the global handler', f
         ));
 
     expect($property->units()->count())->toBe(10);
+});
+
+test('platform admin can create a property via god-mode without org membership', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createTestOrganization($owner);
+
+    $admin = User::factory()->create(['onboarded_at' => now()]);
+    $admin->assignRole('admin');
+
+    $this->actingAs($admin)
+        ->post(tenantUrl($organization, '/properties'), [
+            'name' => 'Admin Plot',
+            'city' => 'Nairobi',
+            'address' => '1 Admin Road',
+            'units' => [['name' => 'A1', 'type' => '1 Bedroom', 'monthly_rent' => 10000]],
+        ])
+        ->assertRedirect();
+
+    expect(Property::where('name', 'Admin Plot')->where('organization_id', $organization->id)->exists())->toBeTrue();
+});
+
+test('platform admin sees add links on the properties index', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = app(TenantService::class)->createOrganization(
+        owner: $owner,
+        name: 'Acme Estates',
+        plan: Plan::where('slug', 'starter')->firstOrFail(),
+    );
+    $organization->properties()->create([
+        'name' => 'Seed Estate', 'slug' => 'seed-estate', 'status' => 'active', 'created_by' => $owner->id,
+    ]);
+
+    $admin = User::factory()->create(['onboarded_at' => now()]);
+    $admin->assignRole('admin');
+
+    $this->actingAs($admin)
+        ->get(tenantUrl($organization, '/properties'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('canCreateProperty', true));
+});
+
+test('staff with the property.create sub-permission can create a property', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createTestOrganization($owner);
+
+    $staff = User::factory()->create(['onboarded_at' => now()]);
+    $role = SubRole::factory()->create(['organization_id' => $organization->id, 'created_by' => $owner->id]);
+    $role->subPermissions()->attach(SubPermission::where('key', 'property.create')->firstOrFail()->id);
+    $organization->users()->attach($staff->id, ['sub_role_id' => $role->id, 'status' => 'active']);
+
+    $this->actingAs($staff)
+        ->post(tenantUrl($organization, '/properties'), [
+            'name' => 'Staff Block',
+            'city' => 'Nairobi',
+            'address' => '2 Staff Lane',
+            'units' => [['name' => 'B1', 'type' => '1 Bedroom', 'monthly_rent' => 12000]],
+        ])
+        ->assertRedirect();
+
+    expect(Property::where('name', 'Staff Block')->where('organization_id', $organization->id)->exists())->toBeTrue();
+});
+
+test('staff without the property.create sub-permission is forbidden from creating', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createTestOrganization($owner);
+
+    $staff = User::factory()->create(['onboarded_at' => now()]);
+    $organization->users()->attach($staff->id, ['status' => 'active']);
+
+    $this->actingAs($staff)
+        ->post(tenantUrl($organization, '/properties'), [
+            'name' => 'No Perm Block',
+            'city' => 'Nairobi',
+            'address' => '3 Denied Way',
+            'units' => [['name' => 'C1', 'type' => '1 Bedroom', 'monthly_rent' => 12000]],
+        ])
+        ->assertRedirect()
+        ->assertSessionHas('inertia.flash_data', fn (array $flash) => str_contains(
+            $flash['toast']['message'] ?? '',
+            'do not have permission',
+        ));
+
+    expect(Property::where('name', 'No Perm Block')->exists())->toBeFalse();
+});
+
+test('staff without property.manage cannot view the properties index', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createTestOrganization($owner);
+    $organization->properties()->create([
+        'name' => 'Seed Estate', 'slug' => 'seed-estate', 'status' => 'active', 'created_by' => $owner->id,
+    ]);
+
+    $staff = User::factory()->create(['onboarded_at' => now()]);
+    $organization->users()->attach($staff->id, ['status' => 'active']);
+
+    $this->actingAs($staff)
+        ->get(tenantUrl($organization, '/properties'))
+        ->assertRedirect()
+        ->assertSessionHas('inertia.flash_data', fn (array $flash) => str_contains(
+            $flash['toast']['message'] ?? '',
+            'do not have permission',
+        ));
+});
+
+test('staff with property.manage can view the properties index', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createTestOrganization($owner);
+    $organization->properties()->create([
+        'name' => 'Seed Estate', 'slug' => 'seed-estate', 'status' => 'active', 'created_by' => $owner->id,
+    ]);
+
+    $staff = User::factory()->create(['onboarded_at' => now()]);
+    $role = SubRole::factory()->create(['organization_id' => $organization->id, 'created_by' => $owner->id]);
+    $role->subPermissions()->attach(SubPermission::where('key', 'property.manage')->firstOrFail()->id);
+    $organization->users()->attach($staff->id, ['sub_role_id' => $role->id, 'status' => 'active']);
+
+    $this->actingAs($staff)
+        ->get(tenantUrl($organization, '/properties'))
+        ->assertOk();
 });
