@@ -1,13 +1,37 @@
 import type { SVGAttributes } from 'react';
 
-export default function AppLogoIcon(props: SVGAttributes<SVGElement>) {
+export default function AppLogoIcon(props: SVGAttributes<SVGSVGElement>) {
     return (
-        <svg {...props} viewBox="0 0 40 42" xmlns="http://www.w3.org/2000/svg">
-            <path
-                fillRule="evenodd"
-                clipRule="evenodd"
-                d="M17.2 5.63325L8.6 0.855469L0 5.63325V32.1434L16.2 41.1434L32.4 32.1434V23.699L40 19.4767V9.85547L31.4 5.07769L22.8 9.85547V18.2999L17.2 21.411V5.63325ZM38 18.2999L32.4 21.411V15.2545L38 12.1434V18.2999ZM36.9409 10.4439L31.4 13.5221L25.8591 10.4439L31.4 7.36561L36.9409 10.4439ZM24.8 18.2999V12.1434L30.4 15.2545V21.411L24.8 18.2999ZM23.8 20.0323L29.3409 23.1105L16.2 30.411L10.6591 27.3328L23.8 20.0323ZM7.6 27.9212L15.2 32.1434V38.2999L2 30.9666V7.92116L7.6 11.0323V27.9212ZM8.6 9.29991L3.05913 6.22165L8.6 3.14339L14.1409 6.22165L8.6 9.29991ZM30.4 24.8101L17.2 32.1434V38.2999L30.4 30.9666V24.8101ZM9.6 11.0323L15.2 7.92117V22.5221L9.6 25.6333V11.0323Z"
-            />
-        </svg>
+
+<svg
+    {...props}
+    viewBox="370 160 670 455"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    aria-hidden="true"
+>
+    <path
+        fill="rgb(21,119,118)"
+        stroke="rgb(21,119,118)"
+        stroke-width="1"
+        opacity="1"
+        d="M 818 300 Q 836 298 842 309 L 845 323 Q 843 334 835 339 Q 830 343 818 342 L 807 335 Q 801 329 802 317 L 811 303 L 818 300 Z "
+    />
+    <path
+        fill="rgb(194,119,80)"
+        stroke="rgb(194,119,80)"
+        stroke-width="1"
+        opacity="1" 
+        d="M 590 185 L 704 285 L 817 185 L 1015 359 L 1014 418 L 984 392 L 983 393 L 983 471 L 984 544 L 983 563 L 984 575 L 983 588 L 984 590 L 983 593 L 874 593 L 874 548 L 934 548 L 936 546 L 935 412 L 936 349 L 817 245 L 739 314 L 747 324 L 853 417 L 824 450 L 703 346 L 585 450 L 555 417 L 670 315 L 590 246 L 473 348 L 473 546 L 474 548 L 535 548 L 535 593 L 425 593 L 425 394 L 422 393 L 394 418 L 394 358 L 590 185 Z "
+    />
+    <path
+        fill="rgb(194,119,80)"
+        stroke="rgb(194,119,80)"
+        stroke-width="1"
+        opacity="1"
+        d="M 658 468 L 750 468 L 750 593 L 658 593 L 658 468 Z M 725 522 L 725 540 L 735 540 L 736 536 L 736 522 L 725 522 Z "
+    />
+</svg>
+
     );
 }
