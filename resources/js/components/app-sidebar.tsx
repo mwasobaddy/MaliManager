@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import { BarChart3, BookOpen, Building2, FileText, FolderGit2, History, LayoutGrid, MessageCircle, ArrowLeftRight, Map, ReceiptText, ScrollText, Sparkles, Users, UserRound, Wand2, Wrench , ClipboardCheck } from 'lucide-react';
+import { BarChart3, BookOpen, Building2, CreditCard, FileText, FolderGit2, History, LayoutGrid, MessageCircle, ArrowLeftRight, Map, ReceiptText, ScrollText, Sparkles, Users, UserRound, Wand2, Wrench , ClipboardCheck } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { usePropertyPicker } from '@/components/property-picker-dialog';
 import { NavFooter } from '@/components/nav-footer';
@@ -37,6 +37,7 @@ import { index as occupantsIndex } from '@/routes/tenant/occupants';
 import { dashboard as propertyDashboard, index as propertiesIndex } from '@/routes/tenant/properties';
 import { index as staffIndex } from '@/routes/tenant/staff';
 import { index as usersIndex } from '@/routes/users';
+import { index as plansIndex } from '@/routes/plans';
 import type { NavItem } from '@/types';
 
 const footerNavItems: NavItem[] = [
@@ -59,6 +60,7 @@ export function AppSidebar() {
     const canManageStaff = context?.permissions?.includes('staff.manage') ?? false;
     const canManageOccupants = context?.permissions?.includes('occupant.manage') ?? false;
     const canManageLandParcels = context?.permissions?.includes('land_parcel.manage') ?? false;
+    const canManageProperties = context?.permissions?.includes('property.manage') ?? false;
     const canManageInspections = context?.permissions?.includes('inspection.manage') ?? false;
     const canViewLeases = context?.permissions?.includes('lease.manage') ?? false;
     const canManageTemplates = context?.permissions?.includes('lease.manage_templates') ?? false;
@@ -78,6 +80,7 @@ export function AppSidebar() {
     const canViewAnyAudit = authPermissions.includes('view audit');
     const canManageUsers = authPermissions.includes('user.manage');
     const canManageOrganizations = authPermissions.includes('organization.manage');
+    const canManagePlans = authPermissions.includes('plan.manage');
     const canAccessAdminDashboard = authPermissions.includes('access admin dashboard');
     const { open, hasAssets } = usePropertyPicker();
 
@@ -151,6 +154,7 @@ export function AppSidebar() {
                           ]
                         : []),
                     ...(canViewAudit ? [item('Audit log', auditIndex(), History)] : []),
+                    ...(canViewAnyAudit ? [item('Platform audit', platformAuditIndex(), History)] : []),
                     ...(aiEnabled
                         ? [
                               item('AI assistant', assistantPageIndex(), MessageCircle),
@@ -170,7 +174,7 @@ export function AppSidebar() {
                 label: 'Assets',
                 items: [
                     ...(switchPropertyItem() ? [switchPropertyItem()!] : []),
-                    item('Manage properties', propertiesIndex(), ArrowLeftRight),
+                    ...(canManageProperties ? [item('Manage properties', propertiesIndex(), ArrowLeftRight)] : []),
                     ...(canManageLandParcels ? [item('Land parcels', landParcelsIndex(), Map)] : []),
                 ],
             },
@@ -200,6 +204,7 @@ export function AppSidebar() {
                         ? [item('Agreement templates', agreementTemplatesIndex(), FileText)]
                         : []),
                     ...(canViewAudit ? [item('Audit log', auditIndex(), History)] : []),
+                    ...(canViewAnyAudit ? [item('Platform audit', platformAuditIndex(), History)] : []),
                 ],
             },
         ];
@@ -208,6 +213,7 @@ export function AppSidebar() {
         const adminChildren: NavItem[] = [
             ...(canManageUsers ? [item('Users', usersIndex(), Users)] : []),
             ...(canManageOrganizations ? [item('Organizations', organizationsIndex(), Building2)] : []),
+            ...(canManagePlans ? [item('Plans', plansIndex(), CreditCard)] : []),
             ...(canManageRoles ? [item('Roles', rolesIndex(), UserRound)] : []),
             ...(canViewAnyAudit ? [item('Platform audit', platformAuditIndex(), History)] : []),
         ];
