@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Delegation;
+use App\Models\LandParcel;
 use App\Models\Organization;
 use App\Models\Property;
 use App\Models\SubRole;
@@ -66,6 +67,67 @@ it('restricts staff to only their delegated properties', function () {
 
     expect($propertyIds)->toContain($delegated->id);
     expect($propertyIds)->not->toContain($other->id);
+});
+
+it('lists every land parcel for an organization owner across all their organizations', function () {
+    $user = onboardedUser();
+
+    $orgOne = Organization::factory()->create();
+    $orgTwo = Organization::factory()->create();
+
+    $user->organizations()->attach($orgOne->id, ['is_owner' => true, 'status' => 'active']);
+    $user->organizations()->attach($orgTwo->id, ['is_owner' => true, 'status' => 'active']);
+
+    $parcelOne = LandParcel::factory()->for($orgOne)->create();
+    $parcelTwo = LandParcel::factory()->for($orgTwo)->create();
+
+    $result = app(PropertyAccessService::class)->organizationsWithProperties($user);
+    $parcelIds = collect($result)->flatMap(fn ($organization) => $organization['land_parcels'])->pluck('id');
+
+    expect($parcelIds)->toContain($parcelOne->id);
+    expect($parcelIds)->toContain($parcelTwo->id);
+});
+
+it('restricts staff to only their delegated land parcels', function () {
+    $user = onboardedUser();
+    $org = Organization::factory()->create();
+    $subRole = SubRole::factory()->create();
+
+    $user->organizations()->attach($org->id, [
+        'is_owner' => false,
+        'sub_role_id' => $subRole->id,
+        'status' => 'active',
+    ]);
+
+    $delegated = LandParcel::factory()->for($org)->create();
+    $other = LandParcel::factory()->for($org)->create();
+
+    $membership = $user->membershipFor($org);
+    Delegation::create([
+        'organization_user_id' => $membership->id,
+        'organization_id' => $org->id,
+        'delegatable_type' => LandParcel::class,
+        'delegatable_id' => $delegated->id,
+    ]);
+
+    $result = app(PropertyAccessService::class)->organizationsWithProperties($user);
+    $parcelIds = collect($result)->flatMap(fn ($organization) => $organization['land_parcels'])->pluck('id');
+
+    expect($parcelIds)->toContain($delegated->id);
+    expect($parcelIds)->not->toContain($other->id);
+});
+
+it('auto-opens the picker on the dashboard when the user only has a land parcel', function () {
+    $user = onboardedUser();
+    $org = Organization::factory()->create();
+
+    $user->organizations()->attach($org->id, ['is_owner' => true, 'status' => 'active']);
+    LandParcel::factory()->for($org)->create();
+
+    $this->actingAs($user)
+        ->get(route('dashboard'))
+        ->assertInertia(fn ($page) => $page->component('dashboard')
+            ->where('autoOpenPropertyPicker', true));
 });
 
 it('redirects to the central dashboard when the user has multiple properties', function () {
@@ -201,7 +263,8 @@ it('resolves property access with a bounded query count regardless of organizati
     $queryCount = count(DB::getQueryLog());
     DB::disableQueryLog();
 
-    // Bounded regardless of N: orgs+domains, owner properties, delegations,
-    // delegated properties. Grows O(1), not O(N).
-    expect($queryCount)->toBeLessThan(12);
+    // Bounded regardless of N: orgs+domains, owner properties, owner land
+    // parcels, delegations, delegated properties, delegated land parcels.
+    // Grows O(1), not O(N).
+    expect($queryCount)->toBeLessThan(16);
 });
