@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminController;
+use App\Http\Controllers\Admin\PlanController;
 use App\Http\Controllers\Audit\PlatformAuditController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\OtpController;
@@ -73,6 +74,16 @@ Route::middleware(['auth', 'verified', 'can:manageOrganizations'])->group(functi
     Route::get('organizations/{organization}/edit', [OrganizationController::class, 'edit'])->name('organizations.edit')->middleware('can:editOrganizations');
     Route::patch('organizations/{organization}', [OrganizationController::class, 'update'])->name('organizations.update')->middleware('can:editOrganizations');
     Route::delete('organizations/{organization}', [OrganizationController::class, 'destroy'])->name('organizations.destroy')->middleware('can:deleteOrganizations');
+});
+
+// Central plan management module, gated by central plan.* permissions.
+Route::middleware(['auth', 'verified', 'can:managePlans'])->group(function () {
+    Route::get('plans', [PlanController::class, 'index'])->name('plans.index');
+    Route::get('plans/create', [PlanController::class, 'create'])->name('plans.create')->middleware('can:createPlans');
+    Route::post('plans', [PlanController::class, 'store'])->name('plans.store')->middleware('can:createPlans');
+    Route::get('plans/{plan}/edit', [PlanController::class, 'edit'])->name('plans.edit')->middleware('can:editPlans');
+    Route::patch('plans/{plan}', [PlanController::class, 'update'])->name('plans.update')->middleware('can:editPlans');
+    Route::delete('plans/{plan}', [PlanController::class, 'destroy'])->name('plans.destroy')->middleware('can:deletePlans');
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
