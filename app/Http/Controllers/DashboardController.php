@@ -36,12 +36,14 @@ class DashboardController extends Controller
         }
 
         $access = app(PropertyAccessService::class)->organizationsWithProperties($user);
-        $properties = collect($access)->flatMap(fn (array $organization) => $organization['properties']);
+        $accessibleAssets = collect($access)->flatMap(
+            fn (array $organization) => [...$organization['properties'], ...$organization['land_parcels']],
+        );
 
         return Inertia::render('dashboard', array_merge(
             app(DashboardService::class)->payload($user, $access),
             [
-                'autoOpenPropertyPicker' => $properties->isNotEmpty()
+                'autoOpenPropertyPicker' => $accessibleAssets->isNotEmpty()
                     && ! $request->session()->get(self::ACK_KEY, false),
             ],
         ));
