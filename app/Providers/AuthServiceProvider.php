@@ -64,6 +64,12 @@ class AuthServiceProvider extends ServiceProvider
         Gate::define('exportOrganizations', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::OrganizationExport->value));
         Gate::define('importOrganizations', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::OrganizationImport->value));
 
+        // Central plan management module.
+        Gate::define('managePlans', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::PlanManage->value));
+        Gate::define('createPlans', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::PlanCreate->value));
+        Gate::define('editPlans', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::PlanEdit->value));
+        Gate::define('deletePlans', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::PlanDelete->value));
+
         Gate::policy(Lease::class, LeasePolicy::class);
     }
 }
