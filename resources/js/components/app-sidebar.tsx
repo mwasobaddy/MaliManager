@@ -79,7 +79,7 @@ export function AppSidebar() {
     const canManageUsers = authPermissions.includes('user.manage');
     const canManageOrganizations = authPermissions.includes('organization.manage');
     const canAccessAdminDashboard = authPermissions.includes('access admin dashboard');
-    const { open, hasProperties } = usePropertyPicker();
+    const { open, hasAssets } = usePropertyPicker();
 
     const item = (
         title: string,
@@ -97,7 +97,7 @@ export function AppSidebar() {
     // different property or land parcel. Only shown when they actually have
     // properties to switch between.
     const switchPropertyItem = (): NavItem | null =>
-        hasProperties ? { title: 'Switch property', icon: ArrowLeftRight, onClick: open } : null;
+        hasAssets ? { title: 'Switch property or land', icon: ArrowLeftRight, onClick: open } : null;
 
     const dropdown = (title: string, icon: NavItem['icon'], children: NavItem[]): NavItem => ({
         title,
@@ -169,7 +169,8 @@ export function AppSidebar() {
             {
                 label: 'Assets',
                 items: [
-                    item('Properties', propertiesIndex(), ArrowLeftRight),
+                    ...(switchPropertyItem() ? [switchPropertyItem()!] : []),
+                    item('Manage properties', propertiesIndex(), ArrowLeftRight),
                     ...(canManageLandParcels ? [item('Land parcels', landParcelsIndex(), Map)] : []),
                 ],
             },
