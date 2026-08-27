@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\AiSetting;
 use App\Models\Delegation;
 use App\Models\LandParcel;
 use App\Models\Organization;
@@ -170,4 +171,33 @@ test('delegated non-owner can manage a parcel, undelegated cannot', function () 
     $this->actingAs($caretaker)
         ->get(parcelTenantUrl($organization, "/land-parcels/{$parcel->slug}"))
         ->assertOk();
+});
+
+test('land parcel page resolves to org context with ai enabled when org has a credential', function () {
+    $owner = User::factory()->create(['onboarded_at' => now(), 'password' => 'secret-pass']);
+    $organization = createLandParcelOrganization($owner);
+    $parcel = createParcel($organization, $owner);
+
+    AiSetting::create([
+        'owner_type' => (new Organization)->getMorphClass(),
+        'owner_id' => $organization->id,
+        'provider' => 'openai',
+        'model' => 'gpt-4o',
+        'api_key' => 'test-key',
+        'allow_all_members' => true,
+        'features' => null,
+    ]);
+
+    $this->actingAs($owner)
+        ->get(parcelTenantUrl($organization, "/land-parcels/{$parcel->slug}"))
+        ->assertOk()
+        ->assertInertia(function ($page) use ($organization) {
+            $props = $page->toArray()['props'];
+
+            expect($props['context']['organization']['id'])->toBe($organization->id);
+            expect($props['context']['property'])->toBeNull();
+            expect($props['auth']['ai_enabled'])->toBeTrue();
+
+            return true;
+        });
 });
