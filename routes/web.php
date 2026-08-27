@@ -83,6 +83,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('dashboard')
         ->middleware('onboarded');
 
+    Route::post('property-picker/acknowledge', [DashboardController::class, 'acknowledge'])
+        ->name('property-picker.acknowledge');
+
     Route::get('setup/first-asset', [OnboardingController::class, 'firstAsset'])
         ->name('onboarding.first-asset')
         ->middleware('onboarded');

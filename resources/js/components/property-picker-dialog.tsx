@@ -1,4 +1,4 @@
-import { usePage } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import { Building2, Layers, MapPin } from 'lucide-react';
 import { createContext, useContext, useEffect, useState } from 'react';
 import {
@@ -65,9 +65,27 @@ export function PropertyPickerProvider({ children }: { children: React.ReactNode
     const canContinueAsAdmin = permissions.includes('access admin dashboard');
     const mustChoose = hasProperties && !canContinueAsAdmin;
 
+    // Persist that the picker was acknowledged so it does not re-open on the
+    // next dashboard load/refresh within this login. The local close happens
+    // regardless of the request outcome so the UI never gets stuck.
+    const acknowledge = (then?: () => void) => {
+        router.post(
+            '/property-picker/acknowledge',
+            {},
+            {
+                preserveScroll: true,
+                preserveState: true,
+                onFinish: () => {
+                    setIsOpen(false);
+                    then?.();
+                },
+            },
+        );
+    };
+
     const selectProperty = (organizationDomain: string | null, propertySlug: string) => {
-        setIsOpen(false);
-        window.location.assign(tenantUrl(organizationDomain, propertySlug));
+        const navigate = () => window.location.assign(tenantUrl(organizationDomain, propertySlug));
+        acknowledge(navigate);
     };
 
     const selectRandomProperty = () => {
@@ -178,7 +196,7 @@ export function PropertyPickerProvider({ children }: { children: React.ReactNode
                         <div className="flex justify-end border-t pt-4">
                             <button
                                 type="button"
-                                onClick={close}
+                                onClick={() => acknowledge()}
                                 className="inline-flex h-9 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
                             >
                                 Continue as admin

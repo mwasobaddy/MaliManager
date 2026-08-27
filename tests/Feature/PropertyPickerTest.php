@@ -120,6 +120,33 @@ it('does not auto-open the picker without accessible properties', function () {
             ->where('autoOpenPropertyPicker', false));
 });
 
+it('records the picker acknowledgement so it stays closed', function () {
+    $user = onboardedUser();
+
+    $this->actingAs($user)
+        ->post(route('property-picker.acknowledge'))
+        ->assertNoContent();
+
+    expect(session('property_picker_acknowledged'))->toBeTrue();
+});
+
+it('does not auto-open the picker once acknowledged this session', function () {
+    $user = onboardedUser();
+    $org = Organization::factory()->create();
+
+    $user->organizations()->attach($org->id, ['is_owner' => true, 'status' => 'active']);
+    Property::factory()->for($org)->create();
+
+    $this->actingAs($user)
+        ->post(route('property-picker.acknowledge'))
+        ->assertNoContent();
+
+    $this->actingAs($user)
+        ->get(route('dashboard'))
+        ->assertInertia(fn ($page) => $page->component('dashboard')
+            ->where('autoOpenPropertyPicker', false));
+});
+
 it('returns the dashboard when the user has no accessible properties', function () {
     $user = onboardedUser();
 
