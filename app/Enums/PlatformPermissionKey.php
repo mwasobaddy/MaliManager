@@ -34,6 +34,11 @@ enum PlatformPermissionKey: string
     case OrganizationExport = 'organization.export';
     case OrganizationImport = 'organization.import';
 
+    case PlanManage = 'plan.manage';
+    case PlanCreate = 'plan.create';
+    case PlanEdit = 'plan.edit';
+    case PlanDelete = 'plan.delete';
+
     public function label(): string
     {
         return match ($this) {
@@ -57,6 +62,10 @@ enum PlatformPermissionKey: string
             self::OrganizationDelete => 'Delete organizations',
             self::OrganizationExport => 'Export organizations',
             self::OrganizationImport => 'Import organizations',
+            self::PlanManage => 'Manage plans',
+            self::PlanCreate => 'Create plans',
+            self::PlanEdit => 'Edit plans',
+            self::PlanDelete => 'Delete plans',
         };
     }
 
@@ -83,6 +92,10 @@ enum PlatformPermissionKey: string
             self::OrganizationDelete => 'deleteOrganizations',
             self::OrganizationExport => 'exportOrganizations',
             self::OrganizationImport => 'importOrganizations',
+            self::PlanManage => 'managePlans',
+            self::PlanCreate => 'createPlans',
+            self::PlanEdit => 'editPlans',
+            self::PlanDelete => 'deletePlans',
         };
     }
 }
