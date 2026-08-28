@@ -79,3 +79,37 @@ it('grants the organization metrics permission to new staff members', function (
 
     expect($staff->can('view organization metrics'))->toBeTrue();
 });
+
+it('builds real monthly series and ytd totals for the admin payload', function () {
+    $this->seed(RolesAndPermissionsSeeder::class);
+
+    $admin = makeOnboardedUser();
+    $admin->assignRole(PlatformRole::Admin->value);
+
+    $this->actingAs($admin)
+        ->get(route('dashboard'))
+        ->assertInertia(fn ($page) => $page
+            ->has('admin.financials_monthly')
+            ->where('admin.expenses_ytd', 0)
+            ->has('admin.new_subscribers')
+            ->etc())
+        ->assertInertia(fn ($page) => $page
+            ->where('admin.financials_monthly.0.label', 'Jan')
+            ->has('admin.financials_monthly.0.expenses')
+            ->has('admin.financials_monthly.0.subscriptions'));
+});
+
+it('builds merged operations series for the organization payload', function () {
+    $this->seed(RolesAndPermissionsSeeder::class);
+
+    $owner = makeOnboardedUser();
+    $owner->assignRole(PlatformRole::OrganizationOwner->value);
+
+    $this->actingAs($owner)
+        ->get(route('dashboard'))
+        ->assertInertia(fn ($page) => $page
+            ->has('organization.operations_monthly')
+            ->where('organization.operations_monthly.0.label', 'Jan')
+            ->has('organization.operations_monthly.0.expenses')
+            ->has('organization.operations_monthly.0.maintenance'));
+});
