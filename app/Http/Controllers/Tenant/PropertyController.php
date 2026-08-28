@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Tenant\StorePropertyRequest;
 use App\Models\Organization;
 use App\Models\Property;
+use App\Services\DashboardService;
 use App\Services\PropertyService;
 use App\Services\StaffService;
 use App\Support\AuthLanding;
@@ -117,6 +118,7 @@ class PropertyController extends Controller
                 'status' => $property->status,
             ],
             'units' => $units,
+            'stats' => app(DashboardService::class)->propertyStats($property),
             'plan' => [
                 'units_limit' => $property->organization->plan?->units_limit,
             ],
