@@ -14,12 +14,23 @@ import {
     YAxis,
 } from 'recharts';
 import { TriangleAlert } from 'lucide-react';
-import { ChartCard  } from '@/components/dashboard/chart-card';
-import type {SeriesPoint} from '@/components/dashboard/chart-card';
-import { PeriodSelector  } from '@/components/dashboard/period-selector';
-import type {Period} from '@/components/dashboard/period-selector';
-import { SampleBadge } from '@/components/dashboard/sample-badge';
-import { StatCard } from '@/components/dashboard/stat-card';
+import {
+    Activity,
+    Archive,
+    Building2,
+    CreditCard,
+    FileText,
+    Home,
+    KeyRound,
+    TrendingUp,
+    Users,
+    Wallet,
+    Wrench,
+} from 'lucide-react';
+import { StatsCards } from '@/components/dashboard/stats-cards';
+import { ComboChart } from '@/components/dashboard/combo-chart';
+import type { ComboPoint } from '@/components/dashboard/combo-chart';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { dashboard } from '@/routes';
 
@@ -27,11 +38,10 @@ type AdminStats = {
     organizations_count: number;
     subscribers_count: number;
     plans_count: number;
+    expenses_ytd: number;
+    new_subscribers: number;
     plans_breakdown: { plan: string; count: number }[];
-    expenses: SeriesPoint[];
-    subscriptions_weekly: SeriesPoint[];
-    subscriptions_monthly: SeriesPoint[];
-    subscriptions_yearly: SeriesPoint[];
+    financials_monthly: ComboPoint[];
 };
 
 type OrgStats = {
@@ -39,9 +49,9 @@ type OrgStats = {
     units_count: number;
     leases_count: number;
     active_leases: number;
-    expenses: SeriesPoint[];
+    expenses_ytd: number;
     maintenance_open: number;
-    maintenance_series: SeriesPoint[];
+    operations_monthly: ComboPoint[];
     flags?: PredictiveFlag[];
     expiring_leases?: {
         unit: string | null;
@@ -71,7 +81,7 @@ type PersonLeaseStats = {
     total_rent: number;
     recent: RecentLease[];
     maintenance_open?: number;
-    rent_trend?: SeriesPoint[];
+    home_monthly?: ComboPoint[];
     flags?: PredictiveFlag[];
 };
 
@@ -108,7 +118,6 @@ export default function Dashboard(props: Props) {
             : ((props.defaultTab as TabKey) ?? visibleTabs[0]?.key ?? 'admin');
 
     const [activeTab, setActiveTab] = useState<TabKey>(initialTab);
-    const [period, setPeriod] = useState<Period>('monthly');
 
     const selectTab = (key: TabKey) => {
         setActiveTab(key);
@@ -129,25 +138,18 @@ export default function Dashboard(props: Props) {
                     </p>
                 ) : (
                     <>
-                        <div className="flex flex-wrap gap-2">
-                            {visibleTabs.map((tab) => (
-                                <button
-                                    key={tab.key}
-                                    type="button"
-                                    onClick={() => selectTab(tab.key)}
-                                    className={
-                                        activeTab === tab.key
-                                            ? 'rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground'
-                                            : 'rounded-md border px-4 py-2 text-sm font-medium text-muted-foreground'
-                                    }
-                                >
-                                    {tab.label}
-                                </button>
-                            ))}
-                        </div>
+                        <Tabs value={activeTab} onValueChange={(value) => selectTab(value as TabKey)}>
+                            <TabsList>
+                                {visibleTabs.map((tab) => (
+                                    <TabsTrigger key={tab.key} value={tab.key}>
+                                        {tab.label}
+                                    </TabsTrigger>
+                                ))}
+                            </TabsList>
+                        </Tabs>
 
                         {activeTab === 'admin' && props.admin && (
-                            <AdminTab stats={props.admin} period={period} onPeriod={setPeriod} />
+                            <AdminTab stats={props.admin} />
                         )}
                         {activeTab === 'organization' && props.organization && (
                             <OrganizationTab stats={props.organization} />
@@ -165,45 +167,60 @@ export default function Dashboard(props: Props) {
     );
 }
 
-function AdminTab({
-    stats,
-    period,
-    onPeriod,
-}: {
-    stats: AdminStats;
-    period: Period;
-    onPeriod: (period: Period) => void;
-}) {
-    const subscriptionData = stats[`subscriptions_${period}`];
-
+function AdminTab({ stats }: { stats: AdminStats }) {
     return (
         <div className="flex flex-col gap-4">
-            <div className="grid auto-rows-min gap-4 md:grid-cols-3">
-                <StatCard label="Organizations" value={stats.organizations_count} />
-                <StatCard label="Subscribers" value={stats.subscribers_count} hint="Organizations on a plan" />
-                <StatCard label="Plans" value={stats.plans_count} />
-            </div>
+            <StatsCards
+                label="Platform overview"
+                items={[
+                    {
+                        title: 'Organizations',
+                        value: stats.organizations_count,
+                        description: 'Total organizations',
+                        icon: <Building2 />,
+                    },
+                    {
+                        title: 'Subscribers',
+                        value: stats.subscribers_count,
+                        description: 'Organizations on a plan',
+                        icon: <Users />,
+                    },
+                    {
+                        title: 'Plans',
+                        value: stats.plans_count,
+                        description: 'Available plans',
+                        icon: <CreditCard />,
+                    },
+                    {
+                        title: 'Expenses YTD',
+                        value: `$${Number(stats.expenses_ytd).toLocaleString()}`,
+                        description: 'Across all organizations',
+                        icon: <Wallet />,
+                    },
+                    {
+                        title: 'New subscribers',
+                        value: stats.new_subscribers,
+                        description: 'Sample data',
+                        icon: <TrendingUp />,
+                    },
+                ]}
+            />
 
-            <div className="grid gap-4 md:grid-cols-2">
-                <ChartCard title="Expenses" data={stats.expenses} type="area" sample color="#db2777" />
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-base font-medium">Subscriptions</CardTitle>
-                        <PeriodSelector value={period} onChange={onPeriod} />
-                    </CardHeader>
-                    <CardContent>
-                        <ResponsiveContainer width="100%" height={220}>
-                            <LineChart data={subscriptionData} margin={{ left: -20, right: 10, top: 6 }}>
-                                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                                <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                                <YAxis tick={{ fontSize: 11 }} />
-                                <Tooltip />
-                                <Line type="monotone" dataKey="value" stroke="#16a34a" />
-                            </LineChart>
-                        </ResponsiveContainer>
-                    </CardContent>
-                </Card>
-            </div>
+            <ComboChart
+                title="Financials"
+                data={stats.financials_monthly}
+                series={[
+                    { key: 'expenses', label: 'Expenses', color: '#db2777', type: 'area', axis: 'left' },
+                    {
+                        key: 'subscriptions',
+                        label: 'New subscribers',
+                        color: '#16a34a',
+                        type: 'line',
+                        axis: 'right',
+                        sample: true,
+                    },
+                ]}
+            />
 
             <Card>
                 <CardHeader>
@@ -236,23 +253,56 @@ function AdminTab({
 function OrganizationTab({ stats }: { stats: OrgStats }) {
     return (
         <div className="flex flex-col gap-4">
-            <div className="grid auto-rows-min gap-4 md:grid-cols-4">
-                <StatCard label="Properties" value={stats.properties_count} />
-                <StatCard label="Units" value={stats.units_count} />
-                <StatCard label="Active leases" value={stats.active_leases} />
-                <StatCard label="Open maintenance" value={stats.maintenance_open} hint="Sample data" />
-            </div>
+            <StatsCards
+                label="Organization overview"
+                items={[
+                    {
+                        title: 'Properties',
+                        value: stats.properties_count,
+                        description: 'Total properties',
+                        icon: <Building2 />,
+                    },
+                    {
+                        title: 'Units',
+                        value: stats.units_count,
+                        description: 'Total units',
+                        icon: <Home />,
+                    },
+                    {
+                        title: 'Active leases',
+                        value: stats.active_leases,
+                        description: 'Currently active',
+                        icon: <KeyRound />,
+                    },
+                    {
+                        title: 'Open maintenance',
+                        value: stats.maintenance_open,
+                        description: 'Currently open',
+                        icon: <Wrench />,
+                    },
+                    {
+                        title: 'Expenses YTD',
+                        value: `$${Number(stats.expenses_ytd).toLocaleString()}`,
+                        description: 'Across managed assets',
+                        icon: <Wallet />,
+                    },
+                ]}
+            />
 
-            <div className="grid gap-4 md:grid-cols-2">
-                <ChartCard title="Expenses" data={stats.expenses} type="area" sample color="#db2777" />
-                <ChartCard
-                    title="Maintenance requests"
-                    data={stats.maintenance_series}
-                    type="bar"
-                    sample
-                    color="#f59e0b"
-                />
-            </div>
+            <ComboChart
+                title="Operations"
+                data={stats.operations_monthly}
+                series={[
+                    { key: 'expenses', label: 'Expenses', color: '#db2777', type: 'area', axis: 'left' },
+                    {
+                        key: 'maintenance',
+                        label: 'Maintenance requests',
+                        color: '#f59e0b',
+                        type: 'bar',
+                        axis: 'right',
+                    },
+                ]}
+            />
 
             {(stats.expiring_leases?.length ?? 0) > 0 && (
                 <Card>
@@ -307,21 +357,60 @@ function OrganizationTab({ stats }: { stats: OrgStats }) {
 function PersonTab({ stats, title }: { stats: PersonLeaseStats; title: string }) {
     return (
         <div className="flex flex-col gap-4">
-            <div className="grid auto-rows-min gap-4 md:grid-cols-4">
-                <StatCard label={title} value={stats.leases_count} hint="Total leases" />
-                <StatCard label="Active" value={stats.active_leases} />
-                <StatCard label="Ended" value={stats.ended_leases} />
-                <StatCard label="Total rent" value={`$${Number(stats.total_rent).toLocaleString()}`} />
-            </div>
+            <StatsCards
+                label={title}
+                items={[
+                    {
+                        title: title,
+                        value: stats.leases_count,
+                        description: 'Total leases',
+                        icon: <FileText />,
+                    },
+                    {
+                        title: 'Active',
+                        value: stats.active_leases,
+                        description: 'Currently active',
+                        icon: <Activity />,
+                    },
+                    {
+                        title: 'Ended',
+                        value: stats.ended_leases,
+                        description: 'Completed',
+                        icon: <Archive />,
+                    },
+                    {
+                        title: 'Total rent',
+                        value: `$${Number(stats.total_rent).toLocaleString()}`,
+                        description: 'Lifetime rent',
+                        icon: <Wallet />,
+                    },
+                    ...(stats.maintenance_open !== undefined
+                        ? [
+                              {
+                                  title: 'Open maintenance',
+                                  value: stats.maintenance_open,
+                                  description: 'Requests on your unit',
+                                  icon: <Wrench />,
+                              },
+                          ]
+                        : []),
+                ]}
+            />
 
-            {stats.rent_trend && (
-                <ChartCard title="Rent trend" data={stats.rent_trend} type="area" sample color="#0891b2" />
+            {stats.home_monthly && (
+                <ComboChart
+                    title="Your home"
+                    data={stats.home_monthly}
+                    series={[
+                        { key: 'rent', label: 'Rent', color: '#0891b2', type: 'area', axis: 'left' },
+                        { key: 'maintenance', label: 'Maintenance', color: '#f59e0b', type: 'bar', axis: 'right' },
+                    ]}
+                />
             )}
 
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0">
                     <CardTitle className="text-base font-medium">Recent {title.toLowerCase()}</CardTitle>
-                    {stats.maintenance_open !== undefined && <SampleBadge />}
                 </CardHeader>
                 <CardContent>
                     {stats.recent.length === 0 ? (
