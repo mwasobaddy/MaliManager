@@ -66,6 +66,8 @@ class Lease extends Model implements HasMedia
         'deposit',
         'agreement_text',
         'status',
+        'land_parcel_id',
+        'land_parcel_section_id',
         'created_by',
     ];
 
@@ -94,6 +96,16 @@ class Lease extends Model implements HasMedia
     public function unit(): BelongsTo
     {
         return $this->belongsTo(Unit::class);
+    }
+
+    public function landParcel(): BelongsTo
+    {
+        return $this->belongsTo(LandParcel::class);
+    }
+
+    public function landParcelSection(): BelongsTo
+    {
+        return $this->belongsTo(LandParcelSection::class);
     }
 
     public function occupant(): BelongsTo
