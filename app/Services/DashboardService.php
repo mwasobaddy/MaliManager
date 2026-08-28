@@ -7,6 +7,7 @@ use App\Models\Expense;
 use App\Models\Lease;
 use App\Models\MaintenanceRequest;
 use App\Models\Organization;
+use App\Models\Property;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
@@ -71,23 +72,30 @@ class DashboardService extends Service
             ->map(fn (object $row) => ['plan' => $row->plan, 'count' => (int) $row->count])
             ->all();
 
+        $expenseMonthly = [];
+        foreach (Expense::query()->whereYear('spent_on', $year)->cursor(['spent_on', 'amount']) as $expense) {
+            $month = $expense->spent_on->format('M');
+            $expenseMonthly[$month] = ($expenseMonthly[$month] ?? 0) + (float) $expense->amount;
+        }
+
+        // Subscriptions have no real event source yet, so the new-subscriber
+        // line stays sample data; expenses are aggregated from real records.
+        $subscriptionsMonthly = $this->sampleSeries($months, 20, 120);
+        $subscriptionsTotal = (int) collect($subscriptionsMonthly)->sum('value');
+
+        $financials = $this->combineMonths($months, [
+            'expenses' => $expenseMonthly,
+            'subscriptions' => collect($subscriptionsMonthly)->pluck('value', 'label')->all(),
+        ]);
+
         return [
             'organizations_count' => Organization::count(),
             'subscribers_count' => Organization::whereNotNull('plan_id')->count(),
             'plans_count' => DB::table('plans')->count(),
+            'expenses_ytd' => (float) Expense::query()->whereYear('spent_on', $year)->sum('amount'),
+            'new_subscribers' => $subscriptionsTotal,
             'plans_breakdown' => $plansBreakdown,
-            'expenses' => $this->sampleSeries($months, 40000, 90000),
-            'subscriptions_weekly' => $this->sampleSeries(
-                collect(range(1, 12))->map(fn (int $i) => 'W'.$i)->all(),
-                5,
-                40,
-            ),
-            'subscriptions_monthly' => $this->sampleSeries($months, 20, 120),
-            'subscriptions_yearly' => $this->sampleSeries(
-                collect(range(4, 0))->map(fn (int $i) => (string) ($year - $i))->all(),
-                100,
-                600,
-            ),
+            'financials_monthly' => $financials,
         ];
     }
 
@@ -99,16 +107,40 @@ class DashboardService extends Service
         $orgIds = collect($access)->pluck('id')->all();
         $properties = collect($access)->flatMap(fn (array $organization) => $organization['properties']);
 
+        $year = (int) date('Y');
         $months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+        $expenseMonthly = [];
+        if ($orgIds) {
+            foreach (Expense::query()->whereIn('organization_id', $orgIds)->whereYear('spent_on', $year)->cursor(['spent_on', 'amount']) as $expense) {
+                $month = $expense->spent_on->format('M');
+                $expenseMonthly[$month] = ($expenseMonthly[$month] ?? 0) + (float) $expense->amount;
+            }
+        }
+
+        $maintenanceMonthly = [];
+        if ($orgIds) {
+            foreach (MaintenanceRequest::query()->whereIn('organization_id', $orgIds)->whereYear('created_at', $year)->cursor(['created_at']) as $request) {
+                $month = $request->created_at->format('M');
+                $maintenanceMonthly[$month] = ($maintenanceMonthly[$month] ?? 0) + 1;
+            }
+        }
+
+        $operations = $this->combineMonths($months, [
+            'expenses' => $expenseMonthly,
+            'maintenance' => $maintenanceMonthly,
+        ]);
 
         return [
             'properties_count' => $properties->count(),
             'units_count' => $properties->sum('units_count'),
             'leases_count' => $orgIds ? Lease::whereIn('organization_id', $orgIds)->count() : 0,
             'active_leases' => $orgIds ? Lease::whereIn('organization_id', $orgIds)->active()->count() : 0,
-            'expenses' => $this->sampleSeries($months, 10000, 40000),
-            'maintenance_open' => 3,
-            'maintenance_series' => $this->sampleSeries($months, 0, 25),
+            'expenses_ytd' => $orgIds ? (float) Expense::query()->whereIn('organization_id', $orgIds)->whereYear('spent_on', $year)->sum('amount') : 0,
+            'maintenance_open' => $orgIds
+                ? MaintenanceRequest::query()->whereIn('organization_id', $orgIds)->whereIn('status', ['opened', 'assigned', 'in_progress'])->count()
+                : 0,
+            'operations_monthly' => $operations,
             'flags' => $this->predictiveFlags($orgIds, $properties),
             'expiring_leases' => $this->expiringLeases($orgIds),
         ];
@@ -215,6 +247,9 @@ class DashboardService extends Service
      */
     private function personLeaseStats(?int $personId, string $kind): ?array
     {
+        $months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        $year = (int) date('Y');
+
         if (! $personId) {
             return [
                 'leases_count' => 0,
@@ -222,10 +257,11 @@ class DashboardService extends Service
                 'ended_leases' => 0,
                 'total_rent' => 0,
                 'recent' => [],
-            ];
+            ] + ($kind === 'occupant' ? [
+                'maintenance_open' => 0,
+                'home_monthly' => $this->combineMonths($months, []),
+            ] : []);
         }
-
-        $months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
         $base = Lease::query()->where('person_id', $personId);
 
@@ -251,16 +287,179 @@ class DashboardService extends Service
             ])
             ->all();
 
-        return [
+        $result = [
             'leases_count' => (int) ($totals->leases_count ?? 0),
             'active_leases' => (int) ($totals->active_leases ?? 0),
             'ended_leases' => (int) ($totals->ended_leases ?? 0),
             'total_rent' => (float) ($totals->total_rent ?? 0),
             'recent' => $recent,
-        ] + ($kind === 'occupant' ? [
-            'maintenance_open' => 2,
-            'rent_trend' => $this->sampleSeries($months, 500, 1500),
-        ] : []);
+        ];
+
+        if ($kind !== 'occupant') {
+            return $result;
+        }
+
+        $leaseIds = (clone $base)->pluck('id')->all();
+
+        $rentMonthly = [];
+        foreach ((clone $base)->whereYear('starts_at', $year)->cursor(['starts_at', 'rent_amount']) as $lease) {
+            $month = $lease->starts_at->format('M');
+            $rentMonthly[$month] = ($rentMonthly[$month] ?? 0) + (float) $lease->rent_amount;
+        }
+
+        $maintenanceMonthly = [];
+        if ($leaseIds) {
+            foreach (MaintenanceRequest::query()->whereIn('lease_id', $leaseIds)->whereYear('created_at', $year)->cursor(['created_at']) as $request) {
+                $month = $request->created_at->format('M');
+                $maintenanceMonthly[$month] = ($maintenanceMonthly[$month] ?? 0) + 1;
+            }
+        }
+
+        $result['maintenance_open'] = $leaseIds
+            ? MaintenanceRequest::query()->whereIn('lease_id', $leaseIds)->whereIn('status', ['opened', 'assigned', 'in_progress'])->count()
+            : 0;
+
+        $result['home_monthly'] = $this->combineMonths($months, [
+            'rent' => $rentMonthly,
+            'maintenance' => $maintenanceMonthly,
+        ]);
+
+        return $result;
+    }
+
+    /**
+     * Build the per-property dashboard payload. Everything here is real data
+     * scoped to a single property: unit composition, rent potential, open
+     * maintenance, active leases, and monthly activity (rent roll, maintenance
+     * requests, new leases).
+     *
+     * @return array<string, mixed>
+     */
+    public function propertyStats(Property $property): array
+    {
+        $now = now();
+
+        // Last 6 month start-of-month points + short labels for the charts.
+        $monthPoints = [];
+        for ($i = 5; $i >= 0; $i--) {
+            $monthPoints[] = $now->copy()->subMonths($i)->startOfMonth();
+        }
+        $months = collect($monthPoints)->map(fn ($date) => $date->format('M'))->all();
+
+        // Unit composition.
+        $units = $property->units()->get(['status', 'monthly_rent']);
+        $totalUnits = $units->count();
+        $occupied = $units->where('status', 'occupied')->count();
+        $vacant = $units->where('status', 'vacant')->count();
+        $inMaintenance = $units->where('status', 'maintenance')->count();
+        $rentPotential = (float) $units->sum(fn ($unit) => (float) $unit->monthly_rent);
+        $occupancyRate = $totalUnits > 0 ? (int) round($occupied / $totalUnits * 100) : 0;
+
+        $unitStatus = [
+            ['status' => 'occupied', 'count' => $occupied, 'color' => '#22c55e'],
+            ['status' => 'vacant', 'count' => $vacant, 'color' => '#eab308'],
+            ['status' => 'maintenance', 'count' => $inMaintenance, 'color' => '#f97316'],
+        ];
+
+        $openMaintenance = MaintenanceRequest::query()
+            ->where('property_id', $property->id)
+            ->whereIn('status', ['opened', 'assigned', 'in_progress'])
+            ->count();
+
+        $activeLeases = Lease::query()
+            ->where('property_id', $property->id)
+            ->where('status', 'active')
+            ->count();
+
+        // Monthly counts, grouped in PHP (SQLite-safe, no DATE_FORMAT).
+        $maintenanceMonthly = [];
+        foreach (MaintenanceRequest::query()
+            ->where('property_id', $property->id)
+            ->where('created_at', '>=', $monthPoints[0])
+            ->cursor(['created_at']) as $request) {
+            $month = $request->created_at->format('M');
+            $maintenanceMonthly[$month] = ($maintenanceMonthly[$month] ?? 0) + 1;
+        }
+
+        $newLeasesMonthly = [];
+        foreach (Lease::query()
+            ->where('property_id', $property->id)
+            ->where('starts_at', '>=', $monthPoints[0])
+            ->cursor(['starts_at']) as $lease) {
+            $month = $lease->starts_at->format('M');
+            $newLeasesMonthly[$month] = ($newLeasesMonthly[$month] ?? 0) + 1;
+        }
+
+        // Rent roll: sum of rent_amount for leases active during each month.
+        $leases = Lease::query()
+            ->where('property_id', $property->id)
+            ->where(function ($query) use ($monthPoints): void {
+                $query->whereNull('ends_at')
+                    ->orWhere('ends_at', '>=', $monthPoints[0]);
+            })
+            ->get(['starts_at', 'ends_at', 'rent_amount'])
+            ->all();
+
+        $rentRollMonthly = [];
+        foreach ($monthPoints as $monthStart) {
+            $start = $monthStart->copy()->startOfMonth();
+            $end = $monthStart->copy()->endOfMonth();
+            $roll = 0;
+
+            foreach ($leases as $lease) {
+                $leaseStart = $lease->starts_at;
+                $leaseEnd = $lease->ends_at;
+
+                if ($leaseStart && $leaseStart->lte($end)
+                    && (is_null($leaseEnd) || $leaseEnd->gte($start))) {
+                    $roll += (float) $lease->rent_amount;
+                }
+            }
+
+            $rentRollMonthly[$monthStart->format('M')] = $roll;
+        }
+
+        $operations = $this->combineMonths($months, [
+            'rent_roll' => $rentRollMonthly,
+            'maintenance' => $maintenanceMonthly,
+            'new_leases' => $newLeasesMonthly,
+        ]);
+
+        return [
+            'total_units' => $totalUnits,
+            'occupied' => $occupied,
+            'vacant' => $vacant,
+            'in_maintenance' => $inMaintenance,
+            'occupancy_rate' => $occupancyRate,
+            'rent_potential' => $rentPotential,
+            'open_maintenance' => $openMaintenance,
+            'active_leases' => $activeLeases,
+            'unit_status' => $unitStatus,
+            'operations_monthly' => $operations,
+        ];
+    }
+
+    /**
+     * Merge several monthly key→value maps onto a fixed month axis so they
+     * can be plotted as multiple series on one chart. Missing months are 0.
+     *
+     * @param  array<int, string>  $months
+     * @param  array<string, array<string, float|int>>  $series
+     * @return array<int, array<string, float>>
+     */
+    private function combineMonths(array $months, array $series): array
+    {
+        return collect($months)
+            ->map(function (string $month) use ($series): array {
+                $row = ['label' => $month];
+
+                foreach ($series as $key => $map) {
+                    $row[$key] = (float) ($map[$month] ?? 0);
+                }
+
+                return $row;
+            })
+            ->all();
     }
 
     /**
