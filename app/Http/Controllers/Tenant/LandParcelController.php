@@ -79,8 +79,14 @@ class LandParcelController extends Controller
             'organization' => $organization->only('id', 'name', 'slug'),
             'parcel' => $this->present($landParcel, true),
             'managers' => $this->managerNames($landParcel),
+            'sections' => $landParcel->sections()
+                ->orderBy('name')
+                ->get(['id', 'name', 'area', 'status', 'notes'])
+                ->all(),
             'canEditLandParcel' => $user->hasSubPermission($organization, SubPermissionKey::LandParcelEdit),
             'canDeleteLandParcel' => $user->hasSubPermission($organization, SubPermissionKey::LandParcelDelete),
+            'canManageSections' => $user->hasSubPermission($organization, SubPermissionKey::LandParcelManage),
+            'canLease' => $user->hasSubPermission($organization, SubPermissionKey::LeaseManage),
         ]);
     }
 
