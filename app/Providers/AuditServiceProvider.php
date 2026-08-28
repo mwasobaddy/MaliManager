@@ -33,6 +33,7 @@ class AuditServiceProvider extends ServiceProvider
         Event::listen(Login::class, function (Login $event): void {
             activity()->inLog('auth')
                 ->causedBy($event->user)
+                ->performedOn($event->user)
                 ->event('login')
                 ->log('Signed in');
         });
@@ -40,6 +41,7 @@ class AuditServiceProvider extends ServiceProvider
         Event::listen(Logout::class, function (Logout $event): void {
             activity()->inLog('auth')
                 ->causedBy($event->user)
+                ->performedOn($event->user)
                 ->event('logout')
                 ->log('Signed out');
         });
