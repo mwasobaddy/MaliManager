@@ -107,6 +107,38 @@ test('property page shows units and lets the owner add more', function () {
     expect($property->units()->where('name', 'B1')->exists())->toBeTrue();
 });
 
+test('property dashboard shows real stats and charts', function () {
+    $user = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createTestOrganization($user);
+    $property = $organization->properties()->create([
+        'name' => 'Sunset Heights',
+        'slug' => 'sunset-heights',
+        'status' => 'active',
+        'created_by' => $user->id,
+    ]);
+
+    $property->units()->createMany([
+        ['name' => 'A1', 'status' => 'occupied', 'monthly_rent' => 25000, 'created_by' => $user->id],
+        ['name' => 'A2', 'status' => 'vacant', 'monthly_rent' => 45000, 'created_by' => $user->id],
+        ['name' => 'A3', 'status' => 'maintenance', 'monthly_rent' => 30000, 'created_by' => $user->id],
+    ]);
+
+    $this->actingAs($user)
+        ->get(tenantUrl($organization, "/{$property->slug}/dashboard"))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('tenant/properties/dashboard')
+            ->where('stats.total_units', 3)
+            ->where('stats.occupied', 1)
+            ->where('stats.vacant', 1)
+            ->where('stats.in_maintenance', 1)
+            ->where('stats.occupancy_rate', 33)
+            ->where('stats.rent_potential', 100000)
+            ->where('stats.unit_status.0.status', 'occupied')
+            ->where('stats.unit_status.0.count', 1)
+            ->where('stats.operations_monthly', fn ($rows) => collect($rows)->count() === 6));
+});
+
 test('free plan property limit prevents a second property', function () {
     $user = User::factory()->create(['onboarded_at' => now()]);
     $organization = createTestOrganization($user);
