@@ -51,6 +51,7 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'name' => config('app.name'),
+            'centralUrl' => rtrim(config('app.url'), '/'),
             'auth' => [
                 'user' => $user,
                 'canRaiseMaintenance' => $user && $user->person_id
