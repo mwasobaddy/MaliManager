@@ -1,6 +1,7 @@
 <?php
 
 use App\Mail\LoginOtpMail;
+use App\Models\Audit;
 use App\Models\LoginOtp;
 use App\Models\User;
 use App\Support\OtpService;
@@ -67,7 +68,9 @@ test('correct code marks the email verified and logs the user in', function () {
     $this->assertAuthenticatedAs($user);
     expect($user->refresh()->email_verified_at)->not->toBeNull()
         ->and(session('login.email'))->toBeNull()
-        ->and(LoginOtp::where('user_id', $user->id)->first()->used_at)->not->toBeNull();
+        ->and(LoginOtp::where('user_id', $user->id)->first()->used_at)->not->toBeNull()
+        ->and(Audit::where('event', 'login')->where('subject_type', User::class)->where('subject_id', $user->id)->exists())->toBeTrue()
+        ->and(Audit::where('event', 'otp.verified')->where('subject_type', User::class)->where('subject_id', $user->id)->exists())->toBeTrue();
 });
 
 test('correct code redirects onboarded users to the dashboard', function () {
