@@ -51,6 +51,19 @@ function landUrl(organizationDomain: string | null, landSlug: string): string {
     return `${scheme}//${organizationDomain}/land-parcels/${landSlug}`;
 }
 
+// The central (platform) dashboard lives off the tenant subdomain. Admins who
+// choose "Continue as admin" leave the current tenant context and land on the
+// central dashboard, identified purely by host (the path is always /dashboard
+// on central; the tenant property/land paths are not routable centrally).
+function centralDashboardUrl(centralUrlBase: string | undefined): string {
+    const base = centralUrlBase ?? window.location.origin;
+    const url = new URL(base);
+    url.protocol = window.location.protocol;
+    url.pathname = '/dashboard';
+
+    return url.toString();
+}
+
 export function PropertyPickerProvider({ children }: { children: React.ReactNode }) {
     const page = usePage();
     const organizations = (page.props.auth?.organizations ?? []) as OrganizationSummary[];
@@ -295,7 +308,13 @@ export function PropertyPickerProvider({ children }: { children: React.ReactNode
                         <div className="flex justify-end border-t pt-4">
                             <button
                                 type="button"
-                                onClick={() => acknowledge()}
+                                onClick={() =>
+                                    acknowledge(() =>
+                                        window.location.assign(
+                                            centralDashboardUrl(page.props.centralUrl),
+                                        ),
+                                    )
+                                }
                                 className="inline-flex h-9 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
                             >
                                 Continue as admin
