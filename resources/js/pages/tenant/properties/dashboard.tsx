@@ -1,8 +1,29 @@
 import { Form, Head, Link } from '@inertiajs/react';
-import { Building2, DoorOpen, Plus } from 'lucide-react';
+import {
+    AlertTriangle,
+    Banknote,
+    Building2,
+    CheckCircle2,
+    CircleDashed,
+    DoorOpen,
+    KeyRound,
+    Plus,
+    Wrench,
+} from 'lucide-react';
 import { useState } from 'react';
+import {
+    Cell,
+    Legend,
+    Pie,
+    PieChart,
+    ResponsiveContainer,
+    Tooltip,
+} from 'recharts';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
+import { StatsCards } from '@/components/dashboard/stats-cards';
+import { ComboChart } from '@/components/dashboard/combo-chart';
+import type { ComboPoint } from '@/components/dashboard/combo-chart';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -32,16 +53,39 @@ type Plan = {
     units_limit: number | null;
 };
 
+type UnitStatus = {
+    status: string;
+    count: number;
+    color: string;
+};
+
+type PropertyStat = {
+    total_units: number;
+    occupied: number;
+    vacant: number;
+    in_maintenance: number;
+    occupancy_rate: number;
+    rent_potential: number;
+    open_maintenance: number;
+    active_leases: number;
+    unit_status: UnitStatus[];
+    operations_monthly: ComboPoint[];
+};
+
 type Props = {
     property: Property;
     units: Unit[];
+    stats: PropertyStat;
     plan: Plan;
 };
 
-export default function PropertiesDashboard({ property, units, plan }: Props) {
+export default function PropertiesDashboard({ property, units, stats, plan }: Props) {
     const [addUnit, setAddUnit] = useState(false);
     const atUnitLimit =
         plan.units_limit !== null && units.length >= plan.units_limit;
+
+    const ccy = (value: number) => Number(value).toLocaleString();
+
 
     return (
         <>
@@ -62,6 +106,113 @@ export default function PropertiesDashboard({ property, units, plan }: Props) {
                     <Button asChild variant="outline">
                         <Link href={index()}>All properties</Link>
                     </Button>
+                </div>
+
+                <StatsCards
+                    label="Property overview"
+                    summary={`${stats.total_units} units`}
+                    items={[
+                        {
+                            title: 'Total units',
+                            value: stats.total_units,
+                            description: `${stats.occupied} occupied`,
+                            icon: <Building2 />,
+                        },
+                        {
+                            title: 'Occupied',
+                            value: stats.occupied,
+                            description: `${stats.occupancy_rate}% occupancy`,
+                            icon: <CheckCircle2 />,
+                        },
+                        {
+                            title: 'Vacant',
+                            value: stats.vacant,
+                            icon: <CircleDashed />,
+                        },
+                        {
+                            title: 'In maintenance',
+                            value: stats.in_maintenance,
+                            icon: <Wrench />,
+                        },
+                        {
+                            title: 'Monthly rent',
+                            value: ccy(stats.rent_potential),
+                            description: 'potential',
+                            icon: <Banknote />,
+                        },
+                        {
+                            title: 'Open maintenance',
+                            value: stats.open_maintenance,
+                            icon: <AlertTriangle />,
+                        },
+                        {
+                            title: 'Active leases',
+                            value: stats.active_leases,
+                            icon: <KeyRound />,
+                        },
+                    ]}
+                />
+
+                <div className="grid gap-4 lg:grid-cols-3">
+                    <div className="lg:col-span-2">
+                        <ComboChart
+                            title="Property activity"
+                            data={stats.operations_monthly}
+                            series={[
+                                {
+                                    key: 'rent_roll',
+                                    label: 'Rent roll',
+                                    color: '#2563eb',
+                                    type: 'area',
+                                    axis: 'left',
+                                },
+                                {
+                                    key: 'maintenance',
+                                    label: 'Maintenance',
+                                    color: '#f97316',
+                                    type: 'bar',
+                                    axis: 'right',
+                                },
+                                {
+                                    key: 'new_leases',
+                                    label: 'New leases',
+                                    color: '#22c55e',
+                                    type: 'line',
+                                    axis: 'right',
+                                },
+                            ]}
+                        />
+                    </div>
+
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="text-base font-medium">
+                                Unit status
+                            </CardTitle>
+                            <CardDescription>Composition by status</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <ResponsiveContainer width="100%" height={260}>
+                                <PieChart>
+                                    <Pie
+                                        data={stats.unit_status}
+                                        dataKey="count"
+                                        nameKey="status"
+                                        cx="50%"
+                                        cy="50%"
+                                        outerRadius={90}
+                                        label
+                                    >
+                                        {stats.unit_status.map((entry) => (
+                                            <Cell key={entry.status} fill={entry.color} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip />
+                                    <Legend />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </CardContent>
+                    </Card>
                 </div>
 
                 <Card>
