@@ -11,6 +11,7 @@ use App\Http\Controllers\Tenant\ExpenseController;
 use App\Http\Controllers\Tenant\ImpersonationController;
 use App\Http\Controllers\Tenant\InspectionController;
 use App\Http\Controllers\Tenant\LandParcelController;
+use App\Http\Controllers\Tenant\LandParcelSectionController;
 use App\Http\Controllers\Tenant\LeaseController;
 use App\Http\Controllers\Tenant\MaintenanceController;
 use App\Http\Controllers\Tenant\OccupantController;
@@ -257,6 +258,19 @@ Route::middleware([
         Route::middleware('sub-permission:land_parcel.delete')->group(function () {
             Route::delete('/land-parcels/{land_parcel}', [LandParcelController::class, 'destroy'])
                 ->name('tenant.land-parcels.destroy');
+        });
+
+        // Land parcel sections: sub-plots that can be leased independently.
+        Route::middleware('sub-permission:land_parcel.manage')->group(function () {
+            Route::post('/land-parcels/{land_parcel}/sections', [LandParcelSectionController::class, 'store'])
+                ->name('tenant.land-parcel-sections.store');
+            Route::delete('/land-parcels/{land_parcel}/sections/{land_parcel_section}', [LandParcelSectionController::class, 'destroy'])
+                ->name('tenant.land-parcel-sections.destroy');
+        });
+
+        Route::middleware('sub-permission:lease.manage')->group(function () {
+            Route::post('/land-parcels/{land_parcel}/sections/{land_parcel_section}/leases', [LandParcelSectionController::class, 'lease'])
+                ->name('tenant.land-parcel-sections.lease');
         });
 
         Route::middleware('sub-permission:staff.manage')->group(function () {
