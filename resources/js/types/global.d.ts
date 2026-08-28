@@ -18,6 +18,7 @@ declare module '@inertiajs/core' {
                 permissions: string[];
             };
             sidebarOpen: boolean;
+            centralUrl?: string;
             autoOpenPropertyPicker?: boolean;
             [key: string]: unknown;
         };
