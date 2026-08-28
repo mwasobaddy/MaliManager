@@ -59,6 +59,7 @@ class OtpController extends Controller
 
         activity()->inLog('auth')
             ->causedBy($user)
+            ->performedOn($user)
             ->event('otp.verified')
             ->log('Verified one-time code');
 
