@@ -8,6 +8,7 @@ use Database\Factories\LandParcelFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 use Spatie\MediaLibrary\HasMedia;
@@ -74,6 +75,11 @@ class LandParcel extends Model implements HasMedia
     public function organization(): BelongsTo
     {
         return $this->belongsTo(Organization::class);
+    }
+
+    public function sections(): HasMany
+    {
+        return $this->hasMany(LandParcelSection::class);
     }
 
     public function creator(): BelongsTo
