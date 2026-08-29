@@ -3,28 +3,43 @@
 namespace App\Http\Controllers;
 
 use App\Enums\AiFeature;
-use App\Models\Lease;
-use App\Models\MaintenanceRequest;
+use App\Exceptions\AssistantUnavailableException;
+use App\Models\AiConversation;
+use App\Models\AiMessage;
+use App\Models\User;
 use App\Support\Ai\AiGateway;
+use App\Support\Ai\AssistantService;
+use App\Support\Ai\Scope;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
-use Prism\Prism\Facades\Prism;
-use Prism\Prism\Facades\Tool;
 
 /**
- * Occupant-facing AI assistant. Strictly scoped to the signed-in user's
- * OWN data: tools filter every query by person_id server-side.
+ * Occupant-facing AI assistant. Strictly scoped to the signed-in user's OWN
+ * data (leases + maintenance requests) via a person-scoped data boundary.
  */
 class SearcherAssistantController extends Controller
 {
-    public function __construct(private AiGateway $gateway) {}
+    public function __construct(
+        private AssistantService $assistant,
+        private AiGateway $gateway,
+    ) {}
 
     public function page(Request $request): Response
     {
+        $user = $request->user();
+        $enabled = $user->person_id !== null && $this->gateway->canUse($user, AiFeature::AskData);
+
         return Inertia::render('searcher/assistant', [
-            'enabled' => $this->resolve($request) !== null,
+            'enabled' => $enabled,
+            'initial_messages' => $enabled ? $this->loadMessages($user, Scope::person($user->person_id, $user->id)) : [],
+            'quick_prompts' => [
+                'What is my current rent and when is it due?',
+                'Show my active lease details.',
+                'What maintenance requests have I raised, and their status?',
+                'Do I have any unresolved maintenance issues?',
+            ],
         ]);
     }
 
@@ -32,98 +47,82 @@ class SearcherAssistantController extends Controller
     {
         $validated = $request->validate([
             'question' => ['required', 'string', 'max:1000'],
+            'conversation_id' => ['nullable', 'integer'],
+            'new_conversation' => ['nullable', 'boolean'],
         ]);
 
         $user = $request->user();
-        $credential = $this->resolve($request);
 
-        if ($credential === null || ! $user->person_id) {
+        if ($user->person_id === null) {
             return response()->json(['error' => 'AI is not configured for your account.'], 403);
         }
 
-        $personId = $user->person_id;
+        $scope = Scope::person($user->person_id, $user->id);
+        $conversation = AiConversation::resolve($user, $scope, $validated['conversation_id'] ?? null, (bool) ($validated['new_conversation'] ?? false));
 
-        $tools = [
-            Tool::as('get_my_leases')
-                ->for('Get your rental leases: property, unit, rent, dates and status')
-                ->using(fn (): string => (string) json_encode(
-                    Lease::query()
-                        ->where('person_id', $personId)
-                        ->with(['property:id,name', 'unit:id,name'])
-                        ->orderByDesc('starts_at')
-                        ->get(['property_id', 'unit_id', 'rent_amount', 'currency', 'starts_at', 'ends_at', 'status'])
-                        ->map(fn (Lease $lease) => [
-                            'property' => $lease->property?->name,
-                            'unit' => $lease->unit?->name,
-                            'monthly_rent' => $lease->rent_amount,
-                            'currency' => $lease->currency,
-                            'starts_at' => $lease->starts_at?->toDateString(),
-                            'ends_at' => $lease->ends_at?->toDateString() ?? ($lease->status === 'active' ? 'Open-ended' : null),
-                            'status' => $lease->status,
-                        ])
-                        ->all(),
-                )),
-            Tool::as('get_my_maintenance_requests')
-                ->for('Get your maintenance requests with their current status')
-                ->using(fn (): string => (string) json_encode(
-                    MaintenanceRequest::query()
-                        ->where('raised_by', $user->id)
-                        ->orderByDesc('created_at')
-                        ->get(['title', 'status', 'priority', 'created_at', 'resolved_at'])
-                        ->map(fn (MaintenanceRequest $item) => [
-                            'title' => $item->title,
-                            'status' => $item->status,
-                            'priority' => $item->priority,
-                            'raised_on' => $item->created_at?->toDateString(),
-                            'resolved_on' => $item->resolved_at?->toDateString(),
-                        ])
-                        ->all(),
-                )),
-        ];
-
-        $startedAt = microtime(true);
+        $history = $this->historyFor($conversation);
 
         try {
-            $response = Prism::text()
-                ->using($credential->prismProvider(), $credential->model)
-                ->usingProviderConfig($credential->requestConfig())
-                ->withSystemPrompt(
-                    'You are the MaliManager tenant assistant. Answer questions about the '
-                    .'signed-in tenant\'s OWN rentals and maintenance requests using the '
-                    .'tools only — never invent details. Today is '.now()->toDateString().'. Be concise.',
-                )
-                ->withMaxSteps(4)
-                ->withTools($tools)
-                ->withPrompt($validated['question'])
-                ->asText();
-
-            $this->gateway->log(
-                $credential,
+            $result = $this->assistant->ask(
                 $user,
-                AiFeature::AskData,
-                promptTokens: $response->usage->promptTokens,
-                completionTokens: $response->usage->completionTokens,
-                durationMs: (int) ((microtime(true) - $startedAt) * 1000),
+                $scope,
+                $validated['question'],
+                $history,
             );
-
-            return response()->json(['answer' => $response->text]);
-        } catch (\Throwable $e) {
-            $this->gateway->log(
-                $credential,
-                $user,
-                AiFeature::AskData,
-                status: 'error',
-                error: $e->getMessage(),
-            );
-
-            return response()->json([
-                'error' => 'The assistant could not answer right now. Please try again.',
-            ], 502);
+        } catch (AssistantUnavailableException $e) {
+            return response()->json(['error' => $e->getMessage()], 403);
         }
+
+        $conversation->messages()->create(['role' => 'user', 'content' => $validated['question']]);
+        $conversation->messages()->create([
+            'role' => 'assistant',
+            'content' => $result['answer'],
+            'artifacts' => $result['artifacts'] ?? [],
+        ]);
+        $conversation->touch('last_message_at');
+
+        return response()->json([
+            'answer' => $result['answer'],
+            'artifacts' => $result['artifacts'] ?? [],
+            'conversation_id' => $conversation->id,
+        ]);
     }
 
-    private function resolve(Request $request)
+    /**
+     * @return array<int, array{role: string, content: string, artifacts?: array}>
+     */
+    private function loadMessages(User $user, Scope $scope): array
     {
-        return $this->gateway->resolve($request->user(), AiFeature::AskData);
+        $conversation = AiConversation::findLatest($user, $scope);
+
+        if ($conversation === null) {
+            return [];
+        }
+
+        return $conversation->messages()
+            ->orderBy('id')
+            ->get(['role', 'content', 'artifacts'])
+            ->map(fn (AiMessage $message) => [
+                'role' => $message->role,
+                'content' => $message->content,
+                'artifacts' => $message->artifacts ?? [],
+            ])
+            ->all();
+    }
+
+    /**
+     * @return array<int, array{role: string, content: string}>
+     */
+    private function historyFor(AiConversation $conversation): array
+    {
+        return $conversation->messages()
+            ->orderBy('id')
+            ->limit(6)
+            ->get(['role', 'content'])
+            ->map(fn (AiMessage $message) => [
+                'role' => $message->role === 'error' ? 'assistant' : $message->role,
+                'content' => $message->content,
+            ])
+            ->all();
     }
 }
