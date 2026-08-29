@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminController;
+use App\Http\Controllers\Admin\AssistantController;
 use App\Http\Controllers\Admin\PlanController;
 use App\Http\Controllers\Audit\PlatformAuditController;
 use App\Http\Controllers\Auth\LoginController;
@@ -37,6 +38,12 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     Route::get('admin', [AdminController::class, 'index'])->name('admin.dashboard');
     Route::post('admin/impersonate/{organization}/{user}', [AdminController::class, 'impersonate'])
         ->name('admin.impersonate');
+    Route::get('admin/assistant', [AssistantController::class, 'page'])
+        ->middleware('can:aiUse')
+        ->name('admin.assistant.page');
+    Route::post('admin/assistant/ask', [AssistantController::class, 'ask'])
+        ->middleware('can:aiUse')
+        ->name('admin.assistant.ask');
 });
 
 // Platform-wide audit view is gated by the central `viewAnyAudit` gate
@@ -115,8 +122,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Occupant AI assistant (own-data scoped).
     Route::get('searcher/assistant', [SearcherAssistantController::class, 'page'])
+        ->middleware('can:aiUse')
         ->name('searcher.assistant.page');
     Route::post('searcher/assistant/ask', [SearcherAssistantController::class, 'ask'])
+        ->middleware('can:aiUse')
         ->name('searcher.assistant.ask');
 });
 
