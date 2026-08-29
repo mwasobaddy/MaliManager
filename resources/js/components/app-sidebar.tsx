@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import { BarChart3, BookOpen, Building2, CreditCard, FileText, FolderGit2, History, LayoutGrid, MessageCircle, ArrowLeftRight, Map, ReceiptText, ScrollText, Sparkles, Users, UserRound, Wand2, Wrench , ClipboardCheck } from 'lucide-react';
+import { BarChart3, BookOpen, Building2, CreditCard, FileText, FolderGit2, History, LayoutGrid, ArrowLeftRight, Map, ReceiptText, ScrollText, Sparkles, Users, UserRound, Wand2, Wrench , ClipboardCheck } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { usePropertyPicker } from '@/components/property-picker-dialog';
 import { NavFooter } from '@/components/nav-footer';
@@ -20,7 +20,6 @@ import { index as organizationsIndex } from '@/routes/organizations';
 import { index as platformAuditIndex } from '@/routes/platform/audit';
 import { rentals as searcherRentals } from '@/routes/searcher';
 import { index as maintenanceRoute } from '@/routes/searcher/maintenance';
-import { page as searcherAssistantPage } from '@/routes/searcher/assistant';
 import { index as rolesIndex } from '@/routes/settings/roles';
 import agreementTemplates, { orgIndex as agreementTemplatesIndex } from '@/routes/tenant/agreement-templates';
 import { edit as aiSettingsEdit } from '@/routes/tenant/ai-settings';
@@ -29,7 +28,6 @@ import { index as expensesIndex } from '@/routes/tenant/expenses';
 import { index as inspectionsIndex } from '@/routes/tenant/inspections';
 import { index as landParcelsIndex } from '@/routes/tenant/land-parcels';
 import { index as leasesIndex } from '@/routes/tenant/leases';
-import { page as assistantPageIndex } from '@/routes/tenant/assistant';
 import { page as draftingPageIndex } from '@/routes/tenant/drafting';
 import { index as maintenanceIndex } from '@/routes/tenant/maintenance';
 import { index as reportsNavIndex } from '@/routes/tenant/reports';
@@ -155,12 +153,7 @@ export function AppSidebar() {
                         : []),
                     ...(canViewAudit ? [item('Audit log', auditIndex(), History)] : []),
                     ...(canViewAnyAudit ? [item('Platform audit', platformAuditIndex(), History)] : []),
-                    ...(aiEnabled
-                        ? [
-                              item('AI assistant', assistantPageIndex(), MessageCircle),
-                              item('AI drafting', draftingPageIndex(), Wand2),
-                          ]
-                        : []),
+                    ...(aiEnabled ? [item('AI drafting', draftingPageIndex(), Wand2)] : []),
                     ...(canViewReports
                         ? [item('Reports', reportsNavIndex(), BarChart3)]
                         : []),
@@ -188,12 +181,7 @@ export function AppSidebar() {
                     ...(canViewReports
                         ? [item('Reports', reportsNavIndex(), BarChart3)]
                         : []),
-                    ...(aiEnabled
-                        ? [
-                              item('AI assistant', assistantPageIndex(), MessageCircle),
-                              item('AI drafting', draftingPageIndex(), Wand2),
-                          ]
-                        : []),
+                    ...(aiEnabled ? [item('AI drafting', draftingPageIndex(), Wand2)] : []),
                 ],
             },
             {
