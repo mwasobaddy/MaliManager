@@ -39,6 +39,8 @@ enum PlatformPermissionKey: string
     case PlanEdit = 'plan.edit';
     case PlanDelete = 'plan.delete';
 
+    case AiUse = 'ai.use';
+
     public function label(): string
     {
         return match ($this) {
@@ -66,6 +68,7 @@ enum PlatformPermissionKey: string
             self::PlanCreate => 'Create plans',
             self::PlanEdit => 'Edit plans',
             self::PlanDelete => 'Delete plans',
+            self::AiUse => 'Use the AI assistant',
         };
     }
 
@@ -96,6 +99,7 @@ enum PlatformPermissionKey: string
             self::PlanCreate => 'createPlans',
             self::PlanEdit => 'editPlans',
             self::PlanDelete => 'deletePlans',
+            self::AiUse => 'aiUse',
         };
     }
 }
