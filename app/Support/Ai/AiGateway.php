@@ -69,6 +69,59 @@ class AiGateway
     }
 
     /**
+     * Credential for the central/platform assistant: the signed-in admin's
+     * personal key first, then a platform-owned credential (owner_type
+     * 'platform'), so a single shared key can power admin analytics.
+     */
+    public function resolvePlatform(User $user, AiFeature $feature): ?ResolvedAiCredential
+    {
+        $personal = AiSetting::query()
+            ->whereMorphedTo('owner', $user)
+            ->first();
+
+        if ($personal && $this->usable($personal, $feature)) {
+            return $this->credential($personal, source: 'personal');
+        }
+
+        $platform = AiSetting::query()
+            ->where('owner_type', 'platform')
+            ->first();
+
+        if ($platform && $this->usable($platform, $feature) && $this->memberAllowed($platform, $user)) {
+            return $this->credential($platform, source: 'platform');
+        }
+
+        return null;
+    }
+
+    /**
+     * Credential for the central/platform assistant: a platform-owned key
+     * first, then the first organization the user can access that has a
+     * usable key. Lets an admin use the assistant from the central dashboard
+     * even when only an organization-level credential is configured.
+     */
+    public function resolvePlatformOrFirstOrg(User $user, AiFeature $feature): ?ResolvedAiCredential
+    {
+        $platform = $this->resolvePlatform($user, $feature);
+
+        if ($platform !== null) {
+            return $platform;
+        }
+
+        $organizationMorph = (new Organization)->getMorphClass();
+
+        $setting = AiSetting::query()
+            ->where('owner_type', $organizationMorph)
+            ->get()
+            ->first(fn (AiSetting $candidate) => $this->usable($candidate, $feature)
+                && $this->memberAllowed($candidate, $user));
+
+        return $setting !== null
+            ? $this->credential($setting, source: 'organization')
+            : null;
+    }
+
+    /**
      * Persist one usage record per dispatch.
      */
     public function log(
