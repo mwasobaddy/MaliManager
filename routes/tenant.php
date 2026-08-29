@@ -128,8 +128,10 @@ Route::middleware([
 
             // Ask-your-data assistant.
             Route::get('/assistant', [AssistantController::class, 'page'])
+                ->middleware('sub-permission:ai.use')
                 ->name('tenant.assistant.page');
             Route::post('/assistant/ask', [AssistantController::class, 'ask'])
+                ->middleware('sub-permission:ai.use')
                 ->name('tenant.assistant.ask');
 
             // Content drafting studio.
