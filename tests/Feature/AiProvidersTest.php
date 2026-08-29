@@ -36,10 +36,9 @@ test('resolves all five supported providers with correct drivers and endpoints',
         // OpenRouter is a native Prism driver; models are vendor-namespaced.
         'openrouter' => ['driver' => 'openrouter', 'url' => null, 'model' => 'anthropic/claude-sonnet-4.5'],
         // NVIDIA NIM has no native Prism driver and only implements the
-        // OpenAI Chat Completions API (not the Responses API Prism's
-        // OpenAI driver uses), so it routes through the OpenAI-compatible
-        // OpenRouter driver with the NIM endpoint override.
-        'nvidia' => ['driver' => 'openrouter', 'url' => 'https://integrate.api.nvidia.com/v1', 'model' => 'meta/llama-3.3-70b-instruct'],
+        // OpenAI Chat Completions API, so it routes through the Groq
+        // OpenAI-compatible driver with the NIM endpoint override.
+        'nvidia' => ['driver' => 'groq', 'url' => 'https://integrate.api.nvidia.com/v1', 'model' => 'openai/gpt-oss-120b'],
     ];
 
     foreach ($cases as $provider => $expected) {
