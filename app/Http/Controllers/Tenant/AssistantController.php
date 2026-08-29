@@ -3,30 +3,46 @@
 namespace App\Http\Controllers\Tenant;
 
 use App\Enums\AiFeature;
+use App\Exceptions\AssistantUnavailableException;
 use App\Http\Controllers\Controller;
-use App\Services\Reporting\OrgInsightsService;
+use App\Models\AiConversation;
+use App\Models\AiMessage;
+use App\Models\User;
 use App\Support\Ai\AiGateway;
+use App\Support\Ai\AssistantService;
+use App\Support\Ai\Scope;
 use App\Support\TenancyContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
-use Prism\Prism\Facades\Prism;
-use Prism\Prism\Facades\Tool;
 
 /**
- * Ask-your-data assistant. The LLM never sees the database — it calls
- * read-only insight tools whose answers come from our own queries, so
- * numbers can't be hallucinated.
+ * Organization ask-your-data assistant. Powered by AssistantService with an
+ * org-scoped data boundary — the LLM can only read this organization's data.
  */
 class AssistantController extends Controller
 {
-    public function __construct(private AiGateway $gateway) {}
+    public function __construct(
+        private AssistantService $assistant,
+        private AiGateway $gateway,
+    ) {}
 
     public function page(Request $request): Response
     {
+        $organization = TenancyContext::organization();
+        $enabled = $organization !== null && $this->gateway->canUse($request->user(), AiFeature::AskData, $organization);
+
         return Inertia::render('tenant/assistant', [
-            'enabled' => $this->resolve($request) !== null,
+            'enabled' => $enabled,
+            'initial_messages' => $enabled ? $this->loadMessages($request->user(), Scope::org($organization->id)) : [],
+            'quick_prompts' => [
+                'How many units are vacant right now, by property?',
+                'What rent is outstanding this month?',
+                'Which leases expire in the next 60 days?',
+                'Show my open maintenance backlog by priority.',
+                'Summarise expenses by category this year.',
+            ],
         ]);
     }
 
@@ -34,89 +50,82 @@ class AssistantController extends Controller
     {
         $validated = $request->validate([
             'question' => ['required', 'string', 'max:1000'],
+            'conversation_id' => ['nullable', 'integer'],
+            'new_conversation' => ['nullable', 'boolean'],
         ]);
 
-        $credential = $this->resolve($request);
+        $organization = TenancyContext::organization();
 
-        if ($credential === null) {
-            return response()->json(['error' => 'AI is not configured for your account.'], 403);
+        if ($organization === null) {
+            return response()->json(['error' => 'No organization context.'], 403);
         }
 
-        $organization = TenancyContext::organization();
-        $insights = new OrgInsightsService($organization?->id);
+        $scope = Scope::org($organization->id);
+        $conversation = AiConversation::resolve($request->user(), $scope, $validated['conversation_id'] ?? null, (bool) ($validated['new_conversation'] ?? false));
 
-        $tools = [
-            Tool::as('get_vacancy_summary')
-                ->for('Get vacant vs occupied unit counts per property')
-                ->using(fn (): string => (string) json_encode($insights->vacancySummary())),
-            Tool::as('get_lease_summary')
-                ->for('Get active lease count and leases expiring within 60 days')
-                ->using(fn (): string => (string) json_encode($insights->leaseSummary())),
-            Tool::as('get_expense_totals')
-                ->for('Get expense totals grouped by category. Pass a category to filter.')
-                ->withStringParameter('category', 'Optional category filter: maintenance, renovation, cleaning, utilities, security, other', '')
-                ->using(fn (string $category): string => (string) json_encode(
-                    $insights->expenseTotals($category !== '' ? $category : null),
-                )),
-            Tool::as('get_maintenance_backlog')
-                ->for('Get maintenance request counts by status and priority')
-                ->using(fn (): string => (string) json_encode($insights->maintenanceBacklog())),
-            Tool::as('list_properties')
-                ->for('List all properties in the organization by name')
-                ->using(fn (): string => (string) json_encode($insights->properties())),
-        ];
-
-        $startedAt = microtime(true);
+        $history = $this->historyFor($conversation);
 
         try {
-            $response = Prism::text()
-                ->using($credential->prismProvider(), $credential->model)
-                ->usingProviderConfig($credential->requestConfig())
-                ->withSystemPrompt(
-                    'You are the MaliManager assistant for the organization '
-                    .$organization?->name.'. Answer questions about their portfolio using '
-                    .'the provided tools only — never invent numbers. Today is '
-                    .now()->toDateString().'. Be concise and concrete.',
-                )
-                ->withMaxSteps(5)
-                ->withTools($tools)
-                ->withPrompt($validated['question'])
-                ->asText();
-
-            $this->gateway->log(
-                $credential,
+            $result = $this->assistant->ask(
                 $request->user(),
-                AiFeature::AskData,
-                promptTokens: $response->usage->promptTokens,
-                completionTokens: $response->usage->completionTokens,
-                durationMs: (int) ((microtime(true) - $startedAt) * 1000),
+                $scope,
+                $validated['question'],
+                $history,
             );
-
-            return response()->json(['answer' => $response->text]);
-        } catch (\Throwable $e) {
-            $this->gateway->log(
-                $credential,
-                $request->user(),
-                AiFeature::AskData,
-                status: 'error',
-                error: $e->getMessage(),
-            );
-
-            // Surface the upstream detail so credential owners can debug
-            // their own keys (e.g. NVIDIA function-not-activated).
-            return response()->json([
-                'error' => 'The assistant could not answer right now. Please try again.',
-                'detail' => $e->getMessage(),
-            ], 502);
+        } catch (AssistantUnavailableException $e) {
+            return response()->json(['error' => $e->getMessage()], 403);
         }
+
+        $conversation->messages()->create(['role' => 'user', 'content' => $validated['question']]);
+        $conversation->messages()->create([
+            'role' => 'assistant',
+            'content' => $result['answer'],
+            'artifacts' => $result['artifacts'] ?? [],
+        ]);
+        $conversation->touch('last_message_at');
+
+        return response()->json([
+            'answer' => $result['answer'],
+            'artifacts' => $result['artifacts'] ?? [],
+            'conversation_id' => $conversation->id,
+        ]);
     }
 
-    private function resolve(Request $request)
+    /**
+     * @return array<int, array{role: string, content: string, artifacts?: array}>
+     */
+    private function loadMessages(User $user, Scope $scope): array
     {
-        return $this->gateway->resolve(
-            $request->user(),
-            AiFeature::AskData,
-            TenancyContext::organization(),
-        );
+        $conversation = AiConversation::findLatest($user, $scope);
+
+        if ($conversation === null) {
+            return [];
+        }
+
+        return $conversation->messages()
+            ->orderBy('id')
+            ->get(['role', 'content', 'artifacts'])
+            ->map(fn (AiMessage $message) => [
+                'role' => $message->role,
+                'content' => $message->content,
+                'artifacts' => $message->artifacts ?? [],
+            ])
+            ->all();
+    }
+
+    /**
+     * @return array<int, array{role: string, content: string}>
+     */
+    private function historyFor(AiConversation $conversation): array
+    {
+        return $conversation->messages()
+            ->orderBy('id')
+            ->limit(6)
+            ->get(['role', 'content'])
+            ->map(fn (AiMessage $message) => [
+                'role' => $message->role === 'error' ? 'assistant' : $message->role,
+                'content' => $message->content,
+            ])
+            ->all();
     }
 }
