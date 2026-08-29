@@ -71,6 +71,7 @@ class DefaultSubRoles
                     SubPermissionKey::StaffManage,
                     SubPermissionKey::StaffCreate,
                     SubPermissionKey::StaffEdit,
+                    SubPermissionKey::AiUse,
                 ],
             ],
             self::AGENT => [
@@ -84,6 +85,7 @@ class DefaultSubRoles
                     SubPermissionKey::OccupantManage,
                     SubPermissionKey::LandParcelManage,
                     SubPermissionKey::LeaseManage,
+                    SubPermissionKey::AiUse,
                 ],
             ],
         ];
