@@ -30,14 +30,15 @@ test('sub-permission catalog is seeded', function () {
 test('default sub-roles bundle their expected permissions', function () {
     $caretaker = $this->organization->subRoles()->where('slug', 'caretaker')->first();
 
-    expect($caretaker->subPermissions()->count())->toBe(16)
+    expect($caretaker->subPermissions()->count())->toBe(17)
         ->and($caretaker->hasSubPermissionFor(SubPermissionKey::UnitManage))->toBeTrue()
         ->and($caretaker->hasSubPermissionFor(SubPermissionKey::LandParcelManage))->toBeTrue()
         ->and($caretaker->hasSubPermissionFor(SubPermissionKey::LandParcelCreate))->toBeTrue()
         ->and($caretaker->hasSubPermissionFor(SubPermissionKey::LandParcelDelete))->toBeFalse()
         ->and($caretaker->hasSubPermissionFor(SubPermissionKey::StaffManage))->toBeTrue()
         ->and($caretaker->hasSubPermissionFor(SubPermissionKey::StaffDelete))->toBeFalse()
-        ->and($caretaker->hasSubPermissionFor(SubPermissionKey::OccupantDelete))->toBeFalse();
+        ->and($caretaker->hasSubPermissionFor(SubPermissionKey::OccupantDelete))->toBeFalse()
+        ->and($caretaker->hasSubPermissionFor(SubPermissionKey::AiUse))->toBeTrue();
 });
 
 test('owners bypass sub-permission checks', function () {
