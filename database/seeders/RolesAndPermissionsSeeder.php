@@ -45,6 +45,11 @@ class RolesAndPermissionsSeeder extends Seeder
         $this->grant($permissionIds, PlatformRole::Searcher, PlatformPermissionKey::ViewSearcherMetrics);
         $this->grant($permissionIds, PlatformRole::Occupant, PlatformPermissionKey::ViewOccupantMetrics);
 
+        // The AI assistant is available to anyone with a configured credential
+        // by default; platform admins can revoke it per role.
+        $this->grant($permissionIds, PlatformRole::Searcher, PlatformPermissionKey::AiUse);
+        $this->grant($permissionIds, PlatformRole::Occupant, PlatformPermissionKey::AiUse);
+
         $sortOrder = 0;
         foreach (SubPermissionKey::cases() as $key) {
             SubPermission::withTrashed()->updateOrCreate(
