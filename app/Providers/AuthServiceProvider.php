@@ -70,6 +70,8 @@ class AuthServiceProvider extends ServiceProvider
         Gate::define('editPlans', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::PlanEdit->value));
         Gate::define('deletePlans', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::PlanDelete->value));
 
+        Gate::define('aiUse', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::AiUse->value));
+
         Gate::policy(Lease::class, LeasePolicy::class);
     }
 }
