@@ -77,6 +77,74 @@ class HandleInertiaRequests extends Middleware
                 'permissions' => $this->permissions($user, $organization),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
+            'assistant' => $this->assistant($user, $organization),
+        ];
+    }
+
+    /**
+     * Whether the current user may use the floating AI assistant, and the
+     * scope + copy to drive it. Gated by an `ai.use` permission on top of
+     * the credential/R0 availability check (auth.ai_enabled). The frontend
+     * resolves the actual ask URL per scope via Wayfinder.
+     *
+     * @return array{enabled: bool, scope?: string, title?: string, description?: string, prompts?: list<string>}|null
+     */
+    private function assistant(?object $user, ?object $organization): ?array
+    {
+        if (! $user) {
+            return null;
+        }
+
+        $aiEnabled = app(AiGateway::class)->canUse($user, AiFeature::AskData, $organization);
+
+        if ($organization) {
+            $permitted = $user->hasSubPermission($organization, SubPermissionKey::AiUse);
+            $scope = 'tenant';
+            $copy = [
+                'title' => 'Organization assistant',
+                'description' => 'Ask questions about your properties, units, leases, and operations.',
+                'prompts' => [
+                    'How many units are vacant right now?',
+                    'Summarize open maintenance by priority',
+                    'Which leases expire in the next 60 days?',
+                ],
+            ];
+        } elseif ($user->can(PlatformPermissionKey::AccessAdminDashboard->value)) {
+            $permitted = $user->can(PlatformPermissionKey::AiUse->value);
+            $scope = 'admin';
+            $aiEnabled = $aiEnabled
+                || app(AiGateway::class)->resolvePlatformOrFirstOrg($user, AiFeature::AskData) !== null;
+            $copy = [
+                'title' => 'Platform assistant',
+                'description' => 'Ask questions across every organization on the platform.',
+                'prompts' => [
+                    'Which organizations have the most open maintenance?',
+                    'Show revenue by plan this month',
+                    'List organizations created in the last 30 days',
+                ],
+            ];
+        } else {
+            $permitted = $user->can(PlatformPermissionKey::AiUse->value);
+            $scope = $user->person_id ? 'searcher' : null;
+            $copy = [
+                'title' => 'Your assistant',
+                'description' => 'Ask questions about your own rental history.',
+                'prompts' => [
+                    'What was my last rent amount?',
+                    'When did my most recent lease end?',
+                    'Show my maintenance requests and their status',
+                ],
+            ];
+        }
+
+        if (! $aiEnabled || ! $permitted || ! $scope) {
+            return ['enabled' => false];
+        }
+
+        return [
+            'enabled' => true,
+            'scope' => $scope,
+            ...$copy,
         ];
     }
 
