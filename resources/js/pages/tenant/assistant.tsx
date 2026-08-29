@@ -1,154 +1,48 @@
 import { Head } from '@inertiajs/react';
-import { Send } from 'lucide-react';
-import { useRef, useState } from 'react';
-import Heading from '@/components/heading';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { AssistantChart, type AssistantArtifact } from '@/components/assistant-chart';
+import { AssistantChat } from '@/components/assistant-chat';
 import { ask as askRoute } from '@/routes/tenant/assistant';
-
-type Message = {
-    role: 'user' | 'assistant' | 'error';
-    text: string;
-};
 
 type Props = {
     enabled: boolean;
+    quick_prompts?: string[];
+    initial_messages?: { role: 'user' | 'assistant' | 'error'; content: string; artifacts?: AssistantArtifact[] }[];
 };
 
-const SUGGESTIONS = [
-    'How many units are vacant per property?',
-    'What are my total expenses by category?',
-    'Any leases expiring in the next 60 days?',
-    'How urgent is my maintenance backlog?',
+const DEFAULT_PROMPTS = [
+    'How many units are vacant right now, by property?',
+    'What rent is outstanding this month?',
+    'Which leases expire in the next 60 days?',
+    'Show my open maintenance backlog by priority.',
+    'Summarise expenses by category this year.',
 ];
 
-export default function Assistant({ enabled }: Props) {
-    const [messages, setMessages] = useState<Message[]>([]);
-    const [question, setQuestion] = useState('');
-    const [busy, setBusy] = useState(false);
-    const bottomRef = useRef<HTMLDivElement>(null);
-
-    const send = (text: string) => {
-        const trimmed = text.trim();
-
-        if (!trimmed || busy) {
-            return;
-        }
-
-        setMessages((prev) => [...prev, { role: 'user', text: trimmed }]);
-        setQuestion('');
-        setBusy(true);
-
-        const csrf = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '';
-
-        fetch(askRoute().url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Accept: 'application/json',
-                'X-CSRF-TOKEN': csrf,
-            },
-            body: JSON.stringify({ question: trimmed }),
-        })
-            .then(async (response) => response.json())
-            .then((data) => {
-                if (data.answer) {
-                    setMessages((prev) => [...prev, { role: 'assistant', text: data.answer }]);
-
-                    return;
-                }
-
-                setMessages((prev) => [
-                    ...prev,
-                    {
-                        role: 'error',
-                        text: data.detail
-                            ? `${data.error ?? 'Something went wrong.'} (${data.detail})`
-                            : data.error ?? 'Something went wrong.',
-                    },
-                ]);
-            })
-            .catch(() => {
-                setMessages((prev) => [...prev, { role: 'error', text: 'Something went wrong.' }]);
-            })
-            .finally(() => {
-                setBusy(false);
-                requestAnimationFrame(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }));
-            });
-    };
+export default function Assistant({ enabled, quick_prompts }: Props) {
+    if (!enabled) {
+        return (
+            <>
+                <Head title="AI assistant" />
+                <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
+                    <p className="text-sm text-muted-foreground">
+                        AI is not configured yet. An owner can add an API key under Organization → AI settings, or you can add a personal
+                        key in Settings → AI.
+                    </p>
+                </div>
+            </>
+        );
+    }
 
     return (
         <>
             <Head title="AI assistant" />
-            <div className="flex h-full flex-1 flex-col gap-4 overflow-hidden rounded-xl p-4">
-                <Heading
-                    variant="small"
-                    title="AI assistant"
-                    description="Ask about your portfolio — vacancy, expenses, leases, maintenance."
-                />
-
-                {!enabled ? (
-                    <p className="text-sm text-muted-foreground">
-                        AI is not configured yet. An owner can add an API key under
-                        Organization → AI settings, or you can add a personal key in
-                        Settings → AI.
-                    </p>
-                ) : (
-                    <div className="flex min-h-0 flex-1 flex-col gap-3 rounded-xl border border-input p-4">
-                        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto">
-                            {messages.length === 0 && (
-                                <div className="space-y-2">
-                                    <p className="text-sm text-muted-foreground">Try asking:</p>
-                                    {SUGGESTIONS.map((suggestion) => (
-                                        <button
-                                            key={suggestion}
-                                            type="button"
-                                            onClick={() => send(suggestion)}
-                                            className="block rounded-md border border-input px-3 py-1.5 text-left text-sm hover:bg-accent"
-                                        >
-                                            {suggestion}
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-                            {messages.map((message, index) => (
-                                <div
-                                    key={index}
-                                    className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
-                                        message.role === 'user'
-                                            ? 'ml-auto bg-primary text-primary-foreground'
-                                            : message.role === 'error'
-                                              ? 'bg-destructive/10 text-destructive'
-                                              : 'bg-muted'
-                                    }`}
-                                >
-                                    {message.text}
-                                </div>
-                            ))}
-                            {busy && <p className="text-xs text-muted-foreground">Thinking…</p>}
-                            <div ref={bottomRef} />
-                        </div>
-
-                        <form
-                            onSubmit={(event) => {
-                                event.preventDefault();
-                                send(question);
-                            }}
-                            className="flex gap-2 border-t pt-3"
-                        >
-                            <Input
-                                value={question}
-                                onChange={(e) => setQuestion(e.target.value)}
-                                placeholder="Ask a question…"
-                                disabled={busy}
-                            />
-                            <Button type="submit" size="icon" disabled={busy || !question.trim()}>
-                                <Send className="size-4" />
-                            </Button>
-                        </form>
-                    </div>
-                )}
-            </div>
+            <AssistantChat
+                askUrl={askRoute().url}
+                quickPrompts={quick_prompts ?? DEFAULT_PROMPTS}
+                title="AI assistant"
+                description="Ask about your portfolio — vacancy, expenses, leases, maintenance. The assistant retrieves live data for you."
+                placeholder="Ask about your portfolio…"
+                initialMessages={initial_messages}
+            />
         </>
     );
 }
