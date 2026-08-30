@@ -30,6 +30,7 @@ return new class extends Migration
 
             $table->string('status')->default('opened')->index();
             $table->string('priority')->default('medium');
+            $table->string('ai_priority')->nullable();
 
             $table->timestamp('resolved_at')->nullable();
             $table->text('resolution_notes')->nullable();
