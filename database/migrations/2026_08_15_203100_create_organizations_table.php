@@ -27,6 +27,7 @@ return new class extends Migration
             $table->foreign('tenant_id')->references('id')->on('tenants')->onUpdate('cascade')->onDelete('cascade');
 
             $table->index('plan_id');
+            $table->index(['tenant_id', 'name']);
 
             if (in_array(Schema::getConnection()->getDriverName(), ['mysql', 'mariadb'], true)) {
                 $table->fullText(['name', 'slug', 'email'], 'organizations_fulltext_search');

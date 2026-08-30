@@ -21,6 +21,8 @@ return new class extends Migration
             $table->unsignedBigInteger('created_by')->nullable();
             $table->timestamps();
             $table->softDeletes();
+
+            $table->index(['land_parcel_id', 'status']);
         });
     }
 
