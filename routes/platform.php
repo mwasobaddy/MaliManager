@@ -1,33 +1,26 @@
 <?php
 
-use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\Organizations\OrganizationController;
 use App\Http\Controllers\Platform\AssistantController;
 use App\Http\Controllers\Platform\AuditController;
 use App\Http\Controllers\Platform\PlanController;
 use App\Http\Controllers\Platform\PlatformController;
-use App\Http\Controllers\SearchController;
-use App\Http\Controllers\Searcher\LeaseController;
-use App\Http\Controllers\Searcher\MyMaintenanceController;
-use App\Http\Controllers\Searcher\SearcherAssistantController;
+use App\Http\Controllers\Platform\RolesController;
 use App\Http\Controllers\Users\UserController;
+use Illuminate\Auth\Middleware\RequirePassword;
 use Illuminate\Support\Facades\Route;
 
-Route::inertia('/', 'welcome')->name('home');
-
-require __DIR__.'/auth.php';
-
+// Central platform administration, gated by the `admin` middleware.
 Route::middleware(['auth', 'verified', 'admin'])->group(function () {
-    Route::get('admin', [PlatformController::class, 'index'])->name('admin.dashboard');
-    Route::post('admin/impersonate/{organization}/{user}', [PlatformController::class, 'impersonate'])
-        ->name('admin.impersonate');
-    Route::get('admin/assistant', [AssistantController::class, 'page'])
+    Route::get('platform', [PlatformController::class, 'index'])->name('platform.dashboard');
+    Route::post('platform/impersonate/{organization}/{user}', [PlatformController::class, 'impersonate'])
+        ->name('platform.impersonate');
+    Route::get('platform/assistant', [AssistantController::class, 'page'])
         ->middleware('can:aiUse')
-        ->name('admin.assistant.page');
-    Route::post('admin/assistant/ask', [AssistantController::class, 'ask'])
+        ->name('platform.assistant.page');
+    Route::post('platform/assistant/ask', [AssistantController::class, 'ask'])
         ->middleware('can:aiUse')
-        ->name('admin.assistant.ask');
+        ->name('platform.assistant.ask');
 });
 
 // Platform-wide audit view is gated by the central `viewAnyAudit` gate
@@ -69,55 +62,22 @@ Route::middleware(['auth', 'verified', 'can:manageOrganizations'])->group(functi
 
 // Central plan management module, gated by central plan.* permissions.
 Route::middleware(['auth', 'verified', 'can:managePlans'])->group(function () {
-    Route::get('plans', [PlanController::class, 'index'])->name('plans.index');
-    Route::get('plans/create', [PlanController::class, 'create'])->name('plans.create')->middleware('can:createPlans');
-    Route::post('plans', [PlanController::class, 'store'])->name('plans.store')->middleware('can:createPlans');
-    Route::get('plans/{plan}/edit', [PlanController::class, 'edit'])->name('plans.edit')->middleware('can:editPlans');
-    Route::patch('plans/{plan}', [PlanController::class, 'update'])->name('plans.update')->middleware('can:editPlans');
-    Route::delete('plans/{plan}', [PlanController::class, 'destroy'])->name('plans.destroy')->middleware('can:deletePlans');
+    Route::get('platform/plans', [PlanController::class, 'index'])->name('platform.plans.index');
+    Route::get('platform/plans/create', [PlanController::class, 'create'])->name('platform.plans.create')->middleware('can:createPlans');
+    Route::post('platform/plans', [PlanController::class, 'store'])->name('platform.plans.store')->middleware('can:createPlans');
+    Route::get('platform/plans/{plan}/edit', [PlanController::class, 'edit'])->name('platform.plans.edit')->middleware('can:editPlans');
+    Route::patch('platform/plans/{plan}', [PlanController::class, 'update'])->name('platform.plans.update')->middleware('can:editPlans');
+    Route::delete('platform/plans/{plan}', [PlanController::class, 'destroy'])->name('platform.plans.destroy')->middleware('can:deletePlans');
 });
 
-Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('dashboard', [DashboardController::class, 'index'])
-        ->name('dashboard')
-        ->middleware('onboarded');
-
-    Route::post('property-picker/acknowledge', [DashboardController::class, 'acknowledge'])
-        ->name('property-picker.acknowledge');
-
-    Route::get('setup/first-asset', [OnboardingController::class, 'firstAsset'])
-        ->name('onboarding.first-asset')
-        ->middleware('onboarded');
-
-    // Searchers (and any user with a linked person) can review their own
-    // rental history across every organization.
-    Route::get('searcher/rentals', [LeaseController::class, 'index'])
-        ->name('searcher.rentals');
-
-    // Occupant-side maintenance requests (active-lease holders only; the
-    // service enforces the lease requirement).
-    Route::get('searcher/maintenance', [MyMaintenanceController::class, 'index'])
-        ->name('searcher.maintenance.index');
-    Route::post('searcher/maintenance', [MyMaintenanceController::class, 'store'])
-        ->name('searcher.maintenance.store');
-
-    // Occupant AI assistant (own-data scoped).
-    Route::get('searcher/assistant', [SearcherAssistantController::class, 'page'])
-        ->middleware('can:aiUse')
-        ->name('searcher.assistant.page');
-    Route::post('searcher/assistant/ask', [SearcherAssistantController::class, 'ask'])
-        ->middleware('can:aiUse')
-        ->name('searcher.assistant.ask');
+// Platform role & central-permission management (admin via PlatformPermissionKey::ManageRoles).
+Route::middleware(['auth', 'verified', 'can:manageRoles'])->group(function () {
+    Route::get('platform/roles', [RolesController::class, 'index'])->name('platform.roles.index');
+    Route::get('platform/roles/{role}/edit', [RolesController::class, 'edit'])->name('platform.roles.edit');
+    Route::patch('platform/roles/{role}', [RolesController::class, 'update'])
+        ->middleware(RequirePassword::class)
+        ->name('platform.roles.update');
+    Route::patch('platform/users/{user}/role', [RolesController::class, 'assignRole'])
+        ->middleware(RequirePassword::class)
+        ->name('platform.users.role');
 });
-
-// Global command-palette search. Tenant-aware on tenant domains (resolved
-// from the hostname inside the service), cross-organization for platform
-// admins on the central domain.
-Route::middleware(['auth'])->group(function () {
-    Route::get('search', [SearchController::class, 'index'])->name('search');
-});
-
-Route::inertia('suspended', 'auth/suspended')->name('suspended');
-
-require __DIR__.'/platform.php';
-require __DIR__.'/settings.php';

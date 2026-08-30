@@ -10,14 +10,14 @@ beforeEach(function () {
 });
 
 test('guests are redirected from the admin dashboard', function () {
-    $this->get(route('admin.dashboard'))->assertRedirect(route('login'));
+    $this->get(route('platform.dashboard'))->assertRedirect(route('login'));
 });
 
 test('non-admin users are forbidden from the admin dashboard', function () {
     $user = User::factory()->create();
 
     $this->actingAs($user)
-        ->get(route('admin.dashboard'))
+        ->get(route('platform.dashboard'))
         ->assertRedirect();
     assertErrorToast();
 });
@@ -27,9 +27,9 @@ test('platform admins can view the admin dashboard', function () {
     $admin->assignRole('admin');
 
     $this->actingAs($admin)
-        ->get(route('admin.dashboard'))
+        ->get(route('platform.dashboard'))
         ->assertOk()
-        ->assertInertia(fn ($page) => $page->component('admin/dashboard'));
+        ->assertInertia(fn ($page) => $page->component('platform/dashboard'));
 });
 
 test('admin dashboard lists organizations and their members', function () {
@@ -41,10 +41,10 @@ test('admin dashboard lists organizations and their members', function () {
     $organization->users()->attach($member->id, ['is_owner' => true, 'status' => 'active']);
 
     $this->actingAs($admin)
-        ->get(route('admin.dashboard'))
+        ->get(route('platform.dashboard'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('admin/dashboard')
+            ->component('platform/dashboard')
             ->where('organizations.0.name', $organization->name)
             ->where('organizations.0.users.0.email', $member->email));
 });
@@ -59,7 +59,7 @@ test('admins can generate an impersonation redirect for an organization member',
     $organization->users()->attach($member->id, ['is_owner' => true, 'status' => 'active']);
 
     $response = $this->actingAs($admin)
-        ->post(route('admin.impersonate', [$organization, $member]));
+        ->post(route('platform.impersonate', [$organization, $member]));
 
     $response->assertRedirect('http://acme.malimanager.test/impersonate/'.app(ImpersonationToken::class)->latest('created_at')->first()->token);
 });
@@ -72,7 +72,7 @@ test('admins cannot impersonate users outside the organization', function () {
     $stranger = User::factory()->create();
 
     $this->actingAs($admin)
-        ->post(route('admin.impersonate', [$organization, $stranger]))
+        ->post(route('platform.impersonate', [$organization, $stranger]))
         ->assertRedirect();
     assertErrorToast();
 });
@@ -88,7 +88,7 @@ test('admins cannot impersonate other admins', function () {
     $organization->users()->attach($otherAdmin->id, ['is_owner' => false, 'status' => 'active']);
 
     $this->actingAs($admin)
-        ->post(route('admin.impersonate', [$organization, $otherAdmin]))
+        ->post(route('platform.impersonate', [$organization, $otherAdmin]))
         ->assertRedirect();
     assertErrorToast();
 });
@@ -103,7 +103,7 @@ test('impersonated user is logged in on the tenant domain', function () {
     $organization->users()->attach($member->id, ['is_owner' => true, 'status' => 'active']);
 
     $this->actingAs($admin)
-        ->post(route('admin.impersonate', [$organization, $member]));
+        ->post(route('platform.impersonate', [$organization, $member]));
 
     $token = app(ImpersonationToken::class)->latest('created_at')->firstOrFail();
 

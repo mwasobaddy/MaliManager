@@ -19,6 +19,7 @@ use App\Models\User;
 use App\Services\OccupantService;
 use App\Services\TenantService;
 use App\Support\Ai\AiGateway;
+use App\Support\Ai\AssistantService;
 use Database\Seeders\PlansSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -27,7 +28,6 @@ use Illuminate\Support\Facades\Queue;
 use Prism\Prism\Facades\Prism;
 use Prism\Prism\Testing\StructuredResponseFake;
 use Prism\Prism\Testing\TextResponseFake;
-use Prism\Prism\ValueObjects\ToolCall;
 use Prism\Prism\ValueObjects\Usage;
 
 uses(RefreshDatabase::class);
@@ -148,7 +148,7 @@ test('toolPayload unwraps the named wrapper key the model emits', function () {
     // Prism invokes a tool with the full arguments object (the model emits
     // {"query": {...}}), so the handler must receive the inner spec or it
     // would throw on the missing top-level 'entity' key.
-    $service = app(\App\Support\Ai\AssistantService::class);
+    $service = app(AssistantService::class);
     $ref = new ReflectionMethod($service, 'toolPayload');
     $ref->setAccessible(true);
 
@@ -260,7 +260,32 @@ test('central admin assistant falls back to an organization credential when no p
     $setting->save();
 
     $this->actingAs($admin)
-        ->postJson('/admin/assistant/ask', ['question' => 'How many orgs are active?'])
+        ->postJson('/platform/assistant/ask', ['question' => 'How many orgs are active?'])
+        ->assertOk()
+        ->assertJsonPath('answer', fn ($answer) => str_contains($answer, 'orgs'));
+});
+
+test('central admin assistant works with the admin personal key', function () {
+    Prism::fake([
+        TextResponseFake::make()->withText('6 orgs are active platform-wide.')->withUsage(new Usage(10, 5)),
+    ]);
+
+    $admin = User::factory()->create(['onboarded_at' => now()]);
+    $admin->assignRole(PlatformRole::Admin->value);
+
+    // Admin's own personal credential, with no platform or org key configured.
+    $setting = new AiSetting([
+        'provider' => 'openai',
+        'model' => 'gpt-4o',
+        'api_key' => 'sk-test-key-1234567890',
+        'allow_all_members' => true,
+        'features' => [AiFeature::AskData->value],
+    ]);
+    $setting->owner()->associate($admin);
+    $setting->save();
+
+    $this->actingAs($admin)
+        ->postJson('/platform/assistant/ask', ['question' => 'How many orgs are active?'])
         ->assertOk()
         ->assertJsonPath('answer', fn ($answer) => str_contains($answer, 'orgs'));
 });

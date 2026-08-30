@@ -1,11 +1,10 @@
-import { useState } from 'react';
 import { usePage } from '@inertiajs/react';
 import { Sparkles, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { useState } from 'react';
 import { AssistantChat } from '@/components/assistant-chat';
-import { ask as askTenant } from '@/routes/tenant/assistant';
-import { ask as askAdmin } from '@/routes/admin/assistant';
+import { ask as askAdmin } from '@/routes/platform/assistant';
 import { ask as askSearcher } from '@/routes/searcher/assistant';
+import { ask as askTenant } from '@/routes/tenant/assistant';
 
 type AssistantShared = {
     enabled?: boolean;
