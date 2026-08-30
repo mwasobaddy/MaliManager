@@ -32,6 +32,10 @@ return new class extends Migration
 
             $table->index(['organization_id', 'spent_on']);
             $table->index(['organization_id', 'category']);
+
+            if (in_array(Schema::getConnection()->getDriverName(), ['mysql', 'mariadb'], true)) {
+                $table->fullText(['category', 'notes', 'currency'], 'expenses_fulltext_search');
+            }
         });
     }
 

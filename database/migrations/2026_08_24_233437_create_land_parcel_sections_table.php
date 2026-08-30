@@ -23,6 +23,10 @@ return new class extends Migration
             $table->softDeletes();
 
             $table->index(['land_parcel_id', 'status']);
+
+            if (in_array(Schema::getConnection()->getDriverName(), ['mysql', 'mariadb'], true)) {
+                $table->fullText(['name', 'status', 'notes'], 'land_parcel_sections_fulltext_search');
+            }
         });
     }
 

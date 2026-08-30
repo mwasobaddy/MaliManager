@@ -28,6 +28,10 @@ return new class extends Migration
             $table->softDeletes();
 
             $table->index(['organization_id', 'inspection_date']);
+
+            if (in_array(Schema::getConnection()->getDriverName(), ['mysql', 'mariadb'], true)) {
+                $table->fullText(['title', 'notes'], 'inspections_fulltext_search');
+            }
         });
     }
 

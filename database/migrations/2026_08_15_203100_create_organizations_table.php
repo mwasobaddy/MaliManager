@@ -31,6 +31,7 @@ return new class extends Migration
 
             if (in_array(Schema::getConnection()->getDriverName(), ['mysql', 'mariadb'], true)) {
                 $table->fullText(['name', 'slug', 'email'], 'organizations_fulltext_search');
+                $table->fullText(['name', 'slug', 'email', 'phone', 'status'], 'organizations_ai_fulltext_search');
             }
         });
     }

@@ -28,6 +28,10 @@ return new class extends Migration
 
             $table->unique(['organization_id', 'slug']);
             $table->index(['organization_id', 'name']);
+
+            if (in_array(Schema::getConnection()->getDriverName(), ['mysql', 'mariadb'], true)) {
+                $table->fullText(['name', 'slug', 'address', 'city', 'status'], 'properties_fulltext_search');
+            }
         });
     }
 
