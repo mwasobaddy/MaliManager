@@ -36,6 +36,12 @@ class SocialiteController extends Controller
 
         $user = $this->findOrCreateUser($provider, $socialUser);
 
+        if ($user->status !== 'active') {
+            Inertia::flash('toast', ['type' => 'error', 'message' => 'This account has been suspended.']);
+
+            return redirect()->route('login');
+        }
+
         Auth::login($user);
 
         activity()->inLog('auth')

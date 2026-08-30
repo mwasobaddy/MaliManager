@@ -100,7 +100,9 @@ class UserController extends Controller
         ]);
 
         if ($user->id === $request->user()->id && $validated['status'] !== 'active') {
-            abort(422, 'You cannot suspend your own account.');
+            Inertia::flash('toast', ['type' => 'error', 'message' => 'You cannot suspend your own account.']);
+
+            return back();
         }
 
         $this->service->setStatus($user, $validated['status'], $request->user());
