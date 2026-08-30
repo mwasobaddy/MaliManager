@@ -37,6 +37,8 @@ return new class extends Migration
 
             $table->index(['person_id', 'status']);
             $table->index(['organization_id', 'status']);
+            $table->index(['organization_id', 'unit_id']);
+            $table->index(['organization_id', 'property_id']);
         });
     }
 

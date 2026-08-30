@@ -27,6 +27,7 @@ return new class extends Migration
             $table->softDeletes();
 
             $table->unique(['organization_id', 'slug']);
+            $table->index(['organization_id', 'name']);
         });
     }
 
