@@ -62,6 +62,10 @@ class UserService extends Service
                 ])->save();
             }
 
+            if ($user->status !== 'active') {
+                $this->revokeSessions($user);
+            }
+
             if (array_key_exists('roles', $data)) {
                 $user->syncRoles($data['roles'] ?? []);
             }
@@ -78,6 +82,10 @@ class UserService extends Service
     public function setStatus(User $user, string $status, User $actor): User
     {
         $user->fill(['status' => $status])->save();
+
+        if ($status !== 'active') {
+            $this->revokeSessions($user);
+        }
 
         activity()->performedOn($user)->causedBy($actor)->log(ucfirst($status).' user '.$user->email);
 
@@ -96,6 +104,16 @@ class UserService extends Service
         activity()->performedOn($user)->causedBy($actor)->log('Deleted user '.$user->email);
 
         $user->delete();
+    }
+
+    /**
+     * Invalidate every active session for the user (database session driver),
+     * so a suspended/inactivated account is kicked from all devices immediately
+     * rather than only on its next request.
+     */
+    private function revokeSessions(User $user): void
+    {
+        DB::table('sessions')->where('user_id', $user->id)->delete();
     }
 
     /**

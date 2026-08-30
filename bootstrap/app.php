@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\EnsureOrganizationHasProperty;
 use App\Http\Middleware\EnsureSubPermission;
+use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\EnsureUserIsOnboarded;
 use App\Http\Middleware\EnsureUserIsPlatformAdmin;
 use App\Http\Middleware\HandleAppearance;
@@ -27,6 +28,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             HandleAppearance::class,
             HandleInertiaRequests::class,
+            EnsureUserIsActive::class,
             AddLinkHeadersForPreloadedAssets::class,
         ]);
 

@@ -7,6 +7,15 @@ import { PasswordConfirmDialog } from '@/components/password-confirm-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import {
+    Dialog,
+    DialogClose,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import * as usersRoutes from '@/routes/users';
 
 type PersonRow = {
@@ -66,11 +75,25 @@ export default function UsersIndex({ users, filters, platformRoles }: Props) {
         form.get(usersRoutes.index().url, { preserveState: true, replace: true });
     };
 
-    const toggleStatus = (user: UserRow) => {
+    const [suspendTarget, setSuspendTarget] = useState<UserRow | null>(null);
+    const [suspending, setSuspending] = useState(false);
+
+    const confirmToggleStatus = () => {
+        if (!suspendTarget) {
+            return;
+        }
+
+        setSuspending(true);
         router.patch(
-            usersRoutes.status(user.id),
-            { status: user.status === 'active' ? 'suspended' : 'active' },
-            { preserveScroll: true },
+            usersRoutes.status(suspendTarget.id),
+            { status: suspendTarget.status === 'active' ? 'suspended' : 'active' },
+            {
+                preserveScroll: true,
+                onFinish: () => {
+                    setSuspending(false);
+                    setSuspendTarget(null);
+                },
+            },
         );
     };
 
@@ -197,7 +220,7 @@ export default function UsersIndex({ users, filters, platformRoles }: Props) {
                                                         </Button>
                                                     )}
                                                     {canEdit && (
-                                                        <Button variant="ghost" size="sm" onClick={() => toggleStatus(user)}>
+                                                        <Button variant="ghost" size="sm" onClick={() => setSuspendTarget(user)}>
                                                             {user.status === 'active' ? 'Suspend' : 'Activate'}
                                                         </Button>
                                                     )}
@@ -254,6 +277,43 @@ export default function UsersIndex({ users, filters, platformRoles }: Props) {
                 title={`Delete ${deleteTarget?.email ?? ''}?`}
                 description="This soft-deletes the user account. Please enter your password to confirm."
             />
+
+            <Dialog
+                open={suspendTarget !== null}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setSuspendTarget(null);
+                    }
+                }}
+            >
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>
+                            {suspendTarget?.status === 'active' ? 'Suspend user?' : 'Activate user?'}
+                        </DialogTitle>
+                        <DialogDescription>
+                            {suspendTarget?.status === 'active'
+                                ? `Suspend ${suspendTarget?.email ?? ''}? They will be signed out of every device and unable to access the platform until reactivated.`
+                                : `Reactivate ${suspendTarget?.email ?? ''}? They will be able to sign in again.`}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <DialogFooter className="gap-2">
+                        <DialogClose asChild>
+                            <Button variant="secondary" onClick={() => setSuspendTarget(null)}>
+                                Cancel
+                            </Button>
+                        </DialogClose>
+                        <Button
+                            variant={suspendTarget?.status === 'active' ? 'destructive' : 'default'}
+                            disabled={suspending}
+                            onClick={confirmToggleStatus}
+                        >
+                            {suspendTarget?.status === 'active' ? 'Suspend' : 'Activate'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </>
     );
 }
