@@ -1,42 +1,26 @@
 <?php
 
-use App\Http\Controllers\Admin\AdminController;
-use App\Http\Controllers\Admin\AssistantController;
-use App\Http\Controllers\Admin\PlanController;
-use App\Http\Controllers\Audit\PlatformAuditController;
-use App\Http\Controllers\Auth\LoginController;
-use App\Http\Controllers\Auth\OtpController;
-use App\Http\Controllers\Auth\SocialiteController;
 use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\LeaseController;
-use App\Http\Controllers\MyMaintenanceController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\Organizations\OrganizationController;
-use App\Http\Controllers\SearcherAssistantController;
+use App\Http\Controllers\Platform\AssistantController;
+use App\Http\Controllers\Platform\AuditController;
+use App\Http\Controllers\Platform\PlanController;
+use App\Http\Controllers\Platform\PlatformController;
+use App\Http\Controllers\SearchController;
+use App\Http\Controllers\Searcher\LeaseController;
+use App\Http\Controllers\Searcher\MyMaintenanceController;
+use App\Http\Controllers\Searcher\SearcherAssistantController;
 use App\Http\Controllers\Users\UserController;
 use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'welcome')->name('home');
 
-Route::middleware(['guest'])->group(function () {
-    Route::post('auth/login', [LoginController::class, 'store'])->middleware('throttle:login')->name('login.store');
-
-    Route::get('auth/otp', [OtpController::class, 'show'])->name('login.otp');
-    Route::post('auth/otp', [OtpController::class, 'verify'])->middleware('throttle:otp')->name('login.otp.verify');
-    Route::post('auth/otp/resend', [OtpController::class, 'resend'])->middleware('throttle:otp')->name('login.otp.resend');
-
-    Route::get('auth/{provider}/redirect', [SocialiteController::class, 'redirect'])
-        ->whereIn('provider', ['google'])
-        ->name('auth.socialite.redirect');
-
-    Route::get('auth/{provider}/callback', [SocialiteController::class, 'callback'])
-        ->whereIn('provider', ['google'])
-        ->name('auth.socialite.callback');
-});
+require __DIR__.'/auth.php';
 
 Route::middleware(['auth', 'verified', 'admin'])->group(function () {
-    Route::get('admin', [AdminController::class, 'index'])->name('admin.dashboard');
-    Route::post('admin/impersonate/{organization}/{user}', [AdminController::class, 'impersonate'])
+    Route::get('admin', [PlatformController::class, 'index'])->name('admin.dashboard');
+    Route::post('admin/impersonate/{organization}/{user}', [PlatformController::class, 'impersonate'])
         ->name('admin.impersonate');
     Route::get('admin/assistant', [AssistantController::class, 'page'])
         ->middleware('can:aiUse')
@@ -51,12 +35,12 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
 // Export is separately gated by `exportAudit` so viewing does not imply
 // exporting.
 Route::middleware(['auth', 'verified', 'can:viewAnyAudit'])->group(function () {
-    Route::get('platform/audit', [PlatformAuditController::class, 'index'])
+    Route::get('platform/audit', [AuditController::class, 'index'])
         ->name('platform.audit.index');
 });
 
 Route::middleware(['auth', 'verified', 'can:exportAudit'])->group(function () {
-    Route::get('platform/audit/export', [PlatformAuditController::class, 'export'])
+    Route::get('platform/audit/export', [AuditController::class, 'export'])
         ->name('platform.audit.export');
 });
 
@@ -94,9 +78,6 @@ Route::middleware(['auth', 'verified', 'can:managePlans'])->group(function () {
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('auth/onboarding', [OnboardingController::class, 'show'])->name('onboarding.show');
-    Route::post('auth/onboarding', [OnboardingController::class, 'complete'])->name('onboarding.complete');
-
     Route::get('dashboard', [DashboardController::class, 'index'])
         ->name('dashboard')
         ->middleware('onboarded');
@@ -129,4 +110,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('searcher.assistant.ask');
 });
 
+// Global command-palette search. Tenant-aware on tenant domains (resolved
+// from the hostname inside the service), cross-organization for platform
+// admins on the central domain.
+Route::middleware(['auth'])->group(function () {
+    Route::get('search', [SearchController::class, 'index'])->name('search');
+});
+
+Route::inertia('suspended', 'auth/suspended')->name('suspended');
+
+require __DIR__.'/platform.php';
 require __DIR__.'/settings.php';

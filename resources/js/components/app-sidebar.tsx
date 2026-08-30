@@ -1,11 +1,11 @@
 import { Link, usePage } from '@inertiajs/react';
 import { BarChart3, BookOpen, Building2, CreditCard, FileText, FolderGit2, History, LayoutGrid, ArrowLeftRight, Map, ReceiptText, ScrollText, Sparkles, Users, UserRound, Wand2, Wrench , ClipboardCheck } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
-import { usePropertyPicker } from '@/components/property-picker-dialog';
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
 import type { NavGroup } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
+import { usePropertyPicker } from '@/components/property-picker-dialog';
 import {
     Sidebar,
     SidebarContent,
@@ -18,24 +18,24 @@ import {
 import { dashboard as centralDashboard } from '@/routes';
 import { index as organizationsIndex } from '@/routes/organizations';
 import { index as platformAuditIndex } from '@/routes/platform/audit';
+import { index as plansIndex } from '@/routes/platform/plans';
+import { index as rolesIndex } from '@/routes/platform/roles';
 import { rentals as searcherRentals } from '@/routes/searcher';
 import { index as maintenanceRoute } from '@/routes/searcher/maintenance';
-import { index as rolesIndex } from '@/routes/settings/roles';
 import agreementTemplates, { orgIndex as agreementTemplatesIndex } from '@/routes/tenant/agreement-templates';
 import { edit as aiSettingsEdit } from '@/routes/tenant/ai-settings';
 import { index as auditIndex } from '@/routes/tenant/audit';
+import { page as draftingPageIndex } from '@/routes/tenant/drafting';
 import { index as expensesIndex } from '@/routes/tenant/expenses';
 import { index as inspectionsIndex } from '@/routes/tenant/inspections';
 import { index as landParcelsIndex } from '@/routes/tenant/land-parcels';
 import { index as leasesIndex } from '@/routes/tenant/leases';
-import { page as draftingPageIndex } from '@/routes/tenant/drafting';
 import { index as maintenanceIndex } from '@/routes/tenant/maintenance';
-import { index as reportsNavIndex } from '@/routes/tenant/reports';
 import { index as occupantsIndex } from '@/routes/tenant/occupants';
 import { dashboard as propertyDashboard, index as propertiesIndex } from '@/routes/tenant/properties';
+import { index as reportsNavIndex } from '@/routes/tenant/reports';
 import { index as staffIndex } from '@/routes/tenant/staff';
 import { index as usersIndex } from '@/routes/users';
-import { index as plansIndex } from '@/routes/plans';
 import type { NavItem } from '@/types';
 
 const footerNavItems: NavItem[] = [

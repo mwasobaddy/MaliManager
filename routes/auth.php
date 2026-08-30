@@ -1,0 +1,30 @@
+<?php
+
+use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\OtpController;
+use App\Http\Controllers\Auth\SocialiteController;
+use App\Http\Controllers\OnboardingController;
+use Illuminate\Support\Facades\Route;
+
+// Guest authentication (login, OTP, socialite).
+Route::middleware(['guest'])->group(function () {
+    Route::post('auth/login', [LoginController::class, 'store'])->middleware('throttle:login')->name('login.store');
+
+    Route::get('auth/otp', [OtpController::class, 'show'])->name('login.otp');
+    Route::post('auth/otp', [OtpController::class, 'verify'])->middleware('throttle:otp')->name('login.otp.verify');
+    Route::post('auth/otp/resend', [OtpController::class, 'resend'])->middleware('throttle:otp')->name('login.otp.resend');
+
+    Route::get('auth/{provider}/redirect', [SocialiteController::class, 'redirect'])
+        ->whereIn('provider', ['google'])
+        ->name('auth.socialite.redirect');
+
+    Route::get('auth/{provider}/callback', [SocialiteController::class, 'callback'])
+        ->whereIn('provider', ['google'])
+        ->name('auth.socialite.callback');
+});
+
+// Post-login onboarding completion.
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('auth/onboarding', [OnboardingController::class, 'show'])->name('onboarding.show');
+    Route::post('auth/onboarding', [OnboardingController::class, 'complete'])->name('onboarding.complete');
+});
