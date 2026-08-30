@@ -19,6 +19,8 @@ import {
     update as updatePersonalAi,
 } from '@/routes/settings/personal-ai';
 
+type ModelGuidance = { tested: string[]; note: string | null };
+
 type Props = {
     setting: {
         provider: string | null;
@@ -30,19 +32,21 @@ type Props = {
     };
     providers: { value: string; label: string }[];
     models: Record<string, string[]>;
+    modelGuidance: Record<string, ModelGuidance>;
+    defaultBaseUrls: Record<string, string | null>;
     features: { value: string; label: string }[];
     usage?: { calls: number; tokens: number };
 };
 
 export default function PersonalAi(
-    { setting, providers, models, features, usage = { calls: 0, tokens: 0 } }: Props,
+    { setting, providers, models, modelGuidance, defaultBaseUrls, features, usage = { calls: 0, tokens: 0 } }: Props,
 ) {
     const pageErrors = (usePage().props.errors ?? {}) as Record<string, string>;
 
     const [provider, setProvider] = useState(setting.provider ?? 'openai');
     const [model, setModel] = useState(setting.model ?? '');
     const [apiKey, setApiKey] = useState('');
-    const [baseUrl, setBaseUrl] = useState(setting.base_url ?? '');
+    const [baseUrl, setBaseUrl] = useState(setting.base_url ?? defaultBaseUrls[setting.provider ?? 'openai'] ?? '');
     const [enabledFeatures, setEnabledFeatures] = useState<string[]>(setting.features);
 
     const toggleFeature = (value: string) => {
@@ -73,6 +77,7 @@ export default function PersonalAi(
                                 onValueChange={(v) => {
                                     setProvider(v);
                                     setModel(models[v]?.[0] ?? '');
+                                    setBaseUrl(defaultBaseUrls[v] ?? '');
                                 }}
                             >
                                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -91,12 +96,28 @@ export default function PersonalAi(
                                     <SelectTrigger><SelectValue placeholder="Pick a model…" /></SelectTrigger>
                                     <SelectContent>
                                         {models[provider].map((m) => (
-                                            <SelectItem key={m} value={m}>{m}</SelectItem>
+                                            <SelectItem key={m} value={m}>
+                                                {m}
+                                                {modelGuidance[provider]?.tested.includes(m) && (
+                                                    <span className="ml-2 text-emerald-600 dark:text-emerald-400">
+                                                        ✓ tested
+                                                    </span>
+                                                )}
+                                            </SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
                             ) : (
                                 <Input id="model" value={model} onChange={(e) => setModel(e.target.value)} />
+                            )}
+                            {modelGuidance[provider]?.tested.length > 0 && (
+                                <p className="text-xs text-emerald-600 dark:text-emerald-400">
+                                    ✓ Tested &amp; working with this assistant:{' '}
+                                    {modelGuidance[provider].tested.join(', ')}
+                                </p>
+                            )}
+                            {modelGuidance[provider]?.note && (
+                                <p className="text-xs text-muted-foreground">{modelGuidance[provider].note}</p>
                             )}
                         </div>
 
