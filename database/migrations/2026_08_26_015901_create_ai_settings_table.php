@@ -19,6 +19,7 @@ return new class extends Migration
 
             $table->string('provider');
             $table->string('model');
+            $table->string('base_url')->nullable();
             $table->text('api_key');
 
             // Which AI features this credential may power.
