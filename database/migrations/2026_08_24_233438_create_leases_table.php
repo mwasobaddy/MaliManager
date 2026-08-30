@@ -19,6 +19,8 @@ return new class extends Migration
             $table->string('tenant_id')->nullable()->comment('Audit: stancl tenancy id at write time');
             $table->foreignId('property_id')->constrained()->cascadeOnDelete();
             $table->foreignId('unit_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('land_parcel_id')->nullable()->constrained('land_parcels')->nullOnDelete();
+            $table->foreignId('land_parcel_section_id')->nullable()->constrained('land_parcel_sections')->nullOnDelete();
             $table->foreignId('occupant_id')->nullable()->constrained()->nullOnDelete();
 
             $table->date('starts_at')->nullable();
