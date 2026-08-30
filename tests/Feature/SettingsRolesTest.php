@@ -26,7 +26,7 @@ test('non-admin users are redirected from the roles settings', function () {
     $user = User::factory()->create(['onboarded_at' => now()]);
 
     $this->actingAs($user)
-        ->get(route('settings.roles.index'))
+        ->get(route('platform.roles.index'))
         ->assertRedirect();
 });
 
@@ -35,10 +35,10 @@ test('admin can view the roles settings page', function () {
     $admin->assignRole(PlatformRole::Admin->value);
 
     $this->actingAs($admin)
-        ->get(route('settings.roles.index'))
+        ->get(route('platform.roles.index'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('settings/roles')
+            ->component('platform/roles/index')
             ->where('roles', fn ($roles) => count($roles) === count(PlatformRole::cases()))
             ->where('permissions', fn ($permissions) => count($permissions) === count(PlatformPermissionKey::cases())));
 });
@@ -50,7 +50,7 @@ test('updating role permissions without a password confirmation redirects to con
     $role = Role::where('name', PlatformRole::Admin->value)->first();
 
     $this->actingAs($admin)
-        ->patch(route('settings.roles.update', $role), [
+        ->patch(route('platform.roles.update', $role), [
             'permissions' => [PlatformPermissionKey::ViewAudit->value],
         ])
         ->assertRedirect(route('password.confirm'));
@@ -64,7 +64,7 @@ test('admin can update a role permissions after confirming password', function (
 
     $this->actingAs($admin)
         ->withSession(['auth.password_confirmed_at' => now()->timestamp])
-        ->patch(route('settings.roles.update', $role), [
+        ->patch(route('platform.roles.update', $role), [
             'permissions' => [PlatformPermissionKey::ExportAudit->value],
         ])
         ->assertRedirect();
@@ -81,7 +81,7 @@ test('admin can assign a user to a different platform role after confirming pass
 
     $this->actingAs($admin)
         ->withSession(['auth.password_confirmed_at' => now()->timestamp])
-        ->patch(route('settings.users.role', $tenant), [
+        ->patch(route('platform.users.role', $tenant), [
             'role' => PlatformRole::OrganizationOwner->value,
         ])
         ->assertRedirect();
