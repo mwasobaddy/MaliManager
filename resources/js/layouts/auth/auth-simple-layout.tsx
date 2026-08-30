@@ -17,8 +17,15 @@ export default function AuthSimpleLayout({
                             href={home()}
                             className="flex flex-col items-center gap-2 font-medium"
                         >
-                            <div className="mb-1 flex h-9 w-9 items-center justify-center rounded-md">
-                                <AppLogoIcon className="size-9 fill-current text-[var(--foreground)] dark:text-white" />
+                            <div className="flex items-center gap-2">
+                                <div className="flex aspect-square size-10 p-1 items-center justify-center rounded-full border-2 border-[#C37750] text-[#C37750] shadow-sm">
+                                    <AppLogoIcon className="size-20" />
+                                </div>
+                                <div className="grid flex-1 text-left text-sm">
+                                    <span className="truncate leading-tight font-medium text-[#C37750] text-xl">
+                                        {import.meta.env.VITE_APP_NAME ?? 'MaliManager'}
+                                    </span>
+                                </div>
                             </div>
                             <span className="sr-only">{title}</span>
                         </Link>
