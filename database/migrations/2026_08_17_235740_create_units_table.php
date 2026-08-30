@@ -27,6 +27,10 @@ return new class extends Migration
             $table->softDeletes();
 
             $table->unique(['property_id', 'name']);
+
+            if (in_array(Schema::getConnection()->getDriverName(), ['mysql', 'mariadb'], true)) {
+                $table->fullText(['name', 'type', 'status'], 'units_fulltext_search');
+            }
         });
     }
 

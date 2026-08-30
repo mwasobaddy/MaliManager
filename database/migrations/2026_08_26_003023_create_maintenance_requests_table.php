@@ -41,6 +41,10 @@ return new class extends Migration
 
             $table->index(['organization_id', 'status']);
             $table->index(['property_id', 'status']);
+
+            if (in_array(Schema::getConnection()->getDriverName(), ['mysql', 'mariadb'], true)) {
+                $table->fullText(['title', 'description', 'status', 'priority', 'ai_priority'], 'maintenance_requests_fulltext_search');
+            }
         });
     }
 

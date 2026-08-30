@@ -39,6 +39,10 @@ return new class extends Migration
             $table->index(['organization_id', 'status']);
             $table->index(['organization_id', 'unit_id']);
             $table->index(['organization_id', 'property_id']);
+
+            if (in_array(Schema::getConnection()->getDriverName(), ['mysql', 'mariadb'], true)) {
+                $table->fullText(['status', 'agreement_text', 'rent_frequency'], 'leases_fulltext_search');
+            }
         });
     }
 

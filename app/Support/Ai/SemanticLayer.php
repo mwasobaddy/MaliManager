@@ -44,7 +44,7 @@ final class SemanticLayer
                 'numeric' => [],
                 'dimensions' => ['status', 'plan_id', 'created_at'],
                 'date_columns' => ['created_at'],
-                'text_columns' => ['name', 'slug', 'email'],
+                'text_columns' => ['name', 'slug', 'email', 'phone', 'status'],
                 'scope' => fn (Builder $q) => $q,
             ],
             'properties' => [
@@ -54,7 +54,7 @@ final class SemanticLayer
                 'numeric' => [],
                 'dimensions' => ['organization_id', 'status', 'city', 'created_at'],
                 'date_columns' => ['created_at'],
-                'text_columns' => ['name', 'address', 'slug'],
+                'text_columns' => ['name', 'slug', 'address', 'city', 'status'],
                 'scope' => fn (Builder $q, Scope $s) => $s->type === Scope::ORG
                     ? $q->where('organization_id', $s->organizationId)
                     : $q,
@@ -66,7 +66,7 @@ final class SemanticLayer
                 'numeric' => ['monthly_rent', 'deposit'],
                 'dimensions' => ['property_id', 'status', 'type', 'created_at'],
                 'date_columns' => ['created_at'],
-                'text_columns' => ['name'],
+                'text_columns' => ['name', 'type', 'status'],
                 'scope' => fn (Builder $q, Scope $s) => $s->type === Scope::ORG
                     ? $q->whereHas('property', fn ($p) => $p->where('organization_id', $s->organizationId))
                     : $q,
@@ -82,7 +82,7 @@ final class SemanticLayer
                     'land_parcel_id', 'land_parcel_section_id',
                 ],
                 'date_columns' => ['starts_at', 'ends_at', 'created_at'],
-                'text_columns' => ['agreement_text'],
+                'text_columns' => ['status', 'agreement_text', 'rent_frequency'],
                 'scope' => fn (Builder $q, Scope $s) => match ($s->type) {
                     Scope::ORG => $q->where('organization_id', $s->organizationId),
                     Scope::PERSON => $q->where('person_id', $s->personId),
@@ -96,7 +96,7 @@ final class SemanticLayer
                 'numeric' => ['amount'],
                 'dimensions' => ['organization_id', 'unit_id', 'category', 'currency', 'spent_on'],
                 'date_columns' => ['spent_on'],
-                'text_columns' => ['notes'],
+                'text_columns' => ['category', 'notes', 'currency'],
                 'scope' => fn (Builder $q, Scope $s) => $s->type === Scope::ORG
                     ? $q->where('organization_id', $s->organizationId)
                     : $q,
@@ -108,7 +108,7 @@ final class SemanticLayer
                 'numeric' => [],
                 'dimensions' => ['organization_id', 'property_id', 'unit_id', 'status', 'priority', 'created_at', 'resolved_at'],
                 'date_columns' => ['created_at', 'resolved_at'],
-                'text_columns' => ['title', 'description', 'resolution_notes'],
+                'text_columns' => ['title', 'description', 'status', 'priority', 'ai_priority'],
                 'scope' => fn (Builder $q, Scope $s) => match ($s->type) {
                     Scope::ORG => $q->where('organization_id', $s->organizationId),
                     Scope::PERSON => $q->where('raised_by', $s->userId),
@@ -122,7 +122,7 @@ final class SemanticLayer
                 'numeric' => ['acreage'],
                 'dimensions' => ['organization_id', 'status', 'zoning', 'city', 'created_at'],
                 'date_columns' => ['created_at'],
-                'text_columns' => ['name', 'title_deed_number', 'notes'],
+                'text_columns' => ['name', 'slug', 'title_deed_number', 'address', 'city', 'zoning', 'status', 'notes'],
                 'scope' => fn (Builder $q, Scope $s) => $s->type === Scope::ORG
                     ? $q->where('organization_id', $s->organizationId)
                     : $q,
@@ -134,7 +134,7 @@ final class SemanticLayer
                 'numeric' => ['area'],
                 'dimensions' => ['land_parcel_id', 'status', 'created_at'],
                 'date_columns' => ['created_at'],
-                'text_columns' => ['name', 'notes'],
+                'text_columns' => ['name', 'status', 'notes'],
                 'scope' => fn (Builder $q, Scope $s) => $s->type === Scope::ORG
                     ? $q->whereHas('landParcel', fn ($p) => $p->where('organization_id', $s->organizationId))
                     : $q,
