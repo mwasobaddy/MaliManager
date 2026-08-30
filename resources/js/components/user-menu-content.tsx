@@ -1,5 +1,5 @@
 import { Link, router } from '@inertiajs/react';
-import { ArrowLeftRight, LogOut, Settings } from 'lucide-react';
+import { ArrowLeftRight, KeyRound, LogOut, Settings, Sparkles, Sun, User as UserIcon } from 'lucide-react';
 import { usePropertyPicker } from '@/components/property-picker-dialog';
 import {
     DropdownMenuGroup,
@@ -10,7 +10,10 @@ import {
 import { UserInfo } from '@/components/user-info';
 import { useMobileNavigation } from '@/hooks/use-mobile-navigation';
 import { logout } from '@/routes';
-import { edit } from '@/routes/profile';
+import { edit } from '@/routes/appearance';
+import { edit as editProfile } from '@/routes/profile';
+import { edit as editSecurity } from '@/routes/security';
+import { edit as editPersonalAi } from '@/routes/settings/personal-ai';
 import type { User } from '@/types';
 
 type Props = {
@@ -52,12 +55,56 @@ export function UserMenuContent({ user }: Props) {
                 <DropdownMenuItem asChild>
                     <Link
                         className="block w-full cursor-pointer"
-                        href={edit()}
+                        href={editProfile()}
+                        prefetch
+                        onClick={cleanup}
+                    >
+                        <UserIcon className="mr-2" />
+                        Profile
+                    </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                    <Link
+                        className="block w-full cursor-pointer"
+                        href={editSecurity()}
                         prefetch
                         onClick={cleanup}
                     >
                         <Settings className="mr-2" />
-                        Settings
+                        Security
+                    </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                    <Link
+                        className="block w-full cursor-pointer"
+                        href={edit()}
+                        prefetch
+                        onClick={cleanup}
+                    >
+                        <Sun className="mr-2" />
+                        Appearance
+                    </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                    <Link
+                        className="block w-full cursor-pointer"
+                        href={editPersonalAi()}
+                        prefetch
+                        onClick={cleanup}
+                    >
+                        <Sparkles className="mr-2" />
+                        Personal AI
+                    </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                    <Link
+                        className="block w-full cursor-pointer"
+                        href={editSecurity()}
+                        prefetch
+                        onClick={cleanup}
+                    >
+                        <KeyRound className="mr-2" />
+                        Passkeys
                     </Link>
                 </DropdownMenuItem>
             </DropdownMenuGroup>
