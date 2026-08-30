@@ -41,6 +41,15 @@ class PersonalAiController extends Controller
             'models' => collect(AiProvider::cases())
                 ->mapWithKeys(fn (AiProvider $p) => [$p->value => $p->suggestedModels()])
                 ->all(),
+            'defaultBaseUrls' => collect(AiProvider::cases())
+                ->mapWithKeys(fn (AiProvider $p) => [$p->value => $p->baseUrl()])
+                ->all(),
+            'modelGuidance' => collect(AiProvider::cases())
+                ->mapWithKeys(fn (AiProvider $p) => [$p->value => [
+                    'tested' => $p->testedModels(),
+                    'note' => $p->testedModelsNote(),
+                ]])
+                ->all(),
             'features' => AiFeature::options(),
             'usage' => [
                 'calls' => AiUsageLog::query()

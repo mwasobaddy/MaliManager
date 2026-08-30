@@ -66,6 +66,7 @@ enum AiProvider: string
     {
         return match ($this) {
             self::Nvidia => 'https://integrate.api.nvidia.com/v1',
+            self::Gemini => 'https://generativelanguage.googleapis.com/v1beta',
             default => null,
         };
     }
@@ -82,7 +83,7 @@ enum AiProvider: string
             self::Anthropic => ['claude-sonnet-4-5', 'claude-haiku-4-5'],
             self::DeepSeek => ['deepseek-chat', 'deepseek-reasoner'],
             self::OpenRouter => ['anthropic/claude-sonnet-4.5', 'openai/gpt-4o-mini', 'meta-llama/llama-3.1-70b-instruct'],
-            self::Nvidia => ['openai/gpt-oss-120b', 'nvidia/nemotron-4-340b-instruct', 'mistralai/mistral-nemotron'],
+            self::Nvidia => ['moonshotai/kimi-k3', 'nvidia/nemotron-3-super-120b-a12b', 'nvidia/nemotron-3-nano-30b-a3b'],
             self::Gemini => ['gemini-2.5-flash', 'gemini-2.5-pro'],
             self::Groq => ['llama-3.3-70b-versatile', 'mixtral-8x7b-32768'],
             self::Mistral => ['mistral-large-latest', 'mistral-small-latest'],
@@ -93,6 +94,34 @@ enum AiProvider: string
             // Audio/embedding-specialised providers.
             self::ElevenLabs => ['eleven_multilingual_v2_5'],
             self::VoyageAi => ['voyage-3-large', 'voyage-3-lite'],
+        };
+    }
+
+    /**
+     * Models the assistant's agentic tool-loop has been verified against for
+     * this provider. Surfaced in the API-key config UI so users pick a model
+     * that actually terminates instead of hanging or looping tools.
+     *
+     * @return list<string>
+     */
+    public function testedModels(): array
+    {
+        return match ($this) {
+            self::Nvidia => ['moonshotai/kimi-k3'],
+            self::Gemini => ['gemini-2.5-flash'],
+            default => [],
+        };
+    }
+
+    /**
+     * Optional caveat shown alongside the tested models (e.g. free-tier
+     * throttling). NULL when there is nothing to add.
+     */
+    public function testedModelsNote(): ?string
+    {
+        return match ($this) {
+            self::Nvidia => 'kimi-k3 is the only free NVIDIA model that reliably runs tool-calling on this assistant; the free tier may rate-limit it.',
+            default => null,
         };
     }
 

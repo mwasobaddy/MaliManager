@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\AiFeature;
+use App\Enums\AiProvider;
 use App\Models\AiSetting;
 use App\Models\Plan;
 use App\Models\User;
@@ -66,6 +67,19 @@ test('resolves all five supported providers with correct drivers and endpoints',
 
         $setting->delete();
     }
+});
+
+test('tested models list surfaces verified working models for each provider', function () {
+    expect(AiProvider::Nvidia->testedModels())->toContain('moonshotai/kimi-k3');
+    expect(AiProvider::Gemini->testedModels())->toContain('gemini-2.5-flash');
+    expect(AiProvider::OpenAi->testedModels())->toBe([]);
+    expect(AiProvider::Nvidia->testedModelsNote())->not->toBeNull();
+});
+
+test('default base urls expose the provider endpoints used for autofill', function () {
+    expect(AiProvider::Nvidia->baseUrl())->toBe('https://integrate.api.nvidia.com/v1');
+    expect(AiProvider::Gemini->baseUrl())->toBe('https://generativelanguage.googleapis.com/v1beta');
+    expect(AiProvider::OpenAi->baseUrl())->toBeNull();
 });
 
 test('credential base_url overrides the provider default endpoint', function () {
