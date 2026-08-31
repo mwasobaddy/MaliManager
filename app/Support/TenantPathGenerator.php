@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\AgreementTemplate;
+use App\Models\EditorImage;
 use App\Models\Expense;
 use App\Models\Inspection;
 use App\Models\Lease;
@@ -79,6 +80,14 @@ class TenantPathGenerator implements PathGenerator
 
             if ($organization) {
                 return StorageLayout::templatesPath($organization);
+            }
+        }
+
+        if ($model instanceof EditorImage && $media->collection_name === 'image') {
+            $organization = $model->organization;
+
+            if ($organization) {
+                return StorageLayout::agreementImagesPath($organization);
             }
         }
 
