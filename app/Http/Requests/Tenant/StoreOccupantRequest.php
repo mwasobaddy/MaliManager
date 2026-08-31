@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Tenant;
 
 use App\Models\Property;
+use App\Support\LeaseAgreementTemplate;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -39,7 +40,7 @@ class StoreOccupantRequest extends FormRequest
     }
 
     /**
-     * The rich-text editor produces HTML; keep only a safe formatting
+     * The rich-text editor produces HTML; keep only the safe rich-text
      * allowlist so the stored agreement can be rendered without risk.
      */
     protected function prepareForValidation(): void
@@ -47,9 +48,8 @@ class StoreOccupantRequest extends FormRequest
         if ($this->has('lease.agreement_text')) {
             $this->merge([
                 'lease' => array_merge($this->input('lease', []), [
-                    'agreement_text' => strip_tags(
+                    'agreement_text' => LeaseAgreementTemplate::sanitize(
                         (string) $this->input('lease.agreement_text'),
-                        '<p><br><b><strong><i><em><u><s><ul><ol><li><h1><h2><h3><blockquote><code>',
                     ),
                 ]),
             ]);
