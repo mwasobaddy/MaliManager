@@ -12,13 +12,14 @@ use App\Models\Lease;
 class LeaseAgreementTemplate
 {
     /**
-     * The formatting tags preserved when saving editor HTML.
+     * Sanitize editor HTML to a safe rich-text allowlist (see the `rich_text`
+     * profile in config/purifier.php). Preserves Word-like formatting, tables,
+     * images and links while stripping scripts, event handlers, iframes and
+     * any other active content, so the stored HTML is safe to render.
      */
-    public const ALLOWED_TAGS = '<p><br><b><strong><i><em><u><s><ul><ol><li><h1><h2><h3><blockquote><code>';
-
     public static function sanitize(string $html): string
     {
-        return strip_tags($html, self::ALLOWED_TAGS);
+        return clean($html, 'rich_text');
     }
 
     /**
