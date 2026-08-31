@@ -1,0 +1,113 @@
+/* Rich-text (agreement) editor styles. Scoped under .md-editor so they
+   never leak into the rest of the app. The editor content reuses Tailwind's
+   `prose` scales but overrides text color per theme (the default prose text is
+   near-black, which is unreadable on the dark card). */
+
+.md-editor .md-editor__content {
+    min-height: 160px;
+}
+
+.md-editor .md-editor__content {
+    outline: none;
+}
+
+/* Placeholder (shown via the Placeholder extension's .is-editor-empty). */
+.md-editor .md-editor__content p.is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    float: left;
+    height: 0;
+    pointer-events: none;
+    color: var(--muted-foreground);
+}
+
+/* Feed the proxy for typographic colour (--tw-prose-*) the app theme tokens so
+   everything — body text, headings, links, code, table borders — follows the
+   active light/dark scheme instead of prose's fixed dark palette. */
+.md-editor .md-editor__content .prose {
+    --tw-prose-body: var(--foreground);
+    --tw-prose-headings: var(--foreground);
+    --tw-prose-lead: var(--foreground);
+    --tw-prose-links: var(--brand-accent);
+    --tw-prose-bold: var(--foreground);
+    --tw-prose-counters: var(--muted-foreground);
+    --tw-prose-bullets: var(--muted-foreground);
+    --tw-prose-hr: var(--border);
+    --tw-prose-quotes: var(--foreground);
+    --tw-prose-quote-borders: var(--border);
+    --tw-prose-captions: var(--muted-foreground);
+    --tw-prose-code: var(--foreground);
+    --tw-prose-pre-code: var(--foreground);
+    --tw-prose-pre-bg: var(--muted);
+    --tw-prose-th-borders: var(--border);
+    --tw-prose-td-borders: var(--border);
+    color: var(--foreground);
+}
+
+.md-editor .md-editor__content :where(p, li, blockquote, td, th, h1, h2, h3, h4, h5, h6, pre, code, span) {
+    color: var(--foreground);
+}
+.md-editor .md-editor__content :where(blockquote) {
+    border-color: var(--border);
+}
+
+/* Images: selectable, resizable control points handled by the extension;
+   keep them responsive and give them a subtle focus ring. */
+.md-editor .md-editor__content img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 0.375rem;
+    display: inline-block;
+}
+.md-editor .md-editor__content img.ProseMirror-selectednode {
+    outline: 2px solid var(--ring);
+}
+
+/* Tables look like a real word processor: visible grid, header shading. */
+.md-editor .md-editor__content table {
+    border-collapse: collapse;
+    table-layout: fixed;
+    width: 100%;
+    margin: 0.5rem 0;
+}
+.md-editor .md-editor__content td,
+.md-editor .md-editor__content th {
+    border: 1px solid var(--border);
+    min-width: 2rem;
+    padding: 0.25rem 0.5rem;
+    vertical-align: top;
+}
+.md-editor .md-editor__content th {
+    background-color: var(--muted);
+    font-weight: 600;
+}
+.md-editor .md-editor__content .selectedCell::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--ring);
+    opacity: 0.15;
+    pointer-events: none;
+    z-index: 1;
+}
+.md-editor .md-editor__content .selectedCell {
+    position: relative;
+}
+.md-editor .md-editor__content table.ProseMirror-selectednode {
+    outline: 2px solid var(--ring);
+}
+
+/* Links */
+.md-editor .md-editor__content a {
+    color: var(--brand-accent);
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+/* Code */
+.md-editor .md-editor__content code {
+    background-color: var(--muted);
+    color: var(--foreground);
+    border-radius: 0.25rem;
+    padding: 0.1rem 0.3rem;
+    font-size: 0.875em;
+}
