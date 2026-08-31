@@ -274,6 +274,30 @@ Ollama, Perplexity, xAI, Z.ai — whichever keys your orgs configure).
 
 ---
 
+## 7c. Global search endpoint (ops / security note)
+
+`GET /search` is an **authenticated, JSON** endpoint powering the top-nav command
+palette. It introduces no server configuration, but a few things are worth knowing
+in production:
+
+- **Cross-org reach**: on a tenant subdomain it returns only the active org's
+  records; on the **central domain**, platform admins can search **across every
+  organization**. A compromised central admin account therefore exposes org-wide
+  data through search — keep central admin access tightly scoped.
+- **PII gating**: the `users` type (name/email/phone) is only returned to searchers
+  holding the `manageUsers` ability. Audit/search logs can still reveal broad
+  enumeration; add rate limiting on `/search` once real traffic exists.
+- **Global suspension middleware**: `EnsureUserIsActive` runs on every request and
+  logs out + redirects any authenticated user whose `status` is not `active` to the
+  `/suspended` page. It's harmless at steady state, but a bug here would log every
+  user out — watch for a spike of `/suspended` requests in access logs after deploy.
+- **Build dependency**: the frontend build runs `laravel/wayfinder`, which reflects
+  every route-referenced controller. Any production build must have all controller
+  classes present and `routes/platform.php` loaded (it is `require`d from
+  `web.php`). Dangling controller imports fail `npm run build`, not just runtime.
+
+---
+
 ## 8. Future / not-yet-wired items
 
 - **Enterprise tier** (`has_dedicated_db`, `has_custom_domain`) is *not yet
