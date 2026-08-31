@@ -539,7 +539,7 @@ test('creating an occupant stores sanitized agreement html and uploads a documen
             'lease' => [
                 'rent_amount' => 25000,
                 'currency' => 'KES',
-                'agreement_text' => '<p>Rent is due <b>monthly</b>.</p><script>alert(1)</script>',
+                'agreement_text' => '<p>Rent is due <b>monthly</b>.</p><script>alert(1)</script><img src="x" onerror="alert(2)">',
                 'agreement_document' => $upload,
             ],
         ])->assertRedirect(occupantTenantUrl($organization, '/sunset-heights/occupants'));
@@ -548,7 +548,7 @@ test('creating an occupant stores sanitized agreement html and uploads a documen
     $media = $lease->getFirstMedia('agreement');
 
     expect($lease)->not->toBeNull()
-        ->and($lease->agreement_text)->toBe('<p>Rent is due <b>monthly</b>.</p>alert(1)')
+        ->and($lease->agreement_text)->toBe('<p>Rent is due <b>monthly</b>.</p><img src="x" alt="x" />')
         ->and($media)->not->toBeNull()
         ->and($media->file_name)->toEndWith('.pdf');
 });
