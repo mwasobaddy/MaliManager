@@ -7,6 +7,7 @@ use App\Http\Controllers\Tenant\AiSettingsController;
 use App\Http\Controllers\Tenant\AssistantController;
 use App\Http\Controllers\Tenant\AuditController;
 use App\Http\Controllers\Tenant\DraftingController;
+use App\Http\Controllers\Tenant\EditorImageController;
 use App\Http\Controllers\Tenant\ExpenseController;
 use App\Http\Controllers\Tenant\ImpersonationController;
 use App\Http\Controllers\Tenant\InspectionController;
@@ -307,5 +308,9 @@ Route::middleware([
             Route::get('/audit/{activity}', [AuditController::class, 'show'])
                 ->name('tenant.audit.show');
         });
+
+        // Rich-text editor image upload (agreement templates + lease agreements).
+        Route::post('/editor-images', [EditorImageController::class, 'store'])
+            ->name('tenant.editor-images.store');
     });
 });
