@@ -40,6 +40,15 @@ class StorageLayout
     }
 
     /**
+     * Folder for images pasted/inserted into agreement rich-text,
+     * e.g. "acme-estates/agreement-images".
+     */
+    public static function agreementImagesPath(Organization $organization): string
+    {
+        return self::organizationPrefix($organization).'/agreement-images';
+    }
+
+    /**
      * Folder for a property's lease documents,
      * e.g. "acme-estates/sunset-heights/lease".
      */
