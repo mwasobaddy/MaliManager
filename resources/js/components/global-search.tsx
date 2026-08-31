@@ -1,4 +1,3 @@
-import { useHttp } from '@inertiajs/react';
 import {
     Building,
     Building2,
@@ -72,9 +71,10 @@ export function GlobalSearch() {
     const [results, setResults] = React.useState<GroupedResults>({});
     const [history, setHistory] = React.useState<string[]>([]);
     const [active, setActive] = React.useState(0);
+    const [loading, setLoading] = React.useState(false);
 
-    const { get, processing } = useHttp<object, { results: GroupedResults }>();
     const inputRef = React.useRef<HTMLInputElement>(null);
+    const abortRef = React.useRef<AbortController | null>(null);
 
     const flattened = React.useMemo(
         () => Object.values(results).flat(),
@@ -102,17 +102,49 @@ export function GlobalSearch() {
                 return;
             }
 
-            get(search.url({ query: { q: query.trim() } }), {
-                onSuccess: (response) => {
-                    setResults(response.results ?? {});
-                    setActive(0);
+            abortRef.current?.abort();
+            const controller = new AbortController();
+            abortRef.current = controller;
+
+            setLoading(true);
+
+            fetch(search.url({ query: { q: query.trim() } }), {
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
                 },
-                onError: () => setResults({}),
-            });
+                credentials: 'same-origin',
+                signal: controller.signal,
+            })
+                .then(async (response) => {
+                    if (!response.ok) {
+                        throw new Error(`Search failed with status ${response.status}`);
+                    }
+
+                    const data = (await response.json()) as { results: GroupedResults };
+
+                    setResults(data.results ?? {});
+                    setActive(0);
+                })
+                .catch((error: unknown) => {
+                    if ((error as Error)?.name === 'AbortError') {
+                        return;
+                    }
+
+                    setResults({});
+                })
+                .finally(() => {
+                    if (!controller.signal.aborted) {
+                        setLoading(false);
+                    }
+                });
         }, 300);
 
-        return () => clearTimeout(handle);
-    }, [query, get]);
+        return () => {
+            clearTimeout(handle);
+            abortRef.current?.abort();
+        };
+    }, [query]);
 
     const go = React.useCallback(
         (url: string) => {
@@ -178,7 +210,7 @@ export function GlobalSearch() {
                         placeholder="Search users, properties, leases…"
                         className="h-12 border-0 px-0 shadow-none focus-visible:ring-0"
                     />
-                    {processing && <Loader className="size-4 animate-spin opacity-60" />}
+                    {loading && <Loader className="size-4 animate-spin opacity-60" />}
                     <DialogTrigger asChild>
                         <Button
                             variant="ghost"
@@ -211,7 +243,7 @@ export function GlobalSearch() {
                         </div>
                     )}
 
-                    {!showHistory && flattened.length === 0 && !processing && (
+                    {!showHistory && flattened.length === 0 && !loading && (
                         <p className="px-2 py-6 text-center text-sm text-muted-foreground">
                             No results found.
                         </p>

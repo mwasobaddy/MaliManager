@@ -93,6 +93,40 @@ test('central non-admin searcher is scoped to their own organizations', function
         ->assertJson(['results' => []]);
 });
 
+test('user results are only returned to searchers with the manageUsers ability', function () {
+    $admin = User::factory()->create();
+    $admin->assignRole('admin');
+
+    $ownerA = User::factory()->create(['onboarded_at' => now()]);
+    $orgA = makeOrganization($ownerA, 'Org A');
+    $staffA = User::factory()->create(['name' => 'Sensitive Staff', 'email' => 'staff@orga.test']);
+    $staffA->organizations()->attach($orgA);
+
+    $ownerB = User::factory()->create(['onboarded_at' => now()]);
+    $orgB = makeOrganization($ownerB, 'Org B');
+    $staffB = User::factory()->create(['name' => 'Sensitive Staff', 'email' => 'staff@orgb.test']);
+    $staffB->organizations()->attach($orgB);
+
+    $manager = User::factory()->create();
+    $manager->assignRole('admin');
+
+    $response = $this
+        ->actingAs($manager)
+        ->get(route('search', ['q' => 'Sensitive']))
+        ->assertOk();
+
+    expect($response->json('results.users'))->toHaveCount(2);
+
+    $nonManager = User::factory()->create();
+
+    $response = $this
+        ->actingAs($nonManager)
+        ->get(route('search', ['q' => 'Sensitive']))
+        ->assertOk();
+
+    expect($response->json('results.users'))->toBeNull();
+});
+
 test('search requires a query of at least two characters', function () {
     $admin = User::factory()->create();
     $admin->assignRole('admin');

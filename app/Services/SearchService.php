@@ -58,6 +58,12 @@ class SearchService
         $results = [];
 
         foreach (self::SEARCHABLE as $key => $config) {
+            // User records expose PII (name/email/phone); only surface them to
+            // users authorized to manage users.
+            if ($key === 'users' && ! $user?->can('manageUsers')) {
+                continue;
+            }
+
             $items = $this->queryType($key, $config, $term, $orgIds)->take(5)->get();
 
             if ($items->isEmpty()) {
