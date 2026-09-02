@@ -474,7 +474,7 @@ class DashboardService extends Service
             $rentRollMonthly[$monthStart->format('M')] = $roll;
         }
 
-        $operations = $this->combineMonths($months, null, [
+        $operations = $this->combineAxis($months, [
             'rent_roll' => $rentRollMonthly,
             'maintenance' => $maintenanceMonthly,
             'new_leases' => $newLeasesMonthly,
