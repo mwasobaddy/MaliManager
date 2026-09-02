@@ -43,7 +43,9 @@
     color: var(--foreground);
 }
 
-.md-editor .md-editor__content :where(p, li, blockquote, td, th, h1, h2, h3, h4, h5, h6, pre, code, span) {
+.md-editor
+    .md-editor__content
+    :where(p, li, blockquote, td, th, h1, h2, h3, h4, h5, h6, pre, code, span) {
     color: var(--foreground);
 }
 .md-editor .md-editor__content :where(blockquote) {
@@ -60,6 +62,39 @@
 }
 .md-editor .md-editor__content img.ProseMirror-selectednode {
     outline: 2px solid var(--ring);
+}
+
+/* Resize corner handles injected by the built-in resizable image node view.
+   They are positioned at the 4 corners; show them only while the image is
+   selected (or actively being resized) so they don't clutter every image. */
+.md-editor .md-editor__content [data-resize-handle] {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    margin: -6px;
+    background: var(--ring);
+    border: 1px solid var(--background);
+    border-radius: 2px;
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.2);
+    z-index: 10;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    cursor: nwse-resize;
+}
+.md-editor .md-editor__content [data-resize-handle*='top-left']:hover,
+.md-editor .md-editor__content [data-resize-handle*='bottom-right']:hover {
+    cursor: nwse-resize;
+}
+.md-editor .md-editor__content [data-resize-handle*='top-right']:hover,
+.md-editor .md-editor__content [data-resize-handle*='bottom-left']:hover {
+    cursor: nesw-resize;
+}
+.md-editor .md-editor__content [data-resize-state='true'] [data-resize-handle],
+.md-editor
+    .md-editor__content
+    img.ProseMirror-selectednode
+    ~ [data-resize-handle] {
+    opacity: 1;
 }
 
 /* Tables look like a real word processor: visible grid, header shading. */

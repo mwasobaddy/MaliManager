@@ -10,7 +10,11 @@ import TableCell from '@tiptap/extension-table-cell';
 import TableHeader from '@tiptap/extension-table-header';
 import TableRow from '@tiptap/extension-table-row';
 import TextAlign from '@tiptap/extension-text-align';
-import { TextStyle, BackgroundColor } from '@tiptap/extension-text-style';
+import {
+    TextStyle,
+    BackgroundColor,
+    FontSize,
+} from '@tiptap/extension-text-style';
 import Underline from '@tiptap/extension-underline';
 import { EditorContent, useEditor, useEditorState } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
@@ -20,6 +24,7 @@ import {
     AlignLeft,
     AlignRight,
     Bold,
+    Crop,
     Eraser,
     Highlighter,
     ImagePlus,
@@ -62,6 +67,7 @@ import {
 import { cn } from '@/lib/utils';
 
 import '../../css/editor.css';
+import ImageCropDialog from './image-crop-dialog';
 
 type RichTextEditorProps = {
     name: string;
@@ -139,6 +145,7 @@ type EditorToolbarState = {
     isBlockquote: boolean;
     isLink: boolean;
     isTable: boolean;
+    isImage: boolean;
 };
 
 const DEFAULT_TOOLBAR_STATE: EditorToolbarState = {
@@ -164,6 +171,7 @@ const DEFAULT_TOOLBAR_STATE: EditorToolbarState = {
     isBlockquote: false,
     isLink: false,
     isTable: false,
+    isImage: false,
 };
 
 function ToolbarButton({
@@ -223,6 +231,10 @@ export default function RichTextEditor({
 }: RichTextEditorProps) {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [uploading, setUploading] = useState(false);
+    const [cropTarget, setCropTarget] = useState<{
+        src: string;
+        alt: string;
+    } | null>(null);
 
     const editor = useEditor({
         extensions: [
@@ -233,9 +245,14 @@ export default function RichTextEditor({
             TextStyle,
             Color,
             BackgroundColor,
+            FontSize,
             FontFamily,
             TextAlign.configure({ types: ['heading', 'paragraph'] }),
-            Image.configure({ inline: false, allowBase64: false }),
+            Image.configure({
+                inline: false,
+                allowBase64: false,
+                resize: { enabled: true, minWidth: 50, minHeight: 50 },
+            }),
             Link.configure({
                 openOnClick: false,
                 autolink: true,
@@ -270,7 +287,7 @@ export default function RichTextEditor({
 
     const toolbar = useEditorState({
         editor,
-        selector: ({ editor: e }): EditorToolbarState => {
+        selector: ({ editor: e }) => {
             if (!e) {
                 return DEFAULT_TOOLBAR_STATE;
             }
@@ -280,13 +297,14 @@ export default function RichTextEditor({
                 unknown
             >;
             const headingLevel = e.getAttributes('heading').level as
-                | number
-                | undefined;
+                number | undefined;
 
             return {
                 fontFamily: (textStyle.fontFamily as string) ?? '',
                 fontSize: (textStyle.fontSize as string) ?? '',
-                headingLabel: headingLevel ? `Heading ${headingLevel}` : 'Paragraph',
+                headingLabel: headingLevel
+                    ? `Heading ${headingLevel}`
+                    : 'Paragraph',
                 isBold: e.isActive('bold'),
                 isItalic: e.isActive('italic'),
                 isUnderline: e.isActive('underline'),
@@ -306,9 +324,10 @@ export default function RichTextEditor({
                 isBlockquote: e.isActive('blockquote'),
                 isLink: e.isActive('link'),
                 isTable: e.isActive('table'),
+                isImage: e.isActive('image'),
             };
         },
-    });
+    }) as EditorToolbarState;
 
     useEffect(() => {
         if (editor && value !== editor.getHTML()) {
@@ -324,8 +343,8 @@ export default function RichTextEditor({
         );
 
         if (files.length === 0) {
-return false;
-}
+            return false;
+        }
 
         event.preventDefault();
         insertImages(files);
@@ -340,16 +359,16 @@ return false;
         moved: boolean,
     ) {
         if (moved) {
-return false;
-}
+            return false;
+        }
 
         const files = Array.from(event.dataTransfer?.files ?? []).filter((f) =>
             f.type.startsWith('image/'),
         );
 
         if (files.length === 0) {
-return false;
-}
+            return false;
+        }
 
         event.preventDefault();
         insertImages(files);
@@ -382,8 +401,8 @@ return false;
 
     async function insertImages(files: File[]) {
         if (!editor || files.length === 0) {
-return;
-}
+            return;
+        }
 
         setUploading(true);
 
@@ -419,18 +438,60 @@ return;
         event.target.value = '';
     }
 
+    function startCrop() {
+        if (!editor) {
+            return;
+        }
+
+        const attrs = editor.getAttributes('image') as {
+            src?: string;
+            alt?: string;
+        };
+
+        if (!attrs.src) {
+            return;
+        }
+
+        setCropTarget({ src: attrs.src, alt: attrs.alt ?? '' });
+    }
+
+    async function applyCroppedImage(file: File) {
+        if (!editor) {
+            return;
+        }
+
+        try {
+            const url = await uploadImage(file);
+
+            editor
+                .chain()
+                .focus()
+                .updateAttributes('image', {
+                    src: url,
+                    alt: file.name,
+                    width: null,
+                    height: null,
+                })
+                .run();
+        } catch (error) {
+            console.error('Failed to upload cropped image', error);
+        } finally {
+            setCropTarget(null);
+        }
+    }
+
     function setLink() {
         if (!editor) {
-return;
-}
+            return;
+        }
 
         const previous = editor.getAttributes('link');
         const prevUrl = (previous.href as string) ?? '';
         const url = window.prompt('Link URL', prevUrl);
 
         if (url === null) {
-return;
-}
+            return;
+        }
 
         if (url === '') {
             editor.chain().focus().extendMarkRange('link').unsetLink().run();
@@ -472,7 +533,11 @@ return;
 
     function keepFocus(event: { preventDefault: () => void }) {
         event.preventDefault();
-        editor.commands.focus();
+        editor?.commands.focus();
+    }
+
+    function refocusAfterClose() {
+        requestAnimationFrame(() => editor?.commands.focus());
     }
 
     return (
@@ -545,10 +610,10 @@ return;
                         );
 
                         if (match?.level) {
-chain.toggleHeading({ level: match.level }).run();
-} else {
-chain.setParagraph().run();
-}
+                            chain.toggleHeading({ level: match.level }).run();
+                        } else {
+                            chain.setParagraph().run();
+                        }
                     }}
                 >
                     <SelectTrigger className="h-8 w-28 text-xs">
@@ -616,7 +681,7 @@ chain.setParagraph().run();
                     onSelect={(c) =>
                         c ? chain.setColor(c).run() : chain.unsetColor().run()
                     }
-                    onCloseAutoFocus={keepFocus}
+                    onRefocus={refocusAfterClose}
                 />
 
                 {/* Highlight */}
@@ -629,7 +694,7 @@ chain.setParagraph().run();
                             ? chain.setBackgroundColor(c).run()
                             : chain.unsetBackgroundColor().run()
                     }
-                    onCloseAutoFocus={keepFocus}
+                    onRefocus={refocusAfterClose}
                 />
 
                 <div className="mx-1 h-6 w-px bg-border" />
@@ -704,6 +769,12 @@ chain.setParagraph().run();
                     icon={<ImagePlus className="size-4" />}
                     title="Insert image"
                 />
+                <ToolbarButton
+                    onClick={startCrop}
+                    disabled={!toolbar.isImage}
+                    icon={<Crop className="size-4" />}
+                    title="Crop selected image"
+                />
                 <input
                     ref={fileInputRef}
                     type="file"
@@ -724,51 +795,77 @@ chain.setParagraph().run();
                             <Table2 className="size-4" />
                         </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" onCloseAutoFocus={keepFocus}>
+                    <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Table</DropdownMenuLabel>
-                        <DropdownMenuItem onSelect={tableMenu.insertTable}>
+                        <DropdownMenuItem
+                            onSelect={() => {
+                                tableMenu.insertTable();
+                                refocusAfterClose();
+                            }}
+                        >
                             Insert table
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
-                            onSelect={tableMenu.addRow}
+                            onSelect={() => {
+                                tableMenu.addRow();
+                                refocusAfterClose();
+                            }}
                             disabled={!toolbar.isTable}
                         >
                             Add row below
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                            onSelect={tableMenu.addCol}
+                            onSelect={() => {
+                                tableMenu.addCol();
+                                refocusAfterClose();
+                            }}
                             disabled={!toolbar.isTable}
                         >
                             Add column right
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                            onSelect={tableMenu.deleteRow}
+                            onSelect={() => {
+                                tableMenu.deleteRow();
+                                refocusAfterClose();
+                            }}
                             disabled={!toolbar.isTable}
                         >
                             Delete row
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                            onSelect={tableMenu.deleteCol}
+                            onSelect={() => {
+                                tableMenu.deleteCol();
+                                refocusAfterClose();
+                            }}
                             disabled={!toolbar.isTable}
                         >
                             Delete column
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                            onSelect={tableMenu.merge}
+                            onSelect={() => {
+                                tableMenu.merge();
+                                refocusAfterClose();
+                            }}
                             disabled={!toolbar.isTable}
                         >
                             Merge cells
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                            onSelect={tableMenu.split}
+                            onSelect={() => {
+                                tableMenu.split();
+                                refocusAfterClose();
+                            }}
                             disabled={!toolbar.isTable}
                         >
                             Split cell
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
-                            onSelect={tableMenu.deleteTable}
+                            onSelect={() => {
+                                tableMenu.deleteTable();
+                                refocusAfterClose();
+                            }}
                             disabled={!toolbar.isTable}
                         >
                             Delete table
@@ -783,6 +880,15 @@ chain.setParagraph().run();
             />
 
             <input type="hidden" name={name} value={value} />
+
+            {cropTarget && (
+                <ImageCropDialog
+                    src={cropTarget.src}
+                    alt={cropTarget.alt}
+                    onCropApplied={applyCroppedImage}
+                    onClose={() => setCropTarget(null)}
+                />
+            )}
         </div>
     );
 }
@@ -792,11 +898,13 @@ function ColorMenu({
     value,
     colors,
     onSelect,
+    onRefocus,
 }: {
     label: string;
     value: string;
     colors: string[];
     onSelect: (color: string) => void;
+    onRefocus?: () => void;
 }) {
     return (
         <DropdownMenu>
@@ -825,7 +933,10 @@ function ColorMenu({
                     <button
                         type="button"
                         className="text-xs text-muted-foreground hover:text-foreground"
-                        onClick={() => onSelect('')}
+                        onClick={() => {
+                            onSelect('');
+                            onRefocus?.();
+                        }}
                     >
                         Clear
                     </button>
@@ -838,7 +949,10 @@ function ColorMenu({
                             className="size-6 rounded border border-border"
                             style={{ backgroundColor: color }}
                             aria-label={color}
-                            onClick={() => onSelect(color)}
+                            onClick={() => {
+                                onSelect(color);
+                                onRefocus?.();
+                            }}
                         />
                     ))}
                 </div>
