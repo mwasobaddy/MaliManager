@@ -5,7 +5,9 @@ use App\Http\Controllers\Platform\AssistantController;
 use App\Http\Controllers\Platform\AuditController;
 use App\Http\Controllers\Platform\PlanController;
 use App\Http\Controllers\Platform\PlatformController;
+use App\Http\Controllers\Platform\PlatformExpenseController;
 use App\Http\Controllers\Platform\RolesController;
+use App\Http\Controllers\Platform\SubscriptionPaymentController;
 use App\Http\Controllers\Users\UserController;
 use Illuminate\Auth\Middleware\RequirePassword;
 use Illuminate\Support\Facades\Route;
@@ -68,6 +70,26 @@ Route::middleware(['auth', 'verified', 'can:managePlans'])->group(function () {
     Route::get('platform/plans/{plan}/edit', [PlanController::class, 'edit'])->name('platform.plans.edit')->middleware('can:editPlans');
     Route::patch('platform/plans/{plan}', [PlanController::class, 'update'])->name('platform.plans.update')->middleware('can:editPlans');
     Route::delete('platform/plans/{plan}', [PlanController::class, 'destroy'])->name('platform.plans.destroy')->middleware('can:deletePlans');
+});
+
+// Central subscription-income module, gated by central subscription.* permissions.
+Route::middleware(['auth', 'verified', 'can:manageSubscriptionPayments'])->group(function () {
+    Route::get('platform/subscription-payments', [SubscriptionPaymentController::class, 'index'])->name('platform.subscription-payments.index');
+    Route::get('platform/subscription-payments/create', [SubscriptionPaymentController::class, 'create'])->name('platform.subscription-payments.create')->middleware('can:createSubscriptionPayments');
+    Route::post('platform/subscription-payments', [SubscriptionPaymentController::class, 'store'])->name('platform.subscription-payments.store')->middleware('can:createSubscriptionPayments');
+    Route::get('platform/subscription-payments/{subscriptionPayment}/edit', [SubscriptionPaymentController::class, 'edit'])->name('platform.subscription-payments.edit')->middleware('can:editSubscriptionPayments');
+    Route::patch('platform/subscription-payments/{subscriptionPayment}', [SubscriptionPaymentController::class, 'update'])->name('platform.subscription-payments.update')->middleware('can:editSubscriptionPayments');
+    Route::delete('platform/subscription-payments/{subscriptionPayment}', [SubscriptionPaymentController::class, 'destroy'])->name('platform.subscription-payments.destroy')->middleware('can:deleteSubscriptionPayments');
+});
+
+// Central platform-expense module, gated by central platform-expense.* permissions.
+Route::middleware(['auth', 'verified', 'can:managePlatformExpenses'])->group(function () {
+    Route::get('platform/expenses', [PlatformExpenseController::class, 'index'])->name('platform.expenses.index');
+    Route::get('platform/expenses/create', [PlatformExpenseController::class, 'create'])->name('platform.expenses.create')->middleware('can:createPlatformExpenses');
+    Route::post('platform/expenses', [PlatformExpenseController::class, 'store'])->name('platform.expenses.store')->middleware('can:createPlatformExpenses');
+    Route::get('platform/expenses/{platformExpense}/edit', [PlatformExpenseController::class, 'edit'])->name('platform.expenses.edit')->middleware('can:editPlatformExpenses');
+    Route::patch('platform/expenses/{platformExpense}', [PlatformExpenseController::class, 'update'])->name('platform.expenses.update')->middleware('can:editPlatformExpenses');
+    Route::delete('platform/expenses/{platformExpense}', [PlatformExpenseController::class, 'destroy'])->name('platform.expenses.destroy')->middleware('can:deletePlatformExpenses');
 });
 
 // Platform role & central-permission management (admin via PlatformPermissionKey::ManageRoles).
