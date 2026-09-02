@@ -7,8 +7,11 @@ use App\Models\Expense;
 use App\Models\Lease;
 use App\Models\MaintenanceRequest;
 use App\Models\Organization;
+use App\Models\PlatformExpense;
 use App\Models\Property;
+use App\Models\SubscriptionPayment;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -27,25 +30,46 @@ class DashboardService extends Service
      * @param  array<int, array{id: int, properties: array<int, array{units_count: int}}>]|null  $access
      *         Precomputed PropertyAccessService result, when the caller already has it.
      */
-    public function payload(User $user, ?array $access = null): array
+    public function payload(User $user, ?array $access = null, ?int $year = null, ?int $month = null): array
     {
         $access ??= app(PropertyAccessService::class)->organizationsWithProperties($user);
+        $year ??= (int) date('Y');
 
         return [
+            'available_years' => $this->availableYears(),
             'admin' => $user->can(PlatformPermissionKey::ViewAdvancedMetrics->value)
-                ? $this->adminStats()
+                ? $this->adminStats($year, $month)
                 : null,
             'organization' => $user->can(PlatformPermissionKey::ViewOrgMetrics->value)
-                ? $this->organizationStats($access)
+                ? $this->organizationStats($access, $year, $month)
                 : null,
             'searcher' => $user->can(PlatformPermissionKey::ViewSearcherMetrics->value)
-                ? $this->personLeaseStats($user->person_id, 'searcher')
+                ? $this->personLeaseStats($user->person_id, 'searcher', $year, $month)
                 : null,
             'occupant' => $user->can(PlatformPermissionKey::ViewOccupantMetrics->value)
-                ? $this->personLeaseStats($user->person_id, 'occupant')
+                ? $this->personLeaseStats($user->person_id, 'occupant', $year, $month)
                 : null,
             'defaultTab' => $this->defaultTab($user),
         ];
+    }
+
+    /**
+     * Distinct years that appear in any financial source plus the current
+     * year, oldest first. Drives the dashboard year dropdown.
+     *
+     * @return list<int>
+     */
+    private function availableYears(): array
+    {
+        return collect()
+            ->concat(SubscriptionPayment::query()->withoutTrashed()->pluck('received_on'))
+            ->concat(PlatformExpense::query()->withoutTrashed()->pluck('spent_on'))
+            ->push(now())
+            ->map(fn ($value) => (int) value($value)->format('Y'))
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
     }
 
     private function defaultTab(User $user): string
@@ -58,10 +82,9 @@ class DashboardService extends Service
         };
     }
 
-    private function adminStats(): array
+    private function adminStats(int $year, ?int $month): array
     {
-        $year = (int) date('Y');
-        $months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        $labels = $this->axisLabels($year, $month);
 
         $plansBreakdown = DB::table('organizations')
             ->whereNotNull('plan_id')
@@ -72,28 +95,55 @@ class DashboardService extends Service
             ->map(fn (object $row) => ['plan' => $row->plan, 'count' => (int) $row->count])
             ->all();
 
-        $expenseMonthly = [];
-        foreach (Expense::query()->whereYear('spent_on', $year)->cursor(['spent_on', 'amount']) as $expense) {
-            $month = $expense->spent_on->format('M');
-            $expenseMonthly[$month] = ($expenseMonthly[$month] ?? 0) + (float) $expense->amount;
+        $paidByWindow = function ($column) use ($year, $month): callable {
+            return function ($query) use ($column, $year, $month): void {
+                $query->whereYear($column, $year);
+                if ($month) {
+                    $query->whereMonth($column, $month);
+                }
+            };
+        };
+
+        $incomeTotal = (float) SubscriptionPayment::query()
+            ->where(fn ($q) => $paidByWindow('received_on')($q))
+            ->sum('amount');
+
+        $expenseTotal = (float) PlatformExpense::query()
+            ->where(fn ($q) => $paidByWindow('spent_on')($q))
+            ->sum('amount');
+
+        $incomeSeries = [];
+        $incomeQuery = SubscriptionPayment::query()->whereYear('received_on', $year);
+        if ($month) {
+            $incomeQuery->whereMonth('received_on', $month);
+        }
+        foreach ($incomeQuery->cursor(['received_on', 'amount']) as $payment) {
+            $key = $this->formatKey($payment->received_on, $month);
+            $incomeSeries[$key] = ($incomeSeries[$key] ?? 0) + (float) $payment->amount;
         }
 
-        // Subscriptions have no real event source yet, so the new-subscriber
-        // line stays sample data; expenses are aggregated from real records.
-        $subscriptionsMonthly = $this->sampleSeries($months, 20, 120);
-        $subscriptionsTotal = (int) collect($subscriptionsMonthly)->sum('value');
+        $expenseSeries = [];
+        $expenseQuery = PlatformExpense::query()->whereYear('spent_on', $year);
+        if ($month) {
+            $expenseQuery->whereMonth('spent_on', $month);
+        }
+        foreach ($expenseQuery->cursor(['spent_on', 'amount']) as $expense) {
+            $key = $this->formatKey($expense->spent_on, $month);
+            $expenseSeries[$key] = ($expenseSeries[$key] ?? 0) + (float) $expense->amount;
+        }
 
-        $financials = $this->combineMonths($months, [
-            'expenses' => $expenseMonthly,
-            'subscriptions' => collect($subscriptionsMonthly)->pluck('value', 'label')->all(),
+        $financials = $this->combineAxis($labels, [
+            'income' => $incomeSeries,
+            'expenses' => $expenseSeries,
         ]);
 
         return [
             'organizations_count' => Organization::count(),
             'subscribers_count' => Organization::whereNotNull('plan_id')->count(),
             'plans_count' => DB::table('plans')->count(),
-            'expenses_ytd' => (float) Expense::query()->whereYear('spent_on', $year)->sum('amount'),
-            'new_subscribers' => $subscriptionsTotal,
+            'income_total' => $incomeTotal,
+            'expenses_total' => $expenseTotal,
+            'net_total' => $incomeTotal - $expenseTotal,
             'plans_breakdown' => $plansBreakdown,
             'financials_monthly' => $financials,
         ];
@@ -102,34 +152,37 @@ class DashboardService extends Service
     /**
      * @param  array<int, array{id: int, properties: array<int, array{units_count: int}>}>  $access
      */
-    private function organizationStats(array $access): array
+    private function organizationStats(array $access, int $year, ?int $month): array
     {
         $orgIds = collect($access)->pluck('id')->all();
         $properties = collect($access)->flatMap(fn (array $organization) => $organization['properties']);
 
-        $year = (int) date('Y');
         $months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
         $expenseMonthly = [];
         if ($orgIds) {
             foreach (Expense::query()->whereIn('organization_id', $orgIds)->whereYear('spent_on', $year)->cursor(['spent_on', 'amount']) as $expense) {
-                $month = $expense->spent_on->format('M');
-                $expenseMonthly[$month] = ($expenseMonthly[$month] ?? 0) + (float) $expense->amount;
+                $monthKey = $expense->spent_on->format('M');
+                $expenseMonthly[$monthKey] = ($expenseMonthly[$monthKey] ?? 0) + (float) $expense->amount;
             }
         }
 
         $maintenanceMonthly = [];
         if ($orgIds) {
             foreach (MaintenanceRequest::query()->whereIn('organization_id', $orgIds)->whereYear('created_at', $year)->cursor(['created_at']) as $request) {
-                $month = $request->created_at->format('M');
-                $maintenanceMonthly[$month] = ($maintenanceMonthly[$month] ?? 0) + 1;
+                $monthKey = $request->created_at->format('M');
+                $maintenanceMonthly[$monthKey] = ($maintenanceMonthly[$monthKey] ?? 0) + 1;
             }
         }
 
-        $operations = $this->combineMonths($months, [
+        $operations = $this->combineMonths($months, $month, [
             'expenses' => $expenseMonthly,
             'maintenance' => $maintenanceMonthly,
         ]);
+
+        $yearQuery = fn ($model) => $model->whereIn('organization_id', $orgIds)
+            ->whereYear('created_at', $year)
+            ->when($month, fn ($q) => $q->whereMonth('created_at', $month));
 
         return [
             'properties_count' => $properties->count(),
@@ -245,10 +298,9 @@ class DashboardService extends Service
     /**
      * @return array<string, mixed>|null
      */
-    private function personLeaseStats(?int $personId, string $kind): ?array
+    private function personLeaseStats(?int $personId, string $kind, int $year, ?int $month): ?array
     {
         $months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        $year = (int) date('Y');
 
         if (! $personId) {
             return [
@@ -259,7 +311,7 @@ class DashboardService extends Service
                 'recent' => [],
             ] + ($kind === 'occupant' ? [
                 'maintenance_open' => 0,
-                'home_monthly' => $this->combineMonths($months, []),
+                'home_monthly' => $this->combineMonths($months, $month, []),
             ] : []);
         }
 
@@ -303,15 +355,15 @@ class DashboardService extends Service
 
         $rentMonthly = [];
         foreach ((clone $base)->whereYear('starts_at', $year)->cursor(['starts_at', 'rent_amount']) as $lease) {
-            $month = $lease->starts_at->format('M');
-            $rentMonthly[$month] = ($rentMonthly[$month] ?? 0) + (float) $lease->rent_amount;
+            $monthKey = $lease->starts_at->format('M');
+            $rentMonthly[$monthKey] = ($rentMonthly[$monthKey] ?? 0) + (float) $lease->rent_amount;
         }
 
         $maintenanceMonthly = [];
         if ($leaseIds) {
             foreach (MaintenanceRequest::query()->whereIn('lease_id', $leaseIds)->whereYear('created_at', $year)->cursor(['created_at']) as $request) {
-                $month = $request->created_at->format('M');
-                $maintenanceMonthly[$month] = ($maintenanceMonthly[$month] ?? 0) + 1;
+                $monthKey = $request->created_at->format('M');
+                $maintenanceMonthly[$monthKey] = ($maintenanceMonthly[$monthKey] ?? 0) + 1;
             }
         }
 
@@ -319,7 +371,7 @@ class DashboardService extends Service
             ? MaintenanceRequest::query()->whereIn('lease_id', $leaseIds)->whereIn('status', ['opened', 'assigned', 'in_progress'])->count()
             : 0;
 
-        $result['home_monthly'] = $this->combineMonths($months, [
+        $result['home_monthly'] = $this->combineMonths($months, $month, [
             'rent' => $rentMonthly,
             'maintenance' => $maintenanceMonthly,
         ]);
@@ -419,7 +471,7 @@ class DashboardService extends Service
             $rentRollMonthly[$monthStart->format('M')] = $roll;
         }
 
-        $operations = $this->combineMonths($months, [
+        $operations = $this->combineMonths($months, null, [
             'rent_roll' => $rentRollMonthly,
             'maintenance' => $maintenanceMonthly,
             'new_leases' => $newLeasesMonthly,
@@ -440,21 +492,47 @@ class DashboardService extends Service
     }
 
     /**
-     * Merge several monthly key→value maps onto a fixed month axis so they
-     * can be plotted as multiple series on one chart. Missing months are 0.
+     * Generate the x-axis labels: month abbreviations when no month is
+     * selected, or day numbers (1–28/29/30/31) when a specific month is chosen.
      *
-     * @param  array<int, string>  $months
-     * @param  array<string, array<string, float|int>>  $series
-     * @return array<int, array<string, float>>
+     * @return list<string>
      */
-    private function combineMonths(array $months, array $series): array
+    private function axisLabels(int $year, ?int $month): array
     {
-        return collect($months)
-            ->map(function (string $month) use ($series): array {
-                $row = ['label' => $month];
+        if ($month === null) {
+            return ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        }
+
+        $daysInMonth = (int) Carbon::createFromDate($year, $month, 1)->daysInMonth;
+
+        return array_map(fn (int $day) => (string) $day, range(1, $daysInMonth));
+    }
+
+    /**
+     * Return the date-format key used to group a timestamp into the correct
+     * bucket on the current axis. 'M' for months (Jan, Feb…), 'j' for days (1, 2…).
+     */
+    private function formatKey(Carbon $date, ?int $month): string
+    {
+        return $month === null ? $date->format('M') : $date->format('j');
+    }
+
+    /**
+     * Merge several key→value maps onto a fixed x-axis so they can be
+     * plotted as multiple series on one chart. Missing points are 0.
+     *
+     * @param  list<string>             $axisLabels
+     * @param  array<string, array<string, float|int>>  $series
+     * @return array<int, array<string, float|int|string>>
+     */
+    private function combineAxis(array $axisLabels, array $series): array
+    {
+        return collect($axisLabels)
+            ->map(function (string $label) use ($series): array {
+                $row = ['label' => $label];
 
                 foreach ($series as $key => $map) {
-                    $row[$key] = (float) ($map[$month] ?? 0);
+                    $row[$key] = (float) ($map[$label] ?? 0);
                 }
 
                 return $row;
@@ -463,24 +541,35 @@ class DashboardService extends Service
     }
 
     /**
-     * Deterministic sample series so the placeholder graphs are stable
-     * between requests (no flicker from random data).
+     * Merge several monthly key→value maps onto a fixed month axis so they
+     * can be plotted as multiple series on one chart. Missing months are 0.
+     * Each row includes a numeric `month` field (1–12) for client-side filtering.
+     * When $onlyMonth is set, only that month's row is returned.
      *
-     * @param  array<int, string>  $labels
-     * @return array<int, array{label: string, value: int, sample: bool}>
+     * @deprecated Use combineAxis() with axisLabels() for new code.
+     *
+     * @param  array<int, string>  $months
+     * @param  array<string, array<string, float|int>>  $series
+     * @return array<int, array<string, float>>
      */
-    private function sampleSeries(array $labels, int $min, int $max): array
+    private function combineMonths(array $months, ?int $onlyMonth, array $series): array
     {
-        return collect($labels)
-            ->map(function (string $label, int $index) use ($min, $max): array {
-                $value = (int) ($min + (($max - $min) / 2) * (1 + sin(($index + 1) / 1.7)));
+        $rows = collect($months)
+            ->map(function (string $month, int $index) use ($series): array {
+                $row = ['label' => $month, 'month' => $index + 1];
 
-                return [
-                    'label' => $label,
-                    'value' => $value,
-                    'sample' => true,
-                ];
+                foreach ($series as $key => $map) {
+                    $row[$key] = (float) ($map[$month] ?? 0);
+                }
+
+                return $row;
             })
             ->all();
+
+        if ($onlyMonth) {
+            $rows = array_values(array_filter($rows, fn (array $row): bool => $row['month'] === $onlyMonth));
+        }
+
+        return $rows;
     }
 }
