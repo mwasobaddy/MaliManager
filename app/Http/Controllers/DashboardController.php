@@ -40,8 +40,11 @@ class DashboardController extends Controller
             fn (array $organization) => [...$organization['properties'], ...$organization['land_parcels']],
         );
 
+        $year = $request->integer('year');
+        $month = $request->integer('month');
+
         return Inertia::render('dashboard', array_merge(
-            app(DashboardService::class)->payload($user, $access),
+            app(DashboardService::class)->payload($user, $access, $year ?: null, $month ?: null),
             [
                 'autoOpenPropertyPicker' => $accessibleAssets->isNotEmpty()
                     && ! $request->session()->get(self::ACK_KEY, false),
