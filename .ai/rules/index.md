@@ -8,6 +8,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/** | .ai/rules/app.md |
 | app/Http/Controllers/Auth/** | .ai/rules/auth.md |
 | config/tenancy.php | .ai/rules/config.md |
+| config/tenancy.php, app/Models/**, app/Http/Controllers/Tenant/** | .ai/rules/controllers-tenant.md |
 | resources/js/components/rich-text-editor.tsx, resources/css/editor.css | .ai/rules/css.md |
 | app/Http/** | .ai/rules/http.md |
 | resources/js/** | .ai/rules/js.md |
