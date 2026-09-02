@@ -90,13 +90,15 @@ it('builds real monthly series and ytd totals for the admin payload', function (
         ->get(route('dashboard'))
         ->assertInertia(fn ($page) => $page
             ->has('admin.financials_monthly')
-            ->where('admin.expenses_ytd', 0)
-            ->has('admin.new_subscribers')
+            ->where('admin.income_total', 0)
+            ->where('admin.expenses_total', 0)
+            ->where('admin.net_total', 0)
+            ->has('available_years')
             ->etc())
         ->assertInertia(fn ($page) => $page
             ->where('admin.financials_monthly.0.label', 'Jan')
-            ->has('admin.financials_monthly.0.expenses')
-            ->has('admin.financials_monthly.0.subscriptions'));
+            ->has('admin.financials_monthly.0.income')
+            ->has('admin.financials_monthly.0.expenses'));
 });
 
 it('builds merged operations series for the organization payload', function () {
