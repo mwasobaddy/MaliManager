@@ -1,19 +1,4 @@
 import { Head, router, usePage } from '@inertiajs/react';
-import { useState } from 'react';
-import {
-    Cell,
-    CartesianGrid,
-    Legend,
-    Line,
-    LineChart,
-    Pie,
-    PieChart,
-    ResponsiveContainer,
-    Tooltip,
-    XAxis,
-    YAxis,
-} from 'recharts';
-import { TriangleAlert } from 'lucide-react';
 import {
     Activity,
     Archive,
@@ -22,24 +7,42 @@ import {
     FileText,
     Home,
     KeyRound,
+    TriangleAlert,
     TrendingUp,
     Users,
     Wallet,
     Wrench,
 } from 'lucide-react';
-import { StatsCards } from '@/components/dashboard/stats-cards';
+import { useState } from 'react';
+import {
+    Pie,
+    PieChart,
+    ResponsiveContainer,
+    Tooltip,
+    Legend,
+    Cell,
+} from 'recharts';
 import { ComboChart } from '@/components/dashboard/combo-chart';
 import type { ComboPoint } from '@/components/dashboard/combo-chart';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { StatsCards } from '@/components/dashboard/stats-cards';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { dashboard } from '@/routes';
 
 type AdminStats = {
     organizations_count: number;
     subscribers_count: number;
     plans_count: number;
-    expenses_ytd: number;
-    new_subscribers: number;
+    income_total: number;
+    expenses_total: number;
+    net_total: number;
     plans_breakdown: { plan: string; count: number }[];
     financials_monthly: ComboPoint[];
 };
@@ -86,6 +89,7 @@ type PersonLeaseStats = {
 };
 
 type Props = {
+    available_years?: number[];
     admin?: AdminStats | null;
     organization?: OrgStats | null;
     searcher?: PersonLeaseStats | null;
@@ -94,38 +98,114 @@ type Props = {
     autoOpenPropertyPicker?: boolean;
 };
 
-const PIE_COLORS = ['#2563eb', '#16a34a', '#f59e0b', '#db2777', '#0891b2', '#7c3aed'];
+const PIE_COLORS = [
+    '#2563eb',
+    '#16a34a',
+    '#f59e0b',
+    '#db2777',
+    '#0891b2',
+    '#7c3aed',
+];
 
 const TABS = [
-    { key: 'admin', label: 'Advanced metrics', permission: 'view advanced metrics' },
-    { key: 'organization', label: 'Organization', permission: 'view organization metrics' },
-    { key: 'searcher', label: 'My rentals', permission: 'view searcher metrics' },
+    {
+        key: 'admin',
+        label: 'Advanced metrics',
+        permission: 'view advanced metrics',
+    },
+    {
+        key: 'organization',
+        label: 'Organization',
+        permission: 'view organization metrics',
+    },
+    {
+        key: 'searcher',
+        label: 'My rentals',
+        permission: 'view searcher metrics',
+    },
     { key: 'occupant', label: 'My home', permission: 'view occupant metrics' },
 ] as const;
 
 type TabKey = (typeof TABS)[number]['key'];
 
+const MONTHS = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+];
+
 export default function Dashboard(props: Props) {
     const page = usePage();
-    const permissions = ((page.props.auth?.permissions ?? []) as string[]) ?? [];
+    const permissions =
+        ((page.props.auth?.permissions ?? []) as string[]) ?? [];
+    const availableYears = props.available_years ?? [];
 
-    const visibleTabs = TABS.filter((tab) => permissions.includes(tab.permission));
+    const visibleTabs = TABS.filter((tab) =>
+        permissions.includes(tab.permission),
+    );
 
-    const urlTab = new URLSearchParams(window.location.search).get('tab') as TabKey | null;
+    const params = new URLSearchParams(window.location.search);
+    const urlTab = params.get('tab') as TabKey | null;
+    const urlYear = params.get('year');
+    const urlMonth = params.get('month');
+
     const initialTab =
         urlTab && visibleTabs.some((tab) => tab.key === urlTab)
             ? urlTab
             : ((props.defaultTab as TabKey) ?? visibleTabs[0]?.key ?? 'admin');
 
     const [activeTab, setActiveTab] = useState<TabKey>(initialTab);
+    const [filterYear, setFilterYear] = useState<string>(
+        urlYear ?? String(new Date().getFullYear()),
+    );
+    const [filterMonth, setFilterMonth] = useState<string>(urlMonth ?? '');
 
     const selectTab = (key: TabKey) => {
         setActiveTab(key);
-        router.get(
-            window.location.pathname,
-            { tab: key },
-            { preserveState: true, replace: true },
-        );
+
+        const params: Record<string, string> = { tab: key };
+
+        if (filterYear) {
+            params.year = filterYear;
+        }
+
+        if (filterMonth) {
+            params.month = filterMonth;
+        }
+
+        router.get(window.location.pathname, params, {
+            preserveState: true,
+            replace: true,
+        });
+    };
+
+    const updateFilters = (year: string, month: string) => {
+        setFilterYear(year);
+        setFilterMonth(month);
+
+        const params: Record<string, string> = { tab: activeTab };
+
+        if (year) {
+            params.year = year;
+        }
+
+        if (month) {
+            params.month = month;
+        }
+
+        router.get(window.location.pathname, params, {
+            preserveState: true,
+            replace: true,
+        });
     };
 
     return (
@@ -138,15 +218,72 @@ export default function Dashboard(props: Props) {
                     </p>
                 ) : (
                     <>
-                        <Tabs value={activeTab} onValueChange={(value) => selectTab(value as TabKey)}>
-                            <TabsList>
-                                {visibleTabs.map((tab) => (
-                                    <TabsTrigger key={tab.key} value={tab.key}>
-                                        {tab.label}
-                                    </TabsTrigger>
-                                ))}
-                            </TabsList>
-                        </Tabs>
+                        <div className="flex flex-wrap items-center gap-3">
+                            <Tabs
+                                value={activeTab}
+                                onValueChange={(value) =>
+                                    selectTab(value as TabKey)
+                                }
+                            >
+                                <TabsList>
+                                    {visibleTabs.map((tab) => (
+                                        <TabsTrigger
+                                            key={tab.key}
+                                            value={tab.key}
+                                        >
+                                            {tab.label}
+                                        </TabsTrigger>
+                                    ))}
+                                </TabsList>
+                            </Tabs>
+
+                            <div className="ml-auto flex items-center gap-2">
+                                <Select
+                                    value={filterYear}
+                                    onValueChange={(value) =>
+                                        updateFilters(value, filterMonth)
+                                    }
+                                >
+                                    <SelectTrigger className="w-[100px]">
+                                        <SelectValue placeholder="Year" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {availableYears.map((year) => (
+                                            <SelectItem
+                                                key={year}
+                                                value={String(year)}
+                                            >
+                                                {year}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+
+                                <Select
+                                    value={filterMonth}
+                                    onValueChange={(value) =>
+                                        updateFilters(filterYear, value)
+                                    }
+                                >
+                                    <SelectTrigger className="w-[110px]">
+                                        <SelectValue placeholder="All months" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="">
+                                            All months
+                                        </SelectItem>
+                                        {MONTHS.map((name, index) => (
+                                            <SelectItem
+                                                key={index}
+                                                value={String(index + 1)}
+                                            >
+                                                {name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
 
                         {activeTab === 'admin' && props.admin && (
                             <AdminTab stats={props.admin} />
@@ -155,7 +292,10 @@ export default function Dashboard(props: Props) {
                             <OrganizationTab stats={props.organization} />
                         )}
                         {activeTab === 'searcher' && props.searcher && (
-                            <PersonTab stats={props.searcher} title="My rental history" />
+                            <PersonTab
+                                stats={props.searcher}
+                                title="My rental history"
+                            />
                         )}
                         {activeTab === 'occupant' && props.occupant && (
                             <PersonTab stats={props.occupant} title="My home" />
@@ -192,16 +332,16 @@ function AdminTab({ stats }: { stats: AdminStats }) {
                         icon: <CreditCard />,
                     },
                     {
-                        title: 'Expenses YTD',
-                        value: `$${Number(stats.expenses_ytd).toLocaleString()}`,
-                        description: 'Across all organizations',
-                        icon: <Wallet />,
+                        title: 'Income',
+                        value: `$${Number(stats.income_total).toLocaleString()}`,
+                        description: 'Subscription payments received',
+                        icon: <TrendingUp />,
                     },
                     {
-                        title: 'New subscribers',
-                        value: stats.new_subscribers,
-                        description: 'Sample data',
-                        icon: <TrendingUp />,
+                        title: 'Expenses',
+                        value: `$${Number(stats.expenses_total).toLocaleString()}`,
+                        description: 'Platform operating costs',
+                        icon: <Wallet />,
                     },
                 ]}
             />
@@ -210,21 +350,28 @@ function AdminTab({ stats }: { stats: AdminStats }) {
                 title="Financials"
                 data={stats.financials_monthly}
                 series={[
-                    { key: 'expenses', label: 'Expenses', color: '#db2777', type: 'area', axis: 'left' },
                     {
-                        key: 'subscriptions',
-                        label: 'New subscribers',
+                        key: 'income',
+                        label: 'Income',
                         color: '#16a34a',
-                        type: 'line',
-                        axis: 'right',
-                        sample: true,
+                        type: 'area',
+                        axis: 'left',
+                    },
+                    {
+                        key: 'expenses',
+                        label: 'Expenses',
+                        color: '#db2777',
+                        type: 'area',
+                        axis: 'left',
                     },
                 ]}
             />
 
             <Card>
                 <CardHeader>
-                    <CardTitle className="text-base font-medium">Subscribers by plan</CardTitle>
+                    <CardTitle className="text-base font-medium">
+                        Subscribers by plan
+                    </CardTitle>
                 </CardHeader>
                 <CardContent>
                     <ResponsiveContainer width="100%" height={260}>
@@ -237,7 +384,14 @@ function AdminTab({ stats }: { stats: AdminStats }) {
                                 label
                             >
                                 {stats.plans_breakdown.map((_, index) => (
-                                    <Cell key={index} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                                    <Cell
+                                        key={index}
+                                        fill={
+                                            PIE_COLORS[
+                                                index % PIE_COLORS.length
+                                            ]
+                                        }
+                                    />
                                 ))}
                             </Pie>
                             <Legend />
@@ -293,7 +447,13 @@ function OrganizationTab({ stats }: { stats: OrgStats }) {
                 title="Operations"
                 data={stats.operations_monthly}
                 series={[
-                    { key: 'expenses', label: 'Expenses', color: '#db2777', type: 'area', axis: 'left' },
+                    {
+                        key: 'expenses',
+                        label: 'Expenses',
+                        color: '#db2777',
+                        type: 'area',
+                        axis: 'left',
+                    },
                     {
                         key: 'maintenance',
                         label: 'Maintenance requests',
@@ -307,17 +467,23 @@ function OrganizationTab({ stats }: { stats: OrgStats }) {
             {(stats.expiring_leases?.length ?? 0) > 0 && (
                 <Card>
                     <CardHeader>
-                        <CardTitle className="text-base font-medium">Leases expiring soon</CardTitle>
+                        <CardTitle className="text-base font-medium">
+                            Leases expiring soon
+                        </CardTitle>
                     </CardHeader>
                     <CardContent>
                         <ul className="space-y-2 text-sm">
                             {stats.expiring_leases!.map((lease) => (
-                                <li key={`${lease.unit}-${lease.ends_at}`} className="flex items-center justify-between gap-2">
+                                <li
+                                    key={`${lease.unit}-${lease.ends_at}`}
+                                    className="flex items-center justify-between gap-2"
+                                >
                                     <span>
                                         {lease.occupant} — {lease.unit}
                                     </span>
                                     <span className="text-muted-foreground">
-                                        {lease.ends_at} · {lease.days_left}d left
+                                        {lease.ends_at} · {lease.days_left}d
+                                        left
                                     </span>
                                 </li>
                             ))}
@@ -326,7 +492,7 @@ function OrganizationTab({ stats }: { stats: OrgStats }) {
                 </Card>
             )}
 
-            {stats.flags && stats.flags.length > 0 &&(
+            {stats.flags && stats.flags.length > 0 && (
                 <Card className="border-amber-300 dark:border-amber-800">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2 text-base font-medium">
@@ -337,10 +503,15 @@ function OrganizationTab({ stats }: { stats: OrgStats }) {
                     <CardContent>
                         <ul className="space-y-1.5 text-sm">
                             {stats.flags.map((flag, index) => (
-                                <li key={index} className="flex items-start gap-2">
+                                <li
+                                    key={index}
+                                    className="flex items-start gap-2"
+                                >
                                     <span
                                         className={`mt-1 inline-block size-2 shrink-0 rounded-full ${
-                                            flag.severity === 'high' ? 'bg-red-500' : 'bg-amber-500'
+                                            flag.severity === 'high'
+                                                ? 'bg-red-500'
+                                                : 'bg-amber-500'
                                         }`}
                                     />
                                     {flag.message}
@@ -354,7 +525,13 @@ function OrganizationTab({ stats }: { stats: OrgStats }) {
     );
 }
 
-function PersonTab({ stats, title }: { stats: PersonLeaseStats; title: string }) {
+function PersonTab({
+    stats,
+    title,
+}: {
+    stats: PersonLeaseStats;
+    title: string;
+}) {
     return (
         <div className="flex flex-col gap-4">
             <StatsCards
@@ -402,39 +579,75 @@ function PersonTab({ stats, title }: { stats: PersonLeaseStats; title: string })
                     title="Your home"
                     data={stats.home_monthly}
                     series={[
-                        { key: 'rent', label: 'Rent', color: '#0891b2', type: 'area', axis: 'left' },
-                        { key: 'maintenance', label: 'Maintenance', color: '#f59e0b', type: 'bar', axis: 'right' },
+                        {
+                            key: 'rent',
+                            label: 'Rent',
+                            color: '#0891b2',
+                            type: 'area',
+                            axis: 'left',
+                        },
+                        {
+                            key: 'maintenance',
+                            label: 'Maintenance',
+                            color: '#f59e0b',
+                            type: 'bar',
+                            axis: 'right',
+                        },
                     ]}
                 />
             )}
 
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0">
-                    <CardTitle className="text-base font-medium">Recent {title.toLowerCase()}</CardTitle>
+                    <CardTitle className="text-base font-medium">
+                        Recent {title.toLowerCase()}
+                    </CardTitle>
                 </CardHeader>
                 <CardContent>
                     {stats.recent.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">No lease history yet.</p>
+                        <p className="text-sm text-muted-foreground">
+                            No lease history yet.
+                        </p>
                     ) : (
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm">
                                 <thead>
                                     <tr className="border-b text-left text-muted-foreground">
-                                        <th className="px-3 py-2 font-medium">Organization</th>
-                                        <th className="px-3 py-2 font-medium">Property</th>
-                                        <th className="px-3 py-2 font-medium">Status</th>
-                                        <th className="px-3 py-2 font-medium">Start</th>
-                                        <th className="px-3 py-2 font-medium">End</th>
+                                        <th className="px-3 py-2 font-medium">
+                                            Organization
+                                        </th>
+                                        <th className="px-3 py-2 font-medium">
+                                            Property
+                                        </th>
+                                        <th className="px-3 py-2 font-medium">
+                                            Status
+                                        </th>
+                                        <th className="px-3 py-2 font-medium">
+                                            Start
+                                        </th>
+                                        <th className="px-3 py-2 font-medium">
+                                            End
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {stats.recent.map((lease, index) => (
                                         <tr key={index} className="border-b">
-                                            <td className="px-3 py-2">{lease.organization ?? '—'}</td>
-                                            <td className="px-3 py-2">{lease.property ?? '—'}</td>
-                                            <td className="px-3 py-2 capitalize">{lease.status}</td>
-                                            <td className="px-3 py-2">{lease.starts_at ?? '—'}</td>
-                                            <td className="px-3 py-2">{lease.ends_at ?? '—'}</td>
+                                            <td className="px-3 py-2">
+                                                {lease.organization ?? '—'}
+                                            </td>
+                                            <td className="px-3 py-2">
+                                                {lease.property ?? '—'}
+                                            </td>
+                                            <td className="px-3 py-2 capitalize">
+                                                {lease.status}
+                                            </td>
+                                            <td className="px-3 py-2">
+                                                {lease.starts_at ?? '—'}
+                                            </td>
+                                            <td className="px-3 py-2">
+                                                {lease.ends_at ?? '—'}
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>
