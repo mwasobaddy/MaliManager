@@ -41,6 +41,16 @@ enum PlatformPermissionKey: string
 
     case AiUse = 'ai.use';
 
+    case SubscriptionManage = 'subscription.manage';
+    case SubscriptionCreate = 'subscription.create';
+    case SubscriptionEdit = 'subscription.edit';
+    case SubscriptionDelete = 'subscription.delete';
+
+    case PlatformExpenseManage = 'platform-expense.manage';
+    case PlatformExpenseCreate = 'platform-expense.create';
+    case PlatformExpenseEdit = 'platform-expense.edit';
+    case PlatformExpenseDelete = 'platform-expense.delete';
+
     public function label(): string
     {
         return match ($this) {
@@ -69,6 +79,14 @@ enum PlatformPermissionKey: string
             self::PlanEdit => 'Edit plans',
             self::PlanDelete => 'Delete plans',
             self::AiUse => 'Use the AI assistant',
+            self::SubscriptionManage => 'Manage subscription payments',
+            self::SubscriptionCreate => 'Create subscription payments',
+            self::SubscriptionEdit => 'Edit subscription payments',
+            self::SubscriptionDelete => 'Delete subscription payments',
+            self::PlatformExpenseManage => 'Manage platform expenses',
+            self::PlatformExpenseCreate => 'Create platform expenses',
+            self::PlatformExpenseEdit => 'Edit platform expenses',
+            self::PlatformExpenseDelete => 'Delete platform expenses',
         };
     }
 
@@ -100,6 +118,14 @@ enum PlatformPermissionKey: string
             self::PlanEdit => 'editPlans',
             self::PlanDelete => 'deletePlans',
             self::AiUse => 'aiUse',
+            self::SubscriptionManage => 'manageSubscriptionPayments',
+            self::SubscriptionCreate => 'createSubscriptionPayments',
+            self::SubscriptionEdit => 'editSubscriptionPayments',
+            self::SubscriptionDelete => 'deleteSubscriptionPayments',
+            self::PlatformExpenseManage => 'managePlatformExpenses',
+            self::PlatformExpenseCreate => 'createPlatformExpenses',
+            self::PlatformExpenseEdit => 'editPlatformExpenses',
+            self::PlatformExpenseDelete => 'deletePlatformExpenses',
         };
     }
 }
