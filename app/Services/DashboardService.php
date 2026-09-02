@@ -157,32 +157,27 @@ class DashboardService extends Service
         $orgIds = collect($access)->pluck('id')->all();
         $properties = collect($access)->flatMap(fn (array $organization) => $organization['properties']);
 
-        $months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        $labels = $this->axisLabels($year, $month);
 
-        $expenseMonthly = [];
+        $expenseSeries = [];
+        $maintenanceSeries = [];
+
         if ($orgIds) {
             foreach (Expense::query()->whereIn('organization_id', $orgIds)->whereYear('spent_on', $year)->cursor(['spent_on', 'amount']) as $expense) {
-                $monthKey = $expense->spent_on->format('M');
-                $expenseMonthly[$monthKey] = ($expenseMonthly[$monthKey] ?? 0) + (float) $expense->amount;
+                $key = $this->formatKey($expense->spent_on, $month);
+                $expenseSeries[$key] = ($expenseSeries[$key] ?? 0) + (float) $expense->amount;
             }
-        }
 
-        $maintenanceMonthly = [];
-        if ($orgIds) {
             foreach (MaintenanceRequest::query()->whereIn('organization_id', $orgIds)->whereYear('created_at', $year)->cursor(['created_at']) as $request) {
-                $monthKey = $request->created_at->format('M');
-                $maintenanceMonthly[$monthKey] = ($maintenanceMonthly[$monthKey] ?? 0) + 1;
+                $key = $this->formatKey($request->created_at, $month);
+                $maintenanceSeries[$key] = ($maintenanceSeries[$key] ?? 0) + 1;
             }
         }
 
-        $operations = $this->combineMonths($months, $month, [
-            'expenses' => $expenseMonthly,
-            'maintenance' => $maintenanceMonthly,
+        $operations = $this->combineAxis($labels, [
+            'expenses' => $expenseSeries,
+            'maintenance' => $maintenanceSeries,
         ]);
-
-        $yearQuery = fn ($model) => $model->whereIn('organization_id', $orgIds)
-            ->whereYear('created_at', $year)
-            ->when($month, fn ($q) => $q->whereMonth('created_at', $month));
 
         return [
             'properties_count' => $properties->count(),
@@ -300,7 +295,7 @@ class DashboardService extends Service
      */
     private function personLeaseStats(?int $personId, string $kind, int $year, ?int $month): ?array
     {
-        $months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        $labels = $this->axisLabels($year, $month);
 
         if (! $personId) {
             return [
@@ -311,7 +306,7 @@ class DashboardService extends Service
                 'recent' => [],
             ] + ($kind === 'occupant' ? [
                 'maintenance_open' => 0,
-                'home_monthly' => $this->combineMonths($months, $month, []),
+                'home_monthly' => $this->combineAxis($labels, []),
             ] : []);
         }
 
@@ -353,17 +348,25 @@ class DashboardService extends Service
 
         $leaseIds = (clone $base)->pluck('id')->all();
 
-        $rentMonthly = [];
-        foreach ((clone $base)->whereYear('starts_at', $year)->cursor(['starts_at', 'rent_amount']) as $lease) {
-            $monthKey = $lease->starts_at->format('M');
-            $rentMonthly[$monthKey] = ($rentMonthly[$monthKey] ?? 0) + (float) $lease->rent_amount;
+        $rentSeries = [];
+        $rentQuery = (clone $base)->whereYear('starts_at', $year);
+        if ($month) {
+            $rentQuery->whereMonth('starts_at', $month);
+        }
+        foreach ($rentQuery->cursor(['starts_at', 'rent_amount']) as $lease) {
+            $key = $this->formatKey($lease->starts_at, $month);
+            $rentSeries[$key] = ($rentSeries[$key] ?? 0) + (float) $lease->rent_amount;
         }
 
-        $maintenanceMonthly = [];
+        $maintenanceSeries = [];
         if ($leaseIds) {
-            foreach (MaintenanceRequest::query()->whereIn('lease_id', $leaseIds)->whereYear('created_at', $year)->cursor(['created_at']) as $request) {
-                $monthKey = $request->created_at->format('M');
-                $maintenanceMonthly[$monthKey] = ($maintenanceMonthly[$monthKey] ?? 0) + 1;
+            $maintQuery = MaintenanceRequest::query()->whereIn('lease_id', $leaseIds)->whereYear('created_at', $year);
+            if ($month) {
+                $maintQuery->whereMonth('created_at', $month);
+            }
+            foreach ($maintQuery->cursor(['created_at']) as $request) {
+                $key = $this->formatKey($request->created_at, $month);
+                $maintenanceSeries[$key] = ($maintenanceSeries[$key] ?? 0) + 1;
             }
         }
 
@@ -371,9 +374,9 @@ class DashboardService extends Service
             ? MaintenanceRequest::query()->whereIn('lease_id', $leaseIds)->whereIn('status', ['opened', 'assigned', 'in_progress'])->count()
             : 0;
 
-        $result['home_monthly'] = $this->combineMonths($months, $month, [
-            'rent' => $rentMonthly,
-            'maintenance' => $maintenanceMonthly,
+        $result['home_monthly'] = $this->combineAxis($labels, [
+            'rent' => $rentSeries,
+            'maintenance' => $maintenanceSeries,
         ]);
 
         return $result;
