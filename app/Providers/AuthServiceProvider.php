@@ -72,6 +72,18 @@ class AuthServiceProvider extends ServiceProvider
 
         Gate::define('aiUse', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::AiUse->value));
 
+        // Central subscription income module.
+        Gate::define('manageSubscriptionPayments', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::SubscriptionManage->value));
+        Gate::define('createSubscriptionPayments', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::SubscriptionCreate->value));
+        Gate::define('editSubscriptionPayments', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::SubscriptionEdit->value));
+        Gate::define('deleteSubscriptionPayments', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::SubscriptionDelete->value));
+
+        // Central platform expense module.
+        Gate::define('managePlatformExpenses', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::PlatformExpenseManage->value));
+        Gate::define('createPlatformExpenses', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::PlatformExpenseCreate->value));
+        Gate::define('editPlatformExpenses', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::PlatformExpenseEdit->value));
+        Gate::define('deletePlatformExpenses', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::PlatformExpenseDelete->value));
+
         Gate::policy(Lease::class, LeasePolicy::class);
     }
 }
