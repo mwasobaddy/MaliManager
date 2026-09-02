@@ -51,7 +51,12 @@ return [
     'bootstrappers' => [
         // Stancl\Tenancy\Bootstrappers\DatabaseTenancyBootstrapper::class,
         CacheTenancyBootstrapper::class,
-        FilesystemTenancyBootstrapper::class,
+        // FilesystemTenancyBootstrapper is DISABLED: media (medialibrary) is
+        // stored on the central `public` disk (storage/app/public) and served
+        // via the central `getUrl()` /storage/ URLs. Keeping it enabled would
+        // move uploads to storage/tenant{id}/app/public, which getUrl() cannot
+        // resolve, breaking every uploaded image/document. See .ai/rules/media.md.
+        // FilesystemTenancyBootstrapper::class,
         QueueTenancyBootstrapper::class,
         // Stancl\Tenancy\Bootstrappers\RedisTenancyBootstrapper::class, // Note: phpredis is needed
     ],
