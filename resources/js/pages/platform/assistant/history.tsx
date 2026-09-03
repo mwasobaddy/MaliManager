@@ -22,7 +22,7 @@ export default function PlatformConversationHistory({ conversations, scope }: Pr
             scope={scope}
             backUrl={platformAssistantPage().url}
             backLabel="Assistant"
-            resumeUrl={(id) => `/platform/assistant/conversations/${id}`}
+            viewUrl={(id) => `/platform/assistant/conversations/${id}`}
             newChatUrl="/platform/assistant"
         />
     );

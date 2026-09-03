@@ -13,7 +13,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { generate as generateDraft, page as draftingPage } from '@/routes/tenant/drafting';
+import { generate as generateDraft } from '@/routes/tenant/drafting';
 
 type Props = {
     enabled: boolean;
@@ -57,7 +57,6 @@ export default function Drafting({ enabled }: Props) {
     const [fields, setFields] = useState<Record<string, string>>(initial.fields);
     const [draft, setDraft] = useState('');
     const [busy, setBusy] = useState(false);
-    const [error, setError] = useState('');
     const [copied, setCopied] = useState(false);
 
     const activeType = TYPES.find((t) => t.value === type) ?? TYPES[0];

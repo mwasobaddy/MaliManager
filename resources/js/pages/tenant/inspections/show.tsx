@@ -2,7 +2,6 @@ import { Head, router } from '@inertiajs/react';
 import { Printer, Sparkles, Trash2 } from 'lucide-react';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
     destroy as destroyInspection,
     report as reportRoute,

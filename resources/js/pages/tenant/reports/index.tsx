@@ -1,8 +1,9 @@
-import { Head, router } from '@inertiajs/react';
+import { Head } from '@inertiajs/react';
 import { Download, Printer } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -12,7 +13,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Card, CardContent } from '@/components/ui/card';
 import {
     csv as csvRoute,
     data as dataRoute,
@@ -70,7 +70,6 @@ export default function ReportsIndex({ types }: Props) {
 
     useEffect(() => {
         let cancelled = false;
-        setLoading(true);
 
         fetch(dataRoute.url({ query: query() }), {
             headers: { Accept: 'application/json' },
