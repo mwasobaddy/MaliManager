@@ -192,6 +192,28 @@ php artisan event:cache
 php artisan optimize
 ```
 
+### Seed platform financial data (optional, dev/staging)
+
+For development or staging environments, seed sample subscription payments and
+platform expenses so the Admin dashboard graphs show meaningful data:
+
+```bash
+php artisan db:seed --class=PlatformFinancialSeeder
+```
+
+This generates payments and expenses across 2024–2026. It is idempotent — it
+skips if data already exists. **Do not run in production** unless you want
+sample data; the seeder checks `count() > 0` and exits early.
+
+### Tenancy note: `FilesystemTenancyBootstrapper`
+
+The `FilesystemTenancyBootstrapper` in `config/tenancy.php` is **disabled**
+(commented out). All uploaded media (lease agreements, receipts, inspection
+photos, editor images) lives on the **central** `public` storage disk, not in
+per-tenant paths. If you re-enable `FilesystemTenancyBootstrapper` for
+Enterprise dedicated-database tenants, you must also update the media path
+generator and ensure `getUrl()` emits tenant-scoped URLs.
+
 ### Workers & scheduler (critical)
 
 ```bash
@@ -331,7 +353,10 @@ in production:
 - [ ] Queue worker running under Supervisor; cron for the scheduler
 - [ ] Storage symlink created; `storage/` writable
 - [ ] Log channel tailed after first deploy to catch tenancy bootstrap errors
+- [ ] Permissions: `RolesAndPermissionsSeeder` auto-grants all `PlatformPermissionKey` cases (including `subscription.*` and `platform-expense.*`) to the admin role; run `php artisan db:seed --class=RolesAndPermissionsSeeder` if permissions are missing
 - [ ] Optional: verify first `ai:send-digest` Monday run — orgs without keys still get numbers-only digests
+- [ ] Platform subscription payments + expenses: verify `subscription_payments` and `platform_expenses` migrations ran; seed with `PlatformFinancialSeeder` if desired
+- [ ] Dashboard: verify Admin tab shows financial graphs with year/month filters; confirm `available_years` is populated from seeded data
 
 ---
 
