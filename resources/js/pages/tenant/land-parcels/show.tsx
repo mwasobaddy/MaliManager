@@ -1,4 +1,4 @@
-import { Form, Head, Link, router, usePage } from '@inertiajs/react';
+import { Form, Head, Link, router } from '@inertiajs/react';
 import { FileText, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import Heading from '@/components/heading';
@@ -17,8 +17,8 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { destroy, edit, index } from '@/routes/tenant/land-parcels';
 import { destroy as destroySection, lease, store } from '@/routes/tenant/land-parcel-sections';
+import { destroy, edit, index } from '@/routes/tenant/land-parcels';
 
 type Organization = {
     id: number;

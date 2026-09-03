@@ -22,7 +22,7 @@ export default function SearcherConversationHistory({ conversations, scope }: Pr
             scope={scope}
             backUrl={searcherAssistantPage().url}
             backLabel="Assistant"
-            resumeUrl={(id) => `/searcher/assistant/conversations/${id}`}
+            viewUrl={(id) => `/searcher/assistant/conversations/${id}`}
             newChatUrl="/searcher/assistant"
         />
     );

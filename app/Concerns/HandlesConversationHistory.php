@@ -128,10 +128,9 @@ trait HandlesConversationHistory
         if ($conversationIds !== []) {
             $firstMessages = AiMessage::whereIn('ai_conversation_id', $conversationIds)
                 ->where('role', 'user')
-                ->select('ai_conversation_id', 'content')
-                ->selectRaw('MIN(id) as first_id')
-                ->groupBy('ai_conversation_id')
-                ->get();
+                ->oldest('id')
+                ->get(['id', 'ai_conversation_id', 'content'])
+                ->unique('ai_conversation_id');
 
             foreach ($firstMessages as $message) {
                 $previews[$message->ai_conversation_id] = mb_substr($message->content, 0, 120);

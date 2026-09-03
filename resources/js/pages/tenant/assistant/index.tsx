@@ -1,6 +1,6 @@
 import { Head, Link } from '@inertiajs/react';
 import { History } from 'lucide-react';
-import { AssistantChart, type AssistantArtifact } from '@/components/assistant-chart';
+import type {AssistantArtifact} from '@/components/assistant-chart';
 import { AssistantChat } from '@/components/assistant-chat';
 import { Button } from '@/components/ui/button';
 import { ask as askRoute } from '@/routes/tenant/assistant';

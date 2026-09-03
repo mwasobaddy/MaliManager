@@ -22,7 +22,7 @@ export default function TenantConversationHistory({ conversations, scope }: Prop
             scope={scope}
             backUrl={tenantAssistantPage().url}
             backLabel="Assistant"
-            resumeUrl={(id) => `/assistant/conversations/${id}`}
+            viewUrl={(id) => `/assistant/conversations/${id}`}
             newChatUrl="/assistant"
         />
     );

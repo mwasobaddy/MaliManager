@@ -1,6 +1,7 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
 import { ArrowLeft, Clock } from 'lucide-react';
-import { AssistantChart, type AssistantArtifact } from '@/components/assistant-chart';
+import { AssistantChart  } from '@/components/assistant-chart';
+import type {AssistantArtifact} from '@/components/assistant-chart';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
 
@@ -18,10 +19,9 @@ type Props = {
     };
     messages: Message[];
     askUrl: string;
-    scope: string;
 };
 
-export default function ConversationDetail({ conversation, messages, scope }: Props) {
+export default function ConversationDetail({ conversation, messages }: Props) {
     const historyUrl = `/assistant/history`;
 
     return (
