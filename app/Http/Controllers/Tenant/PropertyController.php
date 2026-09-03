@@ -107,6 +107,9 @@ class PropertyController extends Controller
                 'monthly_rent' => $unit->monthly_rent,
             ]);
 
+        $year = $request->input('year') ? (int) $request->input('year') : null;
+        $month = $request->input('month') ? (int) $request->input('month') : null;
+
         return Inertia::render('tenant/properties/dashboard', [
             'organization' => TenancyContext::organization()->only('id', 'name', 'slug'),
             'property' => [
@@ -118,7 +121,9 @@ class PropertyController extends Controller
                 'status' => $property->status,
             ],
             'units' => $units,
-            'stats' => app(DashboardService::class)->propertyStats($property),
+            'stats' => app(DashboardService::class)->propertyStats($property, $year, $month),
+            'year' => $year,
+            'month' => $month,
             'plan' => [
                 'units_limit' => $property->organization->plan?->units_limit,
             ],

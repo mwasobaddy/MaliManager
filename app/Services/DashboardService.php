@@ -12,6 +12,7 @@ use App\Models\Property;
 use App\Models\SubscriptionPayment;
 use App\Models\User;
 use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -385,23 +386,17 @@ class DashboardService extends Service
     /**
      * Build the per-property dashboard payload. Everything here is real data
      * scoped to a single property: unit composition, rent potential, open
-     * maintenance, active leases, and monthly activity (rent roll, maintenance
-     * requests, new leases).
+     * maintenance, active leases, and monthly/daily activity (rent roll,
+     * maintenance requests, new leases).
      *
      * @return array<string, mixed>
      */
-    public function propertyStats(Property $property): array
+    public function propertyStats(Property $property, ?int $year = null, ?int $month = null): array
     {
-        $now = now();
+        $year ??= (int) date('Y');
+        $labels = $this->axisLabels($year, $month);
 
-        // Last 6 month start-of-month points + short labels for the charts.
-        $monthPoints = [];
-        for ($i = 5; $i >= 0; $i--) {
-            $monthPoints[] = $now->copy()->subMonths($i)->startOfMonth();
-        }
-        $months = collect($monthPoints)->map(fn ($date) => $date->format('M'))->all();
-
-        // Unit composition.
+        // Unit composition (always current, not affected by filters).
         $units = $property->units()->get(['status', 'monthly_rent']);
         $totalUnits = $units->count();
         $occupied = $units->where('status', 'occupied')->count();
@@ -426,61 +421,122 @@ class DashboardService extends Service
             ->where('status', 'active')
             ->count();
 
-        // Monthly counts, grouped in PHP (SQLite-safe, no DATE_FORMAT).
-        $maintenanceMonthly = [];
-        foreach (MaintenanceRequest::query()
-            ->where('property_id', $property->id)
-            ->where('created_at', '>=', $monthPoints[0])
-            ->cursor(['created_at']) as $request) {
-            $month = $request->created_at->format('M');
-            $maintenanceMonthly[$month] = ($maintenanceMonthly[$month] ?? 0) + 1;
-        }
-
-        $newLeasesMonthly = [];
-        foreach (Lease::query()
-            ->where('property_id', $property->id)
-            ->where('starts_at', '>=', $monthPoints[0])
-            ->cursor(['starts_at']) as $lease) {
-            $month = $lease->starts_at->format('M');
-            $newLeasesMonthly[$month] = ($newLeasesMonthly[$month] ?? 0) + 1;
-        }
-
-        // Rent roll: sum of rent_amount for leases active during each month.
-        $leases = Lease::query()
-            ->where('property_id', $property->id)
-            ->where(function ($query) use ($monthPoints): void {
-                $query->whereNull('ends_at')
-                    ->orWhere('ends_at', '>=', $monthPoints[0]);
-            })
-            ->get(['starts_at', 'ends_at', 'rent_amount'])
+        // Available years: distinct years from leases + maintenance for this property.
+        $availableYears = collect()
+            ->concat(Lease::query()->where('property_id', $property->id)->pluck('starts_at'))
+            ->concat(MaintenanceRequest::query()->where('property_id', $property->id)->pluck('created_at'))
+            ->push(now())
+            ->map(fn ($value) => (int) value($value)->format('Y'))
+            ->unique()
+            ->sort()
+            ->values()
             ->all();
 
-        $rentRollMonthly = [];
-        foreach ($monthPoints as $monthStart) {
-            $start = $monthStart->copy()->startOfMonth();
-            $end = $monthStart->copy()->endOfMonth();
-            $roll = 0;
+        // --- Time-series aggregation ---
 
-            foreach ($leases as $lease) {
-                $leaseStart = $lease->starts_at;
-                $leaseEnd = $lease->ends_at;
+        $maintenanceSeries = [];
+        $newLeasesSeries = [];
+        $rentRollSeries = [];
 
-                if ($leaseStart && $leaseStart->lte($end)
-                    && (is_null($leaseEnd) || $leaseEnd->gte($start))) {
-                    $roll += (float) $lease->rent_amount;
-                }
+        if ($month) {
+            // Daily: aggregate by day number for the selected month.
+            $startOfMonth = Carbon::createFromDate($year, $month, 1);
+            $endOfMonth = $startOfMonth->copy()->endOfMonth();
+
+            foreach (MaintenanceRequest::query()
+                ->where('property_id', $property->id)
+                ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
+                ->cursor(['created_at']) as $request) {
+                $key = $this->formatKey($request->created_at, $month);
+                $maintenanceSeries[$key] = ($maintenanceSeries[$key] ?? 0) + 1;
             }
 
-            $rentRollMonthly[$monthStart->format('M')] = $roll;
+            foreach (Lease::query()
+                ->where('property_id', $property->id)
+                ->whereBetween('starts_at', [$startOfMonth, $endOfMonth])
+                ->cursor(['starts_at']) as $lease) {
+                $key = $this->formatKey($lease->starts_at, $month);
+                $newLeasesSeries[$key] = ($newLeasesSeries[$key] ?? 0) + 1;
+            }
+
+            // Rent roll: sum of rent for leases active on each day.
+            $activeLeasesForRent = Lease::query()
+                ->where('property_id', $property->id)
+                ->where(function ($q) use ($endOfMonth): void {
+                    $q->whereNull('ends_at')
+                        ->orWhere('ends_at', '>=', $endOfMonth->copy()->startOfDay());
+                })
+                ->where('starts_at', '<=', $endOfMonth)
+                ->get(['starts_at', 'ends_at', 'rent_amount']);
+
+            for ($day = 1; $day <= $startOfMonth->daysInMonth; $day++) {
+                $date = $startOfMonth->copy()->day($day)->startOfDay();
+                $roll = 0;
+
+                foreach ($activeLeasesForRent as $lease) {
+                    if ($lease->starts_at && $lease->starts_at->lte($date)
+                        && (is_null($lease->ends_at) || $lease->ends_at->gte($date))) {
+                        $roll += (float) $lease->rent_amount;
+                    }
+                }
+
+                $rentRollSeries[(string) $day] = $roll;
+            }
+        } else {
+            // Monthly: aggregate by month abbreviation.
+            $startOfYear = Carbon::createFromDate($year, 1, 1);
+            $endOfYear = $startOfYear->copy()->endOfYear();
+
+            foreach (MaintenanceRequest::query()
+                ->where('property_id', $property->id)
+                ->whereBetween('created_at', [$startOfYear, $endOfYear])
+                ->cursor(['created_at']) as $request) {
+                $key = $this->formatKey($request->created_at, null);
+                $maintenanceSeries[$key] = ($maintenanceSeries[$key] ?? 0) + 1;
+            }
+
+            foreach (Lease::query()
+                ->where('property_id', $property->id)
+                ->whereBetween('starts_at', [$startOfYear, $endOfYear])
+                ->cursor(['starts_at']) as $lease) {
+                $key = $this->formatKey($lease->starts_at, null);
+                $newLeasesSeries[$key] = ($newLeasesSeries[$key] ?? 0) + 1;
+            }
+
+            // Rent roll: sum of rent for leases active during each month.
+            $activeLeasesForRent = Lease::query()
+                ->where('property_id', $property->id)
+                ->where(function ($q) use ($endOfYear): void {
+                    $q->whereNull('ends_at')
+                        ->orWhere('ends_at', '>=', $endOfYear->copy()->startOfMonth());
+                })
+                ->where('starts_at', '<=', $endOfYear)
+                ->get(['starts_at', 'ends_at', 'rent_amount']);
+
+            for ($m = 1; $m <= 12; $m++) {
+                $monthStart = Carbon::createFromDate($year, $m, 1)->startOfMonth();
+                $monthEnd = $monthStart->copy()->endOfMonth();
+                $roll = 0;
+
+                foreach ($activeLeasesForRent as $lease) {
+                    if ($lease->starts_at && $lease->starts_at->lte($monthEnd)
+                        && (is_null($lease->ends_at) || $lease->ends_at->gte($monthStart))) {
+                        $roll += (float) $lease->rent_amount;
+                    }
+                }
+
+                $rentRollSeries[$monthStart->format('M')] = $roll;
+            }
         }
 
-        $operations = $this->combineAxis($months, [
-            'rent_roll' => $rentRollMonthly,
-            'maintenance' => $maintenanceMonthly,
-            'new_leases' => $newLeasesMonthly,
+        $operations = $this->combineAxis($labels, [
+            'rent_roll' => $rentRollSeries,
+            'maintenance' => $maintenanceSeries,
+            'new_leases' => $newLeasesSeries,
         ]);
 
         return [
+            'available_years' => $availableYears,
             'total_units' => $totalUnits,
             'occupied' => $occupied,
             'vacant' => $vacant,
@@ -515,7 +571,7 @@ class DashboardService extends Service
      * Return the date-format key used to group a timestamp into the correct
      * bucket on the current axis. 'M' for months (Jan, Feb…), 'j' for days (1, 2…).
      */
-    private function formatKey(Carbon $date, ?int $month): string
+    private function formatKey(CarbonInterface $date, ?int $month): string
     {
         return $month === null ? $date->format('M') : $date->format('j');
     }
@@ -524,7 +580,7 @@ class DashboardService extends Service
      * Merge several key→value maps onto a fixed x-axis so they can be
      * plotted as multiple series on one chart. Missing points are 0.
      *
-     * @param  list<string>             $axisLabels
+     * @param  list<string>  $axisLabels
      * @param  array<string, array<string, float|int>>  $series
      * @return array<int, array<string, float|int|string>>
      */
