@@ -29,5 +29,7 @@ class DatabaseSeeder extends Seeder
         $this->call(OrganizationSeeder::class);
         $this->call(StaffSeeder::class);
         $this->call(OccupantSeeder::class);
+        $this->call(PlatformFinancialSeeder::class);
+
     }
 }
