@@ -1,6 +1,8 @@
-import { Head } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
+import { History } from 'lucide-react';
 import type { AssistantArtifact } from '@/components/assistant-chart';
 import { AssistantChat } from '@/components/assistant-chat';
+import { Button } from '@/components/ui/button';
 import { ask as askRoute } from '@/routes/platform/assistant';
 
 type Props = {
@@ -41,6 +43,14 @@ export default function Assistant({ enabled, quick_prompts, initial_messages }: 
                 description="Analyse data across every organization on the platform. The assistant retrieves live data for you."
                 placeholder="Ask about the platform…"
                 initialMessages={initial_messages}
+                headerActions={
+                    <Button asChild variant="ghost" size="sm">
+                        <Link href="/platform/assistant/history" className="gap-2">
+                            <History className="size-4" />
+                            History
+                        </Link>
+                    </Button>
+                }
             />
         </>
     );

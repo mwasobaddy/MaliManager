@@ -1,5 +1,5 @@
 import { Send, SquarePen } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { type ReactNode, useRef, useState } from 'react';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,9 +24,10 @@ type Props = {
     description: string;
     placeholder?: string;
     initialMessages?: InitialMessage[];
+    headerActions?: ReactNode;
 };
 
-export function AssistantChat({ askUrl, quickPrompts, title, description, placeholder, initialMessages = [] }: Props) {
+export function AssistantChat({ askUrl, quickPrompts, title, description, placeholder, initialMessages = [], headerActions }: Props) {
     const [messages, setMessages] = useState<Message[]>(() =>
         initialMessages.map((message) => ({
             role: message.role,
@@ -120,12 +121,15 @@ export function AssistantChat({ askUrl, quickPrompts, title, description, placeh
         <div className="flex h-full flex-1 flex-col gap-4 overflow-hidden rounded-xl p-4">
             <div className="flex items-start justify-between gap-3">
                 <Heading variant="small" title={title} description={description} />
-                {hasConversation && (
-                    <Button type="button" variant="outline" size="sm" className="gap-2" onClick={startNewChat} disabled={busy}>
-                        <SquarePen className="size-4" />
-                        New chat
-                    </Button>
-                )}
+                <div className="flex items-center gap-2">
+                    {headerActions}
+                    {hasConversation && (
+                        <Button type="button" variant="outline" size="sm" className="gap-2" onClick={startNewChat} disabled={busy}>
+                            <SquarePen className="size-4" />
+                            New chat
+                        </Button>
+                    )}
+                </div>
             </div>
 
             <div className="flex min-h-0 flex-1 flex-col gap-3 rounded-xl border border-input p-4">
