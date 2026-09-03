@@ -38,7 +38,7 @@ return [
         // (scripts, event handlers, iframes, forms, etc.) is stripped by HTMLPurifier.
         'rich_text' => [
             'HTML.Doctype' => 'XHTML 1.0 Transitional',
-            'HTML.Allowed' => 'h1[style],h2[style],h3[style],h4[style],h5[style],h6[style],blockquote,p[style],br,pre,code,b,strong,i,em,u,s,strike,sub,sup,span[style],ul,ol,li,a[href|target|rel|title],img[src|alt|width|height|style],hr,table,tbody,thead,tr,td[style],th[style]',
+            'HTML.Allowed' => 'h1[style],h2[style],h3[style],h4[style],h5[style],h6[style],blockquote,p[style],br,pre,code,b,strong,i,em,u,s,strike,sub,sup,span[style],ul,ol,li,a[href|target|rel|title],img[src|alt|width|height|style|data-layout],hr,table,tbody,thead,tr,td[style],th[style]',
             'CSS.AllowedProperties' => 'color,background-color,font-family,font-size,font-weight,font-style,text-align,text-decoration,text-decoration-line,padding-left,padding-right,width,height,vertical-align,border,border-collapse,background,line-height',
             'HTML.TidyLevel' => 'light',
             'AutoFormat.AutoParagraph' => false,

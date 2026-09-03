@@ -1,6 +1,5 @@
 import Color from '@tiptap/extension-color';
 import FontFamily from '@tiptap/extension-font-family';
-import Image from '@tiptap/extension-image';
 import Link from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
 import Subscript from '@tiptap/extension-subscript';
@@ -33,6 +32,7 @@ import {
     List,
     ListOrdered,
     Minus,
+    LayoutTemplate,
     Pilcrow,
     Redo2,
     RotateCcw,
@@ -64,6 +64,8 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { LayoutImage } from '@/lib/editor/layout-image';
+import type { ImageLayout } from '@/lib/editor/layout-image';
 import { cn, sameOriginStorageUrl } from '@/lib/utils';
 
 import '../../css/editor.css';
@@ -122,6 +124,13 @@ const HIGHLIGHT_COLORS = [
     '#C7D2FE',
 ];
 
+const IMAGE_LAYOUT_OPTIONS: { label: string; value: ImageLayout }[] = [
+    { label: 'Inline', value: 'inline' },
+    { label: 'Float left', value: 'float-left' },
+    { label: 'Float right', value: 'float-right' },
+    { label: 'Block (own line)', value: 'block' },
+];
+
 type EditorToolbarState = {
     fontFamily: string;
     fontSize: string;
@@ -146,6 +155,7 @@ type EditorToolbarState = {
     isLink: boolean;
     isTable: boolean;
     isImage: boolean;
+    imageLayout: ImageLayout;
 };
 
 const DEFAULT_TOOLBAR_STATE: EditorToolbarState = {
@@ -172,6 +182,7 @@ const DEFAULT_TOOLBAR_STATE: EditorToolbarState = {
     isLink: false,
     isTable: false,
     isImage: false,
+    imageLayout: 'block',
 };
 
 function ToolbarButton({
@@ -248,8 +259,8 @@ export default function RichTextEditor({
             FontSize,
             FontFamily,
             TextAlign.configure({ types: ['heading', 'paragraph'] }),
-            Image.configure({
-                inline: false,
+            LayoutImage.configure({
+                inline: true,
                 allowBase64: false,
                 resize: { enabled: true, minWidth: 50, minHeight: 50 },
             }),
@@ -325,6 +336,7 @@ export default function RichTextEditor({
                 isLink: e.isActive('link'),
                 isTable: e.isActive('table'),
                 isImage: e.isActive('image'),
+                imageLayout: (e.getAttributes('image').layout ?? 'block') as ImageLayout,
             };
         },
     }) as EditorToolbarState;
@@ -778,6 +790,45 @@ export default function RichTextEditor({
                     icon={<Crop className="size-4" />}
                     title="Crop selected image"
                 />
+
+                {/* Image layout */}
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 rounded-md"
+                            disabled={!toolbar.isImage}
+                            aria-label="Image layout"
+                        >
+                            <LayoutTemplate className="size-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-48">
+                        <DropdownMenuLabel>Image layout</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        {IMAGE_LAYOUT_OPTIONS.map((option) => (
+                            <DropdownMenuItem
+                                key={option.value}
+                                onSelect={() => {
+                                    editor?.chain().focus().setImageLayout(option.value).run();
+                                }}
+                            >
+                                <div className="flex items-center gap-2">
+                                    <span
+                                        className={cn(
+                                            'size-3 rounded-sm border',
+                                            toolbar.imageLayout === option.value &&
+                                                'bg-primary',
+                                        )}
+                                    />
+                                    {option.label}
+                                </div>
+                            </DropdownMenuItem>
+                        ))}
+                    </DropdownMenuContent>
+                </DropdownMenu>
                 <input
                     ref={fileInputRef}
                     type="file"
