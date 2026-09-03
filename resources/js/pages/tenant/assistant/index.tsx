@@ -1,9 +1,9 @@
 import { Head, Link } from '@inertiajs/react';
 import { History } from 'lucide-react';
-import type { AssistantArtifact } from '@/components/assistant-chart';
+import { AssistantChart, type AssistantArtifact } from '@/components/assistant-chart';
 import { AssistantChat } from '@/components/assistant-chat';
 import { Button } from '@/components/ui/button';
-import { ask as askRoute } from '@/routes/platform/assistant';
+import { ask as askRoute } from '@/routes/tenant/assistant';
 
 type Props = {
     enabled: boolean;
@@ -12,21 +12,22 @@ type Props = {
 };
 
 const DEFAULT_PROMPTS = [
-    'How many organizations are active on the platform?',
-    'What is the total occupied vs vacant unit ratio across all orgs?',
-    'Which organizations have the most open maintenance requests?',
-    'Total rent potential collected vs outstanding, platform-wide.',
-    'Leases expiring in the next 60 days across all organizations.',
+    'How many units are vacant right now, by property?',
+    'What rent is outstanding this month?',
+    'Which leases expire in the next 60 days?',
+    'Show my open maintenance backlog by priority.',
+    'Summarise expenses by category this year.',
 ];
 
-export default function Assistant({ enabled, quick_prompts, initial_messages }: Props) {
+export default function Assistant({ enabled, quick_prompts }: Props) {
     if (!enabled) {
         return (
             <>
-                <Head title="Platform assistant" />
+                <Head title="AI assistant" />
                 <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
                     <p className="text-sm text-muted-foreground">
-                        The platform assistant is not configured. Add a personal API key in Settings → AI, or configure a platform-wide key.
+                        AI is not configured yet. An owner can add an API key under Organization → AI settings, or you can add a personal
+                        key in Settings → AI.
                     </p>
                 </div>
             </>
@@ -35,17 +36,17 @@ export default function Assistant({ enabled, quick_prompts, initial_messages }: 
 
     return (
         <>
-            <Head title="Platform assistant" />
+            <Head title="AI assistant" />
             <AssistantChat
                 askUrl={askRoute().url}
                 quickPrompts={quick_prompts ?? DEFAULT_PROMPTS}
-                title="Platform assistant"
-                description="Analyse data across every organization on the platform. The assistant retrieves live data for you."
-                placeholder="Ask about the platform…"
+                title="AI assistant"
+                description="Ask about your portfolio — vacancy, expenses, leases, maintenance. The assistant retrieves live data for you."
+                placeholder="Ask about your portfolio…"
                 initialMessages={initial_messages}
                 headerActions={
                     <Button asChild variant="ghost" size="sm">
-                        <Link href="/platform/assistant/history" className="gap-2">
+                        <Link href="/assistant/history" className="gap-2">
                             <History className="size-4" />
                             History
                         </Link>
