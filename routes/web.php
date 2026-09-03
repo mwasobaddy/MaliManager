@@ -28,6 +28,17 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     Route::post('admin/assistant/ask', [AssistantController::class, 'ask'])
         ->middleware('can:aiUse')
         ->name('admin.assistant.ask');
+
+    // Assistant conversation history.
+    Route::get('admin/assistant/history', [AssistantController::class, 'history'])
+        ->middleware('can:aiUse')
+        ->name('admin.assistant.history');
+    Route::get('admin/assistant/conversations/{id}', [AssistantController::class, 'showConversation'])
+        ->middleware('can:aiUse')
+        ->name('admin.assistant.conversation');
+    Route::delete('admin/assistant/conversations/{id}', [AssistantController::class, 'destroyConversation'])
+        ->middleware('can:aiUse')
+        ->name('admin.assistant.conversation.destroy');
 });
 
 // Platform-wide audit view is gated by the central `viewAnyAudit` gate
@@ -108,6 +119,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('searcher/assistant/ask', [SearcherAssistantController::class, 'ask'])
         ->middleware('can:aiUse')
         ->name('searcher.assistant.ask');
+
+    // Assistant conversation history.
+    Route::get('searcher/assistant/history', [SearcherAssistantController::class, 'history'])
+        ->middleware('can:aiUse')
+        ->name('searcher.assistant.history');
+    Route::get('searcher/assistant/conversations/{id}', [SearcherAssistantController::class, 'showConversation'])
+        ->middleware('can:aiUse')
+        ->name('searcher.assistant.conversation');
+    Route::delete('searcher/assistant/conversations/{id}', [SearcherAssistantController::class, 'destroyConversation'])
+        ->middleware('can:aiUse')
+        ->name('searcher.assistant.conversation.destroy');
 });
 
 // Global command-palette search. Tenant-aware on tenant domains (resolved

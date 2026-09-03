@@ -23,6 +23,17 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     Route::post('platform/assistant/ask', [AssistantController::class, 'ask'])
         ->middleware('can:aiUse')
         ->name('platform.assistant.ask');
+
+    // Assistant conversation history.
+    Route::get('platform/assistant/history', [AssistantController::class, 'history'])
+        ->middleware('can:aiUse')
+        ->name('platform.assistant.history');
+    Route::get('platform/assistant/conversations/{id}', [AssistantController::class, 'showConversation'])
+        ->middleware('can:aiUse')
+        ->name('platform.assistant.conversation');
+    Route::delete('platform/assistant/conversations/{id}', [AssistantController::class, 'destroyConversation'])
+        ->middleware('can:aiUse')
+        ->name('platform.assistant.conversation.destroy');
 });
 
 // Platform-wide audit view is gated by the central `viewAnyAudit` gate

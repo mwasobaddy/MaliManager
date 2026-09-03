@@ -135,6 +135,17 @@ Route::middleware([
                 ->middleware('sub-permission:ai.use')
                 ->name('tenant.assistant.ask');
 
+            // Assistant conversation history.
+            Route::get('/assistant/history', [AssistantController::class, 'history'])
+                ->middleware('sub-permission:ai.use')
+                ->name('tenant.assistant.history');
+            Route::get('/assistant/conversations/{id}', [AssistantController::class, 'showConversation'])
+                ->middleware('sub-permission:ai.use')
+                ->name('tenant.assistant.conversation');
+            Route::delete('/assistant/conversations/{id}', [AssistantController::class, 'destroyConversation'])
+                ->middleware('sub-permission:ai.use')
+                ->name('tenant.assistant.conversation.destroy');
+
             // Content drafting studio.
             Route::get('/drafting', [DraftingController::class, 'page'])
                 ->name('tenant.drafting.page');
