@@ -64,6 +64,32 @@
     outline: 2px solid var(--ring);
 }
 
+/* --- Image layouts (via data-layout on the <img>) ---
+   Images are inline-capable so they can sit within a sentence of text. The
+   layout attribute tunes how each one is placed:
+   - inline      : sits on the text baseline inside a paragraph
+   - float-left  : floats left, surrounding text wraps around it
+   - float-right : floats right, surrounding text wraps around it
+   - block       : forced onto its own line, centred
+   (Note: data-layout is on the allowlist in config/purifier.php.) */
+.md-editor .md-editor__content img[data-layout='block'] {
+    display: block;
+    margin: 0.5rem auto;
+}
+.md-editor .md-editor__content img[data-layout='inline'] {
+    display: inline-block;
+    vertical-align: baseline;
+    margin: 0 0.25rem;
+}
+.md-editor .md-editor__content img[data-layout='float-left'] {
+    float: left;
+    margin: 0.25rem 1rem 0.5rem 0;
+}
+.md-editor .md-editor__content img[data-layout='float-right'] {
+    float: right;
+    margin: 0.25rem 0 0.5rem 1rem;
+}
+
 /* Resize corner handles injected by the built-in resizable image node view.
    They are positioned at the 4 corners; show them only while the image is
    selected (or actively being resized) so they don't clutter every image. */
