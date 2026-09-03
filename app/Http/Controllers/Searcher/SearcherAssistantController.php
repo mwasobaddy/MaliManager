@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Searcher;
 
+use App\Concerns\HandlesConversationHistory;
 use App\Enums\AiFeature;
 use App\Exceptions\AssistantUnavailableException;
 use App\Http\Controllers\Controller;
@@ -22,6 +23,8 @@ use Inertia\Response;
  */
 class SearcherAssistantController extends Controller
 {
+    use HandlesConversationHistory;
+
     public function __construct(
         private AssistantService $assistant,
         private AiGateway $gateway,
@@ -50,6 +53,7 @@ class SearcherAssistantController extends Controller
             'question' => ['required', 'string', 'max:1000'],
             'conversation_id' => ['nullable', 'integer'],
             'new_conversation' => ['nullable', 'boolean'],
+            'title' => ['nullable', 'string', 'max:255'],
         ]);
 
         $user = $request->user();
@@ -60,6 +64,11 @@ class SearcherAssistantController extends Controller
 
         $scope = Scope::person($user->person_id, $user->id);
         $conversation = AiConversation::resolve($user, $scope, $validated['conversation_id'] ?? null, (bool) ($validated['new_conversation'] ?? false));
+
+        // Set title on new conversations.
+        if ($conversation->wasRecentlyCreated && ! empty($validated['title'])) {
+            $conversation->update(['title' => $validated['title']]);
+        }
 
         $history = $this->historyFor($conversation);
 
@@ -125,5 +134,32 @@ class SearcherAssistantController extends Controller
                 'content' => $message->content,
             ])
             ->all();
+    }
+
+    protected function scopeForHistory(Request $request): Scope
+    {
+        $user = $request->user();
+
+        return Scope::person($user->person_id, $user->id);
+    }
+
+    protected function historyView(): string
+    {
+        return 'searcher/assistant/history';
+    }
+
+    protected function conversationView(): string
+    {
+        return 'searcher/assistant/conversation';
+    }
+
+    protected function historyRoute(): string
+    {
+        return 'searcher.assistant.history';
+    }
+
+    protected function askRouteUrl(Request $request): string
+    {
+        return route('searcher.assistant.ask');
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Tenant;
 
+use App\Concerns\HandlesConversationHistory;
 use App\Enums\AiFeature;
 use App\Exceptions\AssistantUnavailableException;
 use App\Http\Controllers\Controller;
@@ -23,6 +24,8 @@ use Inertia\Response;
  */
 class AssistantController extends Controller
 {
+    use HandlesConversationHistory;
+
     public function __construct(
         private AssistantService $assistant,
         private AiGateway $gateway,
@@ -52,6 +55,7 @@ class AssistantController extends Controller
             'question' => ['required', 'string', 'max:1000'],
             'conversation_id' => ['nullable', 'integer'],
             'new_conversation' => ['nullable', 'boolean'],
+            'title' => ['nullable', 'string', 'max:255'],
         ]);
 
         $organization = TenancyContext::organization();
@@ -62,6 +66,11 @@ class AssistantController extends Controller
 
         $scope = Scope::org($organization->id);
         $conversation = AiConversation::resolve($request->user(), $scope, $validated['conversation_id'] ?? null, (bool) ($validated['new_conversation'] ?? false));
+
+        // Set title on new conversations.
+        if ($conversation->wasRecentlyCreated && ! empty($validated['title'])) {
+            $conversation->update(['title' => $validated['title']]);
+        }
 
         $history = $this->historyFor($conversation);
 
@@ -127,5 +136,32 @@ class AssistantController extends Controller
                 'content' => $message->content,
             ])
             ->all();
+    }
+
+    protected function scopeForHistory(Request $request): Scope
+    {
+        $organization = TenancyContext::organization();
+
+        return Scope::org($organization?->id ?? 0);
+    }
+
+    protected function historyView(): string
+    {
+        return 'tenant/assistant/history';
+    }
+
+    protected function conversationView(): string
+    {
+        return 'tenant/assistant/conversation';
+    }
+
+    protected function historyRoute(): string
+    {
+        return 'tenant.assistant.history';
+    }
+
+    protected function askRouteUrl(Request $request): string
+    {
+        return route('tenant.assistant.ask');
     }
 }
