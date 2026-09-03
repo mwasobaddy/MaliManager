@@ -3,6 +3,7 @@
 use App\Enums\PlatformRole;
 use App\Models\Organization;
 use App\Models\SubRole;
+use App\Models\SubscriptionPayment;
 use App\Models\User;
 use App\Services\StaffService;
 use Database\Seeders\RolesAndPermissionsSeeder;
@@ -12,7 +13,7 @@ uses(RefreshDatabase::class);
 
 function makeOnboardedUser(): User
 {
-    return User::factory()->create(['onboarded_at' => now()]);
+    return User::factory()->create(['onboarded_at' => now(), 'email_verified_at' => now()]);
 }
 
 it('shows admin stats only to users with the advanced metrics permission', function () {
@@ -99,6 +100,29 @@ it('builds real monthly series and ytd totals for the admin payload', function (
             ->where('admin.financials_monthly.0.label', 'Jan')
             ->has('admin.financials_monthly.0.income')
             ->has('admin.financials_monthly.0.expenses'));
+});
+
+it('returns daily labels when a month filter is selected', function () {
+    $this->seed(RolesAndPermissionsSeeder::class);
+
+    $admin = makeOnboardedUser();
+    $admin->assignRole(PlatformRole::Admin->value);
+
+    SubscriptionPayment::factory()->create([
+        'received_on' => '2026-03-15',
+        'amount' => 100,
+    ]);
+
+    $this->actingAs($admin)
+        ->get(route('dashboard', ['year' => 2026, 'month' => 3]))
+        ->assertInertia(fn ($page) => $page
+            ->has('admin.financials_monthly.0')
+            ->where('admin.financials_monthly.0.label', '1')
+            ->where('admin.financials_monthly.14.label', '15')
+            ->where('admin.financials_monthly.14.income', 100)
+            ->has('admin.financials_monthly.30')
+            ->where('admin.financials_monthly.30.label', '31')
+            ->has('admin.income_total'));
 });
 
 it('builds merged operations series for the organization payload', function () {
