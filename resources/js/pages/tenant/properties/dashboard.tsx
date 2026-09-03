@@ -1,4 +1,4 @@
-import { Form, Head, Link } from '@inertiajs/react';
+import { Form, Head, Link, router } from '@inertiajs/react';
 import {
     AlertTriangle,
     Banknote,
@@ -19,18 +19,27 @@ import {
     ResponsiveContainer,
     Tooltip,
 } from 'recharts';
+import type { ComboPoint } from '@/components/dashboard/combo-chart';
+import { ComboChart } from '@/components/dashboard/combo-chart';
+import { StatsCards } from '@/components/dashboard/stats-cards';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
-import { StatsCards } from '@/components/dashboard/stats-cards';
-import { ComboChart } from '@/components/dashboard/combo-chart';
-import type { ComboPoint } from '@/components/dashboard/combo-chart';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { index } from '@/routes/tenant/properties';
 import { store as storeUnit } from '@/routes/tenant/properties/units';
+
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 type Property = {
     id: number;
@@ -60,6 +69,7 @@ type UnitStatus = {
 };
 
 type PropertyStat = {
+    available_years: number[];
     total_units: number;
     occupied: number;
     vacant: number;
@@ -77,14 +87,38 @@ type Props = {
     units: Unit[];
     stats: PropertyStat;
     plan: Plan;
+    year: number | null;
+    month: number | null;
 };
 
-export default function PropertiesDashboard({ property, units, stats, plan }: Props) {
+export default function PropertiesDashboard({ property, units, stats, plan, year, month }: Props) {
     const [addUnit, setAddUnit] = useState(false);
+    const [filterYear, setFilterYear] = useState<string>(year ? String(year) : '');
+    const [filterMonth, setFilterMonth] = useState<string>(month ? String(month) : '');
     const atUnitLimit =
         plan.units_limit !== null && units.length >= plan.units_limit;
 
     const ccy = (value: number) => Number(value).toLocaleString();
+
+    const updateFilters = (newYear: string, newMonth: string) => {
+        setFilterYear(newYear);
+        setFilterMonth(newMonth);
+
+        const params: Record<string, string> = {};
+
+        if (newYear) {
+            params.year = newYear;
+        }
+
+        if (newMonth) {
+            params.month = newMonth;
+        }
+
+        router.get(window.location.pathname, params, {
+            preserveState: true,
+            replace: true,
+        });
+    };
 
 
     return (
@@ -106,6 +140,49 @@ export default function PropertiesDashboard({ property, units, stats, plan }: Pr
                     <Button asChild variant="outline">
                         <Link href={index()}>All properties</Link>
                     </Button>
+
+                    <div className="flex items-center gap-2">
+                        <Select
+                            value={filterYear}
+                            onValueChange={(value) => updateFilters(value, filterMonth)}
+                        >
+                            <SelectTrigger className="w-[100px]">
+                                <SelectValue placeholder="Year" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {stats.available_years.map((y) => (
+                                    <SelectItem
+                                        key={y}
+                                        value={String(y)}
+                                    >
+                                        {y}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+
+                        <Select
+                            value={filterMonth}
+                            onValueChange={(value) => updateFilters(filterYear, value)}
+                        >
+                            <SelectTrigger className="w-[110px]">
+                                <SelectValue placeholder="All months" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="">
+                                    All months
+                                </SelectItem>
+                                {MONTHS.map((name, index) => (
+                                    <SelectItem
+                                        key={index}
+                                        value={String(index + 1)}
+                                    >
+                                        {name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
                 </div>
 
                 <StatsCards

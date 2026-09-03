@@ -136,7 +136,7 @@ test('property dashboard shows real stats and charts', function () {
             ->where('stats.rent_potential', 100000)
             ->where('stats.unit_status.0.status', 'occupied')
             ->where('stats.unit_status.0.count', 1)
-            ->where('stats.operations_monthly', fn ($rows) => collect($rows)->count() === 6));
+            ->where('stats.operations_monthly', fn ($rows) => collect($rows)->count() === 12));
 });
 
 test('free plan property limit prevents a second property', function () {
