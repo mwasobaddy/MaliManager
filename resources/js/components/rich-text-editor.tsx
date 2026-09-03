@@ -64,7 +64,7 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { cn } from '@/lib/utils';
+import { cn, sameOriginStorageUrl } from '@/lib/utils';
 
 import '../../css/editor.css';
 import ImageCropDialog from './image-crop-dialog';
@@ -452,7 +452,10 @@ export default function RichTextEditor({
             return;
         }
 
-        setCropTarget({ src: attrs.src, alt: attrs.alt ?? '' });
+        // The inserted image lives on the central domain (/storage/...), which
+        // is cross-origin from a tenant subdomain. Rewrite it to the current
+        // host so the crop canvas can read the pixels without CORS.
+        setCropTarget({ src: sameOriginStorageUrl(attrs.src), alt: attrs.alt ?? '' });
     }
 
     async function applyCroppedImage(file: File) {
