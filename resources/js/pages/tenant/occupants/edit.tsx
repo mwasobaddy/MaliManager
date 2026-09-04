@@ -1,10 +1,11 @@
 import { Form, Head, Link, usePage } from '@inertiajs/react';
 import { DoorOpen, LogOut, Trash2 } from 'lucide-react';
 import { useRef, useState } from 'react';
+import DocumentBuilder from '@/components/document-builder';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import PasswordInput from '@/components/password-input';
-import RichTextEditor from '@/components/rich-text-editor';
+import type { TemplateToken } from '@/components/rich-text-editor';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -94,26 +95,43 @@ type Props = {
     occupant: Occupant;
     units: Unit[];
     templates: GroupedTemplates;
+    availableTokens?: TemplateToken[];
 };
 
-export default function OccupantEdit({ organization, property, occupant, units, templates }: Props) {
+export default function OccupantEdit({
+    organization,
+    property,
+    occupant,
+    units,
+    templates,
+    availableTokens,
+}: Props) {
     const { context } = usePage().props;
     const permissions = context?.permissions ?? [];
     const canDelete = permissions.includes('occupant.delete');
     const canMoveOut = permissions.includes('occupant.edit');
     const passwordInput = useRef<HTMLInputElement>(null);
     const [templateGroups] = useState<GroupedTemplates>(templates);
-    const templateList = [...templateGroups.property, ...templateGroups.organization];
+    const templateList = [
+        ...templateGroups.property,
+        ...templateGroups.organization,
+    ];
     const [selectedTemplateId, setSelectedTemplateId] = useState('');
     const [status, setStatus] = useState(occupant.status);
     const [unitIds, setUnitIds] = useState<number[]>(occupant.unit_ids);
-    const [rentFrequency, setRentFrequency] = useState(occupant.lease?.rent_frequency ?? 'monthly');
+    const [rentFrequency, setRentFrequency] = useState(
+        occupant.lease?.rent_frequency ?? 'monthly',
+    );
     const [currency, setCurrency] = useState(occupant.lease?.currency ?? 'KES');
-    const [agreementText, setAgreementText] = useState(occupant.lease?.agreement_text ?? '<p></p>');
+    const [agreementText, setAgreementText] = useState(
+        occupant.lease?.agreement_text ?? '<p></p>',
+    );
 
     const toggleUnit = (id: number) => {
         setUnitIds((prev) =>
-            prev.includes(id) ? prev.filter((uid) => uid !== id) : [...prev, id],
+            prev.includes(id)
+                ? prev.filter((uid) => uid !== id)
+                : [...prev, id],
         );
     };
 
@@ -143,16 +161,26 @@ export default function OccupantEdit({ organization, property, occupant, units, 
                         description={`Update ${property.name} occupant details and unit assignments.`}
                     />
                     <Button asChild variant="outline">
-                        <Link href={occupantsIndex(property.slug)}>Back to occupants</Link>
+                        <Link href={occupantsIndex(property.slug)}>
+                            Back to occupants
+                        </Link>
                     </Button>
                 </div>
 
-                <Form {...update.form({ property: property.slug, occupant: occupant.id })} className="space-y-6">
+                <Form
+                    {...update.form({
+                        property: property.slug,
+                        occupant: occupant.id,
+                    })}
+                    className="space-y-6"
+                >
                     {({ processing, errors }) => (
                         <>
                             <div className="grid gap-6 rounded-xl border border-input p-6 md:grid-cols-2">
                                 <div className="grid gap-2">
-                                    <Label htmlFor="first_name">First name</Label>
+                                    <Label htmlFor="first_name">
+                                        First name
+                                    </Label>
                                     <Input
                                         id="first_name"
                                         name="first_name"
@@ -165,7 +193,9 @@ export default function OccupantEdit({ organization, property, occupant, units, 
                                 </div>
 
                                 <div className="grid gap-2">
-                                    <Label htmlFor="last_name">Last name (optional)</Label>
+                                    <Label htmlFor="last_name">
+                                        Last name (optional)
+                                    </Label>
                                     <Input
                                         id="last_name"
                                         name="last_name"
@@ -190,7 +220,9 @@ export default function OccupantEdit({ organization, property, occupant, units, 
                                 </div>
 
                                 <div className="grid gap-2">
-                                    <Label htmlFor="phone">Phone (optional)</Label>
+                                    <Label htmlFor="phone">
+                                        Phone (optional)
+                                    </Label>
                                     <Input
                                         id="phone"
                                         name="phone"
@@ -202,28 +234,48 @@ export default function OccupantEdit({ organization, property, occupant, units, 
                                 </div>
 
                                 <div className="grid gap-2">
-                                    <Label htmlFor="national_id">National ID (optional)</Label>
+                                    <Label htmlFor="national_id">
+                                        National ID (optional)
+                                    </Label>
                                     <Input
                                         id="national_id"
                                         name="national_id"
                                         type="text"
                                         autoComplete="off"
-                                        defaultValue={occupant.national_id ?? ''}
+                                        defaultValue={
+                                            occupant.national_id ?? ''
+                                        }
                                     />
                                     <InputError message={errors.national_id} />
                                 </div>
 
                                 <div className="grid gap-2">
                                     <Label htmlFor="status">Status</Label>
-                                    <input type="hidden" name="status" value={status} />
-                                    <Select value={status} onValueChange={setStatus}>
-                                        <SelectTrigger id="status" className="w-full">
+                                    <input
+                                        type="hidden"
+                                        name="status"
+                                        value={status}
+                                    />
+                                    <Select
+                                        value={status}
+                                        onValueChange={setStatus}
+                                    >
+                                        <SelectTrigger
+                                            id="status"
+                                            className="w-full"
+                                        >
                                             <SelectValue placeholder="Select a status" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="active">Active</SelectItem>
-                                            <SelectItem value="inactive">Inactive</SelectItem>
-                                            <SelectItem value="moved_out">Moved out</SelectItem>
+                                            <SelectItem value="active">
+                                                Active
+                                            </SelectItem>
+                                            <SelectItem value="inactive">
+                                                Inactive
+                                            </SelectItem>
+                                            <SelectItem value="moved_out">
+                                                Moved out
+                                            </SelectItem>
                                         </SelectContent>
                                     </Select>
                                     <InputError message={errors.status} />
@@ -238,74 +290,141 @@ export default function OccupantEdit({ organization, property, occupant, units, 
                                 />
                                 <div className="grid gap-6 md:grid-cols-2">
                                     <div className="grid gap-2">
-                                        <Label htmlFor="lease.starts_at">Lease start date</Label>
+                                        <Label htmlFor="lease.starts_at">
+                                            Lease start date
+                                        </Label>
                                         <Input
                                             id="lease.starts_at"
                                             name="lease[starts_at]"
                                             type="date"
-                                            defaultValue={occupant.lease?.starts_at ?? ''}
+                                            defaultValue={
+                                                occupant.lease?.starts_at ?? ''
+                                            }
                                         />
-                                        <InputError message={errors['lease.starts_at']} />
+                                        <InputError
+                                            message={errors['lease.starts_at']}
+                                        />
                                     </div>
 
                                     <div className="grid gap-2">
-                                        <Label htmlFor="lease.rent_frequency">Rent frequency</Label>
-                                        <input type="hidden" name="lease[rent_frequency]" value={rentFrequency} />
-                                        <Select value={rentFrequency} onValueChange={setRentFrequency}>
-                                            <SelectTrigger id="lease.rent_frequency" className="w-full">
+                                        <Label htmlFor="lease.rent_frequency">
+                                            Rent frequency
+                                        </Label>
+                                        <input
+                                            type="hidden"
+                                            name="lease[rent_frequency]"
+                                            value={rentFrequency}
+                                        />
+                                        <Select
+                                            value={rentFrequency}
+                                            onValueChange={setRentFrequency}
+                                        >
+                                            <SelectTrigger
+                                                id="lease.rent_frequency"
+                                                className="w-full"
+                                            >
                                                 <SelectValue placeholder="Select frequency" />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="daily">Daily</SelectItem>
-                                                <SelectItem value="weekly">Weekly</SelectItem>
-                                                <SelectItem value="monthly">Monthly</SelectItem>
-                                                <SelectItem value="yearly">Yearly</SelectItem>
+                                                <SelectItem value="daily">
+                                                    Daily
+                                                </SelectItem>
+                                                <SelectItem value="weekly">
+                                                    Weekly
+                                                </SelectItem>
+                                                <SelectItem value="monthly">
+                                                    Monthly
+                                                </SelectItem>
+                                                <SelectItem value="yearly">
+                                                    Yearly
+                                                </SelectItem>
                                             </SelectContent>
                                         </Select>
-                                        <InputError message={errors['lease.rent_frequency']} />
+                                        <InputError
+                                            message={
+                                                errors['lease.rent_frequency']
+                                            }
+                                        />
                                     </div>
 
                                     <div className="grid gap-2">
-                                        <Label htmlFor="lease.rent_amount">Rent amount</Label>
+                                        <Label htmlFor="lease.rent_amount">
+                                            Rent amount
+                                        </Label>
                                         <Input
                                             id="lease.rent_amount"
                                             name="lease[rent_amount]"
                                             type="number"
                                             min="0"
                                             step="0.01"
-                                            defaultValue={occupant.lease?.rent_amount ?? ''}
+                                            defaultValue={
+                                                occupant.lease?.rent_amount ??
+                                                ''
+                                            }
                                         />
-                                        <InputError message={errors['lease.rent_amount']} />
+                                        <InputError
+                                            message={
+                                                errors['lease.rent_amount']
+                                            }
+                                        />
                                     </div>
 
                                     <div className="grid gap-2">
-                                        <Label htmlFor="lease.deposit">Deposit</Label>
+                                        <Label htmlFor="lease.deposit">
+                                            Deposit
+                                        </Label>
                                         <Input
                                             id="lease.deposit"
                                             name="lease[deposit]"
                                             type="number"
                                             min="0"
                                             step="0.01"
-                                            defaultValue={occupant.lease?.deposit ?? ''}
+                                            defaultValue={
+                                                occupant.lease?.deposit ?? ''
+                                            }
                                         />
-                                        <InputError message={errors['lease.deposit']} />
+                                        <InputError
+                                            message={errors['lease.deposit']}
+                                        />
                                     </div>
 
                                     <div className="grid gap-2">
-                                        <Label htmlFor="lease.currency">Currency</Label>
-                                        <input type="hidden" name="lease[currency]" value={currency} />
-                                        <Select value={currency} onValueChange={setCurrency}>
-                                            <SelectTrigger id="lease.currency" className="w-full">
+                                        <Label htmlFor="lease.currency">
+                                            Currency
+                                        </Label>
+                                        <input
+                                            type="hidden"
+                                            name="lease[currency]"
+                                            value={currency}
+                                        />
+                                        <Select
+                                            value={currency}
+                                            onValueChange={setCurrency}
+                                        >
+                                            <SelectTrigger
+                                                id="lease.currency"
+                                                className="w-full"
+                                            >
                                                 <SelectValue placeholder="Select currency" />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="KES">KES</SelectItem>
-                                                <SelectItem value="USD">USD</SelectItem>
-                                                <SelectItem value="EUR">EUR</SelectItem>
-                                                <SelectItem value="GBP">GBP</SelectItem>
+                                                <SelectItem value="KES">
+                                                    KES
+                                                </SelectItem>
+                                                <SelectItem value="USD">
+                                                    USD
+                                                </SelectItem>
+                                                <SelectItem value="EUR">
+                                                    EUR
+                                                </SelectItem>
+                                                <SelectItem value="GBP">
+                                                    GBP
+                                                </SelectItem>
                                             </SelectContent>
                                         </Select>
-                                        <InputError message={errors['lease.currency']} />
+                                        <InputError
+                                            message={errors['lease.currency']}
+                                        />
                                     </div>
 
                                     <div className="grid gap-2 md:col-span-2">
@@ -315,32 +434,74 @@ export default function OccupantEdit({ organization, property, occupant, units, 
 
                                         {templateList.length > 0 && (
                                             <div className="grid gap-1">
-                                                <Label htmlFor="template_picker" className="text-xs text-muted-foreground">
+                                                <Label
+                                                    htmlFor="template_picker"
+                                                    className="text-xs text-muted-foreground"
+                                                >
                                                     Start from a saved template
                                                 </Label>
-                                                <Select value={selectedTemplateId} onValueChange={applyTemplate}>
+                                                <Select
+                                                    value={selectedTemplateId}
+                                                    onValueChange={
+                                                        applyTemplate
+                                                    }
+                                                >
                                                     <SelectTrigger id="template_picker">
                                                         <SelectValue placeholder="Pick a template…" />
                                                     </SelectTrigger>
                                                     <SelectContent>
-                                                        {templateGroups.property.length > 0 && (
+                                                        {templateGroups.property
+                                                            .length > 0 && (
                                                             <SelectGroup>
-                                                                <SelectLabel>This property</SelectLabel>
-                                                                {templateGroups.property.map((template) => (
-                                                                    <SelectItem key={template.id} value={String(template.id)}>
-                                                                        {template.name}
-                                                                    </SelectItem>
-                                                                ))}
+                                                                <SelectLabel>
+                                                                    This
+                                                                    property
+                                                                </SelectLabel>
+                                                                {templateGroups.property.map(
+                                                                    (
+                                                                        template,
+                                                                    ) => (
+                                                                        <SelectItem
+                                                                            key={
+                                                                                template.id
+                                                                            }
+                                                                            value={String(
+                                                                                template.id,
+                                                                            )}
+                                                                        >
+                                                                            {
+                                                                                template.name
+                                                                            }
+                                                                        </SelectItem>
+                                                                    ),
+                                                                )}
                                                             </SelectGroup>
                                                         )}
-                                                        {templateGroups.organization.length > 0 && (
+                                                        {templateGroups
+                                                            .organization
+                                                            .length > 0 && (
                                                             <SelectGroup>
-                                                                <SelectLabel>Organization-wide</SelectLabel>
-                                                                {templateGroups.organization.map((template) => (
-                                                                    <SelectItem key={template.id} value={String(template.id)}>
-                                                                        {template.name}
-                                                                    </SelectItem>
-                                                                ))}
+                                                                <SelectLabel>
+                                                                    Organization-wide
+                                                                </SelectLabel>
+                                                                {templateGroups.organization.map(
+                                                                    (
+                                                                        template,
+                                                                    ) => (
+                                                                        <SelectItem
+                                                                            key={
+                                                                                template.id
+                                                                            }
+                                                                            value={String(
+                                                                                template.id,
+                                                                            )}
+                                                                        >
+                                                                            {
+                                                                                template.name
+                                                                            }
+                                                                        </SelectItem>
+                                                                    ),
+                                                                )}
                                                             </SelectGroup>
                                                         )}
                                                     </SelectContent>
@@ -348,22 +509,29 @@ export default function OccupantEdit({ organization, property, occupant, units, 
                                             </div>
                                         )}
 
-                                        <RichTextEditor
+                                        <DocumentBuilder
                                             name="lease[agreement_text]"
                                             value={agreementText}
                                             onChange={setAgreementText}
                                             placeholder="Write the lease agreement. Formatting is preserved."
+                                            availableTokens={availableTokens}
                                         />
 
-                                        {occupant.lease?.agreement_document_url && (
+                                        {occupant.lease
+                                            ?.agreement_document_url && (
                                             <div className="flex items-center gap-3 text-sm">
                                                 <a
-                                                    href={occupant.lease.agreement_document_url}
+                                                    href={
+                                                        occupant.lease
+                                                            .agreement_document_url
+                                                    }
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                     className="text-primary underline"
                                                 >
-                                                    {occupant.lease.agreement_document_name ?? 'Uploaded agreement'}
+                                                    {occupant.lease
+                                                        .agreement_document_name ??
+                                                        'Uploaded agreement'}
                                                 </a>
                                                 <label className="flex items-center gap-1 text-muted-foreground">
                                                     <input
@@ -378,7 +546,8 @@ export default function OccupantEdit({ organization, property, occupant, units, 
 
                                         <div className="grid gap-2">
                                             <Label htmlFor="lease.agreement_document">
-                                                {occupant.lease?.agreement_document_url
+                                                {occupant.lease
+                                                    ?.agreement_document_url
                                                     ? 'Replace with a new file (PDF/DOCX, max 10MB)'
                                                     : 'Or upload a ready-made agreement (PDF/DOCX, max 10MB)'}
                                             </Label>
@@ -388,30 +557,57 @@ export default function OccupantEdit({ organization, property, occupant, units, 
                                                 type="file"
                                                 accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                                             />
-                                            <InputError message={errors['lease.agreement_document']} />
+                                            <InputError
+                                                message={
+                                                    errors[
+                                                        'lease.agreement_document'
+                                                    ]
+                                                }
+                                            />
                                         </div>
 
-                                        <InputError message={errors['lease.agreement_text']} />
+                                        <InputError
+                                            message={
+                                                errors['lease.agreement_text']
+                                            }
+                                        />
 
                                         <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
                                             <span>
-                                                Placeholders: <code>{'{{occupant_name}}'}</code>,{' '}
-                                                <code>{'{{property_name}}'}</code>,{' '}
-                                                <code>{'{{unit_name}}'}</code>,{' '}
-                                                <code>{'{{rent_amount}}'}</code>,{' '}
-                                                <code>{'{{currency}}'}</code>,{' '}
+                                                Placeholders:{' '}
+                                                <code>
+                                                    {'{{occupant_name}}'}
+                                                </code>
+                                                ,{' '}
+                                                <code>
+                                                    {'{{property_name}}'}
+                                                </code>
+                                                , <code>{'{{unit_name}}'}</code>
+                                                ,{' '}
+                                                <code>{'{{rent_amount}}'}</code>
+                                                , <code>{'{{currency}}'}</code>,{' '}
                                                 <code>{'{{start_date}}'}</code>…
                                             </span>
 
-                                            {permissions.includes('occupant.edit') && (
+                                            {permissions.includes(
+                                                'occupant.edit',
+                                            ) && (
                                                 <a
-                                                    href={agreementRoute({ property: property.slug, occupant: occupant.id }).url}
+                                                    href={
+                                                        agreementRoute({
+                                                            property:
+                                                                property.slug,
+                                                            occupant:
+                                                                occupant.id,
+                                                        }).url
+                                                    }
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                     className="text-primary underline"
                                                     data-test="print-agreement-link"
                                                 >
-                                                    View / print filled agreement
+                                                    View / print filled
+                                                    agreement
                                                 </a>
                                             )}
                                         </div>
@@ -427,8 +623,8 @@ export default function OccupantEdit({ organization, property, occupant, units, 
                                 />
                                 {units.length === 0 ? (
                                     <p className="text-sm text-muted-foreground">
-                                        No units yet. Add a unit to this property before assigning
-                                        occupants.
+                                        No units yet. Add a unit to this
+                                        property before assigning occupants.
                                     </p>
                                 ) : (
                                     <div className="grid gap-3">
@@ -438,17 +634,27 @@ export default function OccupantEdit({ organization, property, occupant, units, 
                                                 className="flex items-center gap-3 rounded-lg border border-input p-3 text-sm transition-colors hover:bg-muted"
                                             >
                                                 <Checkbox
-                                                    checked={unitIds.includes(unit.id)}
-                                                    onCheckedChange={() => toggleUnit(unit.id)}
+                                                    checked={unitIds.includes(
+                                                        unit.id,
+                                                    )}
+                                                    onCheckedChange={() =>
+                                                        toggleUnit(unit.id)
+                                                    }
                                                 />
                                                 <input
                                                     type="hidden"
                                                     name="unit_ids[]"
                                                     value={String(unit.id)}
-                                                    disabled={!unitIds.includes(unit.id)}
+                                                    disabled={
+                                                        !unitIds.includes(
+                                                            unit.id,
+                                                        )
+                                                    }
                                                 />
                                                 <DoorOpen className="size-4 text-muted-foreground" />
-                                                <span className="font-medium">{unit.name}</span>
+                                                <span className="font-medium">
+                                                    {unit.name}
+                                                </span>
                                                 {unit.type && (
                                                     <span className="text-muted-foreground">
                                                         {unit.type}
@@ -457,7 +663,8 @@ export default function OccupantEdit({ organization, property, occupant, units, 
                                                 <span className="ml-auto">
                                                     <span
                                                         className={`rounded-full px-2 py-0.5 text-xs ${
-                                                            unit.status === 'vacant'
+                                                            unit.status ===
+                                                            'vacant'
                                                                 ? 'bg-muted text-muted-foreground'
                                                                 : 'bg-primary/10 text-primary'
                                                         }`}
@@ -475,71 +682,93 @@ export default function OccupantEdit({ organization, property, occupant, units, 
                             <div className="flex flex-wrap items-center justify-between gap-4">
                                 <div className="flex gap-3">
                                     <Button type="submit" disabled={processing}>
-                                        {processing ? 'Saving…' : 'Save changes'}
+                                        {processing
+                                            ? 'Saving…'
+                                            : 'Save changes'}
                                     </Button>
                                     <Button asChild variant="outline">
-                                        <Link href={occupantsIndex(property.slug)}>Cancel</Link>
+                                        <Link
+                                            href={occupantsIndex(property.slug)}
+                                        >
+                                            Cancel
+                                        </Link>
                                     </Button>
                                 </div>
 
-                                {canMoveOut && occupant.status !== 'moved_out' && (
-                                    <Dialog>
-                                        <DialogTrigger asChild>
-                                            <Button variant="outline" type="button">
-                                                <LogOut className="size-4" />
-                                                Move out
-                                            </Button>
-                                        </DialogTrigger>
-                                        <DialogContent>
-                                            <DialogTitle>
-                                                Move {occupant.first_name}{' '}
-                                                {occupant.last_name ?? ''} out?
-                                            </DialogTitle>
-                                            <DialogDescription>
-                                                This ends their active lease(s) — kept for their
-                                                rental history — and frees their units. The renter
-                                                reverts to a searcher.
-                                            </DialogDescription>
+                                {canMoveOut &&
+                                    occupant.status !== 'moved_out' && (
+                                        <Dialog>
+                                            <DialogTrigger asChild>
+                                                <Button
+                                                    variant="outline"
+                                                    type="button"
+                                                >
+                                                    <LogOut className="size-4" />
+                                                    Move out
+                                                </Button>
+                                            </DialogTrigger>
+                                            <DialogContent>
+                                                <DialogTitle>
+                                                    Move {occupant.first_name}{' '}
+                                                    {occupant.last_name ?? ''}{' '}
+                                                    out?
+                                                </DialogTitle>
+                                                <DialogDescription>
+                                                    This ends their active
+                                                    lease(s) — kept for their
+                                                    rental history — and frees
+                                                    their units. The renter
+                                                    reverts to a searcher.
+                                                </DialogDescription>
 
-                                            <Form
-                                                {...moveOut.form({
-                                                    property: property.slug,
-                                                    occupant: occupant.id,
-                                                })}
-                                                options={{ preserveScroll: true }}
-                                                className="space-y-6"
-                                            >
-                                                {({ processing }) => (
-                                                    <DialogFooter className="gap-2">
-                                                        <DialogClose asChild>
-                                                            <Button variant="secondary">
-                                                                Cancel
-                                                            </Button>
-                                                        </DialogClose>
-
-                                                        <Button
-                                                            variant="destructive"
-                                                            disabled={processing}
-                                                            asChild
-                                                        >
-                                                            <button
-                                                                type="submit"
-                                                                data-test="confirm-move-out-button"
+                                                <Form
+                                                    {...moveOut.form({
+                                                        property: property.slug,
+                                                        occupant: occupant.id,
+                                                    })}
+                                                    options={{
+                                                        preserveScroll: true,
+                                                    }}
+                                                    className="space-y-6"
+                                                >
+                                                    {({ processing }) => (
+                                                        <DialogFooter className="gap-2">
+                                                            <DialogClose
+                                                                asChild
                                                             >
-                                                                Move out
-                                                            </button>
-                                                        </Button>
-                                                    </DialogFooter>
-                                                )}
-                                            </Form>
-                                        </DialogContent>
-                                    </Dialog>
-                                )}
+                                                                <Button variant="secondary">
+                                                                    Cancel
+                                                                </Button>
+                                                            </DialogClose>
+
+                                                            <Button
+                                                                variant="destructive"
+                                                                disabled={
+                                                                    processing
+                                                                }
+                                                                asChild
+                                                            >
+                                                                <button
+                                                                    type="submit"
+                                                                    data-test="confirm-move-out-button"
+                                                                >
+                                                                    Move out
+                                                                </button>
+                                                            </Button>
+                                                        </DialogFooter>
+                                                    )}
+                                                </Form>
+                                            </DialogContent>
+                                        </Dialog>
+                                    )}
 
                                 {canDelete && (
                                     <Dialog>
                                         <DialogTrigger asChild>
-                                            <Button variant="destructive" type="button">
+                                            <Button
+                                                variant="destructive"
+                                                type="button"
+                                            >
                                                 <Trash2 className="size-4" />
                                                 Remove occupant
                                             </Button>
@@ -547,11 +776,13 @@ export default function OccupantEdit({ organization, property, occupant, units, 
                                         <DialogContent>
                                             <DialogTitle>
                                                 Remove {occupant.first_name}{' '}
-                                                {occupant.last_name ?? ''} from {organization.name}?
+                                                {occupant.last_name ?? ''} from{' '}
+                                                {organization.name}?
                                             </DialogTitle>
                                             <DialogDescription>
-                                                This will detach them from all assigned units. Please
-                                                enter your password to confirm.
+                                                This will detach them from all
+                                                assigned units. Please enter
+                                                your password to confirm.
                                             </DialogDescription>
 
                                             <Form
@@ -559,12 +790,20 @@ export default function OccupantEdit({ organization, property, occupant, units, 
                                                     property: property.slug,
                                                     occupant: occupant.id,
                                                 })}
-                                                options={{ preserveScroll: true }}
-                                                onError={() => passwordInput.current?.focus()}
+                                                options={{
+                                                    preserveScroll: true,
+                                                }}
+                                                onError={() =>
+                                                    passwordInput.current?.focus()
+                                                }
                                                 resetOnSuccess
                                                 className="space-y-6"
                                             >
-                                                {({ resetAndClearErrors, processing, errors }) => (
+                                                {({
+                                                    resetAndClearErrors,
+                                                    processing,
+                                                    errors,
+                                                }) => (
                                                     <>
                                                         <div className="grid gap-2">
                                                             <Label
@@ -577,16 +816,24 @@ export default function OccupantEdit({ organization, property, occupant, units, 
                                                             <PasswordInput
                                                                 id="password"
                                                                 name="password"
-                                                                ref={passwordInput}
+                                                                ref={
+                                                                    passwordInput
+                                                                }
                                                                 placeholder="Password"
                                                                 autoComplete="current-password"
                                                             />
 
-                                                            <InputError message={errors.password} />
+                                                            <InputError
+                                                                message={
+                                                                    errors.password
+                                                                }
+                                                            />
                                                         </div>
 
                                                         <DialogFooter className="gap-2">
-                                                            <DialogClose asChild>
+                                                            <DialogClose
+                                                                asChild
+                                                            >
                                                                 <Button
                                                                     variant="secondary"
                                                                     onClick={() =>
@@ -599,14 +846,17 @@ export default function OccupantEdit({ organization, property, occupant, units, 
 
                                                             <Button
                                                                 variant="destructive"
-                                                                disabled={processing}
+                                                                disabled={
+                                                                    processing
+                                                                }
                                                                 asChild
                                                             >
                                                                 <button
                                                                     type="submit"
                                                                     data-test="confirm-remove-occupant-button"
                                                                 >
-                                                                    Remove occupant
+                                                                    Remove
+                                                                    occupant
                                                                 </button>
                                                             </Button>
                                                         </DialogFooter>

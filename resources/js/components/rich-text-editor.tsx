@@ -16,6 +16,7 @@ import {
 } from '@tiptap/extension-text-style';
 import Underline from '@tiptap/extension-underline';
 import { EditorContent, useEditor, useEditorState } from '@tiptap/react';
+import type { Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import {
     AlignCenter,
@@ -24,6 +25,7 @@ import {
     AlignRight,
     Bold,
     Crop,
+    Braces,
     Eraser,
     Highlighter,
     ImagePlus,
@@ -66,16 +68,24 @@ import {
 } from '@/components/ui/tooltip';
 import { LayoutImage } from '@/lib/editor/layout-image';
 import type { ImageLayout } from '@/lib/editor/layout-image';
+import { PlaceholderToken } from '@/lib/editor/placeholder-token';
 import { cn, sameOriginStorageUrl } from '@/lib/utils';
 
 import '../../css/editor.css';
 import ImageCropDialog from './image-crop-dialog';
+
+export type TemplateToken = {
+    token: string;
+    description: string;
+};
 
 type RichTextEditorProps = {
     name: string;
     value: string;
     onChange: (html: string) => void;
     placeholder?: string;
+    availableTokens?: TemplateToken[];
+    onEditorReady?: (editor: Editor) => void;
 };
 
 const FONT_FAMILIES: { label: string; value: string }[] = [
@@ -239,6 +249,8 @@ export default function RichTextEditor({
     value,
     onChange,
     placeholder,
+    availableTokens,
+    onEditorReady,
 }: RichTextEditorProps) {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [uploading, setUploading] = useState(false);
@@ -251,6 +263,8 @@ export default function RichTextEditor({
         extensions: [
             StarterKit.configure({
                 heading: { levels: [1, 2, 3, 4] },
+                link: false,
+                underline: false,
             }),
             Underline,
             TextStyle,
@@ -283,6 +297,7 @@ export default function RichTextEditor({
             TableHeader,
             TableCell,
             Placeholder.configure({ placeholder: placeholder ?? '' }),
+            PlaceholderToken,
         ],
         content: value || '',
         immediatelyRender: false,
@@ -336,10 +351,17 @@ export default function RichTextEditor({
                 isLink: e.isActive('link'),
                 isTable: e.isActive('table'),
                 isImage: e.isActive('image'),
-                imageLayout: (e.getAttributes('image').layout ?? 'block') as ImageLayout,
+                imageLayout: (e.getAttributes('image').layout ??
+                    'block') as ImageLayout,
             };
         },
     }) as EditorToolbarState;
+
+    useEffect(() => {
+        if (editor) {
+            onEditorReady?.(editor);
+        }
+    }, [editor, onEditorReady]);
 
     useEffect(() => {
         if (editor && value !== editor.getHTML()) {
@@ -467,7 +489,10 @@ export default function RichTextEditor({
         // The inserted image lives on the central domain (/storage/...), which
         // is cross-origin from a tenant subdomain. Rewrite it to the current
         // host so the crop canvas can read the pixels without CORS.
-        setCropTarget({ src: sameOriginStorageUrl(attrs.src), alt: attrs.alt ?? '' });
+        setCropTarget({
+            src: sameOriginStorageUrl(attrs.src),
+            alt: attrs.alt ?? '',
+        });
     }
 
     async function applyCroppedImage(file: File) {
@@ -812,15 +837,19 @@ export default function RichTextEditor({
                             <DropdownMenuItem
                                 key={option.value}
                                 onSelect={() => {
-                                    editor?.chain().focus().setImageLayout(option.value).run();
+                                    editor
+                                        ?.chain()
+                                        .focus()
+                                        .setImageLayout(option.value)
+                                        .run();
                                 }}
                             >
                                 <div className="flex items-center gap-2">
                                     <span
                                         className={cn(
                                             'size-3 rounded-sm border',
-                                            toolbar.imageLayout === option.value &&
-                                                'bg-primary',
+                                            toolbar.imageLayout ===
+                                                option.value && 'bg-primary',
                                         )}
                                     />
                                     {option.label}
@@ -926,6 +955,54 @@ export default function RichTextEditor({
                         </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
+
+                {/* Insert data placeholder token */}
+                {availableTokens && availableTokens.length > 0 && (
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 rounded-md"
+                                aria-label="Insert data placeholder"
+                                title="Insert data placeholder"
+                            >
+                                <Braces className="size-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                            align="end"
+                            className="max-h-80 w-64 overflow-auto"
+                        >
+                            <DropdownMenuLabel>
+                                Insert data placeholder
+                            </DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            {availableTokens.map((entry) => (
+                                <DropdownMenuItem
+                                    key={entry.token}
+                                    onSelect={() => {
+                                        editor
+                                            ?.chain()
+                                            .focus()
+                                            .insertPlaceholder(entry.token)
+                                            .run();
+                                    }}
+                                >
+                                    <div className="flex flex-col">
+                                        <span className="font-mono text-xs">
+                                            {`{{${entry.token}}}`}
+                                        </span>
+                                        <span className="text-xs text-muted-foreground">
+                                            {entry.description}
+                                        </span>
+                                    </div>
+                                </DropdownMenuItem>
+                            ))}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                )}
             </div>
 
             <EditorContent

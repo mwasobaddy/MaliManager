@@ -1,9 +1,10 @@
-import { Head, Link, useForm } from "@inertiajs/react";
+import { Head, Link, useForm } from '@inertiajs/react';
 import { Save } from 'lucide-react';
-import { useState } from "react";
+import { useState } from 'react';
+import DocumentBuilder from '@/components/document-builder';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
-import RichTextEditor from '@/components/rich-text-editor';
+import type { TemplateToken } from '@/components/rich-text-editor';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -22,9 +23,15 @@ type Props = {
     scope: 'organization' | 'property';
     propertySlug?: string;
     template: Template | null;
+    availableTokens?: TemplateToken[];
 };
 
-export default function AgreementTemplateForm({ scope, propertySlug, template }: Props) {
+export default function AgreementTemplateForm({
+    scope,
+    propertySlug,
+    template,
+    availableTokens,
+}: Props) {
     const form = useForm<{
         name: string;
         body_html: string;
@@ -35,16 +42,27 @@ export default function AgreementTemplateForm({ scope, propertySlug, template }:
         agreement_document: null,
     });
 
-    const [agreementText, setAgreementText] = useState(template?.body_html ?? '<p></p>');
+    const [agreementText, setAgreementText] = useState(
+        template?.body_html ?? '<p></p>',
+    );
 
     const submit = () => {
         form.setData('body_html', agreementText);
 
         if (scope === 'property') {
             if (template) {
-                form.put(agreementTemplates.propertyUpdate({ property: propertySlug ?? '', template: template.id }).url);
+                form.put(
+                    agreementTemplates.propertyUpdate({
+                        property: propertySlug ?? '',
+                        template: template.id,
+                    }).url,
+                );
             } else {
-                form.post(agreementTemplates.propertyStore({ property: propertySlug ?? '' }).url);
+                form.post(
+                    agreementTemplates.propertyStore({
+                        property: propertySlug ?? '',
+                    }).url,
+                );
             }
 
             return;
@@ -59,12 +77,22 @@ export default function AgreementTemplateForm({ scope, propertySlug, template }:
 
     return (
         <>
-            <Head title={template ? `Edit ${template.name}` : 'New agreement template'} />
+            <Head
+                title={
+                    template
+                        ? `Edit ${template.name}`
+                        : 'New agreement template'
+                }
+            />
 
             <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-4">
                 <Heading
                     variant="small"
-                    title={template ? `Edit ${template.name}` : 'New agreement template'}
+                    title={
+                        template
+                            ? `Edit ${template.name}`
+                            : 'New agreement template'
+                    }
                     description="Write the agreement once. Placeholders auto-fill from each lease."
                 />
 
@@ -78,7 +106,9 @@ export default function AgreementTemplateForm({ scope, propertySlug, template }:
                             <Input
                                 id="name"
                                 value={form.data.name}
-                                onChange={(e) => form.setData('name', e.target.value)}
+                                onChange={(e) =>
+                                    form.setData('name', e.target.value)
+                                }
                                 placeholder="Standard residential lease"
                             />
                             <InputError message={form.errors.name} />
@@ -86,7 +116,7 @@ export default function AgreementTemplateForm({ scope, propertySlug, template }:
 
                         <div className="grid gap-2">
                             <Label htmlFor="body">Agreement body</Label>
-                            <RichTextEditor
+                            <DocumentBuilder
                                 name="body_html_preview_only"
                                 value={agreementText}
                                 onChange={(html) => {
@@ -94,6 +124,7 @@ export default function AgreementTemplateForm({ scope, propertySlug, template }:
                                     form.setData('body_html', html);
                                 }}
                                 placeholder="Write the template. Placeholders like {{occupant_name}} are replaced per lease."
+                                availableTokens={availableTokens}
                             />
                             <InputError message={form.errors.body_html} />
                             {template?.document_url && (
@@ -104,7 +135,8 @@ export default function AgreementTemplateForm({ scope, propertySlug, template }:
                                         rel="noopener noreferrer"
                                         className="text-primary underline"
                                     >
-                                        {template.document_name ?? 'Uploaded template document'}
+                                        {template.document_name ??
+                                            'Uploaded template document'}
                                     </a>
                                     <label className="flex items-center gap-1 text-muted-foreground">
                                         <input
@@ -134,13 +166,14 @@ export default function AgreementTemplateForm({ scope, propertySlug, template }:
                                         )
                                     }
                                 />
-                                <InputError message={form.errors.agreement_document} />
+                                <InputError
+                                    message={form.errors.agreement_document}
+                                />
                             </div>
 
                             <p className="text-xs text-muted-foreground">
-                                Placeholders:{' '}
-                                <code>{'{{occupant_name}}'}</code>,{' '}
-                                <code>{'{{property_name}}'}</code>,{' '}
+                                Placeholders: <code>{'{{occupant_name}}'}</code>
+                                , <code>{'{{property_name}}'}</code>,{' '}
                                 <code>{'{{unit_name}}'}</code>,{' '}
                                 <code>{'{{rent_amount}}'}</code>,{' '}
                                 <code>{'{{deposit_amount}}'}</code>,{' '}
@@ -155,9 +188,17 @@ export default function AgreementTemplateForm({ scope, propertySlug, template }:
 
                 <div className="flex gap-2">
                     <Button asChild variant="outline">
-                        <Link href={scope === 'organization'
-                            ? agreementTemplates.orgIndex()
-                            : agreementTemplates.propertyIndex({ property: propertySlug ?? '' })}>Back to templates</Link>
+                        <Link
+                            href={
+                                scope === 'organization'
+                                    ? agreementTemplates.orgIndex()
+                                    : agreementTemplates.propertyIndex({
+                                          property: propertySlug ?? '',
+                                      })
+                            }
+                        >
+                            Back to templates
+                        </Link>
                     </Button>
                     <Button onClick={submit} disabled={form.processing}>
                         <Save className="size-4" />
