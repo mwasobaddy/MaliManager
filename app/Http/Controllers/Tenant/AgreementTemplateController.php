@@ -39,6 +39,7 @@ class AgreementTemplateController extends Controller
         return Inertia::render('tenant/agreement-templates/form', [
             'scope' => 'organization',
             'template' => null,
+            'availableTokens' => LeaseAgreementTemplate::availableTokens(),
         ]);
     }
 
@@ -75,6 +76,7 @@ class AgreementTemplateController extends Controller
                 'document_name' => $document?->file_name,
                 'document_url' => $document?->getUrl(),
             ]),
+            'availableTokens' => LeaseAgreementTemplate::availableTokens(),
         ]);
     }
 
@@ -126,6 +128,7 @@ class AgreementTemplateController extends Controller
             'scope' => 'property',
             'propertySlug' => $property->slug,
             'template' => null,
+            'availableTokens' => LeaseAgreementTemplate::availableTokens(),
         ]);
     }
 
@@ -162,6 +165,7 @@ class AgreementTemplateController extends Controller
                 'document_name' => $document?->file_name,
                 'document_url' => $document?->getUrl(),
             ]),
+            'availableTokens' => LeaseAgreementTemplate::availableTokens(),
         ]);
     }
 

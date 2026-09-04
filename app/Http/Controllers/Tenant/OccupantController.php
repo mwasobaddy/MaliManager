@@ -50,6 +50,7 @@ class OccupantController extends Controller
             'property' => $this->property($property),
             'units' => $this->units($property),
             'templates' => $this->agreementTemplates($property),
+            'availableTokens' => LeaseAgreementTemplate::availableTokens(),
         ]);
     }
 
@@ -93,6 +94,7 @@ class OccupantController extends Controller
             ],
             'units' => $this->units($property),
             'templates' => $this->agreementTemplates($property),
+            'availableTokens' => LeaseAgreementTemplate::availableTokens(),
         ]);
     }
 

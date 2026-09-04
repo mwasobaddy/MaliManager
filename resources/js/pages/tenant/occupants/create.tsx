@@ -1,9 +1,10 @@
 import { Form, Head, Link } from '@inertiajs/react';
 import { DoorOpen } from 'lucide-react';
 import { useState } from 'react';
+import DocumentBuilder from '@/components/document-builder';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
-import RichTextEditor from '@/components/rich-text-editor';
+import type { TemplateToken } from '@/components/rich-text-editor';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -47,11 +48,20 @@ type Props = {
     property: Property;
     units: Unit[];
     templates: GroupedTemplates;
+    availableTokens?: TemplateToken[];
 };
 
-export default function OccupantCreate({ property, units, templates }: Props) {
+export default function OccupantCreate({
+    property,
+    units,
+    templates,
+    availableTokens,
+}: Props) {
     const [templateGroups] = useState<GroupedTemplates>(templates);
-    const templateList = [...templateGroups.property, ...templateGroups.organization];
+    const templateList = [
+        ...templateGroups.property,
+        ...templateGroups.organization,
+    ];
     const [selectedTemplateId, setSelectedTemplateId] = useState('');
     const [status, setStatus] = useState('active');
     const [unitIds, setUnitIds] = useState<number[]>([]);
@@ -73,11 +83,11 @@ export default function OccupantCreate({ property, units, templates }: Props) {
         }
     };
 
-
-
     const toggleUnit = (id: number) => {
         setUnitIds((prev) =>
-            prev.includes(id) ? prev.filter((uid) => uid !== id) : [...prev, id],
+            prev.includes(id)
+                ? prev.filter((uid) => uid !== id)
+                : [...prev, id],
         );
     };
 
@@ -93,7 +103,9 @@ export default function OccupantCreate({ property, units, templates }: Props) {
                         description={`Assign someone to a unit in ${property.name}.`}
                     />
                     <Button asChild variant="outline">
-                        <Link href={occupantsIndex(property.slug)}>Back to occupants</Link>
+                        <Link href={occupantsIndex(property.slug)}>
+                            Back to occupants
+                        </Link>
                     </Button>
                 </div>
 
@@ -102,7 +114,9 @@ export default function OccupantCreate({ property, units, templates }: Props) {
                         <>
                             <div className="grid gap-6 rounded-xl border border-input p-6 md:grid-cols-2">
                                 <div className="grid gap-2">
-                                    <Label htmlFor="first_name">First name</Label>
+                                    <Label htmlFor="first_name">
+                                        First name
+                                    </Label>
                                     <Input
                                         id="first_name"
                                         name="first_name"
@@ -115,7 +129,9 @@ export default function OccupantCreate({ property, units, templates }: Props) {
                                 </div>
 
                                 <div className="grid gap-2">
-                                    <Label htmlFor="last_name">Last name (optional)</Label>
+                                    <Label htmlFor="last_name">
+                                        Last name (optional)
+                                    </Label>
                                     <Input
                                         id="last_name"
                                         name="last_name"
@@ -140,7 +156,9 @@ export default function OccupantCreate({ property, units, templates }: Props) {
                                 </div>
 
                                 <div className="grid gap-2">
-                                    <Label htmlFor="phone">Phone (optional)</Label>
+                                    <Label htmlFor="phone">
+                                        Phone (optional)
+                                    </Label>
                                     <Input
                                         id="phone"
                                         name="phone"
@@ -152,7 +170,9 @@ export default function OccupantCreate({ property, units, templates }: Props) {
                                 </div>
 
                                 <div className="grid gap-2">
-                                    <Label htmlFor="national_id">National ID (optional)</Label>
+                                    <Label htmlFor="national_id">
+                                        National ID (optional)
+                                    </Label>
                                     <Input
                                         id="national_id"
                                         name="national_id"
@@ -165,15 +185,31 @@ export default function OccupantCreate({ property, units, templates }: Props) {
 
                                 <div className="grid gap-2">
                                     <Label htmlFor="status">Status</Label>
-                                    <input type="hidden" name="status" value={status} />
-                                    <Select value={status} onValueChange={setStatus}>
-                                        <SelectTrigger id="status" className="w-full">
+                                    <input
+                                        type="hidden"
+                                        name="status"
+                                        value={status}
+                                    />
+                                    <Select
+                                        value={status}
+                                        onValueChange={setStatus}
+                                    >
+                                        <SelectTrigger
+                                            id="status"
+                                            className="w-full"
+                                        >
                                             <SelectValue placeholder="Select a status" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="active">Active</SelectItem>
-                                            <SelectItem value="inactive">Inactive</SelectItem>
-                                            <SelectItem value="moved_out">Moved out</SelectItem>
+                                            <SelectItem value="active">
+                                                Active
+                                            </SelectItem>
+                                            <SelectItem value="inactive">
+                                                Inactive
+                                            </SelectItem>
+                                            <SelectItem value="moved_out">
+                                                Moved out
+                                            </SelectItem>
                                         </SelectContent>
                                     </Select>
                                     <InputError message={errors.status} />
@@ -188,34 +224,64 @@ export default function OccupantCreate({ property, units, templates }: Props) {
                                 />
                                 <div className="grid gap-6 md:grid-cols-2">
                                     <div className="grid gap-2">
-                                        <Label htmlFor="lease.starts_at">Lease start date</Label>
+                                        <Label htmlFor="lease.starts_at">
+                                            Lease start date
+                                        </Label>
                                         <Input
                                             id="lease.starts_at"
                                             name="lease[starts_at]"
                                             type="date"
                                         />
-                                        <InputError message={errors['lease.starts_at']} />
+                                        <InputError
+                                            message={errors['lease.starts_at']}
+                                        />
                                     </div>
 
                                     <div className="grid gap-2">
-                                        <Label htmlFor="lease.rent_frequency">Rent frequency</Label>
-                                        <input type="hidden" name="lease[rent_frequency]" value={rentFrequency} />
-                                        <Select value={rentFrequency} onValueChange={setRentFrequency}>
-                                            <SelectTrigger id="lease.rent_frequency" className="w-full">
+                                        <Label htmlFor="lease.rent_frequency">
+                                            Rent frequency
+                                        </Label>
+                                        <input
+                                            type="hidden"
+                                            name="lease[rent_frequency]"
+                                            value={rentFrequency}
+                                        />
+                                        <Select
+                                            value={rentFrequency}
+                                            onValueChange={setRentFrequency}
+                                        >
+                                            <SelectTrigger
+                                                id="lease.rent_frequency"
+                                                className="w-full"
+                                            >
                                                 <SelectValue placeholder="Select frequency" />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="daily">Daily</SelectItem>
-                                                <SelectItem value="weekly">Weekly</SelectItem>
-                                                <SelectItem value="monthly">Monthly</SelectItem>
-                                                <SelectItem value="yearly">Yearly</SelectItem>
+                                                <SelectItem value="daily">
+                                                    Daily
+                                                </SelectItem>
+                                                <SelectItem value="weekly">
+                                                    Weekly
+                                                </SelectItem>
+                                                <SelectItem value="monthly">
+                                                    Monthly
+                                                </SelectItem>
+                                                <SelectItem value="yearly">
+                                                    Yearly
+                                                </SelectItem>
                                             </SelectContent>
                                         </Select>
-                                        <InputError message={errors['lease.rent_frequency']} />
+                                        <InputError
+                                            message={
+                                                errors['lease.rent_frequency']
+                                            }
+                                        />
                                     </div>
 
                                     <div className="grid gap-2">
-                                        <Label htmlFor="lease.rent_amount">Rent amount</Label>
+                                        <Label htmlFor="lease.rent_amount">
+                                            Rent amount
+                                        </Label>
                                         <Input
                                             id="lease.rent_amount"
                                             name="lease[rent_amount]"
@@ -224,11 +290,17 @@ export default function OccupantCreate({ property, units, templates }: Props) {
                                             step="0.01"
                                             placeholder="25000"
                                         />
-                                        <InputError message={errors['lease.rent_amount']} />
+                                        <InputError
+                                            message={
+                                                errors['lease.rent_amount']
+                                            }
+                                        />
                                     </div>
 
                                     <div className="grid gap-2">
-                                        <Label htmlFor="lease.deposit">Deposit</Label>
+                                        <Label htmlFor="lease.deposit">
+                                            Deposit
+                                        </Label>
                                         <Input
                                             id="lease.deposit"
                                             name="lease[deposit]"
@@ -237,24 +309,48 @@ export default function OccupantCreate({ property, units, templates }: Props) {
                                             step="0.01"
                                             placeholder="25000"
                                         />
-                                        <InputError message={errors['lease.deposit']} />
+                                        <InputError
+                                            message={errors['lease.deposit']}
+                                        />
                                     </div>
 
                                     <div className="grid gap-2">
-                                        <Label htmlFor="lease.currency">Currency</Label>
-                                        <input type="hidden" name="lease[currency]" value={currency} />
-                                        <Select value={currency} onValueChange={setCurrency}>
-                                            <SelectTrigger id="lease.currency" className="w-full">
+                                        <Label htmlFor="lease.currency">
+                                            Currency
+                                        </Label>
+                                        <input
+                                            type="hidden"
+                                            name="lease[currency]"
+                                            value={currency}
+                                        />
+                                        <Select
+                                            value={currency}
+                                            onValueChange={setCurrency}
+                                        >
+                                            <SelectTrigger
+                                                id="lease.currency"
+                                                className="w-full"
+                                            >
                                                 <SelectValue placeholder="Select currency" />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="KES">KES</SelectItem>
-                                                <SelectItem value="USD">USD</SelectItem>
-                                                <SelectItem value="EUR">EUR</SelectItem>
-                                                <SelectItem value="GBP">GBP</SelectItem>
+                                                <SelectItem value="KES">
+                                                    KES
+                                                </SelectItem>
+                                                <SelectItem value="USD">
+                                                    USD
+                                                </SelectItem>
+                                                <SelectItem value="EUR">
+                                                    EUR
+                                                </SelectItem>
+                                                <SelectItem value="GBP">
+                                                    GBP
+                                                </SelectItem>
                                             </SelectContent>
                                         </Select>
-                                        <InputError message={errors['lease.currency']} />
+                                        <InputError
+                                            message={errors['lease.currency']}
+                                        />
                                     </div>
 
                                     <div className="grid gap-2 md:col-span-2">
@@ -264,32 +360,74 @@ export default function OccupantCreate({ property, units, templates }: Props) {
 
                                         {templateList.length > 0 && (
                                             <div className="grid gap-1">
-                                                <Label htmlFor="template_picker" className="text-xs text-muted-foreground">
+                                                <Label
+                                                    htmlFor="template_picker"
+                                                    className="text-xs text-muted-foreground"
+                                                >
                                                     Start from a saved template
                                                 </Label>
-                                                <Select value={selectedTemplateId} onValueChange={applyTemplate}>
+                                                <Select
+                                                    value={selectedTemplateId}
+                                                    onValueChange={
+                                                        applyTemplate
+                                                    }
+                                                >
                                                     <SelectTrigger id="template_picker">
                                                         <SelectValue placeholder="Pick a template…" />
                                                     </SelectTrigger>
                                                     <SelectContent>
-                                                        {templateGroups.property.length > 0 && (
+                                                        {templateGroups.property
+                                                            .length > 0 && (
                                                             <SelectGroup>
-                                                                <SelectLabel>This property</SelectLabel>
-                                                                {templateGroups.property.map((template) => (
-                                                                    <SelectItem key={template.id} value={String(template.id)}>
-                                                                        {template.name}
-                                                                    </SelectItem>
-                                                                ))}
+                                                                <SelectLabel>
+                                                                    This
+                                                                    property
+                                                                </SelectLabel>
+                                                                {templateGroups.property.map(
+                                                                    (
+                                                                        template,
+                                                                    ) => (
+                                                                        <SelectItem
+                                                                            key={
+                                                                                template.id
+                                                                            }
+                                                                            value={String(
+                                                                                template.id,
+                                                                            )}
+                                                                        >
+                                                                            {
+                                                                                template.name
+                                                                            }
+                                                                        </SelectItem>
+                                                                    ),
+                                                                )}
                                                             </SelectGroup>
                                                         )}
-                                                        {templateGroups.organization.length > 0 && (
+                                                        {templateGroups
+                                                            .organization
+                                                            .length > 0 && (
                                                             <SelectGroup>
-                                                                <SelectLabel>Organization-wide</SelectLabel>
-                                                                {templateGroups.organization.map((template) => (
-                                                                    <SelectItem key={template.id} value={String(template.id)}>
-                                                                        {template.name}
-                                                                    </SelectItem>
-                                                                ))}
+                                                                <SelectLabel>
+                                                                    Organization-wide
+                                                                </SelectLabel>
+                                                                {templateGroups.organization.map(
+                                                                    (
+                                                                        template,
+                                                                    ) => (
+                                                                        <SelectItem
+                                                                            key={
+                                                                                template.id
+                                                                            }
+                                                                            value={String(
+                                                                                template.id,
+                                                                            )}
+                                                                        >
+                                                                            {
+                                                                                template.name
+                                                                            }
+                                                                        </SelectItem>
+                                                                    ),
+                                                                )}
                                                             </SelectGroup>
                                                         )}
                                                     </SelectContent>
@@ -297,16 +435,18 @@ export default function OccupantCreate({ property, units, templates }: Props) {
                                             </div>
                                         )}
 
-                                        <RichTextEditor
+                                        <DocumentBuilder
                                             name="lease[agreement_text]"
                                             value={agreementText}
                                             onChange={setAgreementText}
                                             placeholder="Write the lease agreement. Formatting is preserved."
+                                            availableTokens={availableTokens}
                                         />
 
                                         <div className="grid gap-2">
                                             <Label htmlFor="lease.agreement_document">
-                                                Or upload a ready-made agreement (PDF/DOCX, max 10MB)
+                                                Or upload a ready-made agreement
+                                                (PDF/DOCX, max 10MB)
                                             </Label>
                                             <Input
                                                 id="lease.agreement_document"
@@ -314,10 +454,20 @@ export default function OccupantCreate({ property, units, templates }: Props) {
                                                 type="file"
                                                 accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                                             />
-                                            <InputError message={errors['lease.agreement_document']} />
+                                            <InputError
+                                                message={
+                                                    errors[
+                                                        'lease.agreement_document'
+                                                    ]
+                                                }
+                                            />
                                         </div>
 
-                                        <InputError message={errors['lease.agreement_text']} />
+                                        <InputError
+                                            message={
+                                                errors['lease.agreement_text']
+                                            }
+                                        />
                                     </div>
                                 </div>
                             </div>
@@ -330,8 +480,8 @@ export default function OccupantCreate({ property, units, templates }: Props) {
                                 />
                                 {units.length === 0 ? (
                                     <p className="text-sm text-muted-foreground">
-                                        No units yet. Add a unit to this property before assigning
-                                        occupants.
+                                        No units yet. Add a unit to this
+                                        property before assigning occupants.
                                     </p>
                                 ) : (
                                     <div className="grid gap-3">
@@ -341,17 +491,27 @@ export default function OccupantCreate({ property, units, templates }: Props) {
                                                 className="flex items-center gap-3 rounded-lg border border-input p-3 text-sm transition-colors hover:bg-muted"
                                             >
                                                 <Checkbox
-                                                    checked={unitIds.includes(unit.id)}
-                                                    onCheckedChange={() => toggleUnit(unit.id)}
+                                                    checked={unitIds.includes(
+                                                        unit.id,
+                                                    )}
+                                                    onCheckedChange={() =>
+                                                        toggleUnit(unit.id)
+                                                    }
                                                 />
                                                 <input
                                                     type="hidden"
                                                     name="unit_ids[]"
                                                     value={String(unit.id)}
-                                                    disabled={!unitIds.includes(unit.id)}
+                                                    disabled={
+                                                        !unitIds.includes(
+                                                            unit.id,
+                                                        )
+                                                    }
                                                 />
                                                 <DoorOpen className="size-4 text-muted-foreground" />
-                                                <span className="font-medium">{unit.name}</span>
+                                                <span className="font-medium">
+                                                    {unit.name}
+                                                </span>
                                                 {unit.type && (
                                                     <span className="text-muted-foreground">
                                                         {unit.type}
@@ -360,7 +520,8 @@ export default function OccupantCreate({ property, units, templates }: Props) {
                                                 <span className="ml-auto">
                                                     <span
                                                         className={`rounded-full px-2 py-0.5 text-xs ${
-                                                            unit.status === 'vacant'
+                                                            unit.status ===
+                                                            'vacant'
                                                                 ? 'bg-muted text-muted-foreground'
                                                                 : 'bg-primary/10 text-primary'
                                                         }`}
@@ -380,7 +541,9 @@ export default function OccupantCreate({ property, units, templates }: Props) {
                                     {processing ? 'Adding…' : 'Add occupant'}
                                 </Button>
                                 <Button asChild variant="outline">
-                                    <Link href={occupantsIndex(property.slug)}>Cancel</Link>
+                                    <Link href={occupantsIndex(property.slug)}>
+                                        Cancel
+                                    </Link>
                                 </Button>
                             </div>
                         </>
