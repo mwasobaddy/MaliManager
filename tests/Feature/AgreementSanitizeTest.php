@@ -72,3 +72,18 @@ test('sanitize keeps an image but strips handler attributes', function () {
         ->and($clean)->toContain('src="/media/logo.png"')
         ->and($clean)->not->toContain('onerror');
 });
+
+test('sanitize preserves editor block attributes for round-trip', function () {
+    $html = '<p>Rent: <span data-token="rent_amount">{{rent_amount}}</span> for '
+        .'<span data-token="occupant_name">{{occupant_name}}</span></p>'
+        .'<p><img src="/media/x.png" data-layout="block" width="100"></p>';
+
+    $clean = LeaseAgreementTemplate::sanitize($html);
+
+    expect($clean)->toContain('data-token="rent_amount"')
+        ->and($clean)->toContain('{{rent_amount}}')
+        ->and($clean)->toContain('data-token="occupant_name"')
+        ->and($clean)->toContain('{{occupant_name}}')
+        ->and($clean)->toContain('data-layout="block"')
+        ->and($clean)->toContain('<img');
+});

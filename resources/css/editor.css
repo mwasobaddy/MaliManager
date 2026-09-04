@@ -118,8 +118,8 @@
 .md-editor .md-editor__content [data-resize-state='true'] [data-resize-handle],
 .md-editor
     .md-editor__content
-    img.ProseMirror-selectednode
-    ~ [data-resize-handle] {
+    [data-resize-container].ProseMirror-selectednode
+    [data-resize-handle] {
     opacity: 1;
 }
 
@@ -171,4 +171,25 @@
     border-radius: 0.25rem;
     padding: 0.1rem 0.3rem;
     font-size: 0.875em;
+}
+
+/* Data placeholder token chip */
+.md-editor .md-editor__content .md-placeholder-token,
+.md-editor__content .md-placeholder-token {
+    display: inline-block;
+    background-color: var(--muted);
+    color: var(--brand-accent);
+    border: 1px dashed color-mix(in srgb, var(--brand-accent) 60%, transparent);
+    border-radius: 0.375rem;
+    padding: 0.05rem 0.4rem;
+    margin: 0 0.1rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.85em;
+    line-height: 1.4;
+    vertical-align: baseline;
+    cursor: pointer;
+}
+.md-editor .md-editor__content .md-placeholder-token.ProseMirror-selectednode {
+    outline: 2px solid var(--ring);
+    border-style: solid;
 }
