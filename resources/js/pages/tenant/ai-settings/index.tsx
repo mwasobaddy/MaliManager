@@ -15,7 +15,10 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { destroy as destroyAiKey, update as updateAiSettings } from '@/routes/tenant/ai-settings';
+import {
+    destroy as destroyAiKey,
+    update as updateAiSettings,
+} from '@/routes/tenant/ai-settings';
 
 type Member = { id: number; name: string; email: string };
 
@@ -52,16 +55,24 @@ export default function AiSettings({
     usage,
 }: Props) {
     const [provider, setProvider] = useState(setting.provider ?? 'openai');
-    const [baseUrl, setBaseUrl] = useState(setting.base_url ?? defaultBaseUrls[setting.provider ?? 'openai'] ?? '');
+    const [baseUrl, setBaseUrl] = useState(
+        setting.base_url ?? defaultBaseUrls[setting.provider ?? 'openai'] ?? '',
+    );
     const [model, setModel] = useState(setting.model ?? '');
     const [apiKey, setApiKey] = useState('');
-    const [enabledFeatures, setEnabledFeatures] = useState<string[]>(setting.features);
+    const [enabledFeatures, setEnabledFeatures] = useState<string[]>(
+        setting.features,
+    );
     const [allowAll, setAllowAll] = useState(setting.allow_all_members);
-    const [allowedIds, setAllowedIds] = useState<number[]>(setting.allowed_user_ids);
+    const [allowedIds, setAllowedIds] = useState<number[]>(
+        setting.allowed_user_ids,
+    );
 
     const toggleFeature = (value: string) => {
         setEnabledFeatures((prev) =>
-            prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value],
+            prev.includes(value)
+                ? prev.filter((v) => v !== value)
+                : [...prev, value],
         );
     };
 
@@ -72,15 +83,19 @@ export default function AiSettings({
     };
 
     const save = () => {
-        router.put(updateAiSettings().url, {
-            provider,
-            model,
-            api_key: apiKey || undefined,
-            base_url: baseUrl || undefined,
-            features: enabledFeatures,
-            allow_all_members: allowAll,
-            allowed_user_ids: allowedIds,
-        }, { preserveScroll: true });
+        router.put(
+            updateAiSettings().url,
+            {
+                provider,
+                model,
+                api_key: apiKey || undefined,
+                base_url: baseUrl || undefined,
+                features: enabledFeatures,
+                allow_all_members: allowAll,
+                allowed_user_ids: allowedIds,
+            },
+            { preserveScroll: true },
+        );
     };
 
     const removeKey = () => {
@@ -112,10 +127,17 @@ export default function AiSettings({
                                     setBaseUrl(defaultBaseUrls[v] ?? '');
                                 }}
                             >
-                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                <SelectTrigger>
+                                    <SelectValue />
+                                </SelectTrigger>
                                 <SelectContent>
                                     {providers.map((p) => (
-                                        <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                                        <SelectItem
+                                            key={p.value}
+                                            value={p.value}
+                                        >
+                                            {p.label}
+                                        </SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
@@ -125,12 +147,16 @@ export default function AiSettings({
                             <Label htmlFor="model">Model</Label>
                             {(models[provider]?.length ?? 0) > 0 ? (
                                 <Select value={model} onValueChange={setModel}>
-                                    <SelectTrigger><SelectValue placeholder="Pick a model…" /></SelectTrigger>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Pick a model…" />
+                                    </SelectTrigger>
                                     <SelectContent>
                                         {models[provider].map((m) => (
                                             <SelectItem key={m} value={m}>
                                                 {m}
-                                                {modelGuidance[provider]?.tested.includes(m) && (
+                                                {modelGuidance[
+                                                    provider
+                                                ]?.tested.includes(m) && (
                                                     <span className="ml-2 text-emerald-600 dark:text-emerald-400">
                                                         ✓ tested
                                                     </span>
@@ -140,7 +166,11 @@ export default function AiSettings({
                                     </SelectContent>
                                 </Select>
                             ) : (
-                                <Input id="model" value={model} onChange={(e) => setModel(e.target.value)} />
+                                <Input
+                                    id="model"
+                                    value={model}
+                                    onChange={(e) => setModel(e.target.value)}
+                                />
                             )}
                             {modelGuidance[provider]?.tested.length > 0 && (
                                 <p className="text-xs text-emerald-600 dark:text-emerald-400">
@@ -149,13 +179,22 @@ export default function AiSettings({
                                 </p>
                             )}
                             {modelGuidance[provider]?.note && (
-                                <p className="text-xs text-muted-foreground">{modelGuidance[provider].note}</p>
+                                <p className="text-xs text-muted-foreground">
+                                    {modelGuidance[provider].note}
+                                </p>
                             )}
                         </div>
 
                         <div className="grid gap-2">
-                            <Label htmlFor="base_url" className="text-muted-foreground">
-                                Base URL <span className="font-normal">(optional — for proxies/self-hosted endpoints)</span>
+                            <Label
+                                htmlFor="base_url"
+                                className="text-muted-foreground"
+                            >
+                                Base URL{' '}
+                                <span className="font-normal">
+                                    (optional — for proxies/self-hosted
+                                    endpoints)
+                                </span>
                             </Label>
                             <Input
                                 id="base_url"
@@ -176,16 +215,34 @@ export default function AiSettings({
                                 id="api_key"
                                 type="password"
                                 autoComplete="off"
-                                placeholder={setting.has_key ? 'Leave empty to keep current key' : 'sk-…'}
+                                placeholder={
+                                    setting.has_key
+                                        ? 'Leave empty to keep current key'
+                                        : 'sk-…'
+                                }
                                 value={apiKey}
                                 onChange={(e) => setApiKey(e.target.value)}
                             />
-                            <InputError message={(usePage().props.errors as Record<string, string> | undefined)?.api_key ?? ''} />
+                            <InputError
+                                message={
+                                    (
+                                        usePage().props.errors as
+                                            Record<string, string> | undefined
+                                    )?.api_key ?? ''
+                                }
+                            />
                             <div className="flex items-center gap-3">
                                 {setting.has_key && (
                                     <>
-                                        <Badge variant="secondary">Key active</Badge>
-                                        <Button variant="ghost" size="sm" className="text-red-600" onClick={removeKey}>
+                                        <Badge variant="secondary">
+                                            Key active
+                                        </Badge>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="text-red-600"
+                                            onClick={removeKey}
+                                        >
                                             Remove key
                                         </Button>
                                     </>
@@ -194,13 +251,22 @@ export default function AiSettings({
                         </div>
 
                         <div className="md:col-span-2">
-                            <Label className="mb-2 block">Enabled features</Label>
+                            <Label className="mb-2 block">
+                                Enabled features
+                            </Label>
                             <div className="grid gap-2 sm:grid-cols-2">
                                 {features.map((feature) => (
-                                    <label key={feature.value} className="flex items-center gap-2 text-sm">
+                                    <label
+                                        key={feature.value}
+                                        className="flex items-center gap-2 text-sm"
+                                    >
                                         <Checkbox
-                                            checked={enabledFeatures.includes(feature.value)}
-                                            onCheckedChange={() => toggleFeature(feature.value)}
+                                            checked={enabledFeatures.includes(
+                                                feature.value,
+                                            )}
+                                            onCheckedChange={() =>
+                                                toggleFeature(feature.value)
+                                            }
                                         />
                                         {feature.label}
                                     </label>
@@ -218,7 +284,9 @@ export default function AiSettings({
                         <label className="flex items-center gap-2 text-sm">
                             <Checkbox
                                 checked={allowAll}
-                                onCheckedChange={(checked) => setAllowAll(checked === true)}
+                                onCheckedChange={(checked) =>
+                                    setAllowAll(checked === true)
+                                }
                             />
                             All organization members
                         </label>
@@ -232,11 +300,17 @@ export default function AiSettings({
                                     >
                                         <span className="flex items-center gap-2">
                                             <Checkbox
-                                                checked={allowedIds.includes(member.id)}
-                                                onCheckedChange={() => toggleMember(member.id)}
+                                                checked={allowedIds.includes(
+                                                    member.id,
+                                                )}
+                                                onCheckedChange={() =>
+                                                    toggleMember(member.id)
+                                                }
                                             />
                                             {member.name}
-                                            <span className="text-muted-foreground">{member.email}</span>
+                                            <span className="text-muted-foreground">
+                                                {member.email}
+                                            </span>
                                         </span>
                                     </label>
                                 ))}
@@ -244,7 +318,8 @@ export default function AiSettings({
                         )}
 
                         <p className="text-xs text-muted-foreground">
-                            Users can also add a personal API key in Settings → AI — personal keys take precedence.
+                            Users can also add a personal API key in Settings →
+                            AI — personal keys take precedence.
                         </p>
                     </CardContent>
                 </Card>
@@ -255,21 +330,32 @@ export default function AiSettings({
                     </CardHeader>
                     <CardContent>
                         {usage.length === 0 ? (
-                            <p className="text-sm text-muted-foreground">No AI usage recorded yet.</p>
+                            <p className="text-sm text-muted-foreground">
+                                No AI usage recorded yet.
+                            </p>
                         ) : (
                             <table className="w-full text-sm">
                                 <thead>
-                                    <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
+                                    <tr className="border-b text-left text-xs tracking-wide text-muted-foreground uppercase">
                                         <th className="px-3 py-2">User</th>
                                         <th className="px-3 py-2">Calls</th>
-                                        <th className="px-3 py-2 text-right">Tokens</th>
+                                        <th className="px-3 py-2 text-right">
+                                            Tokens
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {usage.map((row) => (
-                                        <tr key={row.name} className="border-b last:border-0">
-                                            <td className="px-3 py-2 font-medium">{row.name}</td>
-                                            <td className="px-3 py-2 tabular-nums">{row.calls}</td>
+                                        <tr
+                                            key={row.name}
+                                            className="border-b last:border-0"
+                                        >
+                                            <td className="px-3 py-2 font-medium">
+                                                {row.name}
+                                            </td>
+                                            <td className="px-3 py-2 tabular-nums">
+                                                {row.calls}
+                                            </td>
                                             <td className="px-3 py-2 text-right tabular-nums">
                                                 {row.tokens.toLocaleString()}
                                             </td>

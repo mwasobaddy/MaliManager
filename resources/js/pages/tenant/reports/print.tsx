@@ -14,7 +14,11 @@ type Props = {
     rangeLabel: string;
 };
 
-export default function ReportPrint({ report, organizationName, rangeLabel }: Props) {
+export default function ReportPrint({
+    report,
+    organizationName,
+    rangeLabel,
+}: Props) {
     return (
         <>
             <Head title={`${report.title} — ${organizationName ?? ''}`} />
@@ -39,32 +43,48 @@ export default function ReportPrint({ report, organizationName, rangeLabel }: Pr
                     </p>
                     {Object.keys(report.summary).length > 0 && (
                         <dl className="mt-3 flex flex-wrap gap-6 text-sm">
-                            {Object.entries(report.summary).map(([label, value]) => (
-                                <div key={label}>
-                                    <dt className="text-xs uppercase tracking-wide text-muted-foreground">{label}</dt>
-                                    <dd className="font-semibold tabular-nums">{value}</dd>
-                                </div>
-                            ))}
+                            {Object.entries(report.summary).map(
+                                ([label, value]) => (
+                                    <div key={label}>
+                                        <dt className="text-xs tracking-wide text-muted-foreground uppercase">
+                                            {label}
+                                        </dt>
+                                        <dd className="font-semibold tabular-nums">
+                                            {value}
+                                        </dd>
+                                    </div>
+                                ),
+                            )}
                         </dl>
                     )}
                 </header>
 
                 {report.rows.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No data for this range.</p>
+                    <p className="text-sm text-muted-foreground">
+                        No data for this range.
+                    </p>
                 ) : (
                     <table className="w-full text-left text-sm">
                         <thead>
-                            <tr className="border-b text-xs uppercase tracking-wide text-muted-foreground">
+                            <tr className="border-b text-xs tracking-wide text-muted-foreground uppercase">
                                 {report.columns.map((column) => (
-                                    <th key={column.key} className="px-3 py-2">{column.label}</th>
+                                    <th key={column.key} className="px-3 py-2">
+                                        {column.label}
+                                    </th>
                                 ))}
                             </tr>
                         </thead>
                         <tbody>
                             {report.rows.map((row, index) => (
-                                <tr key={index} className="border-b break-inside-avoid">
+                                <tr
+                                    key={index}
+                                    className="break-inside-avoid border-b"
+                                >
                                     {report.columns.map((column) => (
-                                        <td key={column.key} className="px-3 py-2 capitalize">
+                                        <td
+                                            key={column.key}
+                                            className="px-3 py-2 capitalize"
+                                        >
                                             {String(row[column.key] ?? '—')}
                                         </td>
                                     ))}

@@ -1,7 +1,7 @@
 import { Head, Link } from '@inertiajs/react';
 import { ArrowLeft, Clock } from 'lucide-react';
-import { AssistantChart  } from '@/components/assistant-chart';
-import type {AssistantArtifact} from '@/components/assistant-chart';
+import { AssistantChart } from '@/components/assistant-chart';
+import type { AssistantArtifact } from '@/components/assistant-chart';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
 
@@ -39,11 +39,15 @@ export default function ConversationDetail({ conversation, messages }: Props) {
                         </Button>
                         <Heading
                             variant="small"
-                            title={conversation.title || 'Untitled conversation'}
+                            title={
+                                conversation.title || 'Untitled conversation'
+                            }
                             description={
                                 <span className="flex items-center gap-1.5">
                                     <Clock className="size-3" />
-                                    {new Date(conversation.created_at).toLocaleDateString('en-US', {
+                                    {new Date(
+                                        conversation.created_at,
+                                    ).toLocaleDateString('en-US', {
                                         month: 'long',
                                         day: 'numeric',
                                         year: 'numeric',
@@ -72,11 +76,16 @@ export default function ConversationDetail({ conversation, messages }: Props) {
                                 {message.content}
                             </div>
 
-                            {message.artifacts?.map((artifact, artifactIndex) => (
-                                <div key={artifactIndex} className="max-w-[95%] rounded-lg border border-input bg-background p-2">
-                                    <AssistantChart artifact={artifact} />
-                                </div>
-                            ))}
+                            {message.artifacts?.map(
+                                (artifact, artifactIndex) => (
+                                    <div
+                                        key={artifactIndex}
+                                        className="max-w-[95%] rounded-lg border border-input bg-background p-2"
+                                    >
+                                        <AssistantChart artifact={artifact} />
+                                    </div>
+                                ),
+                            )}
                         </div>
                     ))}
                 </div>

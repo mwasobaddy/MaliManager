@@ -4,7 +4,13 @@ import { useState } from 'react';
 import Heading from '@/components/heading';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 
 type Lease = {
@@ -101,7 +107,8 @@ export default function SearcherRentals({ leases }: Props) {
                                     : 'No past rentals yet'}
                             </p>
                             <p className="mt-1 text-sm text-muted-foreground">
-                                When an organization adds you as a renter, your lease will appear here.
+                                When an organization adds you as a renter, your
+                                lease will appear here.
                             </p>
                         </CardContent>
                     </Card>
@@ -122,11 +129,20 @@ export default function SearcherRentals({ leases }: Props) {
                                                 ) : null}
                                             </CardTitle>
                                             <CardDescription>
-                                                {lease.organization_name ?? 'Organization'}
+                                                {lease.organization_name ??
+                                                    'Organization'}
                                             </CardDescription>
                                         </div>
-                                        <Badge variant={lease.is_active ? 'default' : 'secondary'}>
-                                            {lease.is_active ? 'Active' : 'Ended'}
+                                        <Badge
+                                            variant={
+                                                lease.is_active
+                                                    ? 'default'
+                                                    : 'secondary'
+                                            }
+                                        >
+                                            {lease.is_active
+                                                ? 'Active'
+                                                : 'Ended'}
                                         </Badge>
                                     </div>
                                 </CardHeader>
@@ -149,18 +165,28 @@ export default function SearcherRentals({ leases }: Props) {
 
                                     <div className="grid grid-cols-2 gap-3">
                                         <div>
-                                            <p className="text-muted-foreground">Rent</p>
+                                            <p className="text-muted-foreground">
+                                                Rent
+                                            </p>
                                             <p className="font-medium">
-                                                {formatMoney(lease.rent_amount, lease.currency)}
+                                                {formatMoney(
+                                                    lease.rent_amount,
+                                                    lease.currency,
+                                                )}
                                                 {lease.rent_frequency
                                                     ? ` ${frequencyLabel[lease.rent_frequency] ?? ''}`
                                                     : ''}
                                             </p>
                                         </div>
                                         <div>
-                                            <p className="text-muted-foreground">Deposit</p>
+                                            <p className="text-muted-foreground">
+                                                Deposit
+                                            </p>
                                             <p className="font-medium">
-                                                {formatMoney(lease.deposit, lease.currency)}
+                                                {formatMoney(
+                                                    lease.deposit,
+                                                    lease.currency,
+                                                )}
                                             </p>
                                         </div>
                                         <div className="col-span-2">
@@ -168,7 +194,10 @@ export default function SearcherRentals({ leases }: Props) {
                                                 Total cost (rent + deposit)
                                             </p>
                                             <p className="font-medium">
-                                                {formatMoney(lease.total_cost, lease.currency)}
+                                                {formatMoney(
+                                                    lease.total_cost,
+                                                    lease.currency,
+                                                )}
                                             </p>
                                         </div>
                                     </div>
@@ -183,7 +212,9 @@ export default function SearcherRentals({ leases }: Props) {
                                                 {/* Sanitized server-side on save (formatting allowlist). */}
                                                 <div
                                                     className="prose prose-sm max-w-none text-xs"
-                                                    dangerouslySetInnerHTML={{ __html: lease.agreement_text }}
+                                                    dangerouslySetInnerHTML={{
+                                                        __html: lease.agreement_text,
+                                                    }}
                                                 />
                                             </div>
                                         </>

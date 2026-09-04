@@ -34,18 +34,31 @@ type Props = {
     selected_manager_ids: number[];
 };
 
-const ZONING = ['residential', 'commercial', 'agricultural', 'mixed', 'industrial'];
+const ZONING = [
+    'residential',
+    'commercial',
+    'agricultural',
+    'mixed',
+    'industrial',
+];
 
-export default function LandParcelCreate({ organization, managers, selected_manager_ids }: Props) {
+export default function LandParcelCreate({
+    organization,
+    managers,
+    selected_manager_ids,
+}: Props) {
     const [zoning, setZoning] = useState('residential');
     const [status, setStatus] = useState('active');
     const [available, setAvailable] = useState(false);
-    const [managerIds, setManagerIds] = useState<number[]>(selected_manager_ids);
+    const [managerIds, setManagerIds] =
+        useState<number[]>(selected_manager_ids);
     const imagesRef = useRef<HTMLInputElement>(null);
 
     const toggleManager = (id: number) => {
         setManagerIds((prev) =>
-            prev.includes(id) ? prev.filter((mid) => mid !== id) : [...prev, id],
+            prev.includes(id)
+                ? prev.filter((mid) => mid !== id)
+                : [...prev, id],
         );
     };
 
@@ -71,27 +84,64 @@ export default function LandParcelCreate({ organization, managers, selected_mana
                             <div className="grid gap-6 rounded-xl border border-input p-6 md:grid-cols-2">
                                 <div className="grid gap-2">
                                     <Label htmlFor="name">Name</Label>
-                                    <Input id="name" name="name" type="text" required autoComplete="off" placeholder="Ruiru Plot A" />
+                                    <Input
+                                        id="name"
+                                        name="name"
+                                        type="text"
+                                        required
+                                        autoComplete="off"
+                                        placeholder="Ruiru Plot A"
+                                    />
                                     <InputError message={errors.name} />
                                 </div>
 
                                 <div className="grid gap-2">
-                                    <Label htmlFor="title_deed_number">Title deed no. (optional)</Label>
-                                    <Input id="title_deed_number" name="title_deed_number" type="text" autoComplete="off" placeholder="LR/12345" />
-                                    <InputError message={errors.title_deed_number} />
+                                    <Label htmlFor="title_deed_number">
+                                        Title deed no. (optional)
+                                    </Label>
+                                    <Input
+                                        id="title_deed_number"
+                                        name="title_deed_number"
+                                        type="text"
+                                        autoComplete="off"
+                                        placeholder="LR/12345"
+                                    />
+                                    <InputError
+                                        message={errors.title_deed_number}
+                                    />
                                 </div>
 
                                 <div className="grid gap-2">
-                                    <Label htmlFor="acreage">Acreage (optional)</Label>
-                                    <Input id="acreage" name="acreage" type="number" step="0.01" min="0" autoComplete="off" placeholder="2.5" />
+                                    <Label htmlFor="acreage">
+                                        Acreage (optional)
+                                    </Label>
+                                    <Input
+                                        id="acreage"
+                                        name="acreage"
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        autoComplete="off"
+                                        placeholder="2.5"
+                                    />
                                     <InputError message={errors.acreage} />
                                 </div>
 
                                 <div className="grid gap-2">
                                     <Label htmlFor="zoning">Zoning</Label>
-                                    <input type="hidden" name="zoning" value={zoning} />
-                                    <Select value={zoning} onValueChange={setZoning}>
-                                        <SelectTrigger id="zoning" className="w-full">
+                                    <input
+                                        type="hidden"
+                                        name="zoning"
+                                        value={zoning}
+                                    />
+                                    <Select
+                                        value={zoning}
+                                        onValueChange={setZoning}
+                                    >
+                                        <SelectTrigger
+                                            id="zoning"
+                                            className="w-full"
+                                        >
                                             <SelectValue placeholder="Select zoning" />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -106,60 +156,123 @@ export default function LandParcelCreate({ organization, managers, selected_mana
                                 </div>
 
                                 <div className="grid gap-2">
-                                    <Label htmlFor="address">Address (optional)</Label>
-                                    <Input id="address" name="address" type="text" autoComplete="off" placeholder="Off Thika Road" />
+                                    <Label htmlFor="address">
+                                        Address (optional)
+                                    </Label>
+                                    <Input
+                                        id="address"
+                                        name="address"
+                                        type="text"
+                                        autoComplete="off"
+                                        placeholder="Off Thika Road"
+                                    />
                                     <InputError message={errors.address} />
                                 </div>
 
                                 <div className="grid gap-2">
-                                    <Label htmlFor="city">City (optional)</Label>
-                                    <Input id="city" name="city" type="text" autoComplete="off" placeholder="Ruiru" />
+                                    <Label htmlFor="city">
+                                        City (optional)
+                                    </Label>
+                                    <Input
+                                        id="city"
+                                        name="city"
+                                        type="text"
+                                        autoComplete="off"
+                                        placeholder="Ruiru"
+                                    />
                                     <InputError message={errors.city} />
                                 </div>
 
                                 <div className="grid gap-2">
-                                    <Label htmlFor="latitude">Latitude (optional)</Label>
-                                    <Input id="latitude" name="latitude" type="number" step="any" autoComplete="off" placeholder="-1.123456" />
+                                    <Label htmlFor="latitude">
+                                        Latitude (optional)
+                                    </Label>
+                                    <Input
+                                        id="latitude"
+                                        name="latitude"
+                                        type="number"
+                                        step="any"
+                                        autoComplete="off"
+                                        placeholder="-1.123456"
+                                    />
                                     <InputError message={errors.latitude} />
                                 </div>
 
                                 <div className="grid gap-2">
-                                    <Label htmlFor="longitude">Longitude (optional)</Label>
-                                    <Input id="longitude" name="longitude" type="number" step="any" autoComplete="off" placeholder="36.123456" />
+                                    <Label htmlFor="longitude">
+                                        Longitude (optional)
+                                    </Label>
+                                    <Input
+                                        id="longitude"
+                                        name="longitude"
+                                        type="number"
+                                        step="any"
+                                        autoComplete="off"
+                                        placeholder="36.123456"
+                                    />
                                     <InputError message={errors.longitude} />
                                 </div>
 
                                 <div className="grid gap-2">
                                     <Label htmlFor="status">Status</Label>
-                                    <input type="hidden" name="status" value={status} />
-                                    <Select value={status} onValueChange={setStatus}>
-                                        <SelectTrigger id="status" className="w-full">
+                                    <input
+                                        type="hidden"
+                                        name="status"
+                                        value={status}
+                                    />
+                                    <Select
+                                        value={status}
+                                        onValueChange={setStatus}
+                                    >
+                                        <SelectTrigger
+                                            id="status"
+                                            className="w-full"
+                                        >
                                             <SelectValue placeholder="Select status" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="active">Active</SelectItem>
-                                            <SelectItem value="inactive">Inactive</SelectItem>
+                                            <SelectItem value="active">
+                                                Active
+                                            </SelectItem>
+                                            <SelectItem value="inactive">
+                                                Inactive
+                                            </SelectItem>
                                         </SelectContent>
                                     </Select>
                                     <InputError message={errors.status} />
                                 </div>
 
                                 <div className="grid gap-2">
-                                    <Label htmlFor="available_for_lease">Available for lease</Label>
+                                    <Label htmlFor="available_for_lease">
+                                        Available for lease
+                                    </Label>
                                     <div className="flex items-center gap-2 pt-2">
                                         <Checkbox
                                             id="available_for_lease"
                                             checked={available}
-                                            onCheckedChange={(checked) => setAvailable(checked === true)}
+                                            onCheckedChange={(checked) =>
+                                                setAvailable(checked === true)
+                                            }
                                         />
-                                        <input type="hidden" name="available_for_lease" value={available ? '1' : '0'} />
-                                        <span className="text-sm text-muted-foreground">List this parcel as available for lease</span>
+                                        <input
+                                            type="hidden"
+                                            name="available_for_lease"
+                                            value={available ? '1' : '0'}
+                                        />
+                                        <span className="text-sm text-muted-foreground">
+                                            List this parcel as available for
+                                            lease
+                                        </span>
                                     </div>
-                                    <InputError message={errors.available_for_lease} />
+                                    <InputError
+                                        message={errors.available_for_lease}
+                                    />
                                 </div>
 
                                 <div className="grid gap-2 md:col-span-2">
-                                    <Label htmlFor="notes">Notes (optional)</Label>
+                                    <Label htmlFor="notes">
+                                        Notes (optional)
+                                    </Label>
                                     <textarea
                                         id="notes"
                                         name="notes"
@@ -171,7 +284,9 @@ export default function LandParcelCreate({ organization, managers, selected_mana
                                 </div>
 
                                 <div className="grid gap-2 md:col-span-2">
-                                    <Label htmlFor="images">Photos (optional)</Label>
+                                    <Label htmlFor="images">
+                                        Photos (optional)
+                                    </Label>
                                     <input
                                         id="images"
                                         ref={imagesRef}
@@ -193,7 +308,8 @@ export default function LandParcelCreate({ organization, managers, selected_mana
                                 />
                                 {managers.length === 0 ? (
                                     <p className="text-sm text-muted-foreground">
-                                        No staff members yet. Add staff before delegating management.
+                                        No staff members yet. Add staff before
+                                        delegating management.
                                     </p>
                                 ) : (
                                     <div className="grid gap-3">
@@ -203,22 +319,38 @@ export default function LandParcelCreate({ organization, managers, selected_mana
                                                 className="flex items-center gap-3 rounded-lg border border-input p-3 text-sm transition-colors hover:bg-muted"
                                             >
                                                 <Checkbox
-                                                    checked={managerIds.includes(manager.id)}
-                                                    onCheckedChange={() => toggleManager(manager.id)}
+                                                    checked={managerIds.includes(
+                                                        manager.id,
+                                                    )}
+                                                    onCheckedChange={() =>
+                                                        toggleManager(
+                                                            manager.id,
+                                                        )
+                                                    }
                                                 />
                                                 <input
                                                     type="hidden"
                                                     name="manager_ids[]"
                                                     value={String(manager.id)}
-                                                    disabled={!managerIds.includes(manager.id)}
+                                                    disabled={
+                                                        !managerIds.includes(
+                                                            manager.id,
+                                                        )
+                                                    }
                                                 />
-                                                <span className="font-medium">{manager.name}</span>
+                                                <span className="font-medium">
+                                                    {manager.name}
+                                                </span>
                                                 {manager.sub_role && (
-                                                    <span className="text-muted-foreground">{manager.sub_role}</span>
+                                                    <span className="text-muted-foreground">
+                                                        {manager.sub_role}
+                                                    </span>
                                                 )}
                                             </label>
                                         ))}
-                                        <InputError message={errors.manager_ids} />
+                                        <InputError
+                                            message={errors.manager_ids}
+                                        />
                                     </div>
                                 )}
                             </div>

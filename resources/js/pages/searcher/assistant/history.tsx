@@ -15,7 +15,10 @@ type Props = {
     scope: string;
 };
 
-export default function SearcherConversationHistory({ conversations, scope }: Props) {
+export default function SearcherConversationHistory({
+    conversations,
+    scope,
+}: Props) {
     return (
         <ConversationHistory
             conversations={conversations}

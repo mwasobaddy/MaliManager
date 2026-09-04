@@ -18,7 +18,12 @@ type Props = {
     isAdmin: boolean;
 };
 
-const ROLE_OPTIONS = ['admin', 'organization-owner', 'searcher', 'occupant'] as const;
+const ROLE_OPTIONS = [
+    'admin',
+    'organization-owner',
+    'searcher',
+    'occupant',
+] as const;
 
 export default function RolesIndex({ roles, permissions, users }: Props) {
     const roleForm = useForm<{ role: string }>({ role: '' });
@@ -56,30 +61,55 @@ export default function RolesIndex({ roles, permissions, users }: Props) {
                     <CardContent>
                         <table className="w-full text-sm">
                             <thead>
-                                <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
+                                <tr className="border-b text-left text-xs tracking-wide text-muted-foreground uppercase">
                                     <th className="px-3 py-2">Role</th>
-                                    <th className="px-3 py-2">Central permissions</th>
-                                    <th className="px-3 py-2 text-right">Actions</th>
+                                    <th className="px-3 py-2">
+                                        Central permissions
+                                    </th>
+                                    <th className="px-3 py-2 text-right">
+                                        Actions
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {roles.map((role) => (
-                                    <tr key={role.id} className="border-b last:border-0">
-                                        <td className="px-3 py-2 font-medium">{role.name}</td>
+                                    <tr
+                                        key={role.id}
+                                        className="border-b last:border-0"
+                                    >
+                                        <td className="px-3 py-2 font-medium">
+                                            {role.name}
+                                        </td>
                                         <td className="px-3 py-2">
                                             {role.permissions.length === 0 ? (
-                                                <span className="text-muted-foreground">None</span>
+                                                <span className="text-muted-foreground">
+                                                    None
+                                                </span>
                                             ) : (
                                                 <div className="flex flex-wrap gap-1">
-                                                    {role.permissions.map((p) => (
-                                                        <Badge key={p}>{label(p)}</Badge>
-                                                    ))}
+                                                    {role.permissions.map(
+                                                        (p) => (
+                                                            <Badge key={p}>
+                                                                {label(p)}
+                                                            </Badge>
+                                                        ),
+                                                    )}
                                                 </div>
                                             )}
                                         </td>
                                         <td className="px-3 py-2 text-right">
-                                            <Button asChild variant="ghost" size="sm">
-                                                <a href={editRole({ role: role.id }).url}>
+                                            <Button
+                                                asChild
+                                                variant="ghost"
+                                                size="sm"
+                                            >
+                                                <a
+                                                    href={
+                                                        editRole({
+                                                            role: role.id,
+                                                        }).url
+                                                    }
+                                                >
                                                     <Edit className="size-4" />
                                                     Edit
                                                 </a>
@@ -101,25 +131,41 @@ export default function RolesIndex({ roles, permissions, users }: Props) {
                     <CardContent>
                         <table className="w-full text-sm">
                             <thead>
-                                <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
+                                <tr className="border-b text-left text-xs tracking-wide text-muted-foreground uppercase">
                                     <th className="px-3 py-2">User</th>
                                     <th className="px-3 py-2">Current role</th>
-                                    <th className="px-3 py-2 text-right">Assign</th>
+                                    <th className="px-3 py-2 text-right">
+                                        Assign
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {users.map((user) => (
-                                    <tr key={user.id} className="border-b last:border-0">
+                                    <tr
+                                        key={user.id}
+                                        className="border-b last:border-0"
+                                    >
                                         <td className="px-3 py-2">
-                                            <div className="font-medium">{user.name}</div>
-                                            <div className="text-sm text-muted-foreground">{user.email}</div>
+                                            <div className="font-medium">
+                                                {user.name}
+                                            </div>
+                                            <div className="text-sm text-muted-foreground">
+                                                {user.email}
+                                            </div>
                                         </td>
-                                        <td className="px-3 py-2">{user.roles.join(', ') || '—'}</td>
+                                        <td className="px-3 py-2">
+                                            {user.roles.join(', ') || '—'}
+                                        </td>
                                         <td className="px-3 py-2 text-right">
                                             <select
                                                 className="w-full rounded-md border border-input bg-background px-2 py-1 text-sm"
                                                 defaultValue=""
-                                                onChange={(e) => assignRole(user, e.target.value)}
+                                                onChange={(e) =>
+                                                    assignRole(
+                                                        user,
+                                                        e.target.value,
+                                                    )
+                                                }
                                             >
                                                 <option value="" disabled>
                                                     Pick a role…

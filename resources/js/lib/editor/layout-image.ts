@@ -34,6 +34,7 @@ export const LayoutImage = Image.extend({
 
     addCommands() {
         return {
+            ...this.parent?.(),
             setImageLayout:
                 (layout: ImageLayout) =>
                 ({ chain }) =>

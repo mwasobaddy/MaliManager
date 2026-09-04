@@ -1,6 +1,6 @@
 import { Head, Link } from '@inertiajs/react';
 import { History } from 'lucide-react';
-import type {AssistantArtifact} from '@/components/assistant-chart';
+import type { AssistantArtifact } from '@/components/assistant-chart';
 import { AssistantChat } from '@/components/assistant-chat';
 import { Button } from '@/components/ui/button';
 import { ask as askRoute } from '@/routes/searcher/assistant';
@@ -8,7 +8,11 @@ import { ask as askRoute } from '@/routes/searcher/assistant';
 type Props = {
     enabled: boolean;
     quick_prompts?: string[];
-    initial_messages?: { role: 'user' | 'assistant' | 'error'; content: string; artifacts?: AssistantArtifact[] }[];
+    initial_messages?: {
+        role: 'user' | 'assistant' | 'error';
+        content: string;
+        artifacts?: AssistantArtifact[];
+    }[];
 };
 
 const DEFAULT_PROMPTS = [
@@ -25,7 +29,9 @@ export default function Assistant({ enabled, quick_prompts }: Props) {
                 <Head title="AI assistant" />
                 <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
                     <p className="text-sm text-muted-foreground">
-                        AI is not configured for your account yet. Add a personal API key in Settings → AI to enable your assistant.
+                        AI is not configured for your account yet. Add a
+                        personal API key in Settings → AI to enable your
+                        assistant.
                     </p>
                 </div>
             </>
@@ -44,7 +50,10 @@ export default function Assistant({ enabled, quick_prompts }: Props) {
                 initialMessages={initial_messages}
                 headerActions={
                     <Button asChild variant="ghost" size="sm">
-                        <Link href="/searcher/assistant/history" className="gap-2">
+                        <Link
+                            href="/searcher/assistant/history"
+                            className="gap-2"
+                        >
                             <History className="size-4" />
                             History
                         </Link>

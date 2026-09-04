@@ -18,12 +18,13 @@ export default function AuthSimpleLayout({
                             className="flex flex-col items-center gap-2 font-medium"
                         >
                             <div className="flex items-center gap-2">
-                                <div className="flex aspect-square size-10 p-1 items-center justify-center rounded-full border-2 border-[#C37750] text-[#C37750] shadow-sm">
+                                <div className="flex aspect-square size-10 items-center justify-center rounded-full border-2 border-[#C37750] p-1 text-[#C37750] shadow-sm">
                                     <AppLogoIcon className="size-20" />
                                 </div>
                                 <div className="grid flex-1 text-left text-sm">
-                                    <span className="truncate leading-tight font-medium text-[#C37750] text-xl">
-                                        {import.meta.env.VITE_APP_NAME ?? 'MaliManager'}
+                                    <span className="truncate text-xl leading-tight font-medium text-[#C37750]">
+                                        {import.meta.env.VITE_APP_NAME ??
+                                            'MaliManager'}
                                     </span>
                                 </div>
                             </div>

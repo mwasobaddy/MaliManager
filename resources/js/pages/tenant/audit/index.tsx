@@ -3,7 +3,11 @@ import { Download, History } from 'lucide-react';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { exportMethod as auditExport, index as auditIndex, show as auditShow } from '@/routes/tenant/audit';
+import {
+    exportMethod as auditExport,
+    index as auditIndex,
+    show as auditShow,
+} from '@/routes/tenant/audit';
 
 type Causer = { id: number; name: string; email: string } | null;
 type Subject = { type: string; id: number } | null;
@@ -37,7 +41,12 @@ type Props = {
     };
 };
 
-export default function AuditIndex({ audits, filters, canExport, options }: Props) {
+export default function AuditIndex({
+    audits,
+    filters,
+    canExport,
+    options,
+}: Props) {
     const form = useForm({
         actor: filters.actor ?? '',
         event: filters.event ?? '',
@@ -49,7 +58,7 @@ export default function AuditIndex({ audits, filters, canExport, options }: Prop
     });
 
     const submit = () => {
-                                    form.get(auditIndex().url, { preserveState: true, replace: true });
+        form.get(auditIndex().url, { preserveState: true, replace: true });
     };
 
     const goToPage = (page: number) => {
@@ -88,18 +97,24 @@ export default function AuditIndex({ audits, filters, canExport, options }: Prop
                                 className="h-9 rounded-md border border-input bg-background px-3 text-sm"
                                 placeholder="Search description"
                                 value={form.data.search}
-                                onChange={(e) => form.setData('search', e.target.value)}
+                                onChange={(e) =>
+                                    form.setData('search', e.target.value)
+                                }
                             />
                             <input
                                 className="h-9 rounded-md border border-input bg-background px-3 text-sm"
                                 placeholder="Actor name or email"
                                 value={form.data.actor}
-                                onChange={(e) => form.setData('actor', e.target.value)}
+                                onChange={(e) =>
+                                    form.setData('actor', e.target.value)
+                                }
                             />
                             <select
                                 className="h-9 rounded-md border border-input bg-background px-3 text-sm"
                                 value={form.data.event}
-                                onChange={(e) => form.setData('event', e.target.value)}
+                                onChange={(e) =>
+                                    form.setData('event', e.target.value)
+                                }
                             >
                                 <option value="">Any action</option>
                                 {options.events.map((event) => (
@@ -111,26 +126,34 @@ export default function AuditIndex({ audits, filters, canExport, options }: Prop
                             <select
                                 className="h-9 rounded-md border border-input bg-background px-3 text-sm"
                                 value={form.data.subject_type}
-                                onChange={(e) => form.setData('subject_type', e.target.value)}
+                                onChange={(e) =>
+                                    form.setData('subject_type', e.target.value)
+                                }
                             >
                                 <option value="">Any resource</option>
-                                {Object.entries(options.subjectTypes).map(([type, label]) => (
-                                    <option key={type} value={type}>
-                                        {label}
-                                    </option>
-                                ))}
+                                {Object.entries(options.subjectTypes).map(
+                                    ([type, label]) => (
+                                        <option key={type} value={type}>
+                                            {label}
+                                        </option>
+                                    ),
+                                )}
                             </select>
                             <input
                                 type="date"
                                 className="h-9 rounded-md border border-input bg-background px-3 text-sm"
                                 value={form.data.date_from}
-                                onChange={(e) => form.setData('date_from', e.target.value)}
+                                onChange={(e) =>
+                                    form.setData('date_from', e.target.value)
+                                }
                             />
                             <input
                                 type="date"
                                 className="h-9 rounded-md border border-input bg-background px-3 text-sm"
                                 value={form.data.date_to}
-                                onChange={(e) => form.setData('date_to', e.target.value)}
+                                onChange={(e) =>
+                                    form.setData('date_to', e.target.value)
+                                }
                             />
                         </div>
                         <div className="flex gap-2">
@@ -142,7 +165,10 @@ export default function AuditIndex({ audits, filters, canExport, options }: Prop
                                 variant="ghost"
                                 onClick={() => {
                                     form.reset();
-        form.get(auditIndex().url, { preserveState: true, replace: true });
+                                    form.get(auditIndex().url, {
+                                        preserveState: true,
+                                        replace: true,
+                                    });
                                 }}
                             >
                                 Clear
@@ -156,40 +182,59 @@ export default function AuditIndex({ audits, filters, canExport, options }: Prop
                         {audits.data.length === 0 ? (
                             <div className="py-16 text-center">
                                 <History className="mx-auto size-10 text-muted-foreground" />
-                                <p className="mt-4 font-medium">No audit entries yet</p>
+                                <p className="mt-4 font-medium">
+                                    No audit entries yet
+                                </p>
                                 <p className="mt-1 text-sm text-muted-foreground">
-                                    Actions across your organization will appear here.
+                                    Actions across your organization will appear
+                                    here.
                                 </p>
                             </div>
                         ) : (
                             <div className="overflow-x-auto">
                                 <table className="w-full text-sm">
                                     <thead>
-                                        <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
+                                        <tr className="border-b text-left text-xs tracking-wide text-muted-foreground uppercase">
                                             <th className="px-3 py-2">Time</th>
                                             <th className="px-3 py-2">Actor</th>
-                                            <th className="px-3 py-2">Action</th>
-                                            <th className="px-3 py-2">Resource</th>
-                                            <th className="px-3 py-2">Description</th>
+                                            <th className="px-3 py-2">
+                                                Action
+                                            </th>
+                                            <th className="px-3 py-2">
+                                                Resource
+                                            </th>
+                                            <th className="px-3 py-2">
+                                                Description
+                                            </th>
                                             <th className="px-3 py-2">IP</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {audits.data.map((audit) => (
-                                            <tr key={audit.id} className="border-b last:border-0">
-                                                <td className="whitespace-nowrap px-3 py-2 text-muted-foreground">
-                                                    {new Date(audit.created_at).toLocaleString()}
+                                            <tr
+                                                key={audit.id}
+                                                className="border-b last:border-0"
+                                            >
+                                                <td className="px-3 py-2 whitespace-nowrap text-muted-foreground">
+                                                    {new Date(
+                                                        audit.created_at,
+                                                    ).toLocaleString()}
                                                 </td>
                                                 <td className="px-3 py-2">
                                                     {audit.causer ? (
                                                         <Link
                                                             className="text-foreground hover:underline"
-                                                            href={auditShow({ activity: audit.id })}
+                                                            href={auditShow({
+                                                                activity:
+                                                                    audit.id,
+                                                            })}
                                                         >
                                                             {audit.causer.name}
                                                         </Link>
                                                     ) : (
-                                                        <span className="text-muted-foreground">System</span>
+                                                        <span className="text-muted-foreground">
+                                                            System
+                                                        </span>
                                                     )}
                                                 </td>
                                                 <td className="px-3 py-2">
@@ -202,8 +247,10 @@ export default function AuditIndex({ audits, filters, canExport, options }: Prop
                                                         ? `${audit.subject.type} #${audit.subject.id}`
                                                         : '—'}
                                                 </td>
-                                                <td className="px-3 py-2">{audit.description}</td>
-                                                <td className="whitespace-nowrap px-3 py-2 text-muted-foreground">
+                                                <td className="px-3 py-2">
+                                                    {audit.description}
+                                                </td>
+                                                <td className="px-3 py-2 whitespace-nowrap text-muted-foreground">
                                                     {audit.ip_address ?? '—'}
                                                 </td>
                                             </tr>
@@ -216,22 +263,30 @@ export default function AuditIndex({ audits, filters, canExport, options }: Prop
                         {audits.last_page > 1 && (
                             <div className="mt-4 flex items-center justify-between text-sm">
                                 <span className="text-muted-foreground">
-                                    Page {audits.current_page} of {audits.last_page}
+                                    Page {audits.current_page} of{' '}
+                                    {audits.last_page}
                                 </span>
                                 <div className="flex gap-2">
                                     <Button
                                         variant="outline"
                                         size="sm"
                                         disabled={audits.current_page <= 1}
-                                        onClick={() => goToPage(audits.current_page - 1)}
+                                        onClick={() =>
+                                            goToPage(audits.current_page - 1)
+                                        }
                                     >
                                         Previous
                                     </Button>
                                     <Button
                                         variant="outline"
                                         size="sm"
-                                        disabled={audits.current_page >= audits.last_page}
-                                        onClick={() => goToPage(audits.current_page + 1)}
+                                        disabled={
+                                            audits.current_page >=
+                                            audits.last_page
+                                        }
+                                        onClick={() =>
+                                            goToPage(audits.current_page + 1)
+                                        }
                                     >
                                         Next
                                     </Button>

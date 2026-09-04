@@ -24,7 +24,11 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { page as draftingPage } from '@/routes/tenant/drafting';
-import { end as endLease, index as leasesIndex, renewalSuggestion } from '@/routes/tenant/leases';
+import {
+    end as endLease,
+    index as leasesIndex,
+    renewalSuggestion,
+} from '@/routes/tenant/leases';
 import { agreement as agreementPrintRoute } from '@/routes/tenant/occupants';
 
 type LeaseRow = {
@@ -69,7 +73,10 @@ export default function LeasesIndex({ leases, filters }: Props) {
     const [endTarget, setEndTarget] = useState<LeaseRow | null>(null);
     const [passwordError, setPasswordError] = useState('');
     const [suggestTarget, setSuggestTarget] = useState<LeaseRow | null>(null);
-    const [suggestion, setSuggestion] = useState<{ suggested_rent: number; reasoning: string | null } | null>(null);
+    const [suggestion, setSuggestion] = useState<{
+        suggested_rent: number;
+        reasoning: string | null;
+    } | null>(null);
     const [suggestBusy, setSuggestBusy] = useState(false);
     const passwordInput = useRef<HTMLInputElement>(null);
 
@@ -78,12 +85,17 @@ export default function LeasesIndex({ leases, filters }: Props) {
             return;
         }
 
-        const csrf = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '';
+        const csrf =
+            document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')
+                ?.content ?? '';
 
         setSuggestBusy(true);
 
         fetch(
-            renewalSuggestion({ property: context?.property?.slug ?? '', lease: suggestTarget.id }).url,
+            renewalSuggestion({
+                property: context?.property?.slug ?? '',
+                lease: suggestTarget.id,
+            }).url,
             { headers: { Accept: 'application/json', 'X-CSRF-TOKEN': csrf } },
         )
             .then(async (response) => response.json())
@@ -98,10 +110,15 @@ export default function LeasesIndex({ leases, filters }: Props) {
             return;
         }
 
-        const password = String(new FormData(event.currentTarget).get('password') ?? '');
+        const password = String(
+            new FormData(event.currentTarget).get('password') ?? '',
+        );
 
         router.post(
-            endLease({ property: context?.property?.slug ?? '', lease: endTarget.id }).url,
+            endLease({
+                property: context?.property?.slug ?? '',
+                lease: endTarget.id,
+            }).url,
             { password },
             {
                 preserveScroll: true,
@@ -122,7 +139,12 @@ export default function LeasesIndex({ leases, filters }: Props) {
         router.get(
             leasesIndex.url(
                 { property: context?.property?.slug ?? '' },
-                { query: { status: expiring ? 'active' : value, expiring: expiring ? '1' : undefined } },
+                {
+                    query: {
+                        status: expiring ? 'active' : value,
+                        expiring: expiring ? '1' : undefined,
+                    },
+                },
             ),
             {},
             { preserveState: true, replace: true },
@@ -138,7 +160,10 @@ export default function LeasesIndex({ leases, filters }: Props) {
                         title="Leases"
                         description="Every lease in this property, with printable agreements."
                     />
-                    <Select value={status || 'all'} onValueChange={applyStatusFilter}>
+                    <Select
+                        value={status || 'all'}
+                        onValueChange={applyStatusFilter}
+                    >
                         <SelectTrigger className="w-40">
                             <SelectValue placeholder="All statuses" />
                         </SelectTrigger>
@@ -152,34 +177,52 @@ export default function LeasesIndex({ leases, filters }: Props) {
 
                 {leases.data.length === 0 ? (
                     <p className="text-sm text-muted-foreground">
-                        No leases found. Assign an occupant to a unit to create one.
+                        No leases found. Assign an occupant to a unit to create
+                        one.
                     </p>
                 ) : (
                     <div className="overflow-x-auto rounded-xl border border-input">
                         <table className="w-full text-sm">
                             <thead>
-                                <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
+                                <tr className="border-b text-left text-xs tracking-wide text-muted-foreground uppercase">
                                     <th className="px-3 py-2">Unit</th>
                                     <th className="px-3 py-2">Occupant</th>
                                     <th className="px-3 py-2">Rent</th>
                                     <th className="px-3 py-2">Start</th>
                                     <th className="px-3 py-2">End</th>
                                     <th className="px-3 py-2">Status</th>
-                                    <th className="px-3 py-2 text-right">Actions</th>
+                                    <th className="px-3 py-2 text-right">
+                                        Actions
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {leases.data.map((lease) => (
-                                    <tr key={lease.id} className="border-b last:border-0">
-                                        <td className="px-3 py-2 font-medium">{lease.unit_name}</td>
-                                        <td className="px-3 py-2">{lease.occupant_name}</td>
-                                        <td className="px-3 py-2">
-                                            {lease.rent_amount ? `${lease.rent_amount} ${lease.currency ?? ''}` : '—'}
+                                    <tr
+                                        key={lease.id}
+                                        className="border-b last:border-0"
+                                    >
+                                        <td className="px-3 py-2 font-medium">
+                                            {lease.unit_name}
                                         </td>
-                                        <td className="px-3 py-2">{lease.starts_at ?? '—'}</td>
-                                        <td className="px-3 py-2">{lease.ends_at ?? '—'}</td>
                                         <td className="px-3 py-2">
-                                            <span className={`rounded px-1.5 py-0.5 text-xs capitalize ${statusStyles[lease.status] ?? ''}`}>
+                                            {lease.occupant_name}
+                                        </td>
+                                        <td className="px-3 py-2">
+                                            {lease.rent_amount
+                                                ? `${lease.rent_amount} ${lease.currency ?? ''}`
+                                                : '—'}
+                                        </td>
+                                        <td className="px-3 py-2">
+                                            {lease.starts_at ?? '—'}
+                                        </td>
+                                        <td className="px-3 py-2">
+                                            {lease.ends_at ?? '—'}
+                                        </td>
+                                        <td className="px-3 py-2">
+                                            <span
+                                                className={`rounded px-1.5 py-0.5 text-xs capitalize ${statusStyles[lease.status] ?? ''}`}
+                                            >
                                                 {lease.status}
                                             </span>
                                             {lease.expiring_soon && (
@@ -191,13 +234,24 @@ export default function LeasesIndex({ leases, filters }: Props) {
                                         <td className="px-3 py-2">
                                             <div className="flex justify-end gap-1">
                                                 {lease.expiring_soon && (
-                                                    <Button asChild variant="ghost" size="sm" data-test={`draft-renewal-${lease.id}`}>
+                                                    <Button
+                                                        asChild
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        data-test={`draft-renewal-${lease.id}`}
+                                                    >
                                                         <a
-                                                            href={`${draftingPage().url}?${new URLSearchParams({
-                                                                type: 'lease_expiry_notice',
-                                                                tenant_name: lease.occupant_name ?? '',
-                                                                expiry_date: lease.ends_at ?? '',
-                                                            })}`}
+                                                            href={`${draftingPage().url}?${new URLSearchParams(
+                                                                {
+                                                                    type: 'lease_expiry_notice',
+                                                                    tenant_name:
+                                                                        lease.occupant_name ??
+                                                                        '',
+                                                                    expiry_date:
+                                                                        lease.ends_at ??
+                                                                        '',
+                                                                },
+                                                            )}`}
                                                             target="_blank"
                                                             rel="noopener noreferrer"
                                                         >
@@ -205,13 +259,28 @@ export default function LeasesIndex({ leases, filters }: Props) {
                                                         </a>
                                                     </Button>
                                                 )}
-                                                {(lease.has_agreement_text || lease.has_agreement_document) && (
-                                                    <Button asChild variant="ghost" size="sm" data-test={`agreement-${lease.id}`}>
+                                                {(lease.has_agreement_text ||
+                                                    lease.has_agreement_document) && (
+                                                    <Button
+                                                        asChild
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        data-test={`agreement-${lease.id}`}
+                                                    >
                                                         <a
-                                                            href={agreementPrintRoute({
-                                                                property: context?.property?.slug ?? '',
-                                                                occupant: lease.occupant_id,
-                                                            }).url}
+                                                            href={
+                                                                agreementPrintRoute(
+                                                                    {
+                                                                        property:
+                                                                            context
+                                                                                ?.property
+                                                                                ?.slug ??
+                                                                            '',
+                                                                        occupant:
+                                                                            lease.occupant_id,
+                                                                    },
+                                                                ).url
+                                                            }
                                                             target="_blank"
                                                             rel="noopener noreferrer"
                                                         >
@@ -220,29 +289,39 @@ export default function LeasesIndex({ leases, filters }: Props) {
                                                         </a>
                                                     </Button>
                                                 )}
-                                                {lease.expiring_soon && aiEnabled && (
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        onClick={() => {
-                                                            setSuggestTarget(lease);
-                                                            setSuggestion(null);
-                                                        }}
-                                                    >
-                                                        <Sparkles className="size-4" />
-                                                        Suggest rent
-                                                    </Button>
-                                                )}
-                                                {canEndLease && lease.is_active && (
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        className="text-red-600"
-                                                        onClick={() => setEndTarget(lease)}
-                                                    >
-                                                        End lease
-                                                    </Button>
-                                                )}
+                                                {lease.expiring_soon &&
+                                                    aiEnabled && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => {
+                                                                setSuggestTarget(
+                                                                    lease,
+                                                                );
+                                                                setSuggestion(
+                                                                    null,
+                                                                );
+                                                            }}
+                                                        >
+                                                            <Sparkles className="size-4" />
+                                                            Suggest rent
+                                                        </Button>
+                                                    )}
+                                                {canEndLease &&
+                                                    lease.is_active && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="text-red-600"
+                                                            onClick={() =>
+                                                                setEndTarget(
+                                                                    lease,
+                                                                )
+                                                            }
+                                                        >
+                                                            End lease
+                                                        </Button>
+                                                    )}
                                             </div>
                                         </td>
                                     </tr>
@@ -254,15 +333,26 @@ export default function LeasesIndex({ leases, filters }: Props) {
 
                 {leases.last_page > 1 && (
                     <div className="flex gap-1 text-sm">
-                        {Array.from({ length: leases.last_page }, (_, i) => i + 1).map((page) => (
+                        {Array.from(
+                            { length: leases.last_page },
+                            (_, i) => i + 1,
+                        ).map((page) => (
                             <Button
                                 key={page}
-                                variant={page === leases.current_page ? 'default' : 'outline'}
+                                variant={
+                                    page === leases.current_page
+                                        ? 'default'
+                                        : 'outline'
+                                }
                                 size="sm"
                                 onClick={() =>
                                     router.get(
                                         leasesIndex.url(
-                                            { property: context?.property?.slug ?? '' },
+                                            {
+                                                property:
+                                                    context?.property?.slug ??
+                                                    '',
+                                            },
                                             { query: { status, page } },
                                         ),
                                         {},
@@ -277,16 +367,25 @@ export default function LeasesIndex({ leases, filters }: Props) {
                 )}
             </div>
 
-            <Dialog open={endTarget !== null} onOpenChange={(open) => !open && setEndTarget(null)}>
+            <Dialog
+                open={endTarget !== null}
+                onOpenChange={(open) => !open && setEndTarget(null)}
+            >
                 <DialogContent>
-                    <DialogTitle>End lease for {endTarget?.occupant_name}?</DialogTitle>
+                    <DialogTitle>
+                        End lease for {endTarget?.occupant_name}?
+                    </DialogTitle>
                     <DialogDescription>
-                        This ends the lease on unit {endTarget?.unit_name} today and keeps rental history.
-                        Please enter your password to confirm.
+                        This ends the lease on unit {endTarget?.unit_name} today
+                        and keeps rental history. Please enter your password to
+                        confirm.
                     </DialogDescription>
                     <form onSubmit={submitEndLease} className="space-y-6">
                         <div className="grid gap-2">
-                            <Label htmlFor="end_lease_password" className="sr-only">
+                            <Label
+                                htmlFor="end_lease_password"
+                                className="sr-only"
+                            >
                                 Password
                             </Label>
                             <PasswordInput
@@ -312,35 +411,53 @@ export default function LeasesIndex({ leases, filters }: Props) {
                 </DialogContent>
             </Dialog>
 
-            <Dialog open={suggestTarget !== null} onOpenChange={(open) => !open && setSuggestTarget(null)}>
+            <Dialog
+                open={suggestTarget !== null}
+                onOpenChange={(open) => !open && setSuggestTarget(null)}
+            >
                 <DialogContent>
                     <DialogTitle>
                         Renewal suggestion — {suggestTarget?.occupant_name}
                     </DialogTitle>
                     <DialogDescription>
-                        Unit {suggestTarget?.unit_name}, ends {suggestTarget?.ends_at}. Current rent:{' '}
+                        Unit {suggestTarget?.unit_name}, ends{' '}
+                        {suggestTarget?.ends_at}. Current rent:{' '}
                         {suggestTarget?.rent_amount} {suggestTarget?.currency}.
                     </DialogDescription>
 
                     {suggestBusy ? (
-                        <p className="text-sm text-muted-foreground">Thinking…</p>
+                        <p className="text-sm text-muted-foreground">
+                            Thinking…
+                        </p>
                     ) : suggestion ? (
                         <div className="space-y-3">
                             <p className="text-2xl font-semibold tabular-nums">
-                                {suggestion.suggested_rent} {suggestTarget?.currency}
-                                <span className="ml-1 text-sm font-normal text-muted-foreground">/ month</span>
+                                {suggestion.suggested_rent}{' '}
+                                {suggestTarget?.currency}
+                                <span className="ml-1 text-sm font-normal text-muted-foreground">
+                                    / month
+                                </span>
                             </p>
                             {suggestion.reasoning && (
-                                <p className="text-sm text-muted-foreground">{suggestion.reasoning}</p>
+                                <p className="text-sm text-muted-foreground">
+                                    {suggestion.reasoning}
+                                </p>
                             )}
                             <Button asChild size="sm" variant="outline">
                                 <a
-                                    href={`${draftingPage().url}?${new URLSearchParams({
-                                        type: 'lease_expiry_notice',
-                                        tenant_name: suggestTarget?.occupant_name ?? '',
-                                        expiry_date: suggestTarget?.ends_at ?? '',
-                                        suggested_rent: String(suggestion.suggested_rent),
-                                    })}`}
+                                    href={`${draftingPage().url}?${new URLSearchParams(
+                                        {
+                                            type: 'lease_expiry_notice',
+                                            tenant_name:
+                                                suggestTarget?.occupant_name ??
+                                                '',
+                                            expiry_date:
+                                                suggestTarget?.ends_at ?? '',
+                                            suggested_rent: String(
+                                                suggestion.suggested_rent,
+                                            ),
+                                        },
+                                    )}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                 >

@@ -65,7 +65,9 @@ export default function InspectionCreate({ units }: Props) {
                             <Input
                                 id="title"
                                 value={form.data.title}
-                                onChange={(e) => form.setData('title', e.target.value)}
+                                onChange={(e) =>
+                                    form.setData('title', e.target.value)
+                                }
                                 placeholder="Move-out walkthrough"
                             />
                             <InputError message={form.errors.title} />
@@ -73,11 +75,21 @@ export default function InspectionCreate({ units }: Props) {
 
                         <div className="grid gap-2">
                             <Label>Unit</Label>
-                            <Select value={form.data.unit_id} onValueChange={(v) => form.setData('unit_id', v)}>
-                                <SelectTrigger><SelectValue placeholder="Pick a unit…" /></SelectTrigger>
+                            <Select
+                                value={form.data.unit_id}
+                                onValueChange={(v) =>
+                                    form.setData('unit_id', v)
+                                }
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Pick a unit…" />
+                                </SelectTrigger>
                                 <SelectContent>
                                     {units.map((unit) => (
-                                        <SelectItem key={unit.id} value={String(unit.id)}>
+                                        <SelectItem
+                                            key={unit.id}
+                                            value={String(unit.id)}
+                                        >
                                             {unit.name}
                                         </SelectItem>
                                     ))}
@@ -92,20 +104,29 @@ export default function InspectionCreate({ units }: Props) {
                                 id="inspection_date"
                                 type="date"
                                 value={form.data.inspection_date}
-                                onChange={(e) => form.setData('inspection_date', e.target.value)}
+                                onChange={(e) =>
+                                    form.setData(
+                                        'inspection_date',
+                                        e.target.value,
+                                    )
+                                }
                             />
                             <InputError message={form.errors.inspection_date} />
                         </div>
 
                         <div className="grid gap-2 md:col-span-2">
-                            <Label htmlFor="notes">Notes (helps the AI report)</Label>
+                            <Label htmlFor="notes">
+                                Notes (helps the AI report)
+                            </Label>
                             <textarea
                                 id="notes"
                                 rows={3}
-                                className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
                                 placeholder="Anything you noticed during the walkthrough."
                                 value={form.data.notes}
-                                onChange={(e) => form.setData('notes', e.target.value)}
+                                onChange={(e) =>
+                                    form.setData('notes', e.target.value)
+                                }
                             />
                             <InputError message={form.errors.notes} />
                         </div>
@@ -118,7 +139,12 @@ export default function InspectionCreate({ units }: Props) {
                                 multiple
                                 accept=".jpg,.jpeg,.png,.webp"
                                 onChange={(e) =>
-                                    form.setData('photos', e.target.files ? Array.from(e.target.files) : null)
+                                    form.setData(
+                                        'photos',
+                                        e.target.files
+                                            ? Array.from(e.target.files)
+                                            : null,
+                                    )
                                 }
                             />
                             <InputError message={form.errors.photos} />
@@ -128,7 +154,11 @@ export default function InspectionCreate({ units }: Props) {
 
                 <div className="flex gap-2">
                     <Button asChild variant="outline">
-                        <Link href={inspectionsIndex({ property: propertySlug })}>Back to inspections</Link>
+                        <Link
+                            href={inspectionsIndex({ property: propertySlug })}
+                        >
+                            Back to inspections
+                        </Link>
                     </Button>
                     <Button onClick={submit} disabled={form.processing}>
                         <Save className="size-4" />

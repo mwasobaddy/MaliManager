@@ -24,10 +24,21 @@ export type AssistantArtifact = {
     row_count: number;
 };
 
-const PIE_COLORS = ['#2563eb', '#16a34a', '#f59e0b', '#dc2626', '#7c3aed', '#0891b2', '#db2777', '#65a30d'];
+const PIE_COLORS = [
+    '#2563eb',
+    '#16a34a',
+    '#f59e0b',
+    '#dc2626',
+    '#7c3aed',
+    '#0891b2',
+    '#db2777',
+    '#65a30d',
+];
 
 function measureKeys(measures: { type: string; column?: string }[]): string[] {
-    return measures.map((m) => (m.type === 'count' ? 'count' : `${m.type}_${m.column}`));
+    return measures.map((m) =>
+        m.type === 'count' ? 'count' : `${m.type}_${m.column}`,
+    );
 }
 
 function measureLabel(m: { type: string; column?: string }): string {
@@ -53,7 +64,9 @@ export function AssistantChart({ artifact }: { artifact: AssistantArtifact }) {
                                 key={key}
                                 className="rounded-md bg-accent px-2 py-1 text-xs text-accent-foreground"
                             >
-                                <span className="font-medium capitalize">{key.replace(/_/g, ' ')}:</span>{' '}
+                                <span className="font-medium capitalize">
+                                    {key.replace(/_/g, ' ')}:
+                                </span>{' '}
                                 {String(value)}
                             </span>
                         ))}
@@ -69,7 +82,10 @@ export function AssistantChart({ artifact }: { artifact: AssistantArtifact }) {
                     <thead>
                         <tr className="bg-muted">
                             {columns.map((column) => (
-                                <th key={column} className="px-2 py-1 text-left font-medium capitalize">
+                                <th
+                                    key={column}
+                                    className="px-2 py-1 text-left font-medium capitalize"
+                                >
                                     {column.replace(/_/g, ' ')}
                                 </th>
                             ))}
@@ -92,7 +108,9 @@ export function AssistantChart({ artifact }: { artifact: AssistantArtifact }) {
     }
 
     if (rows.length === 0) {
-        return <p className="text-xs text-muted-foreground">No rows returned.</p>;
+        return (
+            <p className="text-xs text-muted-foreground">No rows returned.</p>
+        );
     }
 
     const keys = measureKeys(measures);
@@ -113,7 +131,10 @@ export function AssistantChart({ artifact }: { artifact: AssistantArtifact }) {
                         }
                     >
                         {rows.map((_, index) => (
-                            <Cell key={index} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                            <Cell
+                                key={index}
+                                fill={PIE_COLORS[index % PIE_COLORS.length]}
+                            />
                         ))}
                     </Pie>
                     <Tooltip />
@@ -128,14 +149,23 @@ export function AssistantChart({ artifact }: { artifact: AssistantArtifact }) {
 
     return (
         <ResponsiveContainer width="100%" height={260}>
-            <Chart data={rows} margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
+            <Chart
+                data={rows}
+                margin={{ top: 8, right: 8, bottom: 8, left: 8 }}
+            >
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                 <XAxis dataKey={category} tick={{ fontSize: 11 }} />
                 <YAxis tick={{ fontSize: 11 }} />
                 <Tooltip />
                 <Legend />
                 {keys.map((key, index) => (
-                    <Glyph key={key} type={chart === 'line' ? 'monotone' : undefined} dataKey={key} name={measureLabel(measures[index])} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                    <Glyph
+                        key={key}
+                        type={chart === 'line' ? 'monotone' : undefined}
+                        dataKey={key}
+                        name={measureLabel(measures[index])}
+                        fill={PIE_COLORS[index % PIE_COLORS.length]}
+                    />
                 ))}
             </Chart>
         </ResponsiveContainer>

@@ -1,5 +1,13 @@
 import { Link, router } from '@inertiajs/react';
-import { ArrowLeftRight, KeyRound, LogOut, Settings, Sparkles, Sun, User as UserIcon } from 'lucide-react';
+import {
+    ArrowLeftRight,
+    KeyRound,
+    LogOut,
+    Settings,
+    Sparkles,
+    Sun,
+    User as UserIcon,
+} from 'lucide-react';
 import { usePropertyPicker } from '@/components/property-picker-dialog';
 import {
     DropdownMenuGroup,
@@ -46,8 +54,8 @@ export function UserMenuContent({ user }: Props) {
                             open();
                         }}
                     >
-                                <ArrowLeftRight className="mr-2" />
-                                Switch property or land
+                        <ArrowLeftRight className="mr-2" />
+                        Switch property or land
                     </DropdownMenuItem>
                 </DropdownMenuGroup>
             )}

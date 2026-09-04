@@ -119,12 +119,22 @@ export default function ReportsIndex({ types }: Props) {
                         <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => window.open(printRoute.url({ query: query() }), '_blank')}
+                            onClick={() =>
+                                window.open(
+                                    printRoute.url({ query: query() }),
+                                    '_blank',
+                                )
+                            }
                         >
                             <Printer className="size-4" />
                             Print / PDF
                         </Button>
-                        <Button size="sm" onClick={() => window.open(csvRoute.url({ query: query() }))}>
+                        <Button
+                            size="sm"
+                            onClick={() =>
+                                window.open(csvRoute.url({ query: query() }))
+                            }
+                        >
                             <Download className="size-4" />
                             Export CSV
                         </Button>
@@ -145,7 +155,12 @@ export default function ReportsIndex({ types }: Props) {
                         ))}
                     </div>
                     <div className="grid gap-1">
-                        <Label htmlFor="from" className="text-xs text-muted-foreground">From</Label>
+                        <Label
+                            htmlFor="from"
+                            className="text-xs text-muted-foreground"
+                        >
+                            From
+                        </Label>
                         <Input
                             id="from"
                             type="date"
@@ -155,7 +170,12 @@ export default function ReportsIndex({ types }: Props) {
                         />
                     </div>
                     <div className="grid gap-1">
-                        <Label htmlFor="to" className="text-xs text-muted-foreground">To</Label>
+                        <Label
+                            htmlFor="to"
+                            className="text-xs text-muted-foreground"
+                        >
+                            To
+                        </Label>
                         <Input
                             id="to"
                             type="date"
@@ -168,38 +188,65 @@ export default function ReportsIndex({ types }: Props) {
 
                 <Card>
                     {loading || !report ? (
-                        <p className="p-4 text-sm text-muted-foreground">Loading…</p>
+                        <p className="p-4 text-sm text-muted-foreground">
+                            Loading…
+                        </p>
                     ) : report.rows.length === 0 ? (
-                        <p className="p-4 text-sm text-muted-foreground">No data for this range.</p>
+                        <p className="p-4 text-sm text-muted-foreground">
+                            No data for this range.
+                        </p>
                     ) : (
                         <>
                             {Object.keys(report.summary).length > 0 && (
                                 <div className="flex flex-wrap gap-6 px-4 pt-4">
-                                    {Object.entries(report.summary).map(([label, value]) => (
-                                        <div key={label}>
-                                            <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
-                                            <p className="text-lg font-semibold tabular-nums">{value}</p>
-                                        </div>
-                                    ))}
+                                    {Object.entries(report.summary).map(
+                                        ([label, value]) => (
+                                            <div key={label}>
+                                                <p className="text-xs tracking-wide text-muted-foreground uppercase">
+                                                    {label}
+                                                </p>
+                                                <p className="text-lg font-semibold tabular-nums">
+                                                    {value}
+                                                </p>
+                                            </div>
+                                        ),
+                                    )}
                                 </div>
                             )}
                             <div className="overflow-x-auto p-4">
                                 <table className="w-full text-sm">
                                     <thead>
-                                        <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
+                                        <tr className="border-b text-left text-xs tracking-wide text-muted-foreground uppercase">
                                             {report.columns.map((column) => (
-                                                <th key={column.key} className="px-3 py-2">{column.label}</th>
+                                                <th
+                                                    key={column.key}
+                                                    className="px-3 py-2"
+                                                >
+                                                    {column.label}
+                                                </th>
                                             ))}
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {report.rows.map((row, index) => (
-                                            <tr key={index} className="border-b last:border-0">
-                                                {report.columns.map((column) => (
-                                                    <td key={column.key} className="px-3 py-2 capitalize">
-                                                        {String(row[column.key] ?? '—')}
-                                                    </td>
-                                                ))}
+                                            <tr
+                                                key={index}
+                                                className="border-b last:border-0"
+                                            >
+                                                {report.columns.map(
+                                                    (column) => (
+                                                        <td
+                                                            key={column.key}
+                                                            className="px-3 py-2 capitalize"
+                                                        >
+                                                            {String(
+                                                                row[
+                                                                    column.key
+                                                                ] ?? '—',
+                                                            )}
+                                                        </td>
+                                                    ),
+                                                )}
                                             </tr>
                                         ))}
                                     </tbody>

@@ -15,7 +15,10 @@ type Props = {
     scope: string;
 };
 
-export default function TenantConversationHistory({ conversations, scope }: Props) {
+export default function TenantConversationHistory({
+    conversations,
+    scope,
+}: Props) {
     return (
         <ConversationHistory
             conversations={conversations}

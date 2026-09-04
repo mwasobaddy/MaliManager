@@ -9,8 +9,8 @@ so the platform never pays for or stores LLM credentials.
 ## 1. Core idea
 
 Every organization (and optionally each individual user) supplies their own
-LLM API key. The platform provides the *features*; the org provides the
-*intelligence budget*. This keeps multi-tenancy cheap, avoids per-token billing
+LLM API key. The platform provides the _features_; the org provides the
+_intelligence budget_. This keeps multi-tenancy cheap, avoids per-token billing
 infrastructure on our side, and gives owners full control over which models
 touch their data.
 
@@ -23,14 +23,14 @@ a "connect your AI" setup prompt.
 
 New `ai_settings` table:
 
-| Column | Purpose |
-|---|---|
-| `owner_type` / `owner_id` | `Organization` or `User` (polymorphic) |
-| `provider` | `openai` \| `anthropic` \| … (Prism enum value) |
-| `model` | e.g. `gpt-4o`, `claude-sonnet-4` |
-| `api_key` | **encrypted at rest** (Laravel `encrypted` cast); never returned to the client after save |
-| `allowed_features` | JSON array of feature keys this key may be used for |
-| `monthly_token_limit` | Optional soft cap; 0 = unlimited |
+| Column                    | Purpose                                                                                   |
+| ------------------------- | ----------------------------------------------------------------------------------------- |
+| `owner_type` / `owner_id` | `Organization` or `User` (polymorphic)                                                    |
+| `provider`                | `openai` \| `anthropic` \| … (Prism enum value)                                           |
+| `model`                   | e.g. `gpt-4o`, `claude-sonnet-4`                                                          |
+| `api_key`                 | **encrypted at rest** (Laravel `encrypted` cast); never returned to the client after save |
+| `allowed_features`        | JSON array of feature keys this key may be used for                                       |
+| `monthly_token_limit`     | Optional soft cap; 0 = unlimited                                                          |
 
 ### Who may use AI
 
@@ -74,12 +74,12 @@ resolution, usage logging, limits, timeouts, and error toasts.
 
 ### Phase 1
 
-| Feature | What it does | How |
-|---|---|---|
+| Feature                     | What it does                                                                            | How                                                                                                                                                                                                                                             |
+| --------------------------- | --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Ask-your-data assistant** | Org-scoped chat: "Which units are vacant?", "Total expenses per property this quarter?" | Prism **tools** map natural language to safe, pre-built query tools (vacancy, arrears-by-property, expense-totals, lease-expiry). The model calls tools; results come from our SQL — the LLM never writes queries, so injection risk stays zero |
-| **Maintenance triage** | On request creation: suggested priority + category + summary | Structured output over title/description; staff confirm or override — suggestion stored as metadata |
-| **Content drafting** | Occupant notices, rent reminders, listing descriptions | Text generation with tone/length options; copy-to-clipboard only (never auto-send) |
-| **Predictive flags** | Expense anomaly detection + rent-default risk hints on dashboards | Rule-based baselines first (z-score vs property history); LLM turns flagged rows into plain-language explanations |
+| **Maintenance triage**      | On request creation: suggested priority + category + summary                            | Structured output over title/description; staff confirm or override — suggestion stored as metadata                                                                                                                                             |
+| **Content drafting**        | Occupant notices, rent reminders, listing descriptions                                  | Text generation with tone/length options; copy-to-clipboard only (never auto-send)                                                                                                                                                              |
+| **Predictive flags**        | Expense anomaly detection + rent-default risk hints on dashboards                       | Rule-based baselines first (z-score vs property history); LLM turns flagged rows into plain-language explanations                                                                                                                               |
 
 ### Phase 2+
 
@@ -118,12 +118,12 @@ notifications exist.
 
 ## 6. Build phases
 
-| Phase | Scope |
-|---|---|
-| **R0 — Foundation** | `ai_settings` + `ai_usage_log` migrations, AiGateway (credential resolution, logging, limits), Settings → AI page (key/provider/model/feature toggles/user allow-list), Profile → personal key, feature-hiding logic |
-| **R1 — Phase-1 features** | Ask-your-data chat (org scope, tool-based), maintenance triage, content drafting, predictive flags on dashboards |
-| **R2 — Reporting exports** | Reporting query services finalized, CSV export endpoints, print-to-PDF reports per property/org |
-| **R3 — Advanced** | Scheduled digests, vision-based triage, occupant FAQ assistant, renewal suggestions |
+| Phase                      | Scope                                                                                                                                                                                                                |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **R0 — Foundation**        | `ai_settings` + `ai_usage_log` migrations, AiGateway (credential resolution, logging, limits), Settings → AI page (key/provider/model/feature toggles/user allow-list), Profile → personal key, feature-hiding logic |
+| **R1 — Phase-1 features**  | Ask-your-data chat (org scope, tool-based), maintenance triage, content drafting, predictive flags on dashboards                                                                                                     |
+| **R2 — Reporting exports** | Reporting query services finalized, CSV export endpoints, print-to-PDF reports per property/org                                                                                                                      |
+| **R3 — Advanced**          | Scheduled digests, vision-based triage, occupant FAQ assistant, renewal suggestions                                                                                                                                  |
 
 ---
 

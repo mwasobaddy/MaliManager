@@ -3,8 +3,17 @@ import { Mail, Phone, Plus, UserCog } from 'lucide-react';
 import Heading from '@/components/heading';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { create as createStaff, edit as editStaff } from '@/routes/tenant/staff';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from '@/components/ui/card';
+import {
+    create as createStaff,
+    edit as editStaff,
+} from '@/routes/tenant/staff';
 
 type Organization = {
     id: number;
@@ -73,11 +82,14 @@ export default function StaffIndex({ organization, staff }: Props) {
                             <UserCog className="mx-auto size-10 text-muted-foreground" />
                             <p className="mt-4 font-medium">No staff yet</p>
                             <p className="mt-1 text-sm text-muted-foreground">
-                                Add your first staff member to assign properties and roles.
+                                Add your first staff member to assign properties
+                                and roles.
                             </p>
                             {canCreate && (
                                 <Button asChild className="mt-6">
-                                    <Link href={createStaff()}>Add your first staff member</Link>
+                                    <Link href={createStaff()}>
+                                        Add your first staff member
+                                    </Link>
                                 </Button>
                             )}
                         </CardContent>
@@ -106,7 +118,11 @@ export default function StaffIndex({ organization, staff }: Props) {
                                             </CardDescription>
                                         </div>
                                         <Badge
-                                            variant={member.status === 'active' ? 'default' : 'secondary'}
+                                            variant={
+                                                member.status === 'active'
+                                                    ? 'default'
+                                                    : 'secondary'
+                                            }
                                         >
                                             {member.status}
                                         </Badge>
@@ -114,15 +130,16 @@ export default function StaffIndex({ organization, staff }: Props) {
                                 </CardHeader>
                                 <CardContent className="space-y-3">
                                     <div>
-                                        <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                                        <p className="text-xs tracking-wide text-muted-foreground uppercase">
                                             Role
                                         </p>
                                         <p className="text-sm font-medium">
-                                            {member.sub_role?.name ?? 'No role assigned'}
+                                            {member.sub_role?.name ??
+                                                'No role assigned'}
                                         </p>
                                     </div>
                                     <div>
-                                        <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                                        <p className="text-xs tracking-wide text-muted-foreground uppercase">
                                             Manages
                                         </p>
                                         {member.properties.length === 0 ? (
@@ -131,19 +148,32 @@ export default function StaffIndex({ organization, staff }: Props) {
                                             </p>
                                         ) : (
                                             <div className="mt-1 flex flex-wrap gap-1.5">
-                                                {member.properties.map((property) => (
-                                                    <Badge key={property.id} variant="outline">
-                                                        {property.name}
-                                                    </Badge>
-                                                ))}
+                                                {member.properties.map(
+                                                    (property) => (
+                                                        <Badge
+                                                            key={property.id}
+                                                            variant="outline"
+                                                        >
+                                                            {property.name}
+                                                        </Badge>
+                                                    ),
+                                                )}
                                             </div>
                                         )}
                                     </div>
                                     {(canEdit || canDelete) && (
                                         <div className="flex gap-2 pt-1">
                                             {canEdit && (
-                                                <Button asChild variant="outline" size="sm">
-                                                    <Link href={editStaff(member.id)}>
+                                                <Button
+                                                    asChild
+                                                    variant="outline"
+                                                    size="sm"
+                                                >
+                                                    <Link
+                                                        href={editStaff(
+                                                            member.id,
+                                                        )}
+                                                    >
                                                         Edit
                                                     </Link>
                                                 </Button>

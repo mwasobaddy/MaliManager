@@ -33,7 +33,10 @@ type SearchResult = {
 
 type GroupedResults = Record<string, SearchResult[]>;
 
-const TYPE_META: Record<string, { label: string; icon: React.ComponentType<{ className?: string }> }> = {
+const TYPE_META: Record<
+    string,
+    { label: string; icon: React.ComponentType<{ className?: string }> }
+> = {
     users: { label: 'Users', icon: User },
     organizations: { label: 'Organizations', icon: Building2 },
     properties: { label: 'Properties', icon: Building },
@@ -61,7 +64,10 @@ function pushHistory(term: string) {
         return;
     }
 
-    const next = [trimmed, ...loadHistory().filter((t) => t !== trimmed)].slice(0, 8);
+    const next = [trimmed, ...loadHistory().filter((t) => t !== trimmed)].slice(
+        0,
+        8,
+    );
     localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
 }
 
@@ -118,10 +124,14 @@ export function GlobalSearch() {
             })
                 .then(async (response) => {
                     if (!response.ok) {
-                        throw new Error(`Search failed with status ${response.status}`);
+                        throw new Error(
+                            `Search failed with status ${response.status}`,
+                        );
                     }
 
-                    const data = (await response.json()) as { results: GroupedResults };
+                    const data = (await response.json()) as {
+                        results: GroupedResults;
+                    };
 
                     setResults(data.results ?? {});
                     setActive(0);
@@ -158,7 +168,9 @@ export function GlobalSearch() {
     const onKeyDown = (event: React.KeyboardEvent) => {
         if (event.key === 'ArrowDown') {
             event.preventDefault();
-            setActive((i) => Math.min(i + 1, Math.max(flattened.length - 1, 0)));
+            setActive((i) =>
+                Math.min(i + 1, Math.max(flattened.length - 1, 0)),
+            );
         } else if (event.key === 'ArrowUp') {
             event.preventDefault();
             setActive((i) => Math.max(i - 1, 0));
@@ -210,7 +222,9 @@ export function GlobalSearch() {
                         placeholder="Search users, properties, leases…"
                         className="h-12 border-0 px-0 shadow-none focus-visible:ring-0"
                     />
-                    {loading && <Loader className="size-4 animate-spin opacity-60" />}
+                    {loading && (
+                        <Loader className="size-4 animate-spin opacity-60" />
+                    )}
                     <DialogTrigger asChild>
                         <Button
                             variant="ghost"
@@ -270,11 +284,15 @@ export function GlobalSearch() {
                                             <button
                                                 key={`${type}-${item.id}`}
                                                 type="button"
-                                                onMouseEnter={() => setActive(index)}
+                                                onMouseEnter={() =>
+                                                    setActive(index)
+                                                }
                                                 onClick={() => go(item.url)}
                                                 className={cn(
                                                     'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm',
-                                                    isActive ? 'bg-accent' : 'hover:bg-accent/60',
+                                                    isActive
+                                                        ? 'bg-accent'
+                                                        : 'hover:bg-accent/60',
                                                 )}
                                             >
                                                 <Icon className="size-4 shrink-0 opacity-70" />

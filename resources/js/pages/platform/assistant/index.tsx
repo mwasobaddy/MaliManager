@@ -8,7 +8,11 @@ import { ask as askRoute } from '@/routes/platform/assistant';
 type Props = {
     enabled: boolean;
     quick_prompts?: string[];
-    initial_messages?: { role: 'user' | 'assistant' | 'error'; content: string; artifacts?: AssistantArtifact[] }[];
+    initial_messages?: {
+        role: 'user' | 'assistant' | 'error';
+        content: string;
+        artifacts?: AssistantArtifact[];
+    }[];
 };
 
 const DEFAULT_PROMPTS = [
@@ -19,14 +23,20 @@ const DEFAULT_PROMPTS = [
     'Leases expiring in the next 60 days across all organizations.',
 ];
 
-export default function Assistant({ enabled, quick_prompts, initial_messages }: Props) {
+export default function Assistant({
+    enabled,
+    quick_prompts,
+    initial_messages,
+}: Props) {
     if (!enabled) {
         return (
             <>
                 <Head title="Platform assistant" />
                 <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
                     <p className="text-sm text-muted-foreground">
-                        The platform assistant is not configured. Add a personal API key in Settings → AI, or configure a platform-wide key.
+                        The platform assistant is not configured. Add a personal
+                        API key in Settings → AI, or configure a platform-wide
+                        key.
                     </p>
                 </div>
             </>
@@ -45,7 +55,10 @@ export default function Assistant({ enabled, quick_prompts, initial_messages }: 
                 initialMessages={initial_messages}
                 headerActions={
                     <Button asChild variant="ghost" size="sm">
-                        <Link href="/platform/assistant/history" className="gap-2">
+                        <Link
+                            href="/platform/assistant/history"
+                            className="gap-2"
+                        >
                             <History className="size-4" />
                             History
                         </Link>

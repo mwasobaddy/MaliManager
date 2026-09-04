@@ -26,7 +26,13 @@ import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -39,7 +45,20 @@ import {
 import { index } from '@/routes/tenant/properties';
 import { store as storeUnit } from '@/routes/tenant/properties/units';
 
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const MONTHS = [
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
+];
 
 type Property = {
     id: number;
@@ -91,10 +110,21 @@ type Props = {
     month: number | null;
 };
 
-export default function PropertiesDashboard({ property, units, stats, plan, year, month }: Props) {
+export default function PropertiesDashboard({
+    property,
+    units,
+    stats,
+    plan,
+    year,
+    month,
+}: Props) {
     const [addUnit, setAddUnit] = useState(false);
-    const [filterYear, setFilterYear] = useState<string>(year ? String(year) : '');
-    const [filterMonth, setFilterMonth] = useState<string>(month ? String(month) : '');
+    const [filterYear, setFilterYear] = useState<string>(
+        year ? String(year) : '',
+    );
+    const [filterMonth, setFilterMonth] = useState<string>(
+        month ? String(month) : '',
+    );
     const atUnitLimit =
         plan.units_limit !== null && units.length >= plan.units_limit;
 
@@ -120,7 +150,6 @@ export default function PropertiesDashboard({ property, units, stats, plan, year
         });
     };
 
-
     return (
         <>
             <Head title={property.name} />
@@ -133,7 +162,13 @@ export default function PropertiesDashboard({ property, units, stats, plan, year
                             title={property.name}
                             description={`${property.city ?? 'No city set'}${property.address ? ` · ${property.address}` : ''}`}
                         />
-                        <Badge variant={property.status === 'active' ? 'default' : 'secondary'}>
+                        <Badge
+                            variant={
+                                property.status === 'active'
+                                    ? 'default'
+                                    : 'secondary'
+                            }
+                        >
                             {property.status}
                         </Badge>
                     </div>
@@ -144,17 +179,16 @@ export default function PropertiesDashboard({ property, units, stats, plan, year
                     <div className="flex items-center gap-2">
                         <Select
                             value={filterYear}
-                            onValueChange={(value) => updateFilters(value, filterMonth)}
+                            onValueChange={(value) =>
+                                updateFilters(value, filterMonth)
+                            }
                         >
                             <SelectTrigger className="w-[100px]">
                                 <SelectValue placeholder="Year" />
                             </SelectTrigger>
                             <SelectContent>
                                 {stats.available_years.map((y) => (
-                                    <SelectItem
-                                        key={y}
-                                        value={String(y)}
-                                    >
+                                    <SelectItem key={y} value={String(y)}>
                                         {y}
                                     </SelectItem>
                                 ))}
@@ -163,15 +197,15 @@ export default function PropertiesDashboard({ property, units, stats, plan, year
 
                         <Select
                             value={filterMonth}
-                            onValueChange={(value) => updateFilters(filterYear, value)}
+                            onValueChange={(value) =>
+                                updateFilters(filterYear, value)
+                            }
                         >
                             <SelectTrigger className="w-[110px]">
                                 <SelectValue placeholder="All months" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="">
-                                    All months
-                                </SelectItem>
+                                <SelectItem value="">All months</SelectItem>
                                 {MONTHS.map((name, index) => (
                                     <SelectItem
                                         key={index}
@@ -266,7 +300,9 @@ export default function PropertiesDashboard({ property, units, stats, plan, year
                             <CardTitle className="text-base font-medium">
                                 Unit status
                             </CardTitle>
-                            <CardDescription>Composition by status</CardDescription>
+                            <CardDescription>
+                                Composition by status
+                            </CardDescription>
                         </CardHeader>
                         <CardContent>
                             <ResponsiveContainer width="100%" height={260}>
@@ -281,7 +317,10 @@ export default function PropertiesDashboard({ property, units, stats, plan, year
                                         label
                                     >
                                         {stats.unit_status.map((entry) => (
-                                            <Cell key={entry.status} fill={entry.color} />
+                                            <Cell
+                                                key={entry.status}
+                                                fill={entry.color}
+                                            />
                                         ))}
                                     </Pie>
                                     <Tooltip />
@@ -307,7 +346,11 @@ export default function PropertiesDashboard({ property, units, stats, plan, year
                                     size="sm"
                                     onClick={() => setAddUnit(true)}
                                     disabled={atUnitLimit}
-                                    title={atUnitLimit ? 'Your plan allows no more units' : undefined}
+                                    title={
+                                        atUnitLimit
+                                            ? 'Your plan allows no more units'
+                                            : undefined
+                                    }
                                 >
                                     <Plus className="size-4" />
                                     Add unit
@@ -318,8 +361,9 @@ export default function PropertiesDashboard({ property, units, stats, plan, year
                     <CardContent>
                         {atUnitLimit && (
                             <p className="mb-4 text-sm text-destructive">
-                                Your current plan allows up to {plan.units_limit} units. Please
-                                upgrade your plan to add more.
+                                Your current plan allows up to{' '}
+                                {plan.units_limit} units. Please upgrade your
+                                plan to add more.
                             </p>
                         )}
 
@@ -334,7 +378,9 @@ export default function PropertiesDashboard({ property, units, stats, plan, year
                                 {({ processing, errors }) => (
                                     <>
                                         <div className="grid gap-2">
-                                            <Label htmlFor="unit-name">Unit name</Label>
+                                            <Label htmlFor="unit-name">
+                                                Unit name
+                                            </Label>
                                             <Input
                                                 id="unit-name"
                                                 name="name"
@@ -345,7 +391,9 @@ export default function PropertiesDashboard({ property, units, stats, plan, year
                                             <InputError message={errors.name} />
                                         </div>
                                         <div className="grid gap-2">
-                                            <Label htmlFor="unit-type">Type</Label>
+                                            <Label htmlFor="unit-type">
+                                                Type
+                                            </Label>
                                             <Input
                                                 id="unit-type"
                                                 name="type"
@@ -354,7 +402,9 @@ export default function PropertiesDashboard({ property, units, stats, plan, year
                                             />
                                         </div>
                                         <div className="grid gap-2">
-                                            <Label htmlFor="unit-rent">Monthly rent</Label>
+                                            <Label htmlFor="unit-rent">
+                                                Monthly rent
+                                            </Label>
                                             <Input
                                                 id="unit-rent"
                                                 name="monthly_rent"
@@ -363,16 +413,23 @@ export default function PropertiesDashboard({ property, units, stats, plan, year
                                                 step="0.01"
                                                 placeholder="25000"
                                             />
-                                            <InputError message={errors.monthly_rent} />
+                                            <InputError
+                                                message={errors.monthly_rent}
+                                            />
                                         </div>
                                         <div className="flex items-end gap-2">
-                                            <Button type="submit" disabled={processing}>
+                                            <Button
+                                                type="submit"
+                                                disabled={processing}
+                                            >
                                                 {processing ? 'Adding…' : 'Add'}
                                             </Button>
                                             <Button
                                                 type="button"
                                                 variant="ghost"
-                                                onClick={() => setAddUnit(false)}
+                                                onClick={() =>
+                                                    setAddUnit(false)
+                                                }
                                             >
                                                 Cancel
                                             </Button>
@@ -386,7 +443,10 @@ export default function PropertiesDashboard({ property, units, stats, plan, year
                         {units.length === 0 ? (
                             <div className="py-10 text-center text-sm text-muted-foreground">
                                 <Building2 className="mx-auto size-8" />
-                                <p className="mt-3">No units yet. Add the first unit to this property.</p>
+                                <p className="mt-3">
+                                    No units yet. Add the first unit to this
+                                    property.
+                                </p>
                             </div>
                         ) : (
                             <div className="divide-y divide-border rounded-lg border">
@@ -406,11 +466,17 @@ export default function PropertiesDashboard({ property, units, stats, plan, year
                                         <div className="flex items-center gap-3">
                                             {unit.monthly_rent !== null && (
                                                 <p className="text-sm font-medium">
-                                                    {Number(unit.monthly_rent).toLocaleString()}
+                                                    {Number(
+                                                        unit.monthly_rent,
+                                                    ).toLocaleString()}
                                                 </p>
                                             )}
                                             <Badge
-                                                variant={unit.status === 'vacant' ? 'secondary' : 'default'}
+                                                variant={
+                                                    unit.status === 'vacant'
+                                                        ? 'secondary'
+                                                        : 'default'
+                                                }
                                             >
                                                 {unit.status}
                                             </Badge>

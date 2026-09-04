@@ -1,7 +1,11 @@
 import { Link } from '@inertiajs/react';
 import { ChevronRight } from 'lucide-react';
 import { useState } from 'react';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import {
+    Collapsible,
+    CollapsibleContent,
+    CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import {
     SidebarGroup,
     SidebarGroupContent,
@@ -38,7 +42,11 @@ function NavItemLink({ item }: { item: NavItem }) {
     }
 
     return (
-        <SidebarMenuButton asChild isActive={isCurrentUrl(item.href)} tooltip={{ children: item.title }}>
+        <SidebarMenuButton
+            asChild
+            isActive={isCurrentUrl(item.href)}
+            tooltip={{ children: item.title }}
+        >
             <Link href={item.href} prefetch>
                 {item.icon && <item.icon />}
                 <span>{item.title}</span>
@@ -55,10 +63,16 @@ function NavDropdown({ item }: { item: NavItem }) {
     const { isCurrentOrParentUrl, isCurrentUrl } = useCurrentUrl();
     const [open, setOpen] = useState(() => isCurrentOrParentUrl(item.href));
 
-    const childActive = item.children?.some((child) => isCurrentOrParentUrl(child.href)) ?? false;
+    const childActive =
+        item.children?.some((child) => isCurrentOrParentUrl(child.href)) ??
+        false;
 
     return (
-        <Collapsible open={open || childActive} onOpenChange={setOpen} className="group/collapsible">
+        <Collapsible
+            open={open || childActive}
+            onOpenChange={setOpen}
+            className="group/collapsible"
+        >
             <SidebarMenuItem>
                 <CollapsibleTrigger asChild>
                     <SidebarMenuButton tooltip={{ children: item.title }}>
@@ -71,7 +85,10 @@ function NavDropdown({ item }: { item: NavItem }) {
                     <SidebarMenuSub>
                         {(item.children ?? []).map((child) => (
                             <SidebarMenuSubItem key={child.title}>
-                                <SidebarMenuSubButton asChild isActive={isCurrentUrl(child.href)}>
+                                <SidebarMenuSubButton
+                                    asChild
+                                    isActive={isCurrentUrl(child.href)}
+                                >
                                     <Link href={child.href} prefetch>
                                         <span>{child.title}</span>
                                     </Link>
@@ -95,7 +112,8 @@ export function NavMain({ groups = [] }: { groups?: NavGroup[] }) {
                         <SidebarMenu>
                             {group.items.map((item) => (
                                 <div key={item.title}>
-                                    {item.children && item.children.length > 0 ? (
+                                    {item.children &&
+                                    item.children.length > 0 ? (
                                         <NavDropdown item={item} />
                                     ) : (
                                         <SidebarMenuItem>

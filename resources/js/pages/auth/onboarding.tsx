@@ -5,7 +5,13 @@ import PasswordInput from '@/components/password-input';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
 import { complete } from '@/routes/onboarding';
 
@@ -38,11 +44,25 @@ type Plan = {
 
 type AccountType = 'organization' | 'searcher';
 
-type FieldErrors = Partial<Record<'name' | 'phone' | 'password' | 'password_confirmation' | 'organization_name', string>>;
+type FieldErrors = Partial<
+    Record<
+        | 'name'
+        | 'phone'
+        | 'password'
+        | 'password_confirmation'
+        | 'organization_name',
+        string
+    >
+>;
 
 const currencies = ['KES', 'USD', 'UGX', 'TZS', 'RWF', 'NGN', 'GBP', 'EUR'];
 
-export default function Onboarding({ user, hasOrganization, organization, plans }: Props) {
+export default function Onboarding({
+    user,
+    hasOrganization,
+    organization,
+    plans,
+}: Props) {
     const [accountType, setAccountType] = useState<AccountType>(
         hasOrganization ? 'organization' : 'searcher',
     );
@@ -50,23 +70,34 @@ export default function Onboarding({ user, hasOrganization, organization, plans 
     const [phone, setPhone] = useState(user.phone ?? '');
     const [password, setPassword] = useState('');
     const [passwordConfirmation, setPasswordConfirmation] = useState('');
-    const [organizationName, setOrganizationName] = useState(organization?.name ?? '');
+    const [organizationName, setOrganizationName] = useState(
+        organization?.name ?? '',
+    );
     const [currency, setCurrency] = useState(organization?.currency ?? 'KES');
     const [planSlug, setPlanSlug] = useState(
-        hasOrganization ? plans[0]?.slug ?? '' : '',
+        hasOrganization ? (plans[0]?.slug ?? '') : '',
     );
     const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
     const [touched, setTouched] = useState<Record<string, boolean>>({});
 
     const isOrganization = hasOrganization || accountType === 'organization';
-    const steps = hasOrganization ? ['profile', 'organization', 'plan'] : isOrganization ? ['account-type', 'profile', 'organization', 'plan'] : ['account-type', 'profile'];
+    const steps = hasOrganization
+        ? ['profile', 'organization', 'plan']
+        : isOrganization
+          ? ['account-type', 'profile', 'organization', 'plan']
+          : ['account-type', 'profile'];
     const [index, setIndex] = useState(0);
     const step = steps[index];
 
-    const validateField = (field: keyof FieldErrors, value: string): string | undefined => {
+    const validateField = (
+        field: keyof FieldErrors,
+        value: string,
+    ): string | undefined => {
         switch (field) {
             case 'name':
-                return value.trim() === '' ? 'Your full name is required.' : undefined;
+                return value.trim() === ''
+                    ? 'Your full name is required.'
+                    : undefined;
             case 'phone':
                 return value.trim() !== '' && value.length > 20
                     ? 'Phone number must be 20 characters or fewer.'
@@ -82,9 +113,13 @@ export default function Onboarding({ user, hasOrganization, organization, plans 
 
                 return undefined;
             case 'password_confirmation':
-                return value !== password ? 'Passwords do not match.' : undefined;
+                return value !== password
+                    ? 'Passwords do not match.'
+                    : undefined;
             case 'organization_name':
-                return value.trim() === '' ? 'Organization name is required.' : undefined;
+                return value.trim() === ''
+                    ? 'Organization name is required.'
+                    : undefined;
         }
     };
 
@@ -102,18 +137,23 @@ export default function Onboarding({ user, hasOrganization, organization, plans 
         }
 
         if (step === 'organization') {
-            nextErrors.organization_name = validateField('organization_name', organizationName);
+            nextErrors.organization_name = validateField(
+                'organization_name',
+                organizationName,
+            );
         }
 
         return Object.fromEntries(
-            Object.entries(nextErrors).filter(([, message]) => message !== undefined),
+            Object.entries(nextErrors).filter(
+                ([, message]) => message !== undefined,
+            ),
         ) as FieldErrors;
     };
 
     const stepValid = (() => {
         if (step === 'account-type') {
-return true;
-}
+            return true;
+        }
 
         if (step === 'profile') {
             return (
@@ -133,7 +173,10 @@ return true;
 
     const handleBlur = (field: keyof FieldErrors, value: string) => {
         setTouched((prev) => ({ ...prev, [field]: true }));
-        setFieldErrors((prev) => ({ ...prev, [field]: validateField(field, value) }));
+        setFieldErrors((prev) => ({
+            ...prev,
+            [field]: validateField(field, value),
+        }));
     };
 
     const handleNext = () => {
@@ -169,43 +212,68 @@ return true;
                             >
                                 {i + 1}
                             </span>
-                            {i < steps.length - 1 && <span className="h-px w-4 bg-border" />}
+                            {i < steps.length - 1 && (
+                                <span className="h-px w-4 bg-border" />
+                            )}
                         </li>
                     ))}
                 </ol>
 
-                <Form {...complete.form()} noValidate className="flex flex-col gap-6">
+                <Form
+                    {...complete.form()}
+                    noValidate
+                    className="flex flex-col gap-6"
+                >
                     {({ processing, errors }) => (
                         <>
                             <div hidden={step !== 'account-type'}>
-                                <input type="hidden" name="account_type" value={accountType} />
+                                <input
+                                    type="hidden"
+                                    name="account_type"
+                                    value={accountType}
+                                />
                                 <div className="grid gap-3">
-                                    {([
-                                        ['searcher', 'I rent a property', "I'm an occupant looking to manage my rental."],
-                                        ['organization', 'I own or manage properties', "I'm a landlord or property manager."],
-                                    ] as [AccountType, string, string][]).map(
-                                        ([value, title, description]) => (
-                                            <button
-                                                key={value}
-                                                type="button"
-                                                onClick={() => setAccountType(value)}
-                                                className={`rounded-lg border p-4 text-left transition-colors ${
-                                                    accountType === value
-                                                        ? 'border-primary bg-primary/5'
-                                                        : 'border-input hover:bg-muted'
-                                                }`}
-                                            >
-                                                <span className="font-medium">{title}</span>
-                                                <p className="mt-1 text-sm text-muted-foreground">
-                                                    {description}
-                                                </p>
-                                            </button>
-                                        ),
-                                    )}
+                                    {(
+                                        [
+                                            [
+                                                'searcher',
+                                                'I rent a property',
+                                                "I'm an occupant looking to manage my rental.",
+                                            ],
+                                            [
+                                                'organization',
+                                                'I own or manage properties',
+                                                "I'm a landlord or property manager.",
+                                            ],
+                                        ] as [AccountType, string, string][]
+                                    ).map(([value, title, description]) => (
+                                        <button
+                                            key={value}
+                                            type="button"
+                                            onClick={() =>
+                                                setAccountType(value)
+                                            }
+                                            className={`rounded-lg border p-4 text-left transition-colors ${
+                                                accountType === value
+                                                    ? 'border-primary bg-primary/5'
+                                                    : 'border-input hover:bg-muted'
+                                            }`}
+                                        >
+                                            <span className="font-medium">
+                                                {title}
+                                            </span>
+                                            <p className="mt-1 text-sm text-muted-foreground">
+                                                {description}
+                                            </p>
+                                        </button>
+                                    ))}
                                 </div>
                             </div>
 
-                            <div hidden={step !== 'profile'} className="grid gap-6">
+                            <div
+                                hidden={step !== 'profile'}
+                                className="grid gap-6"
+                            >
                                 <div className="grid gap-2">
                                     <Label htmlFor="name">Your full name</Label>
                                     <Input
@@ -215,11 +283,16 @@ return true;
                                         required
                                         autoComplete="name"
                                         value={name}
-                                        onChange={(e) => setName(e.target.value)}
+                                        onChange={(e) =>
+                                            setName(e.target.value)
+                                        }
                                         onBlur={() => handleBlur('name', name)}
                                     />
                                     {touched.name && fieldErrors.name ? (
-                                        <p className="text-sm text-destructive" data-test="name-invalid">
+                                        <p
+                                            className="text-sm text-destructive"
+                                            data-test="name-invalid"
+                                        >
                                             {fieldErrors.name}
                                         </p>
                                     ) : (
@@ -228,7 +301,9 @@ return true;
                                 </div>
 
                                 <div className="grid gap-2">
-                                    <Label htmlFor="phone">Phone number (optional)</Label>
+                                    <Label htmlFor="phone">
+                                        Phone number (optional)
+                                    </Label>
                                     <Input
                                         id="phone"
                                         name="phone"
@@ -236,11 +311,18 @@ return true;
                                         autoComplete="tel"
                                         placeholder="+254 712 345 678"
                                         value={phone}
-                                        onChange={(e) => setPhone(e.target.value)}
-                                        onBlur={() => handleBlur('phone', phone)}
+                                        onChange={(e) =>
+                                            setPhone(e.target.value)
+                                        }
+                                        onBlur={() =>
+                                            handleBlur('phone', phone)
+                                        }
                                     />
                                     {touched.phone && fieldErrors.phone ? (
-                                        <p className="text-sm text-destructive" data-test="phone-invalid">
+                                        <p
+                                            className="text-sm text-destructive"
+                                            data-test="phone-invalid"
+                                        >
                                             {fieldErrors.phone}
                                         </p>
                                     ) : (
@@ -256,11 +338,19 @@ return true;
                                         required
                                         autoComplete="new-password"
                                         value={password}
-                                        onChange={(e) => setPassword(e.target.value)}
-                                        onBlur={() => handleBlur('password', password)}
+                                        onChange={(e) =>
+                                            setPassword(e.target.value)
+                                        }
+                                        onBlur={() =>
+                                            handleBlur('password', password)
+                                        }
                                     />
-                                    {touched.password && fieldErrors.password ? (
-                                        <p className="text-sm text-destructive" data-test="password-invalid">
+                                    {touched.password &&
+                                    fieldErrors.password ? (
+                                        <p
+                                            className="text-sm text-destructive"
+                                            data-test="password-invalid"
+                                        >
                                             {fieldErrors.password}
                                         </p>
                                     ) : (
@@ -278,12 +368,20 @@ return true;
                                         required
                                         autoComplete="new-password"
                                         value={passwordConfirmation}
-                                        onChange={(e) => setPasswordConfirmation(e.target.value)}
+                                        onChange={(e) =>
+                                            setPasswordConfirmation(
+                                                e.target.value,
+                                            )
+                                        }
                                         onBlur={() =>
-                                            handleBlur('password_confirmation', passwordConfirmation)
+                                            handleBlur(
+                                                'password_confirmation',
+                                                passwordConfirmation,
+                                            )
                                         }
                                     />
-                                    {touched.password_confirmation && fieldErrors.password_confirmation ? (
+                                    {touched.password_confirmation &&
+                                    fieldErrors.password_confirmation ? (
                                         <p
                                             className="text-sm text-destructive"
                                             data-test="password-confirmation-invalid"
@@ -291,12 +389,19 @@ return true;
                                             {fieldErrors.password_confirmation}
                                         </p>
                                     ) : (
-                                        <InputError message={errors.password_confirmation} />
+                                        <InputError
+                                            message={
+                                                errors.password_confirmation
+                                            }
+                                        />
                                     )}
                                 </div>
                             </div>
 
-                            <div hidden={step !== 'organization'} className="grid gap-6">
+                            <div
+                                hidden={step !== 'organization'}
+                                className="grid gap-6"
+                            >
                                 <div className="grid gap-2">
                                     <Label htmlFor="organization_name">
                                         Organization name
@@ -308,12 +413,18 @@ return true;
                                         required
                                         autoComplete="organization"
                                         value={organizationName}
-                                        onChange={(e) => setOrganizationName(e.target.value)}
+                                        onChange={(e) =>
+                                            setOrganizationName(e.target.value)
+                                        }
                                         onBlur={() =>
-                                            handleBlur('organization_name', organizationName)
+                                            handleBlur(
+                                                'organization_name',
+                                                organizationName,
+                                            )
                                         }
                                     />
-                                    {touched.organization_name && fieldErrors.organization_name ? (
+                                    {touched.organization_name &&
+                                    fieldErrors.organization_name ? (
                                         <p
                                             className="text-sm text-destructive"
                                             data-test="organization-name-invalid"
@@ -321,20 +432,34 @@ return true;
                                             {fieldErrors.organization_name}
                                         </p>
                                     ) : (
-                                        <InputError message={errors.organization_name} />
+                                        <InputError
+                                            message={errors.organization_name}
+                                        />
                                     )}
                                 </div>
 
                                 <div className="grid gap-2">
-                                    <Label htmlFor="currency">Default currency</Label>
-                                    <input type="hidden" name="currency" value={currency} />
-                                    <Select value={currency} onValueChange={setCurrency}>
+                                    <Label htmlFor="currency">
+                                        Default currency
+                                    </Label>
+                                    <input
+                                        type="hidden"
+                                        name="currency"
+                                        value={currency}
+                                    />
+                                    <Select
+                                        value={currency}
+                                        onValueChange={setCurrency}
+                                    >
                                         <SelectTrigger id="currency">
                                             <SelectValue placeholder="Select currency" />
                                         </SelectTrigger>
                                         <SelectContent>
                                             {currencies.map((code) => (
-                                                <SelectItem key={code} value={code}>
+                                                <SelectItem
+                                                    key={code}
+                                                    value={code}
+                                                >
                                                     {code}
                                                 </SelectItem>
                                             ))}
@@ -345,13 +470,19 @@ return true;
                             </div>
 
                             <div hidden={step !== 'plan'}>
-                                <input type="hidden" name="plan_slug" value={planSlug} />
+                                <input
+                                    type="hidden"
+                                    name="plan_slug"
+                                    value={planSlug}
+                                />
                                 <div className="grid gap-3">
                                     {plans.map((plan) => (
                                         <button
                                             key={plan.id}
                                             type="button"
-                                            onClick={() => setPlanSlug(plan.slug)}
+                                            onClick={() =>
+                                                setPlanSlug(plan.slug)
+                                            }
                                             className={`rounded-lg border p-4 text-left transition-colors ${
                                                 planSlug === plan.slug
                                                     ? 'border-primary bg-primary/5'
@@ -359,7 +490,9 @@ return true;
                                             }`}
                                         >
                                             <div className="flex items-center justify-between">
-                                                <span className="font-medium">{plan.name}</span>
+                                                <span className="font-medium">
+                                                    {plan.name}
+                                                </span>
                                                 <span className="text-sm text-muted-foreground">
                                                     {plan.price_label}
                                                 </span>
@@ -399,7 +532,9 @@ return true;
                                         disabled={processing || !stepValid}
                                     >
                                         {processing && <Spinner />}
-                                        {isOrganization ? 'Finish setup' : 'Complete'}
+                                        {isOrganization
+                                            ? 'Finish setup'
+                                            : 'Complete'}
                                     </Button>
                                 )}
                             </div>

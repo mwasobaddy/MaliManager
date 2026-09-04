@@ -33,10 +33,17 @@ export default function OrganizationsCreate({ plans, owners }: Props) {
                         <CardTitle>Organization</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <Form {...store.form()} className="grid gap-4 sm:grid-cols-2">
+                        <Form
+                            {...store.form()}
+                            className="grid gap-4 sm:grid-cols-2"
+                        >
                             {({ processing, errors }) => (
                                 <>
-                                    <input type="hidden" name="owner_mode" value={ownerMode} />
+                                    <input
+                                        type="hidden"
+                                        name="owner_mode"
+                                        value={ownerMode}
+                                    />
                                     <div className="grid gap-2 sm:col-span-2">
                                         <Label htmlFor="name">Name</Label>
                                         <Input id="name" name="name" required />
@@ -44,7 +51,11 @@ export default function OrganizationsCreate({ plans, owners }: Props) {
                                     </div>
                                     <div className="grid gap-2">
                                         <Label htmlFor="email">Email</Label>
-                                        <Input id="email" name="email" type="email" />
+                                        <Input
+                                            id="email"
+                                            name="email"
+                                            type="email"
+                                        />
                                     </div>
                                     <div className="grid gap-2">
                                         <Label htmlFor="phone">Phone</Label>
@@ -59,7 +70,12 @@ export default function OrganizationsCreate({ plans, owners }: Props) {
                                             className="h-9 rounded-md border bg-background px-3 text-sm"
                                         >
                                             {plans.map((plan) => (
-                                                <option key={plan.id} value={plan.id}>{plan.name}</option>
+                                                <option
+                                                    key={plan.id}
+                                                    value={plan.id}
+                                                >
+                                                    {plan.name}
+                                                </option>
                                             ))}
                                         </select>
                                         <InputError message={errors.plan_id} />
@@ -71,16 +87,28 @@ export default function OrganizationsCreate({ plans, owners }: Props) {
                                             <Button
                                                 type="button"
                                                 size="sm"
-                                                variant={ownerMode === 'existing' ? 'default' : 'outline'}
-                                                onClick={() => setOwnerMode('existing')}
+                                                variant={
+                                                    ownerMode === 'existing'
+                                                        ? 'default'
+                                                        : 'outline'
+                                                }
+                                                onClick={() =>
+                                                    setOwnerMode('existing')
+                                                }
                                             >
                                                 Existing user
                                             </Button>
                                             <Button
                                                 type="button"
                                                 size="sm"
-                                                variant={ownerMode === 'new' ? 'default' : 'outline'}
-                                                onClick={() => setOwnerMode('new')}
+                                                variant={
+                                                    ownerMode === 'new'
+                                                        ? 'default'
+                                                        : 'outline'
+                                                }
+                                                onClick={() =>
+                                                    setOwnerMode('new')
+                                                }
                                             >
                                                 Create new person &amp; user
                                             </Button>
@@ -89,47 +117,99 @@ export default function OrganizationsCreate({ plans, owners }: Props) {
 
                                     {ownerMode === 'existing' ? (
                                         <div className="grid gap-2 sm:col-span-2">
-                                            <Label htmlFor="owner_user_id">Owner user</Label>
+                                            <Label htmlFor="owner_user_id">
+                                                Owner user
+                                            </Label>
                                             <select
                                                 id="owner_user_id"
                                                 name="owner_user_id"
-                                                defaultValue={owners[0]?.id ?? ''}
+                                                defaultValue={
+                                                    owners[0]?.id ?? ''
+                                                }
                                                 className="h-9 rounded-md border bg-background px-3 text-sm"
                                             >
                                                 {owners.map((owner) => (
-                                                    <option key={owner.id} value={owner.id}>
-                                                        {owner.name} ({owner.email})
+                                                    <option
+                                                        key={owner.id}
+                                                        value={owner.id}
+                                                    >
+                                                        {owner.name} (
+                                                        {owner.email})
                                                     </option>
                                                 ))}
                                             </select>
-                                            <InputError message={errors.owner_user_id} />
+                                            <InputError
+                                                message={errors.owner_user_id}
+                                            />
                                         </div>
                                     ) : (
                                         <>
                                             <div className="grid gap-2">
-                                                <Label htmlFor="owner_first_name">Owner first name</Label>
-                                                <Input id="owner_first_name" name="owner_first_name" required={ownerMode === 'new'} />
-                                                <InputError message={errors.owner_first_name} />
+                                                <Label htmlFor="owner_first_name">
+                                                    Owner first name
+                                                </Label>
+                                                <Input
+                                                    id="owner_first_name"
+                                                    name="owner_first_name"
+                                                    required={
+                                                        ownerMode === 'new'
+                                                    }
+                                                />
+                                                <InputError
+                                                    message={
+                                                        errors.owner_first_name
+                                                    }
+                                                />
                                             </div>
                                             <div className="grid gap-2">
-                                                <Label htmlFor="owner_last_name">Owner last name</Label>
-                                                <Input id="owner_last_name" name="owner_last_name" />
+                                                <Label htmlFor="owner_last_name">
+                                                    Owner last name
+                                                </Label>
+                                                <Input
+                                                    id="owner_last_name"
+                                                    name="owner_last_name"
+                                                />
                                             </div>
                                             <div className="grid gap-2">
-                                                <Label htmlFor="owner_email">Owner email</Label>
-                                                <Input id="owner_email" name="owner_email" type="email" required={ownerMode === 'new'} />
-                                                <InputError message={errors.owner_email} />
+                                                <Label htmlFor="owner_email">
+                                                    Owner email
+                                                </Label>
+                                                <Input
+                                                    id="owner_email"
+                                                    name="owner_email"
+                                                    type="email"
+                                                    required={
+                                                        ownerMode === 'new'
+                                                    }
+                                                />
+                                                <InputError
+                                                    message={errors.owner_email}
+                                                />
                                             </div>
                                             <div className="grid gap-2">
-                                                <Label htmlFor="owner_phone">Owner phone</Label>
-                                                <Input id="owner_phone" name="owner_phone" />
+                                                <Label htmlFor="owner_phone">
+                                                    Owner phone
+                                                </Label>
+                                                <Input
+                                                    id="owner_phone"
+                                                    name="owner_phone"
+                                                />
                                             </div>
                                         </>
                                     )}
 
                                     <div className="flex gap-2 sm:col-span-2">
-                                        <Button type="submit" disabled={processing}>Create organization</Button>
-                                        <Button type="button" variant="outline" asChild>
+                                        <Button
+                                            type="submit"
+                                            disabled={processing}
+                                        >
+                                            Create organization
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            asChild
+                                        >
                                             <Link href={index()}>Cancel</Link>
                                         </Button>
                                     </div>

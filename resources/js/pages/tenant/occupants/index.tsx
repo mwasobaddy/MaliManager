@@ -3,8 +3,17 @@ import { Mail, Phone, Plus, Users } from 'lucide-react';
 import Heading from '@/components/heading';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { create as createOccupant, edit as editOccupant } from '@/routes/tenant/occupants';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from '@/components/ui/card';
+import {
+    create as createOccupant,
+    edit as editOccupant,
+} from '@/routes/tenant/occupants';
 
 type Property = {
     id: number;
@@ -69,7 +78,8 @@ export default function OccupantsIndex({ property, occupants }: Props) {
                             <Users className="mx-auto size-10 text-muted-foreground" />
                             <p className="mt-4 font-medium">No occupants yet</p>
                             <p className="mt-1 text-sm text-muted-foreground">
-                                Add your first occupant to assign them to a unit.
+                                Add your first occupant to assign them to a
+                                unit.
                             </p>
                             {canCreate && (
                                 <Button asChild className="mt-6">
@@ -88,7 +98,8 @@ export default function OccupantsIndex({ property, occupants }: Props) {
                                     <div className="flex items-start justify-between gap-4">
                                         <div className="min-w-0">
                                             <CardTitle className="truncate">
-                                                {occupant.first_name} {occupant.last_name}
+                                                {occupant.first_name}{' '}
+                                                {occupant.last_name}
                                             </CardTitle>
                                             <CardDescription className="mt-1 flex flex-col gap-1">
                                                 <span className="flex items-center gap-1.5 truncate">
@@ -104,7 +115,11 @@ export default function OccupantsIndex({ property, occupants }: Props) {
                                             </CardDescription>
                                         </div>
                                         <Badge
-                                            variant={occupant.status === 'active' ? 'default' : 'secondary'}
+                                            variant={
+                                                occupant.status === 'active'
+                                                    ? 'default'
+                                                    : 'secondary'
+                                            }
                                         >
                                             {occupant.status}
                                         </Badge>
@@ -113,14 +128,16 @@ export default function OccupantsIndex({ property, occupants }: Props) {
                                 <CardContent className="space-y-3">
                                     {occupant.national_id && (
                                         <div>
-                                            <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                                            <p className="text-xs tracking-wide text-muted-foreground uppercase">
                                                 National ID
                                             </p>
-                                            <p className="text-sm font-medium">{occupant.national_id}</p>
+                                            <p className="text-sm font-medium">
+                                                {occupant.national_id}
+                                            </p>
                                         </div>
                                     )}
                                     <div>
-                                        <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                                        <p className="text-xs tracking-wide text-muted-foreground uppercase">
                                             Units
                                         </p>
                                         {occupant.units.length === 0 ? (
@@ -130,7 +147,10 @@ export default function OccupantsIndex({ property, occupants }: Props) {
                                         ) : (
                                             <div className="mt-1 flex flex-wrap gap-1.5">
                                                 {occupant.units.map((unit) => (
-                                                    <Badge key={unit.id} variant="outline">
+                                                    <Badge
+                                                        key={unit.id}
+                                                        variant="outline"
+                                                    >
                                                         {unit.name}
                                                     </Badge>
                                                 ))}
@@ -140,8 +160,19 @@ export default function OccupantsIndex({ property, occupants }: Props) {
                                     {(canEdit || canDelete) && (
                                         <div className="flex gap-2 pt-1">
                                             {canEdit && (
-                                                <Button asChild variant="outline" size="sm">
-                                                    <Link href={editOccupant({ property: property.slug, occupant: occupant.id })}>
+                                                <Button
+                                                    asChild
+                                                    variant="outline"
+                                                    size="sm"
+                                                >
+                                                    <Link
+                                                        href={editOccupant({
+                                                            property:
+                                                                property.slug,
+                                                            occupant:
+                                                                occupant.id,
+                                                        })}
+                                                    >
                                                         Edit
                                                     </Link>
                                                 </Button>

@@ -57,7 +57,8 @@ export default function PlanForm({ plan }: Props) {
         description: plan?.description ?? '',
         currency: plan?.currency ?? 'KES',
         price: String(plan?.price ?? 0),
-        properties_limit: plan?.properties_limit != null ? String(plan.properties_limit) : '',
+        properties_limit:
+            plan?.properties_limit != null ? String(plan.properties_limit) : '',
         units_limit: plan?.units_limit != null ? String(plan.units_limit) : '',
         has_dedicated_db: plan?.has_dedicated_db ?? false,
         has_custom_domain: plan?.has_custom_domain ?? false,
@@ -71,7 +72,8 @@ export default function PlanForm({ plan }: Props) {
     form.transform((data) => ({
         ...data,
         price: Number(data.price),
-        properties_limit: data.properties_limit === '' ? null : Number(data.properties_limit),
+        properties_limit:
+            data.properties_limit === '' ? null : Number(data.properties_limit),
         units_limit: data.units_limit === '' ? null : Number(data.units_limit),
         sort_order: Number(data.sort_order) || 0,
         features: data.features
@@ -92,7 +94,9 @@ export default function PlanForm({ plan }: Props) {
 
     return (
         <>
-            <Head title={isEdit ? `Edit ${plan?.name ?? 'plan'}` : 'New plan'} />
+            <Head
+                title={isEdit ? `Edit ${plan?.name ?? 'plan'}` : 'New plan'}
+            />
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
                 <div className="flex items-center gap-3">
                     <Button variant="ghost" size="icon" asChild>
@@ -101,7 +105,9 @@ export default function PlanForm({ plan }: Props) {
                         </Link>
                     </Button>
                     <Heading
-                        title={isEdit ? `Edit ${plan?.name ?? 'plan'}` : 'New plan'}
+                        title={
+                            isEdit ? `Edit ${plan?.name ?? 'plan'}` : 'New plan'
+                        }
                         description="Define pricing, limits and enabled features for this tier."
                     />
                 </div>
@@ -114,17 +120,45 @@ export default function PlanForm({ plan }: Props) {
                         <CardContent className="grid gap-4 sm:grid-cols-2">
                             <div className="grid gap-2 sm:col-span-2">
                                 <Label htmlFor="name">Name</Label>
-                                <Input id="name" name="name" value={form.data.name} onChange={(e) => form.setData('name', e.target.value)} required />
+                                <Input
+                                    id="name"
+                                    name="name"
+                                    value={form.data.name}
+                                    onChange={(e) =>
+                                        form.setData('name', e.target.value)
+                                    }
+                                    required
+                                />
                                 <InputError message={form.errors.name} />
                             </div>
                             <div className="grid gap-2">
                                 <Label htmlFor="slug">Slug</Label>
-                                <Input id="slug" name="slug" value={form.data.slug} onChange={(e) => form.setData('slug', e.target.value)} required />
+                                <Input
+                                    id="slug"
+                                    name="slug"
+                                    value={form.data.slug}
+                                    onChange={(e) =>
+                                        form.setData('slug', e.target.value)
+                                    }
+                                    required
+                                />
                                 <InputError message={form.errors.slug} />
                             </div>
                             <div className="grid gap-2">
                                 <Label htmlFor="sort_order">Sort order</Label>
-                                <Input id="sort_order" name="sort_order" type="number" min={0} value={form.data.sort_order} onChange={(e) => form.setData('sort_order', e.target.value)} />
+                                <Input
+                                    id="sort_order"
+                                    name="sort_order"
+                                    type="number"
+                                    min={0}
+                                    value={form.data.sort_order}
+                                    onChange={(e) =>
+                                        form.setData(
+                                            'sort_order',
+                                            e.target.value,
+                                        )
+                                    }
+                                />
                                 <InputError message={form.errors.sort_order} />
                             </div>
                             <div className="grid gap-2 sm:col-span-2">
@@ -134,8 +168,13 @@ export default function PlanForm({ plan }: Props) {
                                     name="description"
                                     rows={3}
                                     value={form.data.description}
-                                    onChange={(e) => form.setData('description', e.target.value)}
-                                    className="border-input placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 flex w-full rounded-md border bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:ring-[3px]"
+                                    onChange={(e) =>
+                                        form.setData(
+                                            'description',
+                                            e.target.value,
+                                        )
+                                    }
+                                    className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
                                 />
                                 <InputError message={form.errors.description} />
                             </div>
@@ -150,25 +189,88 @@ export default function PlanForm({ plan }: Props) {
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="grid gap-2">
                                     <Label htmlFor="currency">Currency</Label>
-                                    <Input id="currency" name="currency" maxLength={3} value={form.data.currency} onChange={(e) => form.setData('currency', e.target.value.toUpperCase())} required />
-                                    <InputError message={form.errors.currency} />
+                                    <Input
+                                        id="currency"
+                                        name="currency"
+                                        maxLength={3}
+                                        value={form.data.currency}
+                                        onChange={(e) =>
+                                            form.setData(
+                                                'currency',
+                                                e.target.value.toUpperCase(),
+                                            )
+                                        }
+                                        required
+                                    />
+                                    <InputError
+                                        message={form.errors.currency}
+                                    />
                                 </div>
                                 <div className="grid gap-2">
-                                    <Label htmlFor="price">Price (per period)</Label>
-                                    <Input id="price" name="price" type="number" min={0} value={form.data.price} onChange={(e) => form.setData('price', e.target.value)} required />
+                                    <Label htmlFor="price">
+                                        Price (per period)
+                                    </Label>
+                                    <Input
+                                        id="price"
+                                        name="price"
+                                        type="number"
+                                        min={0}
+                                        value={form.data.price}
+                                        onChange={(e) =>
+                                            form.setData(
+                                                'price',
+                                                e.target.value,
+                                            )
+                                        }
+                                        required
+                                    />
                                     <InputError message={form.errors.price} />
                                 </div>
                             </div>
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="grid gap-2">
-                                    <Label htmlFor="properties_limit">Properties limit</Label>
-                                    <Input id="properties_limit" name="properties_limit" type="number" min={0} value={form.data.properties_limit} onChange={(e) => form.setData('properties_limit', e.target.value)} placeholder="Unlimited" />
-                                    <InputError message={form.errors.properties_limit} />
+                                    <Label htmlFor="properties_limit">
+                                        Properties limit
+                                    </Label>
+                                    <Input
+                                        id="properties_limit"
+                                        name="properties_limit"
+                                        type="number"
+                                        min={0}
+                                        value={form.data.properties_limit}
+                                        onChange={(e) =>
+                                            form.setData(
+                                                'properties_limit',
+                                                e.target.value,
+                                            )
+                                        }
+                                        placeholder="Unlimited"
+                                    />
+                                    <InputError
+                                        message={form.errors.properties_limit}
+                                    />
                                 </div>
                                 <div className="grid gap-2">
-                                    <Label htmlFor="units_limit">Units limit</Label>
-                                    <Input id="units_limit" name="units_limit" type="number" min={0} value={form.data.units_limit} onChange={(e) => form.setData('units_limit', e.target.value)} placeholder="Unlimited" />
-                                    <InputError message={form.errors.units_limit} />
+                                    <Label htmlFor="units_limit">
+                                        Units limit
+                                    </Label>
+                                    <Input
+                                        id="units_limit"
+                                        name="units_limit"
+                                        type="number"
+                                        min={0}
+                                        value={form.data.units_limit}
+                                        onChange={(e) =>
+                                            form.setData(
+                                                'units_limit',
+                                                e.target.value,
+                                            )
+                                        }
+                                        placeholder="Unlimited"
+                                    />
+                                    <InputError
+                                        message={form.errors.units_limit}
+                                    />
                                 </div>
                             </div>
                         </CardContent>
@@ -180,36 +282,71 @@ export default function PlanForm({ plan }: Props) {
                         </CardHeader>
                         <CardContent className="grid gap-4">
                             <div className="grid gap-2">
-                                <Label htmlFor="features">Features (one per line)</Label>
+                                <Label htmlFor="features">
+                                    Features (one per line)
+                                </Label>
                                 <textarea
                                     id="features"
                                     name="features"
                                     rows={4}
                                     value={form.data.features}
-                                    onChange={(e) => form.setData('features', e.target.value)}
-                                    className="border-input placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 flex w-full rounded-md border bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:ring-[3px]"
+                                    onChange={(e) =>
+                                        form.setData('features', e.target.value)
+                                    }
+                                    className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
                                     placeholder={'SMS alerts\nPriority support'}
                                 />
                                 <InputError message={form.errors.features} />
                             </div>
                             <label className="flex items-center gap-2 text-sm">
-                                <Checkbox checked={form.data.is_active} onCheckedChange={(v) => form.setData('is_active', !!v)} />
+                                <Checkbox
+                                    checked={form.data.is_active}
+                                    onCheckedChange={(v) =>
+                                        form.setData('is_active', !!v)
+                                    }
+                                />
                                 Active (available for new organizations)
                             </label>
                             <label className="flex items-center gap-2 text-sm">
-                                <Checkbox checked={form.data.has_dedicated_db} onCheckedChange={(v) => form.setData('has_dedicated_db', !!v)} />
+                                <Checkbox
+                                    checked={form.data.has_dedicated_db}
+                                    onCheckedChange={(v) =>
+                                        form.setData('has_dedicated_db', !!v)
+                                    }
+                                />
                                 Dedicated database
                             </label>
                             <label className="flex items-center gap-2 text-sm">
-                                <Checkbox checked={form.data.has_custom_domain} onCheckedChange={(v) => form.setData('has_custom_domain', !!v)} />
+                                <Checkbox
+                                    checked={form.data.has_custom_domain}
+                                    onCheckedChange={(v) =>
+                                        form.setData('has_custom_domain', !!v)
+                                    }
+                                />
                                 Custom domain
                             </label>
                             <label className="flex items-center gap-2 text-sm">
-                                <Checkbox checked={form.data.has_email_notifications} onCheckedChange={(v) => form.setData('has_email_notifications', !!v)} />
+                                <Checkbox
+                                    checked={form.data.has_email_notifications}
+                                    onCheckedChange={(v) =>
+                                        form.setData(
+                                            'has_email_notifications',
+                                            !!v,
+                                        )
+                                    }
+                                />
                                 Email notifications
                             </label>
                             <label className="flex items-center gap-2 text-sm">
-                                <Checkbox checked={form.data.has_sms_notifications} onCheckedChange={(v) => form.setData('has_sms_notifications', !!v)} />
+                                <Checkbox
+                                    checked={form.data.has_sms_notifications}
+                                    onCheckedChange={(v) =>
+                                        form.setData(
+                                            'has_sms_notifications',
+                                            !!v,
+                                        )
+                                    }
+                                />
                                 SMS notifications
                             </label>
                         </CardContent>
