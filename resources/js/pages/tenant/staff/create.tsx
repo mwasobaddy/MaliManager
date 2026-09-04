@@ -39,13 +39,19 @@ type Props = {
     properties: Property[];
 };
 
-export default function StaffCreate({ organization, sub_roles, properties }: Props) {
+export default function StaffCreate({
+    organization,
+    sub_roles,
+    properties,
+}: Props) {
     const [subRoleId, setSubRoleId] = useState('');
     const [propertyIds, setPropertyIds] = useState<number[]>([]);
 
     const toggleProperty = (id: number) => {
         setPropertyIds((prev) =>
-            prev.includes(id) ? prev.filter((pid) => pid !== id) : [...prev, id],
+            prev.includes(id)
+                ? prev.filter((pid) => pid !== id)
+                : [...prev, id],
         );
     };
 
@@ -96,7 +102,9 @@ export default function StaffCreate({ organization, sub_roles, properties }: Pro
                                 </div>
 
                                 <div className="grid gap-2">
-                                    <Label htmlFor="phone">Phone (optional)</Label>
+                                    <Label htmlFor="phone">
+                                        Phone (optional)
+                                    </Label>
                                     <Input
                                         id="phone"
                                         name="phone"
@@ -109,14 +117,27 @@ export default function StaffCreate({ organization, sub_roles, properties }: Pro
 
                                 <div className="grid gap-2">
                                     <Label htmlFor="sub_role_id">Role</Label>
-                                    <input type="hidden" name="sub_role_id" value={subRoleId} />
-                                    <Select value={subRoleId} onValueChange={setSubRoleId}>
-                                        <SelectTrigger id="sub_role_id" className="w-full">
+                                    <input
+                                        type="hidden"
+                                        name="sub_role_id"
+                                        value={subRoleId}
+                                    />
+                                    <Select
+                                        value={subRoleId}
+                                        onValueChange={setSubRoleId}
+                                    >
+                                        <SelectTrigger
+                                            id="sub_role_id"
+                                            className="w-full"
+                                        >
                                             <SelectValue placeholder="Select a role" />
                                         </SelectTrigger>
                                         <SelectContent>
                                             {sub_roles.map((role) => (
-                                                <SelectItem key={role.id} value={String(role.id)}>
+                                                <SelectItem
+                                                    key={role.id}
+                                                    value={String(role.id)}
+                                                >
                                                     {role.name}
                                                 </SelectItem>
                                             ))}
@@ -134,7 +155,8 @@ export default function StaffCreate({ organization, sub_roles, properties }: Pro
                                 />
                                 {properties.length === 0 ? (
                                     <p className="text-sm text-muted-foreground">
-                                        No properties yet. Create a property before adding staff.
+                                        No properties yet. Create a property
+                                        before adding staff.
                                     </p>
                                 ) : (
                                     <div className="grid gap-3">
@@ -144,29 +166,43 @@ export default function StaffCreate({ organization, sub_roles, properties }: Pro
                                                 className="flex items-center gap-3 rounded-lg border border-input p-3 text-sm transition-colors hover:bg-muted"
                                             >
                                                 <Checkbox
-                                                    checked={propertyIds.includes(property.id)}
+                                                    checked={propertyIds.includes(
+                                                        property.id,
+                                                    )}
                                                     onCheckedChange={() =>
-                                                        toggleProperty(property.id)
+                                                        toggleProperty(
+                                                            property.id,
+                                                        )
                                                     }
                                                 />
                                                 <input
                                                     type="hidden"
                                                     name="property_ids[]"
                                                     value={String(property.id)}
-                                                    disabled={!propertyIds.includes(property.id)}
+                                                    disabled={
+                                                        !propertyIds.includes(
+                                                            property.id,
+                                                        )
+                                                    }
                                                 />
                                                 <Building2 className="size-4 text-muted-foreground" />
-                                                <span className="font-medium">{property.name}</span>
+                                                <span className="font-medium">
+                                                    {property.name}
+                                                </span>
                                             </label>
                                         ))}
-                                        <InputError message={errors.property_ids} />
+                                        <InputError
+                                            message={errors.property_ids}
+                                        />
                                     </div>
                                 )}
                             </div>
 
                             <div className="flex gap-3">
                                 <Button type="submit" disabled={processing}>
-                                    {processing ? 'Adding…' : 'Add staff member'}
+                                    {processing
+                                        ? 'Adding…'
+                                        : 'Add staff member'}
                                 </Button>
                                 <Button asChild variant="outline">
                                     <Link href={staffIndex()}>Cancel</Link>

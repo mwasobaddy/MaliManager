@@ -34,12 +34,22 @@ type UnitDraft = {
 
 const emptyUnit = (): UnitDraft => ({ name: '', type: '', monthly_rent: '' });
 
-export default function PropertiesCreate({ organization, plan, canCreateProperty }: Props) {
+export default function PropertiesCreate({
+    organization,
+    plan,
+    canCreateProperty,
+}: Props) {
     const [units, setUnits] = useState<UnitDraft[]>([]);
 
-    const updateUnit = (index: number, field: keyof UnitDraft, value: string) => {
+    const updateUnit = (
+        index: number,
+        field: keyof UnitDraft,
+        value: string,
+    ) => {
         setUnits((prev) =>
-            prev.map((unit, i) => (i === index ? { ...unit, [field]: value } : unit)),
+            prev.map((unit, i) =>
+                i === index ? { ...unit, [field]: value } : unit,
+            ),
         );
     };
 
@@ -69,7 +79,9 @@ export default function PropertiesCreate({ organization, plan, canCreateProperty
                             <>
                                 <div className="grid gap-6 rounded-xl border border-input p-6 md:grid-cols-2">
                                     <div className="grid gap-2">
-                                        <Label htmlFor="name">Property name</Label>
+                                        <Label htmlFor="name">
+                                            Property name
+                                        </Label>
                                         <Input
                                             id="name"
                                             name="name"
@@ -117,7 +129,12 @@ export default function PropertiesCreate({ organization, plan, canCreateProperty
                                             type="button"
                                             variant="outline"
                                             size="sm"
-                                            onClick={() => setUnits((prev) => [...prev, emptyUnit()])}
+                                            onClick={() =>
+                                                setUnits((prev) => [
+                                                    ...prev,
+                                                    emptyUnit(),
+                                                ])
+                                            }
                                         >
                                             <Plus className="size-4" />
                                             Add unit
@@ -126,7 +143,8 @@ export default function PropertiesCreate({ organization, plan, canCreateProperty
 
                                     {units.length === 0 ? (
                                         <p className="text-sm text-muted-foreground">
-                                            You can add units now or later from the property page.
+                                            You can add units now or later from
+                                            the property page.
                                         </p>
                                     ) : (
                                         <div className="grid gap-4">
@@ -136,7 +154,9 @@ export default function PropertiesCreate({ organization, plan, canCreateProperty
                                                     className="grid gap-4 rounded-xl border border-input p-4 md:grid-cols-[1fr_1fr_1fr_auto]"
                                                 >
                                                     <div className="grid gap-2">
-                                                        <Label htmlFor={`units-${i}-name`}>
+                                                        <Label
+                                                            htmlFor={`units-${i}-name`}
+                                                        >
                                                             Unit name
                                                         </Label>
                                                         <Input
@@ -146,13 +166,20 @@ export default function PropertiesCreate({ organization, plan, canCreateProperty
                                                             placeholder="A1"
                                                             value={unit.name}
                                                             onChange={(e) =>
-                                                                updateUnit(i, 'name', e.target.value)
+                                                                updateUnit(
+                                                                    i,
+                                                                    'name',
+                                                                    e.target
+                                                                        .value,
+                                                                )
                                                             }
                                                             name={`units[${i}][name]`}
                                                         />
                                                     </div>
                                                     <div className="grid gap-2">
-                                                        <Label htmlFor={`units-${i}-type`}>
+                                                        <Label
+                                                            htmlFor={`units-${i}-type`}
+                                                        >
                                                             Type
                                                         </Label>
                                                         <Input
@@ -161,13 +188,20 @@ export default function PropertiesCreate({ organization, plan, canCreateProperty
                                                             placeholder="1 Bedroom"
                                                             value={unit.type}
                                                             onChange={(e) =>
-                                                                updateUnit(i, 'type', e.target.value)
+                                                                updateUnit(
+                                                                    i,
+                                                                    'type',
+                                                                    e.target
+                                                                        .value,
+                                                                )
                                                             }
                                                             name={`units[${i}][type]`}
                                                         />
                                                     </div>
                                                     <div className="grid gap-2">
-                                                        <Label htmlFor={`units-${i}-rent`}>
+                                                        <Label
+                                                            htmlFor={`units-${i}-rent`}
+                                                        >
                                                             Monthly rent
                                                         </Label>
                                                         <Input
@@ -176,9 +210,16 @@ export default function PropertiesCreate({ organization, plan, canCreateProperty
                                                             min="0"
                                                             step="0.01"
                                                             placeholder="25000"
-                                                            value={unit.monthly_rent}
+                                                            value={
+                                                                unit.monthly_rent
+                                                            }
                                                             onChange={(e) =>
-                                                                updateUnit(i, 'monthly_rent', e.target.value)
+                                                                updateUnit(
+                                                                    i,
+                                                                    'monthly_rent',
+                                                                    e.target
+                                                                        .value,
+                                                                )
                                                             }
                                                             name={`units[${i}][monthly_rent]`}
                                                         />
@@ -190,7 +231,10 @@ export default function PropertiesCreate({ organization, plan, canCreateProperty
                                                         className="mt-6 text-destructive"
                                                         onClick={() =>
                                                             setUnits((prev) =>
-                                                                prev.filter((_, j) => j !== i),
+                                                                prev.filter(
+                                                                    (_, j) =>
+                                                                        j !== i,
+                                                                ),
                                                             )
                                                         }
                                                     >
@@ -204,7 +248,9 @@ export default function PropertiesCreate({ organization, plan, canCreateProperty
 
                                 <div className="flex gap-3">
                                     <Button type="submit" disabled={processing}>
-                                        {processing ? 'Saving…' : 'Create property'}
+                                        {processing
+                                            ? 'Saving…'
+                                            : 'Create property'}
                                     </Button>
                                     <Button asChild variant="outline">
                                         <Link href={index()}>Cancel</Link>

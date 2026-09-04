@@ -1,6 +1,6 @@
 import { Head, Link } from '@inertiajs/react';
 import { History } from 'lucide-react';
-import type {AssistantArtifact} from '@/components/assistant-chart';
+import type { AssistantArtifact } from '@/components/assistant-chart';
 import { AssistantChat } from '@/components/assistant-chat';
 import { Button } from '@/components/ui/button';
 import { ask as askRoute } from '@/routes/tenant/assistant';
@@ -8,7 +8,11 @@ import { ask as askRoute } from '@/routes/tenant/assistant';
 type Props = {
     enabled: boolean;
     quick_prompts?: string[];
-    initial_messages?: { role: 'user' | 'assistant' | 'error'; content: string; artifacts?: AssistantArtifact[] }[];
+    initial_messages?: {
+        role: 'user' | 'assistant' | 'error';
+        content: string;
+        artifacts?: AssistantArtifact[];
+    }[];
 };
 
 const DEFAULT_PROMPTS = [
@@ -26,8 +30,9 @@ export default function Assistant({ enabled, quick_prompts }: Props) {
                 <Head title="AI assistant" />
                 <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
                     <p className="text-sm text-muted-foreground">
-                        AI is not configured yet. An owner can add an API key under Organization → AI settings, or you can add a personal
-                        key in Settings → AI.
+                        AI is not configured yet. An owner can add an API key
+                        under Organization → AI settings, or you can add a
+                        personal key in Settings → AI.
                     </p>
                 </div>
             </>

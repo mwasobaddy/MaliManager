@@ -2,7 +2,13 @@ import { Head, Link } from '@inertiajs/react';
 import { Building2, Map } from 'lucide-react';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from '@/components/ui/card';
 import { create as createParcel } from '@/routes/tenant/land-parcels';
 import { create as createProperty } from '@/routes/tenant/properties';
 
@@ -28,7 +34,10 @@ export default function FirstAsset({ organization }: Props) {
                 />
 
                 <div className="grid gap-4 md:grid-cols-2">
-                    <Link href={createProperty()} className="rounded-xl border border-input bg-card transition-colors hover:bg-muted">
+                    <Link
+                        href={createProperty()}
+                        className="rounded-xl border border-input bg-card transition-colors hover:bg-muted"
+                    >
                         <Card className="border-0 bg-transparent shadow-none">
                             <CardHeader>
                                 <div className="flex items-center gap-2">
@@ -36,7 +45,8 @@ export default function FirstAsset({ organization }: Props) {
                                     <CardTitle>Building</CardTitle>
                                 </div>
                                 <CardDescription>
-                                    A property with units, occupants and leases — apartments, offices, etc.
+                                    A property with units, occupants and leases
+                                    — apartments, offices, etc.
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>
@@ -45,7 +55,10 @@ export default function FirstAsset({ organization }: Props) {
                         </Card>
                     </Link>
 
-                    <Link href={createParcel()} className="rounded-xl border border-input bg-card transition-colors hover:bg-muted">
+                    <Link
+                        href={createParcel()}
+                        className="rounded-xl border border-input bg-card transition-colors hover:bg-muted"
+                    >
                         <Card className="border-0 bg-transparent shadow-none">
                             <CardHeader>
                                 <div className="flex items-center gap-2">
@@ -53,7 +66,8 @@ export default function FirstAsset({ organization }: Props) {
                                     <CardTitle>Land parcel</CardTitle>
                                 </div>
                                 <CardDescription>
-                                    A standalone plot of land with zoning, acreage and lease availability.
+                                    A standalone plot of land with zoning,
+                                    acreage and lease availability.
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>

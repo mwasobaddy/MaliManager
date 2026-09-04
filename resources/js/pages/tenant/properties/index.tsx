@@ -2,7 +2,13 @@ import { Head, Link } from '@inertiajs/react';
 import { Building2, Plus } from 'lucide-react';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from '@/components/ui/card';
 import { create, dashboard } from '@/routes/tenant/properties';
 
 type Organization = {
@@ -56,13 +62,17 @@ export default function PropertiesIndex({
                     <Card>
                         <CardContent className="py-16 text-center">
                             <Building2 className="mx-auto size-10 text-muted-foreground" />
-                            <p className="mt-4 font-medium">No properties yet</p>
+                            <p className="mt-4 font-medium">
+                                No properties yet
+                            </p>
                             <p className="mt-1 text-sm text-muted-foreground">
                                 Add your first property to start managing units.
                             </p>
                             {canCreateProperty && (
                                 <Button asChild className="mt-6">
-                                    <Link href={create()}>Add your first property</Link>
+                                    <Link href={create()}>
+                                        Add your first property
+                                    </Link>
                                 </Button>
                             )}
                         </CardContent>
@@ -79,7 +89,9 @@ export default function PropertiesIndex({
                                     <CardHeader>
                                         <div className="flex items-center gap-2">
                                             <Building2 className="size-4 text-muted-foreground" />
-                                            <CardTitle>{property.name}</CardTitle>
+                                            <CardTitle>
+                                                {property.name}
+                                            </CardTitle>
                                         </div>
                                         <CardDescription>
                                             {property.city ?? 'No city set'}
@@ -87,14 +99,15 @@ export default function PropertiesIndex({
                                     </CardHeader>
                                     <CardContent className="text-sm text-muted-foreground">
                                         {property.units_count}{' '}
-                                        {property.units_count === 1 ? 'unit' : 'units'}
+                                        {property.units_count === 1
+                                            ? 'unit'
+                                            : 'units'}
                                     </CardContent>
                                 </Card>
                             </Link>
                         ))}
                     </div>
                 )}
-
             </div>
         </>
     );

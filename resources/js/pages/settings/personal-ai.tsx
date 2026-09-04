@@ -38,20 +38,32 @@ type Props = {
     usage?: { calls: number; tokens: number };
 };
 
-export default function PersonalAi(
-    { setting, providers, models, modelGuidance, defaultBaseUrls, features, usage = { calls: 0, tokens: 0 } }: Props,
-) {
+export default function PersonalAi({
+    setting,
+    providers,
+    models,
+    modelGuidance,
+    defaultBaseUrls,
+    features,
+    usage = { calls: 0, tokens: 0 },
+}: Props) {
     const pageErrors = (usePage().props.errors ?? {}) as Record<string, string>;
 
     const [provider, setProvider] = useState(setting.provider ?? 'openai');
     const [model, setModel] = useState(setting.model ?? '');
     const [apiKey, setApiKey] = useState('');
-    const [baseUrl, setBaseUrl] = useState(setting.base_url ?? defaultBaseUrls[setting.provider ?? 'openai'] ?? '');
-    const [enabledFeatures, setEnabledFeatures] = useState<string[]>(setting.features);
+    const [baseUrl, setBaseUrl] = useState(
+        setting.base_url ?? defaultBaseUrls[setting.provider ?? 'openai'] ?? '',
+    );
+    const [enabledFeatures, setEnabledFeatures] = useState<string[]>(
+        setting.features,
+    );
 
     const toggleFeature = (value: string) => {
         setEnabledFeatures((prev) =>
-            prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value],
+            prev.includes(value)
+                ? prev.filter((v) => v !== value)
+                : [...prev, value],
         );
     };
 
@@ -80,10 +92,17 @@ export default function PersonalAi(
                                     setBaseUrl(defaultBaseUrls[v] ?? '');
                                 }}
                             >
-                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                <SelectTrigger>
+                                    <SelectValue />
+                                </SelectTrigger>
                                 <SelectContent>
                                     {providers.map((p) => (
-                                        <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                                        <SelectItem
+                                            key={p.value}
+                                            value={p.value}
+                                        >
+                                            {p.label}
+                                        </SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
@@ -93,12 +112,16 @@ export default function PersonalAi(
                             <Label htmlFor="model">Model</Label>
                             {(models[provider]?.length ?? 0) > 0 ? (
                                 <Select value={model} onValueChange={setModel}>
-                                    <SelectTrigger><SelectValue placeholder="Pick a model…" /></SelectTrigger>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Pick a model…" />
+                                    </SelectTrigger>
                                     <SelectContent>
                                         {models[provider].map((m) => (
                                             <SelectItem key={m} value={m}>
                                                 {m}
-                                                {modelGuidance[provider]?.tested.includes(m) && (
+                                                {modelGuidance[
+                                                    provider
+                                                ]?.tested.includes(m) && (
                                                     <span className="ml-2 text-emerald-600 dark:text-emerald-400">
                                                         ✓ tested
                                                     </span>
@@ -108,7 +131,11 @@ export default function PersonalAi(
                                     </SelectContent>
                                 </Select>
                             ) : (
-                                <Input id="model" value={model} onChange={(e) => setModel(e.target.value)} />
+                                <Input
+                                    id="model"
+                                    value={model}
+                                    onChange={(e) => setModel(e.target.value)}
+                                />
                             )}
                             {modelGuidance[provider]?.tested.length > 0 && (
                                 <p className="text-xs text-emerald-600 dark:text-emerald-400">
@@ -117,7 +144,9 @@ export default function PersonalAi(
                                 </p>
                             )}
                             {modelGuidance[provider]?.note && (
-                                <p className="text-xs text-muted-foreground">{modelGuidance[provider].note}</p>
+                                <p className="text-xs text-muted-foreground">
+                                    {modelGuidance[provider].note}
+                                </p>
                             )}
                         </div>
 
@@ -131,12 +160,18 @@ export default function PersonalAi(
                                 id="api_key"
                                 type="password"
                                 autoComplete="off"
-                                placeholder={setting.has_key ? 'Leave empty to keep current key' : 'sk-…'}
+                                placeholder={
+                                    setting.has_key
+                                        ? 'Leave empty to keep current key'
+                                        : 'sk-…'
+                                }
                                 value={apiKey}
                                 onChange={(e) => setApiKey(e.target.value)}
                             />
                             <div className="grid gap-2">
-                                <Label htmlFor="base_url">Base URL (optional)</Label>
+                                <Label htmlFor="base_url">
+                                    Base URL (optional)
+                                </Label>
                                 <Input
                                     id="base_url"
                                     type="url"
@@ -147,8 +182,8 @@ export default function PersonalAi(
                             </div>
                             <InputError message={pageErrors.api_key ?? ''} />
                             <p className="text-xs text-muted-foreground">
-                                Your usage this month:{' '}
-                                {usage.calls} call{usage.calls === 1 ? '' : 's'} ·{' '}
+                                Your usage this month: {usage.calls} call
+                                {usage.calls === 1 ? '' : 's'} ·{' '}
                                 {usage.tokens.toLocaleString()} tokens
                             </p>
                             {setting.has_key && (
@@ -156,7 +191,11 @@ export default function PersonalAi(
                                     variant="ghost"
                                     size="sm"
                                     className="w-fit text-red-600"
-                                    onClick={() => router.delete(destroyPersonalAi().url, { preserveScroll: true })}
+                                    onClick={() =>
+                                        router.delete(destroyPersonalAi().url, {
+                                            preserveScroll: true,
+                                        })
+                                    }
                                 >
                                     Remove personal key
                                 </Button>
@@ -167,10 +206,17 @@ export default function PersonalAi(
                             <Label className="mb-2 block">Use my key for</Label>
                             <div className="grid gap-2 sm:grid-cols-2">
                                 {features.map((feature) => (
-                                    <label key={feature.value} className="flex items-center gap-2 text-sm">
+                                    <label
+                                        key={feature.value}
+                                        className="flex items-center gap-2 text-sm"
+                                    >
                                         <Checkbox
-                                            checked={enabledFeatures.includes(feature.value)}
-                                            onCheckedChange={() => toggleFeature(feature.value)}
+                                            checked={enabledFeatures.includes(
+                                                feature.value,
+                                            )}
+                                            onCheckedChange={() =>
+                                                toggleFeature(feature.value)
+                                            }
                                         />
                                         {feature.label}
                                     </label>
@@ -183,13 +229,17 @@ export default function PersonalAi(
                 <div>
                     <Button
                         onClick={() =>
-                            router.put(updatePersonalAi().url, {
-                                provider,
-                                model,
-                                base_url: baseUrl || undefined,
-                                api_key: apiKey || undefined,
-                                features: enabledFeatures,
-                            }, { preserveScroll: true })
+                            router.put(
+                                updatePersonalAi().url,
+                                {
+                                    provider,
+                                    model,
+                                    base_url: baseUrl || undefined,
+                                    api_key: apiKey || undefined,
+                                    features: enabledFeatures,
+                                },
+                                { preserveScroll: true },
+                            )
                         }
                         disabled={!setting.has_key && !apiKey}
                     >
@@ -200,4 +250,3 @@ export default function PersonalAi(
         </>
     );
 }
-

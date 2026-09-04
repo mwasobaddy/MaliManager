@@ -36,17 +36,25 @@ type Props = {
     priorities: string[];
 };
 
-export default function SearcherMaintenance({ requests, activeLeases, priorities }: Props) {
+export default function SearcherMaintenance({
+    requests,
+    activeLeases,
+    priorities,
+}: Props) {
     const formRef = useRef<HTMLFormElement>(null);
     const [priority, setPriority] = useState('medium');
-    const [leaseId, setLeaseId] = useState<string>(activeLeases[0] ? String(activeLeases[0].id) : '');
+    const [leaseId, setLeaseId] = useState<string>(
+        activeLeases[0] ? String(activeLeases[0].id) : '',
+    );
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [processing, setProcessing] = useState(false);
 
     const submit = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
 
-        const csrf = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '';
+        const csrf =
+            document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')
+                ?.content ?? '';
         const body = new FormData(event.currentTarget);
         body.set('lease_id', leaseId);
         body.set('priority', priority);
@@ -86,14 +94,26 @@ export default function SearcherMaintenance({ requests, activeLeases, priorities
                         <CardTitle>Report an issue</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <form ref={formRef} onSubmit={submit} className="grid gap-4">
+                        <form
+                            ref={formRef}
+                            onSubmit={submit}
+                            className="grid gap-4"
+                        >
                             <div className="grid gap-2">
                                 <Label htmlFor="lease_id">Rental</Label>
-                                <Select value={leaseId} onValueChange={setLeaseId}>
-                                    <SelectTrigger><SelectValue placeholder="Pick your rental…" /></SelectTrigger>
+                                <Select
+                                    value={leaseId}
+                                    onValueChange={setLeaseId}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Pick your rental…" />
+                                    </SelectTrigger>
                                     <SelectContent>
                                         {activeLeases.map((lease) => (
-                                            <SelectItem key={lease.id} value={String(lease.id)}>
+                                            <SelectItem
+                                                key={lease.id}
+                                                value={String(lease.id)}
+                                            >
                                                 {lease.label}
                                             </SelectItem>
                                         ))}
@@ -104,17 +124,23 @@ export default function SearcherMaintenance({ requests, activeLeases, priorities
 
                             <div className="grid gap-2">
                                 <Label htmlFor="title">What is wrong?</Label>
-                                <Input id="title" name="title" placeholder="e.g. Leaking kitchen tap" />
+                                <Input
+                                    id="title"
+                                    name="title"
+                                    placeholder="e.g. Leaking kitchen tap"
+                                />
                                 <InputError message={errors.title} />
                             </div>
 
                             <div className="grid gap-2">
-                                <Label htmlFor="description">Describe the issue</Label>
+                                <Label htmlFor="description">
+                                    Describe the issue
+                                </Label>
                                 <textarea
                                     id="description"
                                     name="description"
                                     rows={4}
-                                    className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                    className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
                                     placeholder="Tell us what needs to be fixed and where."
                                 />
                                 <InputError message={errors.description} />
@@ -122,11 +148,22 @@ export default function SearcherMaintenance({ requests, activeLeases, priorities
 
                             <div className="grid gap-2 sm:max-w-xs">
                                 <Label>Priority</Label>
-                                <Select value={priority} onValueChange={setPriority}>
-                                    <SelectTrigger><SelectValue /></SelectTrigger>
+                                <Select
+                                    value={priority}
+                                    onValueChange={setPriority}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue />
+                                    </SelectTrigger>
                                     <SelectContent>
                                         {priorities.map((p) => (
-                                            <SelectItem key={p} value={p} className="capitalize">{p}</SelectItem>
+                                            <SelectItem
+                                                key={p}
+                                                value={p}
+                                                className="capitalize"
+                                            >
+                                                {p}
+                                            </SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
@@ -142,16 +179,26 @@ export default function SearcherMaintenance({ requests, activeLeases, priorities
                                     multiple
                                     accept=".jpg,.jpeg,.png,.webp"
                                 />
-                                <InputError message={errors['photos.0'] ?? errors.photos} />
+                                <InputError
+                                    message={
+                                        errors['photos.0'] ?? errors.photos
+                                    }
+                                />
                             </div>
 
-                            <Button type="submit" disabled={processing || activeLeases.length === 0}>
+                            <Button
+                                type="submit"
+                                disabled={
+                                    processing || activeLeases.length === 0
+                                }
+                            >
                                 Submit request
                             </Button>
 
                             {activeLeases.length === 0 && (
                                 <p className="text-sm text-muted-foreground">
-                                    You need an active rental to raise maintenance requests.
+                                    You need an active rental to raise
+                                    maintenance requests.
                                 </p>
                             )}
                         </form>
@@ -164,19 +211,40 @@ export default function SearcherMaintenance({ requests, activeLeases, priorities
                     </CardHeader>
                     <CardContent className="space-y-3">
                         {requests.length === 0 ? (
-                            <p className="text-sm text-muted-foreground">You have not raised any requests yet.</p>
+                            <p className="text-sm text-muted-foreground">
+                                You have not raised any requests yet.
+                            </p>
                         ) : (
                             requests.map((item) => (
-                                <div key={item.id} className="rounded-lg border border-input p-3">
+                                <div
+                                    key={item.id}
+                                    className="rounded-lg border border-input p-3"
+                                >
                                     <div className="flex items-center justify-between gap-2">
-                                        <span className="font-medium">{item.title}</span>
-                                        <Badge variant="outline" className="capitalize">{item.status.replace('_', ' ')}</Badge>
+                                        <span className="font-medium">
+                                            {item.title}
+                                        </span>
+                                        <Badge
+                                            variant="outline"
+                                            className="capitalize"
+                                        >
+                                            {item.status.replace('_', ' ')}
+                                        </Badge>
                                     </div>
-                                    <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{item.description}</p>
+                                    <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+                                        {item.description}
+                                    </p>
                                     <p className="mt-1 text-xs text-muted-foreground">
-                                        {[item.property_name, item.unit_name].filter(Boolean).join(' · ')}
-                                        {' · '}{item.created_at}
-                                        {' · '}<span className="capitalize">{item.priority}</span> priority
+                                        {[item.property_name, item.unit_name]
+                                            .filter(Boolean)
+                                            .join(' · ')}
+                                        {' · '}
+                                        {item.created_at}
+                                        {' · '}
+                                        <span className="capitalize">
+                                            {item.priority}
+                                        </span>{' '}
+                                        priority
                                     </p>
                                 </div>
                             ))

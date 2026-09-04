@@ -35,7 +35,8 @@ type Props = {
 };
 
 export default function PlansIndex({ plans, filters }: Props) {
-    const authPermissions = (usePage().props.auth?.permissions ?? []) as string[];
+    const authPermissions = (usePage().props.auth?.permissions ??
+        []) as string[];
     const canCreatePlans = authPermissions.includes('plan.create');
     const canDeletePlans = authPermissions.includes('plan.delete');
     const [deleteTarget, setDeleteTarget] = useState<PlanRow | null>(null);
@@ -44,7 +45,11 @@ export default function PlansIndex({ plans, filters }: Props) {
 
     function submitSearch(e: React.FormEvent) {
         e.preventDefault();
-        router.get(planRoutes.index().url, { search: form.data.search }, { preserveState: true, replace: true });
+        router.get(
+            planRoutes.index().url,
+            { search: form.data.search },
+            { preserveState: true, replace: true },
+        );
     }
 
     return (
@@ -52,7 +57,10 @@ export default function PlansIndex({ plans, filters }: Props) {
             <Head title="Plans" />
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
                 <div className="flex items-center justify-between gap-4">
-                    <Heading title="Plans" description="Subscription tiers and their limits." />
+                    <Heading
+                        title="Plans"
+                        description="Subscription tiers and their limits."
+                    />
                     {canCreatePlans && (
                         <Button asChild>
                             <Link href={planRoutes.create()}>
@@ -69,17 +77,26 @@ export default function PlansIndex({ plans, filters }: Props) {
                             {({ processing }) => (
                                 <>
                                     <div className="relative flex-1">
-                                        <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
+                                        <Search className="absolute top-2.5 left-2.5 size-4 text-muted-foreground" />
                                         <Input
                                             id="search"
                                             name="search"
                                             value={form.data.search}
-                                            onChange={(e) => form.setData('search', e.target.value)}
+                                            onChange={(e) =>
+                                                form.setData(
+                                                    'search',
+                                                    e.target.value,
+                                                )
+                                            }
                                             placeholder="Search plans"
                                             className="pl-8"
                                         />
                                     </div>
-                                    <Button type="submit" variant="secondary" disabled={processing}>
+                                    <Button
+                                        type="submit"
+                                        variant="secondary"
+                                        disabled={processing}
+                                    >
                                         Search
                                     </Button>
                                 </>
@@ -94,19 +111,36 @@ export default function PlansIndex({ plans, filters }: Props) {
                             <table className="w-full text-sm">
                                 <thead>
                                     <tr className="border-b text-left text-muted-foreground">
-                                        <th className="px-3 py-2 font-medium">Plan</th>
-                                        <th className="px-3 py-2 font-medium">Price</th>
-                                        <th className="px-3 py-2 font-medium">Limits</th>
-                                        <th className="px-3 py-2 font-medium">Features</th>
-                                        <th className="px-3 py-2 font-medium">Organizations</th>
-                                        <th className="px-3 py-2 font-medium">Status</th>
-                                        <th className="px-3 py-2 text-right font-medium">Actions</th>
+                                        <th className="px-3 py-2 font-medium">
+                                            Plan
+                                        </th>
+                                        <th className="px-3 py-2 font-medium">
+                                            Price
+                                        </th>
+                                        <th className="px-3 py-2 font-medium">
+                                            Limits
+                                        </th>
+                                        <th className="px-3 py-2 font-medium">
+                                            Features
+                                        </th>
+                                        <th className="px-3 py-2 font-medium">
+                                            Organizations
+                                        </th>
+                                        <th className="px-3 py-2 font-medium">
+                                            Status
+                                        </th>
+                                        <th className="px-3 py-2 text-right font-medium">
+                                            Actions
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {plans.data.length === 0 && (
                                         <tr>
-                                            <td colSpan={7} className="py-8 text-center text-muted-foreground">
+                                            <td
+                                                colSpan={7}
+                                                className="py-8 text-center text-muted-foreground"
+                                            >
                                                 No plans found.
                                             </td>
                                         </tr>
@@ -114,30 +148,56 @@ export default function PlansIndex({ plans, filters }: Props) {
                                     {plans.data.map((plan) => (
                                         <tr key={plan.id} className="border-b">
                                             <td className="px-3 py-2">
-                                                <div className="font-medium">{plan.name}</div>
-                                                <span className="text-xs text-muted-foreground">{plan.slug}</span>
+                                                <div className="font-medium">
+                                                    {plan.name}
+                                                </div>
+                                                <span className="text-xs text-muted-foreground">
+                                                    {plan.slug}
+                                                </span>
                                             </td>
                                             <td className="px-3 py-2">
-                                                {plan.currency} {plan.price.toLocaleString()}
+                                                {plan.currency}{' '}
+                                                {plan.price.toLocaleString()}
                                             </td>
                                             <td className="px-3 py-2 text-xs">
-                                                {plan.properties_limit ?? '∞'} properties
+                                                {plan.properties_limit ?? '∞'}{' '}
+                                                properties
                                                 <br />
                                                 {plan.units_limit ?? '∞'} units
                                             </td>
                                             <td className="px-3 py-2 text-xs">
-                                                {plan.features?.length ? `${plan.features.length} feature(s)` : '—'}
+                                                {plan.features?.length
+                                                    ? `${plan.features.length} feature(s)`
+                                                    : '—'}
                                             </td>
-                                            <td className="px-3 py-2">{plan.organizations_count}</td>
                                             <td className="px-3 py-2">
-                                                <Badge variant={plan.is_active ? 'default' : 'secondary'}>
-                                                    {plan.is_active ? 'Active' : 'Inactive'}
+                                                {plan.organizations_count}
+                                            </td>
+                                            <td className="px-3 py-2">
+                                                <Badge
+                                                    variant={
+                                                        plan.is_active
+                                                            ? 'default'
+                                                            : 'secondary'
+                                                    }
+                                                >
+                                                    {plan.is_active
+                                                        ? 'Active'
+                                                        : 'Inactive'}
                                                 </Badge>
                                             </td>
                                             <td className="px-3 py-2 text-right">
                                                 <div className="flex justify-end gap-1">
-                                                    <Button variant="ghost" size="sm" asChild>
-                                                        <Link href={planRoutes.edit(plan.id)}>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        asChild
+                                                    >
+                                                        <Link
+                                                            href={planRoutes.edit(
+                                                                plan.id,
+                                                            )}
+                                                        >
                                                             <Pencil className="size-4" />
                                                         </Link>
                                                     </Button>
@@ -145,7 +205,11 @@ export default function PlansIndex({ plans, filters }: Props) {
                                                         <Button
                                                             variant="ghost"
                                                             size="sm"
-                                                            onClick={() => setDeleteTarget(plan)}
+                                                            onClick={() =>
+                                                                setDeleteTarget(
+                                                                    plan,
+                                                                )
+                                                            }
                                                             className="text-red-600"
                                                         >
                                                             <Trash2 className="size-4" />
@@ -164,7 +228,8 @@ export default function PlansIndex({ plans, filters }: Props) {
                 {plans.last_page > 1 && (
                     <div className="flex items-center justify-between text-sm">
                         <span className="text-muted-foreground">
-                            Page {plans.current_page} of {plans.last_page} ({plans.total} plans)
+                            Page {plans.current_page} of {plans.last_page} (
+                            {plans.total} plans)
                         </span>
                         <div className="flex gap-2">
                             <Button
@@ -174,7 +239,10 @@ export default function PlansIndex({ plans, filters }: Props) {
                                 onClick={() =>
                                     router.get(
                                         planRoutes.index().url,
-                                        { search: filters.search, page: plans.current_page - 1 },
+                                        {
+                                            search: filters.search,
+                                            page: plans.current_page - 1,
+                                        },
                                         { preserveState: true },
                                     )
                                 }
@@ -188,7 +256,10 @@ export default function PlansIndex({ plans, filters }: Props) {
                                 onClick={() =>
                                     router.get(
                                         planRoutes.index().url,
-                                        { search: filters.search, page: plans.current_page + 1 },
+                                        {
+                                            search: filters.search,
+                                            page: plans.current_page + 1,
+                                        },
                                         { preserveState: true },
                                     )
                                 }

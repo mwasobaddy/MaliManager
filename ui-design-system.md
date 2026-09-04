@@ -1,6 +1,6 @@
 # MaliManager UI Design System — "Warm Earth"
 
-> **How to use this file:** This document is the canonical spec for MaliManager's visual language. When a prompt says *"review `ui-design-system.md` for context and redesign the `#component`"*, apply the tokens, state colors, and component rules defined here. Do not invent new hex values — extend the scales or reference existing tokens. Every color must satisfy WCAG AA (4.5:1 text, 3:1 large/UI) in BOTH light and dark mode.
+> **How to use this file:** This document is the canonical spec for MaliManager's visual language. When a prompt says _"review `ui-design-system.md` for context and redesign the `#component`"_, apply the tokens, state colors, and component rules defined here. Do not invent new hex values — extend the scales or reference existing tokens. Every color must satisfy WCAG AA (4.5:1 text, 3:1 large/UI) in BOTH light and dark mode.
 
 ---
 
@@ -19,71 +19,71 @@
 
 ### 2.1 Light Mode
 
-| Token | Hex | Role |
-|---|---|---|
-| `--brand-primary` | `#C87A53` | Terracotta — logo, active nav indicator, links, focus ring, primary CTA tint |
-| `--brand-primary-600` | `#A85A36` | Terracotta **button fill** (white text ≈5:1, AA ✅) |
-| `--brand-primary-100` | `#F6E7DE` | Terracotta tint — active‑nav bg, soft highlights |
-| `--brand-secondary` | `#2E2622` | Deep Espresso — sidebar, top chrome, structural frame |
-| `--brand-secondary-700` | `#3B2F2A` | Espresso hover/raised |
-| `--brand-accent` | `#0E7C7E` | Teal "pop" — notifications, upsell, new‑feature (white text ≈5:1) |
-| `--brand-accent-100` | `#D7EEED` | Teal tint — soft badge bg |
-| `--bg-base` | `#F5F2EB` | Warm Sand — page background (60%) |
-| `--bg-surface` | `#FAF8F5` | Soft Cream — cards, modals, inputs |
-| `--bg-surface-hi` | `#FFFFFF` | Top of card gradient (see §3.4) |
-| `--border` | `#E7E1D6` | Warm stone — dividers, input borders |
-| `--border-strong` | `#D8CFBF` | Hover/active borders |
-| `--text` | `#2A2621` | Dark Espresso — primary text (≈12:1 on sand) |
-| `--text-muted` | `#6B635A` | Muted warm gray — secondary text, metadata |
-| `--action-view` | `#2B6CB0` | Deep Sea Blue — "view/open" (white ≈5.3:1) |
-| `--action-edit` | `#276749` | Forest Green — "edit" (white ≈5:1) |
-| `--action-danger` | `#C53030` | Crimson — delete/destructive (white ≈5.2:1) |
-| `--status-warning` | `#B7791F` | Amber — used as **soft badge**: bg `#FCEFCE`, text `#7C4A03` |
-| `--status-success` | `#276749` | Green — soft badge bg `#DCF3E4`, text `#14532D` |
-| `--status-danger` | `#C53030` | Red — soft badge bg `#FBE3E3`, text `#7A1414` |
-| `--status-info` | `#2B6CB0` | Blue — soft badge bg `#DCEBF8`, text `#1A3E63` |
-| `--focus-ring` | `#C87A53` | Terracotta focus outline (3:1 on surfaces) |
+| Token                   | Hex       | Role                                                                         |
+| ----------------------- | --------- | ---------------------------------------------------------------------------- |
+| `--brand-primary`       | `#C87A53` | Terracotta — logo, active nav indicator, links, focus ring, primary CTA tint |
+| `--brand-primary-600`   | `#A85A36` | Terracotta **button fill** (white text ≈5:1, AA ✅)                          |
+| `--brand-primary-100`   | `#F6E7DE` | Terracotta tint — active‑nav bg, soft highlights                             |
+| `--brand-secondary`     | `#2E2622` | Deep Espresso — sidebar, top chrome, structural frame                        |
+| `--brand-secondary-700` | `#3B2F2A` | Espresso hover/raised                                                        |
+| `--brand-accent`        | `#0E7C7E` | Teal "pop" — notifications, upsell, new‑feature (white text ≈5:1)            |
+| `--brand-accent-100`    | `#D7EEED` | Teal tint — soft badge bg                                                    |
+| `--bg-base`             | `#F5F2EB` | Warm Sand — page background (60%)                                            |
+| `--bg-surface`          | `#FAF8F5` | Soft Cream — cards, modals, inputs                                           |
+| `--bg-surface-hi`       | `#FFFFFF` | Top of card gradient (see §3.4)                                              |
+| `--border`              | `#E7E1D6` | Warm stone — dividers, input borders                                         |
+| `--border-strong`       | `#D8CFBF` | Hover/active borders                                                         |
+| `--text`                | `#2A2621` | Dark Espresso — primary text (≈12:1 on sand)                                 |
+| `--text-muted`          | `#6B635A` | Muted warm gray — secondary text, metadata                                   |
+| `--action-view`         | `#2B6CB0` | Deep Sea Blue — "view/open" (white ≈5.3:1)                                   |
+| `--action-edit`         | `#276749` | Forest Green — "edit" (white ≈5:1)                                           |
+| `--action-danger`       | `#C53030` | Crimson — delete/destructive (white ≈5.2:1)                                  |
+| `--status-warning`      | `#B7791F` | Amber — used as **soft badge**: bg `#FCEFCE`, text `#7C4A03`                 |
+| `--status-success`      | `#276749` | Green — soft badge bg `#DCF3E4`, text `#14532D`                              |
+| `--status-danger`       | `#C53030` | Red — soft badge bg `#FBE3E3`, text `#7A1414`                                |
+| `--status-info`         | `#2B6CB0` | Blue — soft badge bg `#DCEBF8`, text `#1A3E63`                               |
+| `--focus-ring`          | `#C87A53` | Terracotta focus outline (3:1 on surfaces)                                   |
 
 ### 2.2 Dark Mode (`.dark` or `[data-theme="dark"]`)
 
-| Token | Hex | Note |
-|---|---|---|
-| `--brand-primary` | `#E2956C` | Muted Terracotta — lightened for dark surfaces |
-| `--brand-primary-600` | `#C87A53` | Button fill (dark text `#1A1917` ≈7:1) |
-| `--brand-primary-100` | `#3A2A20` | Tint bg |
-| `--brand-secondary` | `#14110D` | Deep warm black — sidebar |
-| `--brand-secondary-700` | `#221C16` | Raised |
-| `--brand-accent` | `#2BB3AC` | Teal lightened (dark text ≈5:1) |
-| `--brand-accent-100` | `#13343A` | Tint |
-| `--bg-base` | `#1A1917` | Charcoal (NOT pure black) |
-| `--bg-surface` | `#242220` | Warm off‑black card |
-| `--bg-surface-hi` | `#2E2B27` | Card top sheen |
-| `--border` | `#36322D` | Warm divider |
-| `--border-strong` | `#4A443C` | |
-| `--text` | `#EAE6DF` | Soft Linen (NOT pure white) |
-| `--text-muted` | `#A39B90` | (≈4.6:1 on charcoal ✅) |
-| `--action-view` | `#5B9BD5` | lightened |
-| `--action-edit` | `#4FA877` | lightened |
-| `--action-danger` | `#E57373` | lightened (dark text) |
-| `--status-warning` | `#E0A458` | soft bg `#3A2E12`, text `#F6E2B8` |
-| `--status-success` | `#4FA877` | soft bg `#13301F`, text `#BFE8CC` |
-| `--status-danger` | `#E57373` | soft bg `#3A1717`, text `#F4C4C4` |
-| `--status-info` | `#5B9BD5` | soft bg `#16293D`, text `#C7DEF5` |
-| `--focus-ring` | `#E2956C` | |
+| Token                   | Hex       | Note                                           |
+| ----------------------- | --------- | ---------------------------------------------- |
+| `--brand-primary`       | `#E2956C` | Muted Terracotta — lightened for dark surfaces |
+| `--brand-primary-600`   | `#C87A53` | Button fill (dark text `#1A1917` ≈7:1)         |
+| `--brand-primary-100`   | `#3A2A20` | Tint bg                                        |
+| `--brand-secondary`     | `#14110D` | Deep warm black — sidebar                      |
+| `--brand-secondary-700` | `#221C16` | Raised                                         |
+| `--brand-accent`        | `#2BB3AC` | Teal lightened (dark text ≈5:1)                |
+| `--brand-accent-100`    | `#13343A` | Tint                                           |
+| `--bg-base`             | `#1A1917` | Charcoal (NOT pure black)                      |
+| `--bg-surface`          | `#242220` | Warm off‑black card                            |
+| `--bg-surface-hi`       | `#2E2B27` | Card top sheen                                 |
+| `--border`              | `#36322D` | Warm divider                                   |
+| `--border-strong`       | `#4A443C` |                                                |
+| `--text`                | `#EAE6DF` | Soft Linen (NOT pure white)                    |
+| `--text-muted`          | `#A39B90` | (≈4.6:1 on charcoal ✅)                        |
+| `--action-view`         | `#5B9BD5` | lightened                                      |
+| `--action-edit`         | `#4FA877` | lightened                                      |
+| `--action-danger`       | `#E57373` | lightened (dark text)                          |
+| `--status-warning`      | `#E0A458` | soft bg `#3A2E12`, text `#F6E2B8`              |
+| `--status-success`      | `#4FA877` | soft bg `#13301F`, text `#BFE8CC`              |
+| `--status-danger`       | `#E57373` | soft bg `#3A1717`, text `#F4C4C4`              |
+| `--status-info`         | `#5B9BD5` | soft bg `#16293D`, text `#C7DEF5`              |
+| `--focus-ring`          | `#E2956C` |                                                |
 
 ### 2.3 Contrast & AA Verification (key pairs)
 
-| Pair | Ratio | AA |
-|---|---|---|
-| White on `--brand-primary-600` `#A85A36` | 5.0:1 | ✅ |
-| Linen `#EAE6DF` on Espresso `#2E2622` | 10.8:1 | ✅ |
-| White on Espresso `#2E2622` | 13.5:1 | ✅ |
-| `--text` `#2A2621` on Sand `#F5F2EB` | 12:1 | ✅ |
-| White on Teal `#0E7C7E` | 5.1:1 | ✅ |
-| White on View `#2B6CB0` | 5.3:1 | ✅ |
-| White on Edit `#276749` | 5.0:1 | ✅ |
-| White on Danger `#C53030` | 5.2:1 | ✅ |
-| *Avoid:* White on `--brand-primary` `#C87A53` (terracotta light) | 3.3:1 | ❌ use only for large text / non‑text |
+| Pair                                                             | Ratio  | AA                                    |
+| ---------------------------------------------------------------- | ------ | ------------------------------------- |
+| White on `--brand-primary-600` `#A85A36`                         | 5.0:1  | ✅                                    |
+| Linen `#EAE6DF` on Espresso `#2E2622`                            | 10.8:1 | ✅                                    |
+| White on Espresso `#2E2622`                                      | 13.5:1 | ✅                                    |
+| `--text` `#2A2621` on Sand `#F5F2EB`                             | 12:1   | ✅                                    |
+| White on Teal `#0E7C7E`                                          | 5.1:1  | ✅                                    |
+| White on View `#2B6CB0`                                          | 5.3:1  | ✅                                    |
+| White on Edit `#276749`                                          | 5.0:1  | ✅                                    |
+| White on Danger `#C53030`                                        | 5.2:1  | ✅                                    |
+| _Avoid:_ White on `--brand-primary` `#C87A53` (terracotta light) | 3.3:1  | ❌ use only for large text / non‑text |
 
 ### 2.4 Tonal Scales (generate 50–900 per family; name by purpose)
 
@@ -94,15 +94,23 @@ secondary:    500 #2E2622* 600 #271F1B  700 #3B2F2A  800 #1C1714  900 #14110D*
 accent:       100 #D7EEED  400 #2BB3AC  500 #0E7C7E* 600 #0B6567  700 #08484A
 neutral(warm):50 #FBFAF7 100 #F5F2EB* 200 #E7E1D6* 300 #D8CFBF 400 #A39B90* 500 #6B635A* 700 #3B2F2A 900 #2A2621*
 ```
+
 `*` = base token already defined above.
 
 ### 2.5 Multi‑Tenancy Rule
 
 ```css
-:root { --brand-primary: #C87A53; --brand-secondary: #2E2622; }
+:root {
+    --brand-primary: #c87a53;
+    --brand-secondary: #2e2622;
+}
 /* Tenant override (DB‑driven, injected at login): */
-.tenant-<id> { --brand-primary: <tenantColor>; --brand-secondary: <tenantColor>; }
+.tenant-<id > {
+    --brand-primary: <tenantColor>;
+    --brand-secondary: <tenantColor>;
+}
 ```
+
 Tenants may override **only** `--brand-primary` and `--brand-secondary` (the 30% branding layer). `--brand-accent`, all `--bg-*`, `--border`, `--text`, and every `--action-*` / `--status-*` are **protected** and uniform across tenants.
 
 ---
@@ -110,46 +118,69 @@ Tenants may override **only** `--brand-primary` and `--brand-secondary` (the 30%
 ## 3. Global Foundations
 
 ### 3.1 Typography
+
 - Font: one humanist sans (e.g. Inter / Source Sans) for UI; one mono (e.g. JetBrains Mono) for financial figures (rent, deposits, fees).
 - Scale: `xs 12 / sm 13 / base 14 / md 16 / lg 18 / xl 22 / 2xl 28 / 3xl 36`. Line‑height 1.5 body, 1.2 headings.
 
 ### 3.2 Radius & Spacing
+
 - Radius: `--radius: 10px` (cards/buttons), `--radius-sm: 6px` (inputs/chips), `--radius-lg: 16px` (modals/sheets). One radius system, used everywhere.
 - Spacing scale: 4 / 8 / 12 / 16 / 24 / 32 / 48 (4px base).
 
 ### 3.3 Focus & Motion
+
 - Focus: `outline: 2px solid var(--focus-ring); outline-offset: 2px;` on every interactive element. Never remove outline without a visible replacement.
 - Motion: 150ms ease for hover, 200ms for open/close; respect `prefers-reduced-motion`.
 
 ### 3.4 Card — "Light shines from the top" (special)
+
 Cards use a top‑down sheen to feel lit from above:
 
 ```css
 .card {
-  background:
-    linear-gradient(180deg, var(--bg-surface-hi) 0%, var(--bg-surface) 38%);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow:
-    inset 0 1px 0 0 rgb(255 255 255 / 0.55),   /* top edge highlight */
-    0 1px 2px rgb(42 38 33 / 0.04),
-    0 4px 12px rgb(42 38 33 / 0.06);            /* soft drop below */
-  position: relative;
+    background: linear-gradient(
+        180deg,
+        var(--bg-surface-hi) 0%,
+        var(--bg-surface) 38%
+    );
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow:
+        inset 0 1px 0 0 rgb(255 255 255 / 0.55),
+        /* top edge highlight */ 0 1px 2px rgb(42 38 33 / 0.04),
+        0 4px 12px rgb(42 38 33 / 0.06); /* soft drop below */
+    position: relative;
 }
-.card::before {  /* faint radial glow from top-center */
-  content: ""; position: absolute; inset: 0; border-radius: inherit;
-  background: radial-gradient(120% 60% at 50% 0%, rgb(255 255 255 / 0.45), transparent 70%);
-  pointer-events: none;
+.card::before {
+    /* faint radial glow from top-center */
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(
+        120% 60% at 50% 0%,
+        rgb(255 255 255 / 0.45),
+        transparent 70%
+    );
+    pointer-events: none;
 }
 .dark .card {
-  background: linear-gradient(180deg, var(--bg-surface-hi) 0%, var(--bg-surface) 45%);
-  box-shadow:
-    inset 0 1px 0 0 rgb(255 255 255 / 0.06),
-    0 1px 2px rgb(0 0 0 / 0.3),
-    0 6px 18px rgb(0 0 0 / 0.35);
+    background: linear-gradient(
+        180deg,
+        var(--bg-surface-hi) 0%,
+        var(--bg-surface) 45%
+    );
+    box-shadow:
+        inset 0 1px 0 0 rgb(255 255 255 / 0.06),
+        0 1px 2px rgb(0 0 0 / 0.3),
+        0 6px 18px rgb(0 0 0 / 0.35);
 }
 .dark .card::before {
-  background: radial-gradient(120% 60% at 50% 0%, rgb(255 255 255 / 0.05), transparent 70%);
+    background: radial-gradient(
+        120% 60% at 50% 0%,
+        rgb(255 255 255 / 0.05),
+        transparent 70%
+    );
 }
 ```
 
@@ -305,22 +336,22 @@ Cards use a top‑down sheen to feel lit from above:
 
 ## 5. Quick Reference — State Color Map
 
-| State | Token |
-|---|---|
-| Default surface | `--bg-surface` |
-| Hover surface | `--bg-base` / `--brand-primary-100` |
-| Border | `--border` → `--border-strong` |
-| Focus | `--focus-ring` (terracotta) |
-| Primary action | `--brand-primary-600` |
-| Brand accent / active nav | `--brand-primary` (indicator) |
-| Sidebar chrome | `--brand-secondary` (espresso) |
-| Pop / notification | `--brand-accent` (teal) |
-| View / info | `--action-view` / `--status-info` |
-| Edit / success | `--action-edit` / `--status-success` |
-| Destructive / danger | `--action-danger` / `--status-danger` |
-| Warning | `--status-warning` (soft) |
-| Disabled | `opacity .5` + `cursor-not-allowed` |
+| State                     | Token                                 |
+| ------------------------- | ------------------------------------- |
+| Default surface           | `--bg-surface`                        |
+| Hover surface             | `--bg-base` / `--brand-primary-100`   |
+| Border                    | `--border` → `--border-strong`        |
+| Focus                     | `--focus-ring` (terracotta)           |
+| Primary action            | `--brand-primary-600`                 |
+| Brand accent / active nav | `--brand-primary` (indicator)         |
+| Sidebar chrome            | `--brand-secondary` (espresso)        |
+| Pop / notification        | `--brand-accent` (teal)               |
+| View / info               | `--action-view` / `--status-info`     |
+| Edit / success            | `--action-edit` / `--status-success`  |
+| Destructive / danger      | `--action-danger` / `--status-danger` |
+| Warning                   | `--status-warning` (soft)             |
+| Disabled                  | `opacity .5` + `cursor-not-allowed`   |
 
 ---
 
-*End of spec. When redesigning a component, read its entry in §4, apply the listed tokens for every state, verify AA contrast in light AND dark, and keep multi‑tenant‑protected tokens unchanged.*
+_End of spec. When redesigning a component, read its entry in §4, apply the listed tokens for every state, verify AA contrast in light AND dark, and keep multi‑tenant‑protected tokens unchanged._

@@ -17,7 +17,12 @@ type Props = {
     scope: string;
 };
 
-export default function SearcherConversationDetail({ conversation, messages, askUrl, scope }: Props) {
+export default function SearcherConversationDetail({
+    conversation,
+    messages,
+    askUrl,
+    scope,
+}: Props) {
     return (
         <ConversationDetail
             conversation={conversation}

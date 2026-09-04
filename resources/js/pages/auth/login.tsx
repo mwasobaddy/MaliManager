@@ -30,14 +30,21 @@ export default function Login({ status }: Props) {
             <PasskeyVerify />
 
             <a href={googleRedirect.url('google')} className="w-full">
-                <Button type="button" variant="outline" className="w-full" tabIndex={0}>
+                <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    tabIndex={0}
+                >
                     <GoogleIcon />
                     Continue with Google
                 </Button>
             </a>
 
             <div className="relative text-center text-sm">
-                <span className="relative z-10 bg-sidebar px-2 text-muted-foreground">or</span>
+                <span className="relative z-10 bg-sidebar px-2 text-muted-foreground">
+                    or
+                </span>
             </div>
 
             <Form {...store.form()} className="flex flex-col gap-6">
@@ -60,7 +67,10 @@ export default function Login({ status }: Props) {
                                     onBlur={() => setTouched(true)}
                                 />
                                 {touched && !emailValid ? (
-                                    <p className="text-sm text-destructive" data-test="email-invalid">
+                                    <p
+                                        className="text-sm text-destructive"
+                                        data-test="email-invalid"
+                                    >
                                         Please enter a valid email address.
                                     </p>
                                 ) : (

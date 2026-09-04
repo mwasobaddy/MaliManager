@@ -19,19 +19,26 @@ type PropertyPickerContextValue = {
     hasAssets: boolean;
 };
 
-const PropertyPickerContext = createContext<PropertyPickerContextValue | null>(null);
+const PropertyPickerContext = createContext<PropertyPickerContextValue | null>(
+    null,
+);
 
 export function usePropertyPicker(): PropertyPickerContextValue {
     const ctx = useContext(PropertyPickerContext);
 
     if (!ctx) {
-        throw new Error('usePropertyPicker must be used within a PropertyPickerProvider');
+        throw new Error(
+            'usePropertyPicker must be used within a PropertyPickerProvider',
+        );
     }
 
     return ctx;
 }
 
-function tenantUrl(organizationDomain: string | null, propertySlug: string): string {
+function tenantUrl(
+    organizationDomain: string | null,
+    propertySlug: string,
+): string {
     if (!organizationDomain) {
         return '/dashboard';
     }
@@ -64,9 +71,14 @@ function centralDashboardUrl(centralUrlBase: string | undefined): string {
     return url.toString();
 }
 
-export function PropertyPickerProvider({ children }: { children: React.ReactNode }) {
+export function PropertyPickerProvider({
+    children,
+}: {
+    children: React.ReactNode;
+}) {
     const page = usePage();
-    const organizations = (page.props.auth?.organizations ?? []) as OrganizationSummary[];
+    const organizations = (page.props.auth?.organizations ??
+        []) as OrganizationSummary[];
     const permissions = (page.props.auth?.permissions ?? []) as string[];
     const autoOpen = page.props.autoOpenPropertyPicker === true;
 
@@ -82,8 +94,12 @@ export function PropertyPickerProvider({ children }: { children: React.ReactNode
     const open = () => setIsOpen(true);
     const close = () => setIsOpen(false);
 
-    const hasProperties = organizations.some((organization) => organization.properties.length > 0);
-    const hasLand = organizations.some((organization) => organization.land_parcels.length > 0);
+    const hasProperties = organizations.some(
+        (organization) => organization.properties.length > 0,
+    );
+    const hasLand = organizations.some(
+        (organization) => organization.land_parcels.length > 0,
+    );
     const hasAssets = hasProperties || hasLand;
 
     // Only users holding the central "access admin dashboard" permission may
@@ -121,13 +137,21 @@ export function PropertyPickerProvider({ children }: { children: React.ReactNode
             });
     };
 
-    const selectProperty = (organizationDomain: string | null, propertySlug: string) => {
-        const navigate = () => window.location.assign(tenantUrl(organizationDomain, propertySlug));
+    const selectProperty = (
+        organizationDomain: string | null,
+        propertySlug: string,
+    ) => {
+        const navigate = () =>
+            window.location.assign(tenantUrl(organizationDomain, propertySlug));
         acknowledge(navigate);
     };
 
-    const selectLandParcel = (organizationDomain: string | null, landSlug: string) => {
-        const navigate = () => window.location.assign(landUrl(organizationDomain, landSlug));
+    const selectLandParcel = (
+        organizationDomain: string | null,
+        landSlug: string,
+    ) => {
+        const navigate = () =>
+            window.location.assign(landUrl(organizationDomain, landSlug));
         acknowledge(navigate);
     };
 
@@ -164,7 +188,14 @@ export function PropertyPickerProvider({ children }: { children: React.ReactNode
 
     return (
         <PropertyPickerContext.Provider
-            value={{ open, close, organizations, hasProperties, hasLand, hasAssets }}
+            value={{
+                open,
+                close,
+                organizations,
+                hasProperties,
+                hasLand,
+                hasAssets,
+            }}
         >
             {children}
             <Dialog
@@ -191,7 +222,9 @@ export function PropertyPickerProvider({ children }: { children: React.ReactNode
                     }}
                 >
                     <DialogHeader>
-                        <DialogTitle>Select a property or land parcel</DialogTitle>
+                        <DialogTitle>
+                            Select a property or land parcel
+                        </DialogTitle>
                         <DialogDescription>
                             {canContinueAsAdmin
                                 ? 'Continue to the admin dashboard, or choose the organization, property, or land parcel you want to manage.'
@@ -201,7 +234,8 @@ export function PropertyPickerProvider({ children }: { children: React.ReactNode
 
                     {!hasAssets ? (
                         <p className="text-sm text-muted-foreground">
-                            You don't have any properties or land parcels assigned to you yet.
+                            You don't have any properties or land parcels
+                            assigned to you yet.
                         </p>
                     ) : (
                         <div className="max-h-[60vh] space-y-6 overflow-y-auto">
@@ -218,11 +252,14 @@ export function PropertyPickerProvider({ children }: { children: React.ReactNode
                                                     {organization.name}
                                                 </h3>
                                                 <span className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
-                                                    {organization.is_owner ? 'Owner' : 'Staff'}
+                                                    {organization.is_owner
+                                                        ? 'Owner'
+                                                        : 'Staff'}
                                                 </span>
                                             </div>
                                             <p className="text-xs text-muted-foreground">
-                                                No properties or land parcels assigned.
+                                                No properties or land parcels
+                                                assigned.
                                             </p>
                                         </div>
                                     );
@@ -235,69 +272,98 @@ export function PropertyPickerProvider({ children }: { children: React.ReactNode
                                                 {organization.name}
                                             </h3>
                                             <span className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
-                                                {organization.is_owner ? 'Owner' : 'Staff'}
+                                                {organization.is_owner
+                                                    ? 'Owner'
+                                                    : 'Staff'}
                                             </span>
                                         </div>
 
                                         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                                            {organization.properties.map((property) => (
-                                                <button
-                                                    key={property.id}
-                                                    type="button"
-                                                    onClick={() =>
-                                                        selectProperty(organization.domain, property.slug)
-                                                    }
-                                                    className="flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-colors hover:border-primary hover:bg-accent"
-                                                >
-                                                    <span className="flex items-center gap-2 font-medium">
-                                                        <Building2 className="size-4" />
-                                                        {property.name}
-                                                    </span>
-                                                    <span className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                                                        {property.city && (
+                                            {organization.properties.map(
+                                                (property) => (
+                                                    <button
+                                                        key={property.id}
+                                                        type="button"
+                                                        onClick={() =>
+                                                            selectProperty(
+                                                                organization.domain,
+                                                                property.slug,
+                                                            )
+                                                        }
+                                                        className="flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-colors hover:border-primary hover:bg-accent"
+                                                    >
+                                                        <span className="flex items-center gap-2 font-medium">
+                                                            <Building2 className="size-4" />
+                                                            {property.name}
+                                                        </span>
+                                                        <span className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                                                            {property.city && (
+                                                                <span className="flex items-center gap-1">
+                                                                    <MapPin className="size-3" />
+                                                                    {
+                                                                        property.city
+                                                                    }
+                                                                </span>
+                                                            )}
                                                             <span className="flex items-center gap-1">
-                                                                <MapPin className="size-3" />
-                                                                {property.city}
+                                                                <Layers className="size-3" />
+                                                                {
+                                                                    property.units_count
+                                                                }{' '}
+                                                                units
                                                             </span>
-                                                        )}
-                                                        <span className="flex items-center gap-1">
-                                                            <Layers className="size-3" />
-                                                            {property.units_count} units
+                                                            <span className="capitalize">
+                                                                {
+                                                                    property.status
+                                                                }
+                                                            </span>
                                                         </span>
-                                                        <span className="capitalize">
-                                                            {property.status}
-                                                        </span>
-                                                    </span>
-                                                </button>
-                                            ))}
+                                                    </button>
+                                                ),
+                                            )}
 
-                                            {organization.land_parcels.map((parcel) => (
-                                                <button
-                                                    key={parcel.id}
-                                                    type="button"
-                                                    onClick={() =>
-                                                        selectLandParcel(organization.domain, parcel.slug)
-                                                    }
-                                                    className="flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-colors hover:border-primary hover:bg-accent"
-                                                >
-                                                    <span className="flex items-center gap-2 font-medium">
-                                                        <Map className="size-4" />
-                                                        {parcel.name}
-                                                    </span>
-                                                    <span className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                                                        {parcel.city && (
-                                                            <span className="flex items-center gap-1">
-                                                                <MapPin className="size-3" />
-                                                                {parcel.city}
+                                            {organization.land_parcels.map(
+                                                (parcel) => (
+                                                    <button
+                                                        key={parcel.id}
+                                                        type="button"
+                                                        onClick={() =>
+                                                            selectLandParcel(
+                                                                organization.domain,
+                                                                parcel.slug,
+                                                            )
+                                                        }
+                                                        className="flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-colors hover:border-primary hover:bg-accent"
+                                                    >
+                                                        <span className="flex items-center gap-2 font-medium">
+                                                            <Map className="size-4" />
+                                                            {parcel.name}
+                                                        </span>
+                                                        <span className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                                                            {parcel.city && (
+                                                                <span className="flex items-center gap-1">
+                                                                    <MapPin className="size-3" />
+                                                                    {
+                                                                        parcel.city
+                                                                    }
+                                                                </span>
+                                                            )}
+                                                            {parcel.acreage !=
+                                                                null && (
+                                                                <span>
+                                                                    {
+                                                                        parcel.acreage
+                                                                    }{' '}
+                                                                    acres
+                                                                </span>
+                                                            )}
+                                                            <span className="capitalize">
+                                                                {parcel.status}
                                                             </span>
-                                                        )}
-                                                        {parcel.acreage != null && (
-                                                            <span>{parcel.acreage} acres</span>
-                                                        )}
-                                                        <span className="capitalize">{parcel.status}</span>
-                                                    </span>
-                                                </button>
-                                            ))}
+                                                        </span>
+                                                    </button>
+                                                ),
+                                            )}
                                         </div>
                                     </div>
                                 );
@@ -311,7 +377,9 @@ export function PropertyPickerProvider({ children }: { children: React.ReactNode
                                 onClick={() =>
                                     acknowledge(() =>
                                         window.location.assign(
-                                            centralDashboardUrl(page.props.centralUrl),
+                                            centralDashboardUrl(
+                                                page.props.centralUrl,
+                                            ),
                                         ),
                                     )
                                 }

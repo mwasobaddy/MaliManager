@@ -27,7 +27,7 @@ export function StatsCards({ label, summary, items }: StatsCardsProps) {
                 <button className="flex w-full items-center gap-2 rounded-lg p-2 text-sm font-medium text-muted-foreground hover:bg-muted/50 hover:text-foreground">
                     {label}
                     {summary && (
-                        <span className="ml-auto text-xs tabular-nums text-muted-foreground">
+                        <span className="ml-auto text-xs text-muted-foreground tabular-nums">
                             {summary}
                         </span>
                     )}
@@ -36,17 +36,21 @@ export function StatsCards({ label, summary, items }: StatsCardsProps) {
                 </button>
             </CollapsibleTrigger>
             <CollapsibleContent>
-                <div className="mt-3 grid gap-4 grid-cols-2 lg:grid-cols-4">
+                <div className="mt-3 grid grid-cols-2 gap-4 lg:grid-cols-4">
                     {items.map((item) => (
                         <Card key={item.title}>
                             <CardHeader className="flex flex-row items-center justify-between pb-2">
-                                <CardTitle className="text-sm font-medium">{item.title}</CardTitle>
+                                <CardTitle className="text-sm font-medium">
+                                    {item.title}
+                                </CardTitle>
                                 <div className="rounded-full bg-muted p-2 [&_svg]:h-4 [&_svg]:w-4">
                                     {item.icon}
                                 </div>
                             </CardHeader>
                             <CardContent>
-                                <div className="text-xl font-bold lg:text-2xl">{item.value}</div>
+                                <div className="text-xl font-bold lg:text-2xl">
+                                    {item.value}
+                                </div>
                                 {item.description && (
                                     <p className="hidden text-xs text-muted-foreground lg:block">
                                         {item.description}

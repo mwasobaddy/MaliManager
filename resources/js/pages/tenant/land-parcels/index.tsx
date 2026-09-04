@@ -3,7 +3,13 @@ import { Map, Plus } from 'lucide-react';
 import Heading from '@/components/heading';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from '@/components/ui/card';
 import { create, show } from '@/routes/tenant/land-parcels';
 
 type Organization = {
@@ -27,7 +33,11 @@ type Props = {
     canCreateLandParcel: boolean;
 };
 
-export default function LandParcelsIndex({ organization, land_parcels, canCreateLandParcel }: Props) {
+export default function LandParcelsIndex({
+    organization,
+    land_parcels,
+    canCreateLandParcel,
+}: Props) {
     return (
         <>
             <Head title="Land parcels" />
@@ -53,13 +63,18 @@ export default function LandParcelsIndex({ organization, land_parcels, canCreate
                     <Card>
                         <CardContent className="py-16 text-center">
                             <Map className="mx-auto size-10 text-muted-foreground" />
-                            <p className="mt-4 font-medium">No land parcels yet</p>
+                            <p className="mt-4 font-medium">
+                                No land parcels yet
+                            </p>
                             <p className="mt-1 text-sm text-muted-foreground">
-                                Add your first parcel to start tracking plots of land.
+                                Add your first parcel to start tracking plots of
+                                land.
                             </p>
                             {canCreateLandParcel && (
                                 <Button asChild className="mt-6">
-                                    <Link href={create()}>Add your first land parcel</Link>
+                                    <Link href={create()}>
+                                        Add your first land parcel
+                                    </Link>
                                 </Button>
                             )}
                         </CardContent>
@@ -79,13 +94,19 @@ export default function LandParcelsIndex({ organization, land_parcels, canCreate
                                             <CardTitle>{parcel.name}</CardTitle>
                                         </div>
                                         <CardDescription>
-                                            {parcel.city ? `${parcel.city} · ` : ''}
+                                            {parcel.city
+                                                ? `${parcel.city} · `
+                                                : ''}
                                             {parcel.zoning}
                                         </CardDescription>
                                     </CardHeader>
                                     <CardContent>
                                         <Badge
-                                            variant={parcel.status === 'active' ? 'default' : 'secondary'}
+                                            variant={
+                                                parcel.status === 'active'
+                                                    ? 'default'
+                                                    : 'secondary'
+                                            }
                                         >
                                             {parcel.status}
                                         </Badge>

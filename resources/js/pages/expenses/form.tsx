@@ -14,7 +14,11 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { index as expensesIndexRoute, store as storeExpense, update as updateExpense } from '@/routes/tenant/expenses';
+import {
+    index as expensesIndexRoute,
+    store as storeExpense,
+    update as updateExpense,
+} from '@/routes/tenant/expenses';
 
 type Target = {
     id: number;
@@ -51,8 +55,12 @@ export default function ExpenseForm({ expense, targets }: Props) {
     const [assetType, setAssetType] = useState<'property' | 'land_parcel'>(
         (expense?.expenseable_type as 'property' | 'land_parcel') ?? 'property',
     );
-    const [assetId, setAssetId] = useState<string>(expense ? String(expense.expenseable_id) : '');
-    const [unitId, setUnitId] = useState<string>(expense?.unit_id ? String(expense.unit_id) : '');
+    const [assetId, setAssetId] = useState<string>(
+        expense ? String(expense.expenseable_id) : '',
+    );
+    const [unitId, setUnitId] = useState<string>(
+        expense?.unit_id ? String(expense.unit_id) : '',
+    );
 
     const form = useForm<{
         expenseable_type: 'property' | 'land_parcel';
@@ -78,13 +86,13 @@ export default function ExpenseForm({ expense, targets }: Props) {
         remove_receipt: false,
     });
 
-    const assets: Target[] = assetType === 'property'
-        ? targets.properties
-        : targets.land_parcels;
+    const assets: Target[] =
+        assetType === 'property' ? targets.properties : targets.land_parcels;
 
-    const selectedProperty = assetType === 'property'
-        ? targets.properties.find((p) => String(p.id) === assetId)
-        : undefined;
+    const selectedProperty =
+        assetType === 'property'
+            ? targets.properties.find((p) => String(p.id) === assetId)
+            : undefined;
 
     const setAsset = (type: 'property' | 'land_parcel', id: string) => {
         setAssetType(type);
@@ -121,25 +129,51 @@ export default function ExpenseForm({ expense, targets }: Props) {
                     <CardContent className="grid gap-4 md:grid-cols-2">
                         <div className="grid gap-2">
                             <Label>Asset type</Label>
-                            <Select value={assetType} onValueChange={(v) => setAsset(v as 'property' | 'land_parcel', '')}>
-                                <SelectTrigger><SelectValue /></SelectTrigger>
+                            <Select
+                                value={assetType}
+                                onValueChange={(v) =>
+                                    setAsset(
+                                        v as 'property' | 'land_parcel',
+                                        '',
+                                    )
+                                }
+                            >
+                                <SelectTrigger>
+                                    <SelectValue />
+                                </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="property">Property</SelectItem>
-                                    <SelectItem value="land_parcel">Land parcel</SelectItem>
+                                    <SelectItem value="property">
+                                        Property
+                                    </SelectItem>
+                                    <SelectItem value="land_parcel">
+                                        Land parcel
+                                    </SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
 
                         <div className="grid gap-2">
-                            <Label>{assetType === 'property' ? 'Property' : 'Land parcel'}</Label>
-                            <Select value={assetId} onValueChange={(v) => {
-                                setAssetId(v);
-                                form.setData('expenseable_id', v);
-                            }}>
-                                <SelectTrigger><SelectValue placeholder="Pick one…" /></SelectTrigger>
+                            <Label>
+                                {assetType === 'property'
+                                    ? 'Property'
+                                    : 'Land parcel'}
+                            </Label>
+                            <Select
+                                value={assetId}
+                                onValueChange={(v) => {
+                                    setAssetId(v);
+                                    form.setData('expenseable_id', v);
+                                }}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Pick one…" />
+                                </SelectTrigger>
                                 <SelectContent>
                                     {assets.map((asset) => (
-                                        <SelectItem key={asset.id} value={String(asset.id)}>
+                                        <SelectItem
+                                            key={asset.id}
+                                            value={String(asset.id)}
+                                        >
                                             {asset.name}
                                         </SelectItem>
                                     ))}
@@ -150,18 +184,30 @@ export default function ExpenseForm({ expense, targets }: Props) {
                         {assetType === 'property' && selectedProperty && (
                             <div className="grid gap-2">
                                 <Label>Unit (optional)</Label>
-                                <Select value={unitId} onValueChange={(v) => {
-                                    setUnitId(v);
-                                    form.setData('unit_id', v);
-                                }}>
-                                    <SelectTrigger><SelectValue placeholder="Whole property" /></SelectTrigger>
+                                <Select
+                                    value={unitId}
+                                    onValueChange={(v) => {
+                                        setUnitId(v);
+                                        form.setData('unit_id', v);
+                                    }}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Whole property" />
+                                    </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="0">Whole property</SelectItem>
-                                        {(selectedProperty.units ?? []).map((unit) => (
-                                            <SelectItem key={unit.id} value={String(unit.id)}>
-                                                {unit.name}
-                                            </SelectItem>
-                                        ))}
+                                        <SelectItem value="0">
+                                            Whole property
+                                        </SelectItem>
+                                        {(selectedProperty.units ?? []).map(
+                                            (unit) => (
+                                                <SelectItem
+                                                    key={unit.id}
+                                                    value={String(unit.id)}
+                                                >
+                                                    {unit.name}
+                                                </SelectItem>
+                                            ),
+                                        )}
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -169,11 +215,31 @@ export default function ExpenseForm({ expense, targets }: Props) {
 
                         <div className="grid gap-2">
                             <Label>Category</Label>
-                            <Select value={form.data.category} onValueChange={(v) => form.setData('category', v)}>
-                                <SelectTrigger><SelectValue placeholder="Pick a category…" /></SelectTrigger>
+                            <Select
+                                value={form.data.category}
+                                onValueChange={(v) =>
+                                    form.setData('category', v)
+                                }
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Pick a category…" />
+                                </SelectTrigger>
                                 <SelectContent>
-                                    {['maintenance', 'renovation', 'cleaning', 'utilities', 'security', 'other'].map((c) => (
-                                        <SelectItem key={c} value={c} className="capitalize">{c}</SelectItem>
+                                    {[
+                                        'maintenance',
+                                        'renovation',
+                                        'cleaning',
+                                        'utilities',
+                                        'security',
+                                        'other',
+                                    ].map((c) => (
+                                        <SelectItem
+                                            key={c}
+                                            value={c}
+                                            className="capitalize"
+                                        >
+                                            {c}
+                                        </SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
@@ -188,7 +254,9 @@ export default function ExpenseForm({ expense, targets }: Props) {
                                 min="0"
                                 step="0.01"
                                 value={form.data.amount}
-                                onChange={(e) => form.setData('amount', e.target.value)}
+                                onChange={(e) =>
+                                    form.setData('amount', e.target.value)
+                                }
                             />
                             <InputError message={form.errors.amount} />
                         </div>
@@ -199,7 +267,12 @@ export default function ExpenseForm({ expense, targets }: Props) {
                                 id="currency"
                                 maxLength={3}
                                 value={form.data.currency}
-                                onChange={(e) => form.setData('currency', e.target.value.toUpperCase())}
+                                onChange={(e) =>
+                                    form.setData(
+                                        'currency',
+                                        e.target.value.toUpperCase(),
+                                    )
+                                }
                             />
                             <InputError message={form.errors.currency} />
                         </div>
@@ -210,7 +283,9 @@ export default function ExpenseForm({ expense, targets }: Props) {
                                 id="spent_on"
                                 type="date"
                                 value={form.data.spent_on}
-                                onChange={(e) => form.setData('spent_on', e.target.value)}
+                                onChange={(e) =>
+                                    form.setData('spent_on', e.target.value)
+                                }
                             />
                             <InputError message={form.errors.spent_on} />
                         </div>
@@ -220,9 +295,11 @@ export default function ExpenseForm({ expense, targets }: Props) {
                             <textarea
                                 id="notes"
                                 rows={3}
-                                className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
                                 value={form.data.notes}
-                                onChange={(e) => form.setData('notes', e.target.value)}
+                                onChange={(e) =>
+                                    form.setData('notes', e.target.value)
+                                }
                             />
                             <InputError message={form.errors.notes} />
                         </div>
@@ -235,14 +312,25 @@ export default function ExpenseForm({ expense, targets }: Props) {
                             </Label>
                             {expense?.receipt_url && (
                                 <div className="flex items-center gap-3 text-sm">
-                                    <a href={expense.receipt_url} target="_blank" rel="noopener noreferrer" className="text-primary underline">
-                                        {expense.receipt_name ?? 'Current receipt'}
+                                    <a
+                                        href={expense.receipt_url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-primary underline"
+                                    >
+                                        {expense.receipt_name ??
+                                            'Current receipt'}
                                     </a>
                                     <label className="flex items-center gap-1 text-muted-foreground">
                                         <input
                                             type="checkbox"
                                             checked={form.data.remove_receipt}
-                                            onChange={(e) => form.setData('remove_receipt', e.target.checked)}
+                                            onChange={(e) =>
+                                                form.setData(
+                                                    'remove_receipt',
+                                                    e.target.checked,
+                                                )
+                                            }
                                         />
                                         Remove
                                     </label>
@@ -252,7 +340,12 @@ export default function ExpenseForm({ expense, targets }: Props) {
                                 id="receipt"
                                 type="file"
                                 accept=".pdf,.jpg,.jpeg,.png,.webp"
-                                onChange={(e) => form.setData('receipt', e.target.files?.[0] ?? null)}
+                                onChange={(e) =>
+                                    form.setData(
+                                        'receipt',
+                                        e.target.files?.[0] ?? null,
+                                    )
+                                }
                             />
                             <InputError message={form.errors.receipt} />
                         </div>
@@ -261,7 +354,9 @@ export default function ExpenseForm({ expense, targets }: Props) {
 
                 <div className="flex gap-2">
                     <Button asChild variant="outline">
-                        <Link href={expensesIndexRoute()}>Back to expenses</Link>
+                        <Link href={expensesIndexRoute()}>
+                            Back to expenses
+                        </Link>
                     </Button>
                     <Button onClick={submit} disabled={form.processing}>
                         <Save className="size-4" />

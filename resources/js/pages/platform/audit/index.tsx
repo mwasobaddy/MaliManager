@@ -3,7 +3,10 @@ import { Download, Shield } from 'lucide-react';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { exportMethod as platformAuditExport, index as platformAuditIndex } from '@/routes/platform/audit';
+import {
+    exportMethod as platformAuditExport,
+    index as platformAuditIndex,
+} from '@/routes/platform/audit';
 
 type Causer = { id: number; name: string; email: string } | null;
 type Subject = { type: string; id: number } | null;
@@ -37,7 +40,12 @@ type Props = {
     };
 };
 
-export default function AdminAuditIndex({ audits, filters, canExport, options }: Props) {
+export default function AdminAuditIndex({
+    audits,
+    filters,
+    canExport,
+    options,
+}: Props) {
     const form = useForm({
         organization: filters.organization ?? '',
         actor: filters.actor ?? '',
@@ -49,7 +57,10 @@ export default function AdminAuditIndex({ audits, filters, canExport, options }:
     });
 
     const submit = () => {
-        form.get(platformAuditIndex().url, { preserveState: true, replace: true });
+        form.get(platformAuditIndex().url, {
+            preserveState: true,
+            replace: true,
+        });
     };
 
     const goToPage = (page: number) => {
@@ -73,7 +84,12 @@ export default function AdminAuditIndex({ audits, filters, canExport, options }:
                     />
                     {canExport && (
                         <Button asChild variant="outline">
-                            <a href={platformAuditExport({ query: form.data }).url}>
+                            <a
+                                href={
+                                    platformAuditExport({ query: form.data })
+                                        .url
+                                }
+                            >
                                 <Download className="size-4" />
                                 Export CSV
                             </a>
@@ -87,7 +103,9 @@ export default function AdminAuditIndex({ audits, filters, canExport, options }:
                             <select
                                 className="h-9 rounded-md border border-input bg-background px-3 text-sm"
                                 value={form.data.organization}
-                                onChange={(e) => form.setData('organization', e.target.value)}
+                                onChange={(e) =>
+                                    form.setData('organization', e.target.value)
+                                }
                             >
                                 <option value="">All organizations</option>
                                 {options.organizations.map((org) => (
@@ -100,12 +118,16 @@ export default function AdminAuditIndex({ audits, filters, canExport, options }:
                                 className="h-9 rounded-md border border-input bg-background px-3 text-sm"
                                 placeholder="Search description"
                                 value={form.data.search}
-                                onChange={(e) => form.setData('search', e.target.value)}
+                                onChange={(e) =>
+                                    form.setData('search', e.target.value)
+                                }
                             />
                             <select
                                 className="h-9 rounded-md border border-input bg-background px-3 text-sm"
                                 value={form.data.event}
-                                onChange={(e) => form.setData('event', e.target.value)}
+                                onChange={(e) =>
+                                    form.setData('event', e.target.value)
+                                }
                             >
                                 <option value="">Any action</option>
                                 {options.events.map((event) => (
@@ -117,26 +139,34 @@ export default function AdminAuditIndex({ audits, filters, canExport, options }:
                             <select
                                 className="h-9 rounded-md border border-input bg-background px-3 text-sm"
                                 value={form.data.subject_type}
-                                onChange={(e) => form.setData('subject_type', e.target.value)}
+                                onChange={(e) =>
+                                    form.setData('subject_type', e.target.value)
+                                }
                             >
                                 <option value="">Any resource</option>
-                                {Object.entries(options.subjectTypes).map(([type, label]) => (
-                                    <option key={type} value={type}>
-                                        {label}
-                                    </option>
-                                ))}
+                                {Object.entries(options.subjectTypes).map(
+                                    ([type, label]) => (
+                                        <option key={type} value={type}>
+                                            {label}
+                                        </option>
+                                    ),
+                                )}
                             </select>
                             <input
                                 type="date"
                                 className="h-9 rounded-md border border-input bg-background px-3 text-sm"
                                 value={form.data.date_from}
-                                onChange={(e) => form.setData('date_from', e.target.value)}
+                                onChange={(e) =>
+                                    form.setData('date_from', e.target.value)
+                                }
                             />
                             <input
                                 type="date"
                                 className="h-9 rounded-md border border-input bg-background px-3 text-sm"
                                 value={form.data.date_to}
-                                onChange={(e) => form.setData('date_to', e.target.value)}
+                                onChange={(e) =>
+                                    form.setData('date_to', e.target.value)
+                                }
                             />
                         </div>
                         <div className="flex gap-2">
@@ -148,7 +178,10 @@ export default function AdminAuditIndex({ audits, filters, canExport, options }:
                                 variant="ghost"
                                 onClick={() => {
                                     form.reset();
-                                    form.get(platformAuditIndex().url, { preserveState: true, replace: true });
+                                    form.get(platformAuditIndex().url, {
+                                        preserveState: true,
+                                        replace: true,
+                                    });
                                 }}
                             >
                                 Clear
@@ -162,29 +195,44 @@ export default function AdminAuditIndex({ audits, filters, canExport, options }:
                         {audits.data.length === 0 ? (
                             <div className="py-16 text-center">
                                 <Shield className="mx-auto size-10 text-muted-foreground" />
-                                <p className="mt-4 font-medium">No audit entries yet</p>
+                                <p className="mt-4 font-medium">
+                                    No audit entries yet
+                                </p>
                             </div>
                         ) : (
                             <div className="overflow-x-auto">
                                 <table className="w-full text-sm">
                                     <thead>
-                                        <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
+                                        <tr className="border-b text-left text-xs tracking-wide text-muted-foreground uppercase">
                                             <th className="px-3 py-2">Time</th>
                                             <th className="px-3 py-2">Actor</th>
-                                            <th className="px-3 py-2">Action</th>
-                                            <th className="px-3 py-2">Resource</th>
-                                            <th className="px-3 py-2">Description</th>
+                                            <th className="px-3 py-2">
+                                                Action
+                                            </th>
+                                            <th className="px-3 py-2">
+                                                Resource
+                                            </th>
+                                            <th className="px-3 py-2">
+                                                Description
+                                            </th>
                                             <th className="px-3 py-2">IP</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {audits.data.map((audit) => (
-                                            <tr key={audit.id} className="border-b last:border-0">
-                                                <td className="whitespace-nowrap px-3 py-2 text-muted-foreground">
-                                                    {new Date(audit.created_at).toLocaleString()}
+                                            <tr
+                                                key={audit.id}
+                                                className="border-b last:border-0"
+                                            >
+                                                <td className="px-3 py-2 whitespace-nowrap text-muted-foreground">
+                                                    {new Date(
+                                                        audit.created_at,
+                                                    ).toLocaleString()}
                                                 </td>
                                                 <td className="px-3 py-2">
-                                                    {audit.causer ? audit.causer.name : 'System'}
+                                                    {audit.causer
+                                                        ? audit.causer.name
+                                                        : 'System'}
                                                 </td>
                                                 <td className="px-3 py-2">
                                                     <span className="rounded bg-muted px-2 py-0.5 text-xs">
@@ -196,8 +244,10 @@ export default function AdminAuditIndex({ audits, filters, canExport, options }:
                                                         ? `${audit.subject.type} #${audit.subject.id}`
                                                         : '—'}
                                                 </td>
-                                                <td className="px-3 py-2">{audit.description}</td>
-                                                <td className="whitespace-nowrap px-3 py-2 text-muted-foreground">
+                                                <td className="px-3 py-2">
+                                                    {audit.description}
+                                                </td>
+                                                <td className="px-3 py-2 whitespace-nowrap text-muted-foreground">
                                                     {audit.ip_address ?? '—'}
                                                 </td>
                                             </tr>
@@ -210,22 +260,30 @@ export default function AdminAuditIndex({ audits, filters, canExport, options }:
                         {audits.last_page > 1 && (
                             <div className="mt-4 flex items-center justify-between text-sm">
                                 <span className="text-muted-foreground">
-                                    Page {audits.current_page} of {audits.last_page}
+                                    Page {audits.current_page} of{' '}
+                                    {audits.last_page}
                                 </span>
                                 <div className="flex gap-2">
                                     <Button
                                         variant="outline"
                                         size="sm"
                                         disabled={audits.current_page <= 1}
-                                        onClick={() => goToPage(audits.current_page - 1)}
+                                        onClick={() =>
+                                            goToPage(audits.current_page - 1)
+                                        }
                                     >
                                         Previous
                                     </Button>
                                     <Button
                                         variant="outline"
                                         size="sm"
-                                        disabled={audits.current_page >= audits.last_page}
-                                        onClick={() => goToPage(audits.current_page + 1)}
+                                        disabled={
+                                            audits.current_page >=
+                                            audits.last_page
+                                        }
+                                        onClick={() =>
+                                            goToPage(audits.current_page + 1)
+                                        }
                                     >
                                         Next
                                     </Button>

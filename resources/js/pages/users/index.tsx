@@ -53,13 +53,15 @@ type Props = {
 
 const statusStyles: Record<string, string> = {
     active: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400',
-    inactive: 'bg-neutral-200 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-400',
+    inactive:
+        'bg-neutral-200 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-400',
     suspended: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400',
 };
 
 export default function UsersIndex({ users, filters, platformRoles }: Props) {
     const page = usePage();
-    const permissions = ((page.props.auth?.permissions ?? []) as string[]) ?? [];
+    const permissions =
+        ((page.props.auth?.permissions ?? []) as string[]) ?? [];
     const canCreate = permissions.includes('user.create');
     const canEdit = permissions.includes('user.edit');
     const canDelete = permissions.includes('user.delete');
@@ -72,7 +74,10 @@ export default function UsersIndex({ users, filters, platformRoles }: Props) {
     });
 
     const applyFilters = () => {
-        form.get(usersRoutes.index().url, { preserveState: true, replace: true });
+        form.get(usersRoutes.index().url, {
+            preserveState: true,
+            replace: true,
+        });
     };
 
     const [suspendTarget, setSuspendTarget] = useState<UserRow | null>(null);
@@ -86,7 +91,10 @@ export default function UsersIndex({ users, filters, platformRoles }: Props) {
         setSuspending(true);
         router.patch(
             usersRoutes.status(suspendTarget.id),
-            { status: suspendTarget.status === 'active' ? 'suspended' : 'active' },
+            {
+                status:
+                    suspendTarget.status === 'active' ? 'suspended' : 'active',
+            },
             {
                 preserveScroll: true,
                 onFinish: () => {
@@ -104,7 +112,10 @@ export default function UsersIndex({ users, filters, platformRoles }: Props) {
             <Head title="Users" />
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                    <Heading title="User management" description="Create and manage people and their user accounts." />
+                    <Heading
+                        title="User management"
+                        description="Create and manage people and their user accounts."
+                    />
                     <div className="flex gap-2">
                         {canExport && (
                             <Button variant="outline" asChild>
@@ -138,14 +149,21 @@ export default function UsersIndex({ users, filters, platformRoles }: Props) {
                                 <Search className="absolute top-2.5 left-2 size-4 text-muted-foreground" />
                                 <input
                                     value={form.data.search}
-                                    onChange={(event) => form.setData('search', event.target.value)}
+                                    onChange={(event) =>
+                                        form.setData(
+                                            'search',
+                                            event.target.value,
+                                        )
+                                    }
                                     placeholder="Search name, email, phone..."
                                     className="w-full rounded-md border bg-background py-2 pr-3 pl-8 text-sm"
                                 />
                             </div>
                             <select
                                 value={form.data.status}
-                                onChange={(event) => form.setData('status', event.target.value)}
+                                onChange={(event) =>
+                                    form.setData('status', event.target.value)
+                                }
                                 className="rounded-md border bg-background px-3 py-2 text-sm"
                             >
                                 <option value="">Any status</option>
@@ -155,7 +173,9 @@ export default function UsersIndex({ users, filters, platformRoles }: Props) {
                             </select>
                             <select
                                 value={form.data.role}
-                                onChange={(event) => form.setData('role', event.target.value)}
+                                onChange={(event) =>
+                                    form.setData('role', event.target.value)
+                                }
                                 className="rounded-md border bg-background px-3 py-2 text-sm"
                             >
                                 <option value="">Any role</option>
@@ -165,7 +185,9 @@ export default function UsersIndex({ users, filters, platformRoles }: Props) {
                                     </option>
                                 ))}
                             </select>
-                            <Button type="submit" variant="secondary">Filter</Button>
+                            <Button type="submit" variant="secondary">
+                                Filter
+                            </Button>
                         </form>
                     </CardContent>
                 </Card>
@@ -176,56 +198,117 @@ export default function UsersIndex({ users, filters, platformRoles }: Props) {
                             <table className="w-full text-sm">
                                 <thead>
                                     <tr className="border-b text-left text-muted-foreground">
-                                        <th className="px-3 py-2 font-medium">Name</th>
-                                        <th className="px-3 py-2 font-medium">Email</th>
-                                        <th className="px-3 py-2 font-medium">Phone</th>
-                                        <th className="px-3 py-2 font-medium">Roles</th>
-                                        <th className="px-3 py-2 font-medium">Status</th>
-                                        <th className="px-3 py-2 text-right font-medium">Actions</th>
+                                        <th className="px-3 py-2 font-medium">
+                                            Name
+                                        </th>
+                                        <th className="px-3 py-2 font-medium">
+                                            Email
+                                        </th>
+                                        <th className="px-3 py-2 font-medium">
+                                            Phone
+                                        </th>
+                                        <th className="px-3 py-2 font-medium">
+                                            Roles
+                                        </th>
+                                        <th className="px-3 py-2 font-medium">
+                                            Status
+                                        </th>
+                                        <th className="px-3 py-2 text-right font-medium">
+                                            Actions
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {users.data.length === 0 && (
                                         <tr>
-                                            <td colSpan={6} className="py-8 text-center text-muted-foreground">
+                                            <td
+                                                colSpan={6}
+                                                className="py-8 text-center text-muted-foreground"
+                                            >
                                                 No users found.
                                             </td>
                                         </tr>
                                     )}
                                     {users.data.map((user) => (
                                         <tr key={user.id} className="border-b">
-                                            <td className="px-3 py-2 font-medium">{user.name}</td>
-                                            <td className="px-3 py-2">{user.email}</td>
-                                            <td className="px-3 py-2">{user.phone ?? '—'}</td>
+                                            <td className="px-3 py-2 font-medium">
+                                                {user.name}
+                                            </td>
+                                            <td className="px-3 py-2">
+                                                {user.email}
+                                            </td>
+                                            <td className="px-3 py-2">
+                                                {user.phone ?? '—'}
+                                            </td>
                                             <td className="px-3 py-2">
                                                 <div className="flex flex-wrap gap-1">
-                                                    {user.roles.length === 0 && <span className="text-muted-foreground">—</span>}
+                                                    {user.roles.length ===
+                                                        0 && (
+                                                        <span className="text-muted-foreground">
+                                                            —
+                                                        </span>
+                                                    )}
                                                     {user.roles.map((role) => (
-                                                        <Badge key={role.id} variant="secondary">{role.name}</Badge>
+                                                        <Badge
+                                                            key={role.id}
+                                                            variant="secondary"
+                                                        >
+                                                            {role.name}
+                                                        </Badge>
                                                     ))}
                                                 </div>
                                             </td>
                                             <td className="px-3 py-2">
-                                                <span className={`rounded-full px-2 py-0.5 text-xs font-medium capitalize ${statusStyles[user.status] ?? ''}`}>
+                                                <span
+                                                    className={`rounded-full px-2 py-0.5 text-xs font-medium capitalize ${statusStyles[user.status] ?? ''}`}
+                                                >
                                                     {user.status}
                                                 </span>
                                             </td>
                                             <td className="px-3 py-2 text-right">
                                                 <div className="flex justify-end gap-1">
                                                     {canEdit && (
-                                                        <Button variant="ghost" size="sm" asChild>
-                                                            <Link href={usersRoutes.edit(user.id)}>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            asChild
+                                                        >
+                                                            <Link
+                                                                href={usersRoutes.edit(
+                                                                    user.id,
+                                                                )}
+                                                            >
                                                                 <Pencil className="size-4" />
                                                             </Link>
                                                         </Button>
                                                     )}
                                                     {canEdit && (
-                                                        <Button variant="ghost" size="sm" onClick={() => setSuspendTarget(user)}>
-                                                            {user.status === 'active' ? 'Suspend' : 'Activate'}
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() =>
+                                                                setSuspendTarget(
+                                                                    user,
+                                                                )
+                                                            }
+                                                        >
+                                                            {user.status ===
+                                                            'active'
+                                                                ? 'Suspend'
+                                                                : 'Activate'}
                                                         </Button>
                                                     )}
                                                     {canDelete && (
-                                                        <Button variant="ghost" size="sm" onClick={() => setDeleteTarget(user)} className="text-red-600">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() =>
+                                                                setDeleteTarget(
+                                                                    user,
+                                                                )
+                                                            }
+                                                            className="text-red-600"
+                                                        >
                                                             Delete
                                                         </Button>
                                                     )}
@@ -242,14 +325,24 @@ export default function UsersIndex({ users, filters, platformRoles }: Props) {
                 {users.last_page > 1 && (
                     <div className="flex items-center justify-between text-sm">
                         <span className="text-muted-foreground">
-                            Page {users.current_page} of {users.last_page} ({users.total} users)
+                            Page {users.current_page} of {users.last_page} (
+                            {users.total} users)
                         </span>
                         <div className="flex gap-2">
                             <Button
                                 variant="outline"
                                 size="sm"
                                 disabled={users.current_page <= 1}
-                                onClick={() => router.get(usersRoutes.index().url, { ...form.data, page: users.current_page - 1 }, { preserveState: true })}
+                                onClick={() =>
+                                    router.get(
+                                        usersRoutes.index().url,
+                                        {
+                                            ...form.data,
+                                            page: users.current_page - 1,
+                                        },
+                                        { preserveState: true },
+                                    )
+                                }
                             >
                                 Previous
                             </Button>
@@ -257,7 +350,16 @@ export default function UsersIndex({ users, filters, platformRoles }: Props) {
                                 variant="outline"
                                 size="sm"
                                 disabled={users.current_page >= users.last_page}
-                                onClick={() => router.get(usersRoutes.index().url, { ...form.data, page: users.current_page + 1 }, { preserveState: true })}
+                                onClick={() =>
+                                    router.get(
+                                        usersRoutes.index().url,
+                                        {
+                                            ...form.data,
+                                            page: users.current_page + 1,
+                                        },
+                                        { preserveState: true },
+                                    )
+                                }
                             >
                                 Next
                             </Button>
@@ -289,7 +391,9 @@ export default function UsersIndex({ users, filters, platformRoles }: Props) {
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>
-                            {suspendTarget?.status === 'active' ? 'Suspend user?' : 'Activate user?'}
+                            {suspendTarget?.status === 'active'
+                                ? 'Suspend user?'
+                                : 'Activate user?'}
                         </DialogTitle>
                         <DialogDescription>
                             {suspendTarget?.status === 'active'
@@ -300,16 +404,25 @@ export default function UsersIndex({ users, filters, platformRoles }: Props) {
 
                     <DialogFooter className="gap-2">
                         <DialogClose asChild>
-                            <Button variant="secondary" onClick={() => setSuspendTarget(null)}>
+                            <Button
+                                variant="secondary"
+                                onClick={() => setSuspendTarget(null)}
+                            >
                                 Cancel
                             </Button>
                         </DialogClose>
                         <Button
-                            variant={suspendTarget?.status === 'active' ? 'destructive' : 'default'}
+                            variant={
+                                suspendTarget?.status === 'active'
+                                    ? 'destructive'
+                                    : 'default'
+                            }
                             disabled={suspending}
                             onClick={confirmToggleStatus}
                         >
-                            {suspendTarget?.status === 'active' ? 'Suspend' : 'Activate'}
+                            {suspendTarget?.status === 'active'
+                                ? 'Suspend'
+                                : 'Activate'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

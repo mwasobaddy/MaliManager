@@ -2,7 +2,13 @@ import { Form, Head } from '@inertiajs/react';
 import { Building2, Shield } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from '@/components/ui/card';
 import { impersonate } from '@/routes/platform';
 
 type Organization = {
@@ -30,9 +36,12 @@ export default function AdminDashboard({ organizations }: Props) {
                         <Shield className="size-5" />
                     </div>
                     <div>
-                        <h1 className="text-xl font-semibold">Platform Admin</h1>
+                        <h1 className="text-xl font-semibold">
+                            Platform Admin
+                        </h1>
                         <p className="text-sm text-muted-foreground">
-                            Manage organizations and impersonate their users to diagnose issues.
+                            Manage organizations and impersonate their users to
+                            diagnose issues.
                         </p>
                     </div>
                 </div>
@@ -51,20 +60,33 @@ export default function AdminDashboard({ organizations }: Props) {
                                     <div className="flex flex-wrap items-center justify-between gap-2">
                                         <div className="flex items-center gap-2">
                                             <Building2 className="size-4 text-muted-foreground" />
-                                            <CardTitle>{organization.name}</CardTitle>
-                                            <Badge variant="secondary">{organization.plan ?? 'No plan'}</Badge>
+                                            <CardTitle>
+                                                {organization.name}
+                                            </CardTitle>
+                                            <Badge variant="secondary">
+                                                {organization.plan ?? 'No plan'}
+                                            </Badge>
                                             <Badge
-                                                variant={organization.status === 'active' ? 'default' : 'secondary'}
+                                                variant={
+                                                    organization.status ===
+                                                    'active'
+                                                        ? 'default'
+                                                        : 'secondary'
+                                                }
                                             >
                                                 {organization.status}
                                             </Badge>
                                         </div>
-                                        <CardDescription>{organization.slug}</CardDescription>
+                                        <CardDescription>
+                                            {organization.slug}
+                                        </CardDescription>
                                     </div>
                                 </CardHeader>
                                 <CardContent>
                                     {organization.users.length === 0 ? (
-                                        <p className="text-sm text-muted-foreground">No members.</p>
+                                        <p className="text-sm text-muted-foreground">
+                                            No members.
+                                        </p>
                                     ) : (
                                         <div className="divide-y divide-border rounded-lg border">
                                             {organization.users.map((user) => (
@@ -73,16 +95,23 @@ export default function AdminDashboard({ organizations }: Props) {
                                                     className="flex items-center justify-between gap-4 px-4 py-3"
                                                 >
                                                     <div className="min-w-0">
-                                                        <p className="truncate text-sm font-medium">{user.name}</p>
+                                                        <p className="truncate text-sm font-medium">
+                                                            {user.name}
+                                                        </p>
                                                         <p className="truncate text-sm text-muted-foreground">
                                                             {user.email}
                                                         </p>
                                                     </div>
                                                     <Form
                                                         method="post"
-                                                        action={impersonate([organization.id, user.id])}
+                                                        action={impersonate([
+                                                            organization.id,
+                                                            user.id,
+                                                        ])}
                                                         as="button"
-                                                        disabled={!organization.domain}
+                                                        disabled={
+                                                            !organization.domain
+                                                        }
                                                         title={
                                                             organization.domain
                                                                 ? `Log in as ${user.name}`
@@ -93,7 +122,9 @@ export default function AdminDashboard({ organizations }: Props) {
                                                             type="submit"
                                                             variant="outline"
                                                             size="sm"
-                                                            disabled={!organization.domain}
+                                                            disabled={
+                                                                !organization.domain
+                                                            }
                                                         >
                                                             Impersonate
                                                         </Button>

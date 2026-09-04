@@ -17,7 +17,11 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { destroy as destroySection, lease, store } from '@/routes/tenant/land-parcel-sections';
+import {
+    destroy as destroySection,
+    lease,
+    store,
+} from '@/routes/tenant/land-parcel-sections';
 import { destroy, edit, index } from '@/routes/tenant/land-parcels';
 
 type Organization = {
@@ -84,7 +88,7 @@ const Detail = ({
     value: React.ReactNode;
     full?: boolean;
 }) => (
-    <div className={`grid gap-1${full ? ' sm:col-span-2' : ''}`}>
+    <div className={`grid gap-1${full ? 'sm:col-span-2' : ''}`}>
         <dt className="text-sm text-muted-foreground">{label}</dt>
         <dd className="text-sm font-medium">
             {value ?? <span className="text-muted-foreground">—</span>}
@@ -161,35 +165,73 @@ export default function LandParcelShow({
 
                         <div className="rounded-xl border border-input p-6">
                             <dl className="grid gap-4 sm:grid-cols-2">
-                                <Detail label="Title deed no." value={parcel.title_deed_number} />
-                                <Detail label="Acreage" value={parcel.acreage ? `${parcel.acreage} acres` : null} />
+                                <Detail
+                                    label="Title deed no."
+                                    value={parcel.title_deed_number}
+                                />
+                                <Detail
+                                    label="Acreage"
+                                    value={
+                                        parcel.acreage
+                                            ? `${parcel.acreage} acres`
+                                            : null
+                                    }
+                                />
                                 <Detail label="Zoning" value={parcel.zoning} />
-                                <Detail label="Address" value={parcel.address} />
+                                <Detail
+                                    label="Address"
+                                    value={parcel.address}
+                                />
                                 <Detail label="City" value={parcel.city} />
                                 <Detail
                                     label="Status"
                                     value={
-                                        <Badge variant={parcel.status === 'active' ? 'default' : 'secondary'}>
+                                        <Badge
+                                            variant={
+                                                parcel.status === 'active'
+                                                    ? 'default'
+                                                    : 'secondary'
+                                            }
+                                        >
                                             {parcel.status}
                                         </Badge>
                                     }
                                 />
-                                <Detail label="Latitude" value={parcel.latitude} />
-                                <Detail label="Longitude" value={parcel.longitude} />
+                                <Detail
+                                    label="Latitude"
+                                    value={parcel.latitude}
+                                />
+                                <Detail
+                                    label="Longitude"
+                                    value={parcel.longitude}
+                                />
                                 <Detail
                                     label="Available for lease"
-                                    value={parcel.available_for_lease ? 'Yes' : 'No'}
+                                    value={
+                                        parcel.available_for_lease
+                                            ? 'Yes'
+                                            : 'No'
+                                    }
                                 />
-                                <Detail label="Notes" value={parcel.notes} full />
+                                <Detail
+                                    label="Notes"
+                                    value={parcel.notes}
+                                    full
+                                />
                             </dl>
                         </div>
 
                         {/* Sections: sub-plots that can be leased independently. */}
                         <div className="rounded-xl border border-input p-6">
                             <div className="flex items-center justify-between gap-4">
-                                <h3 className="text-sm font-semibold">Sections</h3>
+                                <h3 className="text-sm font-semibold">
+                                    Sections
+                                </h3>
                                 {canManageSections && !addSection && (
-                                    <Button size="sm" onClick={() => setAddSection(true)}>
+                                    <Button
+                                        size="sm"
+                                        onClick={() => setAddSection(true)}
+                                    >
                                         <Plus className="size-4" />
                                         Add section
                                     </Button>
@@ -198,7 +240,9 @@ export default function LandParcelShow({
 
                             {addSection && (
                                 <Form
-                                    {...store.form({ land_parcel: parcel.slug })}
+                                    {...store.form({
+                                        land_parcel: parcel.slug,
+                                    })}
                                     options={{ preserveScroll: true }}
                                     onSuccess={() => setAddSection(false)}
                                     className="my-4 grid gap-4 rounded-lg border border-input p-4 md:grid-cols-[1fr_1fr_1fr_auto]"
@@ -206,34 +250,75 @@ export default function LandParcelShow({
                                     {({ processing, errors }) => (
                                         <>
                                             <div className="grid gap-2">
-                                                <Label htmlFor="section-name">Name</Label>
-                                                <Input id="section-name" name="name" required placeholder="Block A" />
-                                                <InputError message={errors.name} />
+                                                <Label htmlFor="section-name">
+                                                    Name
+                                                </Label>
+                                                <Input
+                                                    id="section-name"
+                                                    name="name"
+                                                    required
+                                                    placeholder="Block A"
+                                                />
+                                                <InputError
+                                                    message={errors.name}
+                                                />
                                             </div>
                                             <div className="grid gap-2">
-                                                <Label htmlFor="section-area">Area (acres)</Label>
-                                                <Input id="section-area" name="area" type="number" step="0.01" min="0" placeholder="2.5" />
-                                                <InputError message={errors.area} />
+                                                <Label htmlFor="section-area">
+                                                    Area (acres)
+                                                </Label>
+                                                <Input
+                                                    id="section-area"
+                                                    name="area"
+                                                    type="number"
+                                                    step="0.01"
+                                                    min="0"
+                                                    placeholder="2.5"
+                                                />
+                                                <InputError
+                                                    message={errors.area}
+                                                />
                                             </div>
                                             <div className="grid gap-2">
-                                                <Label htmlFor="section-status">Status</Label>
+                                                <Label htmlFor="section-status">
+                                                    Status
+                                                </Label>
                                                 <select
                                                     id="section-status"
                                                     name="status"
                                                     className="h-9 rounded-md border border-input bg-background px-3 text-sm"
                                                     defaultValue="vacant"
                                                 >
-                                                    <option value="vacant">Vacant</option>
-                                                    <option value="leased">Leased</option>
-                                                    <option value="maintenance">Maintenance</option>
+                                                    <option value="vacant">
+                                                        Vacant
+                                                    </option>
+                                                    <option value="leased">
+                                                        Leased
+                                                    </option>
+                                                    <option value="maintenance">
+                                                        Maintenance
+                                                    </option>
                                                 </select>
-                                                <InputError message={errors.status} />
+                                                <InputError
+                                                    message={errors.status}
+                                                />
                                             </div>
                                             <div className="flex items-end gap-2">
-                                                <Button type="submit" disabled={processing}>
-                                                    {processing ? 'Saving…' : 'Add'}
+                                                <Button
+                                                    type="submit"
+                                                    disabled={processing}
+                                                >
+                                                    {processing
+                                                        ? 'Saving…'
+                                                        : 'Add'}
                                                 </Button>
-                                                <Button type="button" variant="ghost" onClick={() => setAddSection(false)}>
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    onClick={() =>
+                                                        setAddSection(false)
+                                                    }
+                                                >
                                                     Cancel
                                                 </Button>
                                             </div>
@@ -244,7 +329,8 @@ export default function LandParcelShow({
 
                             {sections.length === 0 ? (
                                 <p className="mt-4 text-sm text-muted-foreground">
-                                    No sections yet. Add a section to lease part of this parcel.
+                                    No sections yet. Add a section to lease part
+                                    of this parcel.
                                 </p>
                             ) : (
                                 <ul className="mt-4 divide-y divide-border rounded-lg border">
@@ -252,15 +338,26 @@ export default function LandParcelShow({
                                         <li key={section.id} className="p-4">
                                             <div className="flex items-center justify-between gap-4">
                                                 <div className="min-w-0">
-                                                    <p className="truncate text-sm font-medium">{section.name}</p>
+                                                    <p className="truncate text-sm font-medium">
+                                                        {section.name}
+                                                    </p>
                                                     <p className="truncate text-sm text-muted-foreground">
-                                                        {section.area ? `${section.area} acres` : 'No area set'}
-                                                        {section.notes ? ` · ${section.notes}` : ''}
+                                                        {section.area
+                                                            ? `${section.area} acres`
+                                                            : 'No area set'}
+                                                        {section.notes
+                                                            ? ` · ${section.notes}`
+                                                            : ''}
                                                     </p>
                                                 </div>
                                                 <div className="flex items-center gap-3">
                                                     <Badge
-                                                        variant={section.status === 'leased' ? 'default' : 'secondary'}
+                                                        variant={
+                                                            section.status ===
+                                                            'leased'
+                                                                ? 'default'
+                                                                : 'secondary'
+                                                        }
                                                     >
                                                         {section.status}
                                                     </Badge>
@@ -270,23 +367,39 @@ export default function LandParcelShow({
                                                             variant="outline"
                                                             onClick={() =>
                                                                 setLeaseSectionId(
-                                                                    leaseSectionId === section.id ? null : section.id,
+                                                                    leaseSectionId ===
+                                                                        section.id
+                                                                        ? null
+                                                                        : section.id,
                                                                 )
                                                             }
                                                         >
                                                             <FileText className="size-4" />
-                                                            {leaseSectionId === section.id ? 'Close' : 'Lease'}
+                                                            {leaseSectionId ===
+                                                            section.id
+                                                                ? 'Close'
+                                                                : 'Lease'}
                                                         </Button>
                                                     )}
                                                     {canManageSections && (
                                                         <Form
-                                                            {...destroySection.form({
-                                land_parcel: parcel.slug,
-                                land_parcel_section: section.id,
-                            })}
-                                                            options={{ preserveScroll: true }}
+                                                            {...destroySection.form(
+                                                                {
+                                                                    land_parcel:
+                                                                        parcel.slug,
+                                                                    land_parcel_section:
+                                                                        section.id,
+                                                                },
+                                                            )}
+                                                            options={{
+                                                                preserveScroll: true,
+                                                            }}
                                                         >
-                                                            <Button size="sm" variant="ghost" type="submit">
+                                                            <Button
+                                                                size="sm"
+                                                                variant="ghost"
+                                                                type="submit"
+                                                            >
                                                                 <Trash2 className="size-4" />
                                                             </Button>
                                                         </Form>
@@ -297,41 +410,76 @@ export default function LandParcelShow({
                                             {leaseSectionId === section.id && (
                                                 <Form
                                                     {...lease.form({
-                                land_parcel: parcel.slug,
-                                land_parcel_section: section.id,
-                            })}
-                                                    options={{ preserveScroll: true }}
-                                                    onSuccess={() => setLeaseSectionId(null)}
+                                                        land_parcel:
+                                                            parcel.slug,
+                                                        land_parcel_section:
+                                                            section.id,
+                                                    })}
+                                                    options={{
+                                                        preserveScroll: true,
+                                                    }}
+                                                    onSuccess={() =>
+                                                        setLeaseSectionId(null)
+                                                    }
                                                     className="mt-4 grid gap-4 rounded-lg border border-input p-4 md:grid-cols-2"
                                                 >
-                                                    {({ processing, errors }) => (
+                                                    {({
+                                                        processing,
+                                                        errors,
+                                                    }) => (
                                                         <>
                                                             <div className="grid gap-2 md:col-span-2">
-                                <p className="text-sm font-medium">
-                                    Lease <span className="text-foreground">{section.name}</span> to a tenant
-                                </p>
-                            </div>
+                                                                <p className="text-sm font-medium">
+                                                                    Lease{' '}
+                                                                    <span className="text-foreground">
+                                                                        {
+                                                                            section.name
+                                                                        }
+                                                                    </span>{' '}
+                                                                    to a tenant
+                                                                </p>
+                                                            </div>
                                                             <div className="grid gap-2">
-                                                                <Label htmlFor={`tenant-name-${section.id}`}>Tenant name</Label>
+                                                                <Label
+                                                                    htmlFor={`tenant-name-${section.id}`}
+                                                                >
+                                                                    Tenant name
+                                                                </Label>
                                                                 <Input
                                                                     id={`tenant-name-${section.id}`}
                                                                     name="tenant_name"
                                                                     placeholder="Jane Doe"
                                                                 />
-                                                                <InputError message={errors.tenant_name} />
+                                                                <InputError
+                                                                    message={
+                                                                        errors.tenant_name
+                                                                    }
+                                                                />
                                                             </div>
                                                             <div className="grid gap-2">
-                                                                <Label htmlFor={`tenant-email-${section.id}`}>Tenant email</Label>
+                                                                <Label
+                                                                    htmlFor={`tenant-email-${section.id}`}
+                                                                >
+                                                                    Tenant email
+                                                                </Label>
                                                                 <Input
                                                                     id={`tenant-email-${section.id}`}
                                                                     name="tenant_email"
                                                                     type="email"
                                                                     placeholder="jane@example.com"
                                                                 />
-                                                                <InputError message={errors.tenant_email} />
+                                                                <InputError
+                                                                    message={
+                                                                        errors.tenant_email
+                                                                    }
+                                                                />
                                                             </div>
                                                             <div className="grid gap-2">
-                                                                <Label htmlFor={`rent-${section.id}`}>Rent amount</Label>
+                                                                <Label
+                                                                    htmlFor={`rent-${section.id}`}
+                                                                >
+                                                                    Rent amount
+                                                                </Label>
                                                                 <Input
                                                                     id={`rent-${section.id}`}
                                                                     name="rent_amount"
@@ -341,28 +489,52 @@ export default function LandParcelShow({
                                                                     required
                                                                     placeholder="45000"
                                                                 />
-                                                                <InputError message={errors.rent_amount} />
+                                                                <InputError
+                                                                    message={
+                                                                        errors.rent_amount
+                                                                    }
+                                                                />
                                                             </div>
                                                             <div className="grid gap-2">
-                                                                <Label htmlFor={`freq-${section.id}`}>Frequency</Label>
+                                                                <Label
+                                                                    htmlFor={`freq-${section.id}`}
+                                                                >
+                                                                    Frequency
+                                                                </Label>
                                                                 <Input
                                                                     id={`freq-${section.id}`}
                                                                     name="rent_frequency"
                                                                     placeholder="monthly"
                                                                 />
-                                                                <InputError message={errors.rent_frequency} />
+                                                                <InputError
+                                                                    message={
+                                                                        errors.rent_frequency
+                                                                    }
+                                                                />
                                                             </div>
                                                             <div className="grid gap-2">
-                                                                <Label htmlFor={`currency-${section.id}`}>Currency</Label>
+                                                                <Label
+                                                                    htmlFor={`currency-${section.id}`}
+                                                                >
+                                                                    Currency
+                                                                </Label>
                                                                 <Input
                                                                     id={`currency-${section.id}`}
                                                                     name="currency"
                                                                     placeholder="KES"
                                                                 />
-                                                                <InputError message={errors.currency} />
+                                                                <InputError
+                                                                    message={
+                                                                        errors.currency
+                                                                    }
+                                                                />
                                                             </div>
                                                             <div className="grid gap-2">
-                                                                <Label htmlFor={`deposit-${section.id}`}>Deposit</Label>
+                                                                <Label
+                                                                    htmlFor={`deposit-${section.id}`}
+                                                                >
+                                                                    Deposit
+                                                                </Label>
                                                                 <Input
                                                                     id={`deposit-${section.id}`}
                                                                     name="deposit"
@@ -371,35 +543,66 @@ export default function LandParcelShow({
                                                                     min="0"
                                                                     placeholder="90000"
                                                                 />
-                                                                <InputError message={errors.deposit} />
+                                                                <InputError
+                                                                    message={
+                                                                        errors.deposit
+                                                                    }
+                                                                />
                                                             </div>
                                                             <div className="grid gap-2">
-                                                                <Label htmlFor={`starts-${section.id}`}>Start date</Label>
+                                                                <Label
+                                                                    htmlFor={`starts-${section.id}`}
+                                                                >
+                                                                    Start date
+                                                                </Label>
                                                                 <Input
                                                                     id={`starts-${section.id}`}
                                                                     name="starts_at"
                                                                     type="date"
                                                                     required
                                                                 />
-                                                                <InputError message={errors.starts_at} />
+                                                                <InputError
+                                                                    message={
+                                                                        errors.starts_at
+                                                                    }
+                                                                />
                                                             </div>
                                                             <div className="grid gap-2">
-                                                                <Label htmlFor={`ends-${section.id}`}>End date</Label>
+                                                                <Label
+                                                                    htmlFor={`ends-${section.id}`}
+                                                                >
+                                                                    End date
+                                                                </Label>
                                                                 <Input
                                                                     id={`ends-${section.id}`}
                                                                     name="ends_at"
                                                                     type="date"
                                                                 />
-                                                                <InputError message={errors.ends_at} />
+                                                                <InputError
+                                                                    message={
+                                                                        errors.ends_at
+                                                                    }
+                                                                />
                                                             </div>
                                                             <div className="flex items-end gap-2 md:col-span-2">
-                                                                <Button type="submit" disabled={processing}>
-                                                                    {processing ? 'Creating…' : 'Create lease'}
+                                                                <Button
+                                                                    type="submit"
+                                                                    disabled={
+                                                                        processing
+                                                                    }
+                                                                >
+                                                                    {processing
+                                                                        ? 'Creating…'
+                                                                        : 'Create lease'}
                                                                 </Button>
                                                                 <Button
                                                                     type="button"
                                                                     variant="ghost"
-                                                                    onClick={() => setLeaseSectionId(null)}
+                                                                    onClick={() =>
+                                                                        setLeaseSectionId(
+                                                                            null,
+                                                                        )
+                                                                    }
                                                                 >
                                                                     Cancel
                                                                 </Button>
@@ -419,14 +622,23 @@ export default function LandParcelShow({
                         <div className="rounded-xl border border-input p-6">
                             <h3 className="text-sm font-semibold">Managers</h3>
                             {managers.length === 0 ? (
-                                <p className="mt-2 text-sm text-muted-foreground">No managers assigned.</p>
+                                <p className="mt-2 text-sm text-muted-foreground">
+                                    No managers assigned.
+                                </p>
                             ) : (
                                 <ul className="mt-3 space-y-2 text-sm">
                                     {managers.map((manager) => (
-                                        <li key={manager.id} className="flex items-center gap-2">
-                                            <span className="font-medium">{manager.name}</span>
+                                        <li
+                                            key={manager.id}
+                                            className="flex items-center gap-2"
+                                        >
+                                            <span className="font-medium">
+                                                {manager.name}
+                                            </span>
                                             {manager.sub_role && (
-                                                <span className="text-muted-foreground">{manager.sub_role}</span>
+                                                <span className="text-muted-foreground">
+                                                    {manager.sub_role}
+                                                </span>
                                             )}
                                         </li>
                                     ))}
@@ -436,35 +648,55 @@ export default function LandParcelShow({
 
                         {canDeleteLandParcel && (
                             <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-6">
-                                <h3 className="text-sm font-semibold text-destructive">Danger zone</h3>
+                                <h3 className="text-sm font-semibold text-destructive">
+                                    Danger zone
+                                </h3>
                                 <p className="mt-2 text-sm text-muted-foreground">
-                                    Removing this parcel is permanent and cannot be undone.
+                                    Removing this parcel is permanent and cannot
+                                    be undone.
                                 </p>
                                 <Dialog>
                                     <DialogTrigger asChild>
-                                        <Button variant="destructive" className="mt-4" type="button">
+                                        <Button
+                                            variant="destructive"
+                                            className="mt-4"
+                                            type="button"
+                                        >
                                             <Trash2 className="size-4" />
                                             Remove parcel
                                         </Button>
                                     </DialogTrigger>
                                     <DialogContent>
-                                        <DialogTitle>Remove {parcel.name} from {organization.name}?</DialogTitle>
+                                        <DialogTitle>
+                                            Remove {parcel.name} from{' '}
+                                            {organization.name}?
+                                        </DialogTitle>
                                         <DialogDescription>
-                                            This permanently deletes the parcel and its photos. Please enter
-                                            your password to confirm.
+                                            This permanently deletes the parcel
+                                            and its photos. Please enter your
+                                            password to confirm.
                                         </DialogDescription>
 
                                         <Form
                                             {...destroy.form(parcel.slug)}
                                             options={{ preserveScroll: true }}
-                                            onError={() => passwordInput.current?.focus()}
+                                            onError={() =>
+                                                passwordInput.current?.focus()
+                                            }
                                             resetOnSuccess
                                             className="space-y-6"
                                         >
-                                            {({ resetAndClearErrors, processing, errors }) => (
+                                            {({
+                                                resetAndClearErrors,
+                                                processing,
+                                                errors,
+                                            }) => (
                                                 <>
                                                     <div className="grid gap-2">
-                                                        <Label htmlFor="password" className="sr-only">
+                                                        <Label
+                                                            htmlFor="password"
+                                                            className="sr-only"
+                                                        >
                                                             Password
                                                         </Label>
                                                         <PasswordInput
@@ -474,19 +706,31 @@ export default function LandParcelShow({
                                                             placeholder="Password"
                                                             autoComplete="current-password"
                                                         />
-                                                        <InputError message={errors.password} />
+                                                        <InputError
+                                                            message={
+                                                                errors.password
+                                                            }
+                                                        />
                                                     </div>
 
                                                     <DialogFooter className="gap-2">
                                                         <DialogClose asChild>
                                                             <Button
                                                                 variant="secondary"
-                                                                onClick={() => resetAndClearErrors()}
+                                                                onClick={() =>
+                                                                    resetAndClearErrors()
+                                                                }
                                                             >
                                                                 Cancel
                                                             </Button>
                                                         </DialogClose>
-                                                        <Button variant="destructive" disabled={processing} asChild>
+                                                        <Button
+                                                            variant="destructive"
+                                                            disabled={
+                                                                processing
+                                                            }
+                                                            asChild
+                                                        >
                                                             <button
                                                                 type="submit"
                                                                 data-test="confirm-remove-land-parcel-button"
@@ -506,11 +750,15 @@ export default function LandParcelShow({
                 </div>
             </div>
 
-            <Dialog open={agreementHtml !== null} onOpenChange={(open) => !open && setAgreementHtml(null)}>
+            <Dialog
+                open={agreementHtml !== null}
+                onOpenChange={(open) => !open && setAgreementHtml(null)}
+            >
                 <DialogContent className="max-w-2xl">
                     <DialogTitle>Lease agreement</DialogTitle>
                     <DialogDescription>
-                        Generated from your organization's lease template and the lease details.
+                        Generated from your organization's lease template and
+                        the lease details.
                     </DialogDescription>
                     {agreementHtml && (
                         <div
@@ -519,7 +767,9 @@ export default function LandParcelShow({
                         />
                     )}
                     <DialogFooter>
-                        <Button onClick={() => setAgreementHtml(null)}>Close</Button>
+                        <Button onClick={() => setAgreementHtml(null)}>
+                            Close
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

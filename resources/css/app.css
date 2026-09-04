@@ -81,128 +81,128 @@
 
 :root {
     /* Warm Earth base surfaces */
-    --background: #F5F2EB;
-    --foreground: #2A2621;
-    --card: #FAF8F5;
-    --card-foreground: #2A2621;
-    --card-hi: #FFFFFF;
-    --popover: #FAF8F5;
-    --popover-foreground: #2A2621;
+    --background: #f5f2eb;
+    --foreground: #2a2621;
+    --card: #faf8f5;
+    --card-foreground: #2a2621;
+    --card-hi: #ffffff;
+    --popover: #faf8f5;
+    --popover-foreground: #2a2621;
 
     /* Brand (see ui-design-system.md) */
-    --brand-primary: #C87A53;
-    --brand-primary-600: #A85A36;
-    --brand-primary-100: #F6E7DE;
-    --brand-secondary: #2E2622;
-    --brand-accent: #0E7C7E;
-    --brand-accent-100: #D7EEED;
+    --brand-primary: #c87a53;
+    --brand-primary-600: #a85a36;
+    --brand-primary-100: #f6e7de;
+    --brand-secondary: #2e2622;
+    --brand-accent: #0e7c7e;
+    --brand-accent-100: #d7eeed;
 
     /* shadcn primary = AA-safe terracotta button fill */
-    --primary: #A85A36;
-    --primary-foreground: #FFFFFF;
-    --secondary: #EDE7DD;
-    --secondary-foreground: #2A2621;
-    --muted: #F0ECE4;
-    --muted-foreground: #6B635A;
-    --accent: #F6E7DE;
-    --accent-foreground: #2A2621;
+    --primary: #a85a36;
+    --primary-foreground: #ffffff;
+    --secondary: #ede7dd;
+    --secondary-foreground: #2a2621;
+    --muted: #f0ece4;
+    --muted-foreground: #6b635a;
+    --accent: #f6e7de;
+    --accent-foreground: #2a2621;
 
     /* Functional / semantic (protected, multi-tenant) */
-    --destructive: #C53030;
-    --destructive-foreground: #FFFFFF;
-    --action-view: #2B6CB0;
+    --destructive: #c53030;
+    --destructive-foreground: #ffffff;
+    --action-view: #2b6cb0;
     --action-edit: #276749;
-    --action-danger: #C53030;
+    --action-danger: #c53030;
     --status-success: #276749;
-    --status-danger: #C53030;
-    --status-warning: #B7791F;
-    --status-info: #2B6CB0;
+    --status-danger: #c53030;
+    --status-warning: #b7791f;
+    --status-info: #2b6cb0;
     --success: #276749;
-    --info: #2B6CB0;
-    --warning: #B7791F;
-    --warning-foreground: #7C4A03;
+    --info: #2b6cb0;
+    --warning: #b7791f;
+    --warning-foreground: #7c4a03;
 
-    --border: #E7E1D6;
-    --input: #E7E1D6;
-    --ring: #A85A36;
+    --border: #e7e1d6;
+    --input: #e7e1d6;
+    --ring: #a85a36;
 
     /* Charts */
-    --chart-1: #C87A53;
-    --chart-2: #0E7C7E;
-    --chart-3: #2B6CB0;
+    --chart-1: #c87a53;
+    --chart-2: #0e7c7e;
+    --chart-3: #2b6cb0;
     --chart-4: #276749;
-    --chart-5: #B7791F;
+    --chart-5: #b7791f;
 
     --radius: 0.625rem;
 
     /* Sidebar = espresso chrome, terracotta active indicator */
-    --sidebar: #2E2622;
-    --sidebar-foreground: #EAE6DF;
-    --sidebar-primary: #C87A53;
-    --sidebar-primary-foreground: #FFFFFF;
-    --sidebar-accent: #3B2A20;
-    --sidebar-accent-foreground: #FFFFFF;
-    --sidebar-border: #3B2F2A;
-    --sidebar-ring: #C87A53;
+    --sidebar: #2e2622;
+    --sidebar-foreground: #eae6df;
+    --sidebar-primary: #c87a53;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: #3b2a20;
+    --sidebar-accent-foreground: #ffffff;
+    --sidebar-border: #3b2f2a;
+    --sidebar-ring: #c87a53;
 }
 
 .dark {
-    --background: #1A1917;
-    --foreground: #EAE6DF;
+    --background: #1a1917;
+    --foreground: #eae6df;
     --card: #242220;
-    --card-foreground: #EAE6DF;
-    --card-hi: #2E2B27;
+    --card-foreground: #eae6df;
+    --card-hi: #2e2b27;
     --popover: #242220;
-    --popover-foreground: #EAE6DF;
+    --popover-foreground: #eae6df;
 
-    --brand-primary: #E2956C;
-    --brand-primary-600: #C87A53;
-    --brand-primary-100: #3A2A20;
-    --brand-secondary: #14110D;
-    --brand-accent: #2BB3AC;
-    --brand-accent-100: #13343A;
+    --brand-primary: #e2956c;
+    --brand-primary-600: #c87a53;
+    --brand-primary-100: #3a2a20;
+    --brand-secondary: #14110d;
+    --brand-accent: #2bb3ac;
+    --brand-accent-100: #13343a;
 
-    --primary: #C87A53;
-    --primary-foreground: #1A1917;
-    --secondary: #2E2B27;
-    --secondary-foreground: #EAE6DF;
-    --muted: #26231F;
-    --muted-foreground: #A39B90;
-    --accent: #3A2A20;
-    --accent-foreground: #EAE6DF;
+    --primary: #c87a53;
+    --primary-foreground: #1a1917;
+    --secondary: #2e2b27;
+    --secondary-foreground: #eae6df;
+    --muted: #26231f;
+    --muted-foreground: #a39b90;
+    --accent: #3a2a20;
+    --accent-foreground: #eae6df;
 
-    --destructive: #E57373;
-    --destructive-foreground: #1A1917;
-    --action-view: #5B9BD5;
-    --action-edit: #4FA877;
-    --action-danger: #E57373;
-    --status-success: #4FA877;
-    --status-danger: #E57373;
-    --status-warning: #E0A458;
-    --status-info: #5B9BD5;
-    --success: #4FA877;
-    --info: #5B9BD5;
-    --warning: #E0A458;
-    --warning-foreground: #F6E2B8;
+    --destructive: #e57373;
+    --destructive-foreground: #1a1917;
+    --action-view: #5b9bd5;
+    --action-edit: #4fa877;
+    --action-danger: #e57373;
+    --status-success: #4fa877;
+    --status-danger: #e57373;
+    --status-warning: #e0a458;
+    --status-info: #5b9bd5;
+    --success: #4fa877;
+    --info: #5b9bd5;
+    --warning: #e0a458;
+    --warning-foreground: #f6e2b8;
 
-    --border: #36322D;
-    --input: #36322D;
-    --ring: #C87A53;
+    --border: #36322d;
+    --input: #36322d;
+    --ring: #c87a53;
 
-    --chart-1: #E2956C;
-    --chart-2: #2BB3AC;
-    --chart-3: #5B9BD5;
-    --chart-4: #4FA877;
-    --chart-5: #E0A458;
+    --chart-1: #e2956c;
+    --chart-2: #2bb3ac;
+    --chart-3: #5b9bd5;
+    --chart-4: #4fa877;
+    --chart-5: #e0a458;
 
-    --sidebar: #14110D;
-    --sidebar-foreground: #EAE6DF;
-    --sidebar-primary: #E2956C;
-    --sidebar-primary-foreground: #FFFFFF;
-    --sidebar-accent: #221C16;
-    --sidebar-accent-foreground: #FFFFFF;
-    --sidebar-border: #221C16;
-    --sidebar-ring: #E2956C;
+    --sidebar: #14110d;
+    --sidebar-foreground: #eae6df;
+    --sidebar-primary: #e2956c;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: #221c16;
+    --sidebar-accent-foreground: #ffffff;
+    --sidebar-border: #221c16;
+    --sidebar-ring: #e2956c;
 }
 
 @layer base {

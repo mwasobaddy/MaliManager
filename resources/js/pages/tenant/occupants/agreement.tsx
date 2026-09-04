@@ -11,7 +11,11 @@ type Props = {
  * A chrome-free printable view of a lease agreement. Open it and use
  * "Print" (or Ctrl/Cmd+P) to save as PDF via the browser's print dialog.
  */
-export default function OccupantAgreement({ agreementHtml, documentUrl, occupantName }: Props) {
+export default function OccupantAgreement({
+    agreementHtml,
+    documentUrl,
+    occupantName,
+}: Props) {
     return (
         <>
             <Head title={`Lease agreement — ${occupantName}`} />
@@ -38,14 +42,21 @@ export default function OccupantAgreement({ agreementHtml, documentUrl, occupant
                         dangerouslySetInnerHTML={{ __html: agreementHtml }}
                     />
                 ) : (
-                    <p className="text-muted-foreground">No written agreement for this lease.</p>
+                    <p className="text-muted-foreground">
+                        No written agreement for this lease.
+                    </p>
                 )}
 
                 {documentUrl && (
                     <section className="mt-8 border-t pt-4 print:hidden">
                         <p className="text-sm text-muted-foreground">
                             An uploaded agreement document is also attached:{' '}
-                            <a href={documentUrl} target="_blank" rel="noopener noreferrer" className="text-primary underline">
+                            <a
+                                href={documentUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-primary underline"
+                            >
                                 open document
                             </a>
                         </p>

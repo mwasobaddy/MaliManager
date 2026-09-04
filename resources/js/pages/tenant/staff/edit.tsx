@@ -24,7 +24,11 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { destroy as destroyStaff, index as staffIndex, update } from '@/routes/tenant/staff';
+import {
+    destroy as destroyStaff,
+    index as staffIndex,
+    update,
+} from '@/routes/tenant/staff';
 
 type Organization = {
     id: number;
@@ -59,17 +63,28 @@ type Props = {
     properties: Property[];
 };
 
-export default function StaffEdit({ organization, staff, sub_roles, properties }: Props) {
+export default function StaffEdit({
+    organization,
+    staff,
+    sub_roles,
+    properties,
+}: Props) {
     const { context } = usePage().props;
     const permissions = context?.permissions ?? [];
     const canDelete = permissions.includes('staff.delete');
     const passwordInput = useRef<HTMLInputElement>(null);
-    const [subRoleId, setSubRoleId] = useState(staff.sub_role_id ? String(staff.sub_role_id) : '');
-    const [propertyIds, setPropertyIds] = useState<number[]>(staff.property_ids);
+    const [subRoleId, setSubRoleId] = useState(
+        staff.sub_role_id ? String(staff.sub_role_id) : '',
+    );
+    const [propertyIds, setPropertyIds] = useState<number[]>(
+        staff.property_ids,
+    );
 
     const toggleProperty = (id: number) => {
         setPropertyIds((prev) =>
-            prev.includes(id) ? prev.filter((pid) => pid !== id) : [...prev, id],
+            prev.includes(id)
+                ? prev.filter((pid) => pid !== id)
+                : [...prev, id],
         );
     };
 
@@ -122,7 +137,9 @@ export default function StaffEdit({ organization, staff, sub_roles, properties }
                                 </div>
 
                                 <div className="grid gap-2">
-                                    <Label htmlFor="phone">Phone (optional)</Label>
+                                    <Label htmlFor="phone">
+                                        Phone (optional)
+                                    </Label>
                                     <Input
                                         id="phone"
                                         name="phone"
@@ -135,14 +152,27 @@ export default function StaffEdit({ organization, staff, sub_roles, properties }
 
                                 <div className="grid gap-2">
                                     <Label htmlFor="sub_role_id">Role</Label>
-                                    <input type="hidden" name="sub_role_id" value={subRoleId} />
-                                    <Select value={subRoleId} onValueChange={setSubRoleId}>
-                                        <SelectTrigger id="sub_role_id" className="w-full">
+                                    <input
+                                        type="hidden"
+                                        name="sub_role_id"
+                                        value={subRoleId}
+                                    />
+                                    <Select
+                                        value={subRoleId}
+                                        onValueChange={setSubRoleId}
+                                    >
+                                        <SelectTrigger
+                                            id="sub_role_id"
+                                            className="w-full"
+                                        >
                                             <SelectValue placeholder="Select a role" />
                                         </SelectTrigger>
                                         <SelectContent>
                                             {sub_roles.map((role) => (
-                                                <SelectItem key={role.id} value={String(role.id)}>
+                                                <SelectItem
+                                                    key={role.id}
+                                                    value={String(role.id)}
+                                                >
                                                     {role.name}
                                                 </SelectItem>
                                             ))}
@@ -160,7 +190,8 @@ export default function StaffEdit({ organization, staff, sub_roles, properties }
                                 />
                                 {properties.length === 0 ? (
                                     <p className="text-sm text-muted-foreground">
-                                        No properties yet. Create a property before assigning staff.
+                                        No properties yet. Create a property
+                                        before assigning staff.
                                     </p>
                                 ) : (
                                     <div className="grid gap-3">
@@ -170,22 +201,34 @@ export default function StaffEdit({ organization, staff, sub_roles, properties }
                                                 className="flex items-center gap-3 rounded-lg border border-input p-3 text-sm transition-colors hover:bg-muted"
                                             >
                                                 <Checkbox
-                                                    checked={propertyIds.includes(property.id)}
+                                                    checked={propertyIds.includes(
+                                                        property.id,
+                                                    )}
                                                     onCheckedChange={() =>
-                                                        toggleProperty(property.id)
+                                                        toggleProperty(
+                                                            property.id,
+                                                        )
                                                     }
                                                 />
                                                 <input
                                                     type="hidden"
                                                     name="property_ids[]"
                                                     value={String(property.id)}
-                                                    disabled={!propertyIds.includes(property.id)}
+                                                    disabled={
+                                                        !propertyIds.includes(
+                                                            property.id,
+                                                        )
+                                                    }
                                                 />
                                                 <Building2 className="size-4 text-muted-foreground" />
-                                                <span className="font-medium">{property.name}</span>
+                                                <span className="font-medium">
+                                                    {property.name}
+                                                </span>
                                             </label>
                                         ))}
-                                        <InputError message={errors.property_ids} />
+                                        <InputError
+                                            message={errors.property_ids}
+                                        />
                                     </div>
                                 )}
                             </div>
@@ -193,7 +236,9 @@ export default function StaffEdit({ organization, staff, sub_roles, properties }
                             <div className="flex flex-wrap items-center justify-between gap-4">
                                 <div className="flex gap-3">
                                     <Button type="submit" disabled={processing}>
-                                        {processing ? 'Saving…' : 'Save changes'}
+                                        {processing
+                                            ? 'Saving…'
+                                            : 'Save changes'}
                                     </Button>
                                     <Button asChild variant="outline">
                                         <Link href={staffIndex()}>Cancel</Link>
@@ -203,29 +248,42 @@ export default function StaffEdit({ organization, staff, sub_roles, properties }
                                 {canDelete && (
                                     <Dialog>
                                         <DialogTrigger asChild>
-                                            <Button variant="destructive" type="button">
+                                            <Button
+                                                variant="destructive"
+                                                type="button"
+                                            >
                                                 <Trash2 className="size-4" />
                                                 Remove staff
                                             </Button>
                                         </DialogTrigger>
                                         <DialogContent>
                                             <DialogTitle>
-                                                Remove {staff.name} from {organization.name}?
+                                                Remove {staff.name} from{' '}
+                                                {organization.name}?
                                             </DialogTitle>
                                             <DialogDescription>
-                                                This will soft-delete their account and revoke access
-                                                to managed properties. Please enter your password to
-                                                confirm.
+                                                This will soft-delete their
+                                                account and revoke access to
+                                                managed properties. Please enter
+                                                your password to confirm.
                                             </DialogDescription>
 
                                             <Form
                                                 {...destroyStaff.form(staff.id)}
-                                                options={{ preserveScroll: true }}
-                                                onError={() => passwordInput.current?.focus()}
+                                                options={{
+                                                    preserveScroll: true,
+                                                }}
+                                                onError={() =>
+                                                    passwordInput.current?.focus()
+                                                }
                                                 resetOnSuccess
                                                 className="space-y-6"
                                             >
-                                                {({ resetAndClearErrors, processing, errors }) => (
+                                                {({
+                                                    resetAndClearErrors,
+                                                    processing,
+                                                    errors,
+                                                }) => (
                                                     <>
                                                         <div className="grid gap-2">
                                                             <Label
@@ -238,16 +296,24 @@ export default function StaffEdit({ organization, staff, sub_roles, properties }
                                                             <PasswordInput
                                                                 id="password"
                                                                 name="password"
-                                                                ref={passwordInput}
+                                                                ref={
+                                                                    passwordInput
+                                                                }
                                                                 placeholder="Password"
                                                                 autoComplete="current-password"
                                                             />
 
-                                                            <InputError message={errors.password} />
+                                                            <InputError
+                                                                message={
+                                                                    errors.password
+                                                                }
+                                                            />
                                                         </div>
 
                                                         <DialogFooter className="gap-2">
-                                                            <DialogClose asChild>
+                                                            <DialogClose
+                                                                asChild
+                                                            >
                                                                 <Button
                                                                     variant="secondary"
                                                                     onClick={() =>
@@ -260,7 +326,9 @@ export default function StaffEdit({ organization, staff, sub_roles, properties }
 
                                                             <Button
                                                                 variant="destructive"
-                                                                disabled={processing}
+                                                                disabled={
+                                                                    processing
+                                                                }
                                                                 asChild
                                                             >
                                                                 <button

@@ -31,7 +31,11 @@ export default function AuditShow({ audit }: Props) {
 
             <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-4">
                 <div className="flex flex-wrap items-center justify-between gap-4">
-                    <Heading variant="small" title="Audit entry" description="Full details of a single recorded action." />
+                    <Heading
+                        variant="small"
+                        title="Audit entry"
+                        description="Full details of a single recorded action."
+                    />
                     <Button asChild variant="outline">
                         <Link href={auditIndex()}>
                             <ArrowLeft className="size-4" />
@@ -46,20 +50,45 @@ export default function AuditShow({ audit }: Props) {
                             <CardTitle>Overview</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-3 text-sm">
-                            <Row label="When" value={new Date(audit.created_at).toLocaleString()} />
+                            <Row
+                                label="When"
+                                value={new Date(
+                                    audit.created_at,
+                                ).toLocaleString()}
+                            />
                             <Row label="Action" value={audit.event ?? '—'} />
-                            <Row label="Category" value={audit.log_name ?? '—'} />
-                            <Row label="Description" value={audit.description ?? '—'} />
+                            <Row
+                                label="Category"
+                                value={audit.log_name ?? '—'}
+                            />
+                            <Row
+                                label="Description"
+                                value={audit.description ?? '—'}
+                            />
                             <Row
                                 label="Actor"
-                                value={audit.causer ? `${audit.causer.name} (${audit.causer.email})` : 'System'}
+                                value={
+                                    audit.causer
+                                        ? `${audit.causer.name} (${audit.causer.email})`
+                                        : 'System'
+                                }
                             />
                             <Row
                                 label="Resource"
-                                value={audit.subject ? `${audit.subject.type} #${audit.subject.id}` : '—'}
+                                value={
+                                    audit.subject
+                                        ? `${audit.subject.type} #${audit.subject.id}`
+                                        : '—'
+                                }
                             />
-                            <Row label="IP address" value={audit.ip_address ?? '—'} />
-                            <Row label="User agent" value={audit.user_agent ?? '—'} />
+                            <Row
+                                label="IP address"
+                                value={audit.ip_address ?? '—'}
+                            />
+                            <Row
+                                label="User agent"
+                                value={audit.user_agent ?? '—'}
+                            />
                         </CardContent>
                     </Card>
 
@@ -68,10 +97,17 @@ export default function AuditShow({ audit }: Props) {
                             <CardTitle>Context</CardTitle>
                         </CardHeader>
                         <CardContent className="text-sm">
-                            <Row label="Subject type" value={audit.subject_type ?? '—'} />
+                            <Row
+                                label="Subject type"
+                                value={audit.subject_type ?? '—'}
+                            />
                             <Row
                                 label="Subject id"
-                                value={audit.subject_id != null ? String(audit.subject_id) : '—'}
+                                value={
+                                    audit.subject_id != null
+                                        ? String(audit.subject_id)
+                                        : '—'
+                                }
                             />
                             {audit.properties && (
                                 <pre className="mt-3 overflow-x-auto rounded bg-muted p-3 text-xs">

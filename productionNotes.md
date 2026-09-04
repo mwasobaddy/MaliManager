@@ -24,12 +24,12 @@ your actual registered domain everywhere.**
 
 ## 2. Domain & DNS configuration
 
-| Record | Type | Value |
-| --- | --- | --- |
-| `malimanager.test` | `A` | Your server IPv4 |
-| `*.malimanager.test` | `A` | Your server IPv4 (**required** — org subdomains) |
-| `malimanager.test` | `AAAA` | Optional: server IPv6 |
-| `*.malimanager.test` | `AAAA` | Optional: server IPv6 |
+| Record               | Type   | Value                                            |
+| -------------------- | ------ | ------------------------------------------------ |
+| `malimanager.test`   | `A`    | Your server IPv4                                 |
+| `*.malimanager.test` | `A`    | Your server IPv4 (**required** — org subdomains) |
+| `malimanager.test`   | `AAAA` | Optional: server IPv6                            |
+| `*.malimanager.test` | `AAAA` | Optional: server IPv6                            |
 
 The wildcard `*.malimanager.test` record is the single most important entry.
 Without it, org subdomains (`{slug}.malimanager.test`) will not resolve.
@@ -280,7 +280,7 @@ pays nothing for tokens.
   profile page.
 - The weekly digest (`ai:send-digest`, Mondays 08:00) includes an AI narrative
   only when the organization has a key; otherwise it degrades to numbers-only.
-- **NVIDIA caveat**: NIM keys only work for models the account has *activated*.
+- **NVIDIA caveat**: NIM keys only work for models the account has _activated_.
   After generating a key at build.nvidia.com, open each desired model page and
   run one request ("Try it") to unlock it — otherwise calls return
   `404 Function not found for account` even though `/v1/models` lists them.
@@ -322,8 +322,8 @@ in production:
 
 ## 8. Future / not-yet-wired items
 
-- **Enterprise tier** (`has_dedicated_db`, `has_custom_domain`) is *not yet
-  implemented*. When it is: dedicated DB provisioning + per-tenant DB migrations
+- **Enterprise tier** (`has_dedicated_db`, `has_custom_domain`) is _not yet
+  implemented_. When it is: dedicated DB provisioning + per-tenant DB migrations
   will require the `DatabaseTenancyBootstrapper` to be enabled for those tenants,
   and custom domains will need SAN certs / validation.
 - **Rate limiters** already exist for `login` and `otp` (`routes/web.php`); tune
@@ -360,5 +360,5 @@ in production:
 
 ---
 
-*Keep this file updated whenever a new production requirement is discovered
-(e.g. domain changes, new integrations, worker topology).*
+_Keep this file updated whenever a new production requirement is discovered
+(e.g. domain changes, new integrations, worker topology)._

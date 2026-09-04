@@ -48,10 +48,18 @@ const priorityStyles: Record<string, string> = {
     urgent: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
 };
 
-export default function MaintenanceIndex({ requests, filters, statuses, priorities, staff }: Props) {
+export default function MaintenanceIndex({
+    requests,
+    filters,
+    statuses,
+    priorities,
+    staff,
+}: Props) {
     const { context } = usePage().props;
     const canEdit = (context?.permissions ?? []).includes('maintenance.edit');
-    const canDelete = (context?.permissions ?? []).includes('maintenance.delete');
+    const canDelete = (context?.permissions ?? []).includes(
+        'maintenance.delete',
+    );
     const propertySlug = context?.property?.slug ?? '';
 
     const setFilter = (key: 'status' | 'priority', value: string) => {
@@ -89,21 +97,43 @@ export default function MaintenanceIndex({ requests, filters, statuses, prioriti
                         description="Requests raised by occupants and staff across your properties."
                     />
                     <div className="flex gap-2">
-                        <Select value={filters.status || 'all'} onValueChange={(v) => setFilter('status', v)}>
-                            <SelectTrigger className="w-40"><SelectValue placeholder="Status" /></SelectTrigger>
+                        <Select
+                            value={filters.status || 'all'}
+                            onValueChange={(v) => setFilter('status', v)}
+                        >
+                            <SelectTrigger className="w-40">
+                                <SelectValue placeholder="Status" />
+                            </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="all">All statuses</SelectItem>
+                                <SelectItem value="all">
+                                    All statuses
+                                </SelectItem>
                                 {statuses.map((s) => (
-                                    <SelectItem key={s} value={s}>{s.replace('_', ' ')}</SelectItem>
+                                    <SelectItem key={s} value={s}>
+                                        {s.replace('_', ' ')}
+                                    </SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
-                        <Select value={filters.priority || 'all'} onValueChange={(v) => setFilter('priority', v)}>
-                            <SelectTrigger className="w-40"><SelectValue placeholder="Priority" /></SelectTrigger>
+                        <Select
+                            value={filters.priority || 'all'}
+                            onValueChange={(v) => setFilter('priority', v)}
+                        >
+                            <SelectTrigger className="w-40">
+                                <SelectValue placeholder="Priority" />
+                            </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="all">All priorities</SelectItem>
+                                <SelectItem value="all">
+                                    All priorities
+                                </SelectItem>
                                 {priorities.map((p) => (
-                                    <SelectItem key={p} value={p} className="capitalize">{p}</SelectItem>
+                                    <SelectItem
+                                        key={p}
+                                        value={p}
+                                        className="capitalize"
+                                    >
+                                        {p}
+                                    </SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
@@ -111,7 +141,9 @@ export default function MaintenanceIndex({ requests, filters, statuses, prioriti
                 </div>
 
                 {requests.data.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No maintenance requests found.</p>
+                    <p className="text-sm text-muted-foreground">
+                        No maintenance requests found.
+                    </p>
                 ) : (
                     <div className="space-y-3">
                         {requests.data.map((item) => (
@@ -123,14 +155,26 @@ export default function MaintenanceIndex({ requests, filters, statuses, prioriti
                                 <div className="flex flex-wrap items-start justify-between gap-2">
                                     <div className="min-w-0 flex-1">
                                         <div className="flex items-center gap-2">
-                                            <span className="font-medium">{item.title}</span>
-                                            <span className={`rounded px-1.5 py-0.5 text-xs capitalize ${priorityStyles[item.priority] ?? ''}`}>
-                                                    {item.priority}
-                                                </span>
-                                            <Badge variant="outline" className="capitalize">{item.status.replace('_', ' ')}</Badge>
+                                            <span className="font-medium">
+                                                {item.title}
+                                            </span>
+                                            <span
+                                                className={`rounded px-1.5 py-0.5 text-xs capitalize ${priorityStyles[item.priority] ?? ''}`}
+                                            >
+                                                {item.priority}
+                                            </span>
+                                            <Badge
+                                                variant="outline"
+                                                className="capitalize"
+                                            >
+                                                {item.status.replace('_', ' ')}
+                                            </Badge>
                                             {item.photo_count > 0 && (
                                                 <span className="text-xs text-muted-foreground">
-                                                    {item.photo_count} photo{item.photo_count > 1 ? 's' : ''}
+                                                    {item.photo_count} photo
+                                                    {item.photo_count > 1
+                                                        ? 's'
+                                                        : ''}
                                                 </span>
                                             )}
                                         </div>
@@ -139,8 +183,12 @@ export default function MaintenanceIndex({ requests, filters, statuses, prioriti
                                         </p>
                                         <p className="mt-1 text-xs text-muted-foreground">
                                             Raised by {item.raised_by ?? '—'}
-                                            {item.unit_name ? ` · ${item.unit_name}` : ''}
-                                            {item.assignee_name ? ` · assigned to ${item.assignee_name}` : ''}
+                                            {item.unit_name
+                                                ? ` · ${item.unit_name}`
+                                                : ''}
+                                            {item.assignee_name
+                                                ? ` · assigned to ${item.assignee_name}`
+                                                : ''}
                                         </p>
                                     </div>
 
@@ -155,45 +203,95 @@ export default function MaintenanceIndex({ requests, filters, statuses, prioriti
                                                             return;
                                                         }
 
-                                                        router.put(`/maintenance/${item.id}`, {
-                                                            assigned_to: Number(value),
-                                                        }, { preserveScroll: true });
+                                                        router.put(
+                                                            `/maintenance/${item.id}`,
+                                                            {
+                                                                assigned_to:
+                                                                    Number(
+                                                                        value,
+                                                                    ),
+                                                            },
+                                                            {
+                                                                preserveScroll: true,
+                                                            },
+                                                        );
                                                     }}
                                                 >
-                                                    <SelectTrigger className="w-40"><SelectValue placeholder="Assign to…" /></SelectTrigger>
+                                                    <SelectTrigger className="w-40">
+                                                        <SelectValue placeholder="Assign to…" />
+                                                    </SelectTrigger>
                                                     <SelectContent>
                                                         {staff.map((member) => (
-                                                            <SelectItem key={member.id} value={String(member.id)}>
+                                                            <SelectItem
+                                                                key={member.id}
+                                                                value={String(
+                                                                    member.id,
+                                                                )}
+                                                            >
                                                                 {member.name}
                                                             </SelectItem>
                                                         ))}
                                                     </SelectContent>
                                                 </Select>
 
-                                                {item.allowed_transitions.length > 0 && (
+                                                {item.allowed_transitions
+                                                    .length > 0 && (
                                                     <Select
                                                         value=""
-                                                        onValueChange={(value) => {
+                                                        onValueChange={(
+                                                            value,
+                                                        ) => {
                                                             if (!value) {
                                                                 return;
                                                             }
 
-                                                            router.put(`/maintenance/${item.id}`, {
-                                                                status: value,
-                                                                resolution_notes:
-                                                                    value === 'resolved' ? window.prompt('Resolution notes:') ?? '' : undefined,
-                                                            }, { preserveScroll: true });
+                                                            router.put(
+                                                                `/maintenance/${item.id}`,
+                                                                {
+                                                                    status: value,
+                                                                    resolution_notes:
+                                                                        value ===
+                                                                        'resolved'
+                                                                            ? (window.prompt(
+                                                                                  'Resolution notes:',
+                                                                              ) ??
+                                                                              '')
+                                                                            : undefined,
+                                                                },
+                                                                {
+                                                                    preserveScroll: true,
+                                                                },
+                                                            );
                                                         }}
                                                     >
-                                                        <SelectTrigger className="w-44"><SelectValue placeholder="Move to…" /></SelectTrigger>
+                                                        <SelectTrigger className="w-44">
+                                                            <SelectValue placeholder="Move to…" />
+                                                        </SelectTrigger>
                                                         <SelectContent>
-                                                            {item.allowed_transitions.map((next) => (
-                                                                <SelectItem key={next} value={next}>
-                                                                    {next === 'in_progress'
-                                                                        ? 'Start work'
-                                                                        : next.charAt(0).toUpperCase() + next.slice(1)}
-                                                                </SelectItem>
-                                                            ))}
+                                                            {item.allowed_transitions.map(
+                                                                (next) => (
+                                                                    <SelectItem
+                                                                        key={
+                                                                            next
+                                                                        }
+                                                                        value={
+                                                                            next
+                                                                        }
+                                                                    >
+                                                                        {next ===
+                                                                        'in_progress'
+                                                                            ? 'Start work'
+                                                                            : next
+                                                                                  .charAt(
+                                                                                      0,
+                                                                                  )
+                                                                                  .toUpperCase() +
+                                                                              next.slice(
+                                                                                  1,
+                                                                              )}
+                                                                    </SelectItem>
+                                                                ),
+                                                            )}
                                                         </SelectContent>
                                                     </Select>
                                                 )}
@@ -206,18 +304,31 @@ export default function MaintenanceIndex({ requests, filters, statuses, prioriti
                                                 size="sm"
                                                 className="text-red-600"
                                                 onClick={() =>
-                                                    router.delete(`/maintenance/${item.id}`, { preserveScroll: true })
+                                                    router.delete(
+                                                        `/maintenance/${item.id}`,
+                                                        {
+                                                            preserveScroll: true,
+                                                        },
+                                                    )
                                                 }
                                             >
                                                 Delete
                                             </Button>
                                         )}
 
-                                        {!canEdit && !canDelete && propertySlug && (
-                                            <Button asChild variant="ghost" size="sm">
-                                                <Link href={`/properties`}>—</Link>
-                                            </Button>
-                                        )}
+                                        {!canEdit &&
+                                            !canDelete &&
+                                            propertySlug && (
+                                                <Button
+                                                    asChild
+                                                    variant="ghost"
+                                                    size="sm"
+                                                >
+                                                    <Link href={`/properties`}>
+                                                        —
+                                                    </Link>
+                                                </Button>
+                                            )}
                                     </div>
                                 </div>
                             </div>
@@ -227,12 +338,25 @@ export default function MaintenanceIndex({ requests, filters, statuses, prioriti
 
                 {requests.last_page > 1 && (
                     <div className="flex gap-1 text-sm">
-                        {Array.from({ length: requests.last_page }, (_, i) => i + 1).map((page) => (
+                        {Array.from(
+                            { length: requests.last_page },
+                            (_, i) => i + 1,
+                        ).map((page) => (
                             <Button
                                 key={page}
-                                variant={page === requests.current_page ? 'default' : 'outline'}
+                                variant={
+                                    page === requests.current_page
+                                        ? 'default'
+                                        : 'outline'
+                                }
                                 size="sm"
-                                onClick={() => router.get(routesIndexUrl(), { page }, { preserveScroll: true })}
+                                onClick={() =>
+                                    router.get(
+                                        routesIndexUrl(),
+                                        { page },
+                                        { preserveScroll: true },
+                                    )
+                                }
                             >
                                 {page}
                             </Button>

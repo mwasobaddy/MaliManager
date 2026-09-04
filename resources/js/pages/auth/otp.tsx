@@ -44,7 +44,12 @@ export default function Otp({ email, status }: Props) {
                                     maxLength={6}
                                     value={code}
                                     onChange={(e) =>
-                                        setCode(e.target.value.replace(/[^0-9]/g, ''))
+                                        setCode(
+                                            e.target.value.replace(
+                                                /[^0-9]/g,
+                                                '',
+                                            ),
+                                        )
                                     }
                                     placeholder="123456"
                                     className="text-center text-lg tracking-widest"
@@ -94,7 +99,10 @@ export default function Otp({ email, status }: Props) {
                             </Button>
                         )}
                     </Form>
-                    <Link href={login()} className="text-muted-foreground hover:text-foreground">
+                    <Link
+                        href={login()}
+                        className="text-muted-foreground hover:text-foreground"
+                    >
                         Use a different email
                     </Link>
                 </div>

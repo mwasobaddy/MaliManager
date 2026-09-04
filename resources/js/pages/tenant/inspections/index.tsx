@@ -30,7 +30,11 @@ export default function InspectionsIndex({ propertySlug, inspections }: Props) {
                         description="Unit walkthroughs with photo-based AI condition reports."
                     />
                     <Button asChild data-test="new-inspection-button">
-                        <Link href={createInspectionRoute({ property: propertySlug })}>
+                        <Link
+                            href={createInspectionRoute({
+                                property: propertySlug,
+                            })}
+                        >
                             <Plus className="size-4" />
                             New inspection
                         </Link>
@@ -38,11 +42,13 @@ export default function InspectionsIndex({ propertySlug, inspections }: Props) {
                 </div>
 
                 {inspections.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No inspections yet.</p>
+                    <p className="text-sm text-muted-foreground">
+                        No inspections yet.
+                    </p>
                 ) : (
                     <table className="w-full text-sm">
                         <thead>
-                            <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
+                            <tr className="border-b text-left text-xs tracking-wide text-muted-foreground uppercase">
                                 <th className="px-3 py-2">Title</th>
                                 <th className="px-3 py-2">Unit</th>
                                 <th className="px-3 py-2">Date</th>
@@ -53,20 +59,37 @@ export default function InspectionsIndex({ propertySlug, inspections }: Props) {
                         </thead>
                         <tbody>
                             {inspections.map((inspection) => (
-                                <tr key={inspection.id} className="border-b last:border-0">
-                                    <td className="px-3 py-2 font-medium">{inspection.title}</td>
-                                    <td className="px-3 py-2">{inspection.unit_name ?? '—'}</td>
-                                    <td className="px-3 py-2">{inspection.inspection_date}</td>
-                                    <td className="px-3 py-2">{inspection.photo_count}</td>
+                                <tr
+                                    key={inspection.id}
+                                    className="border-b last:border-0"
+                                >
+                                    <td className="px-3 py-2 font-medium">
+                                        {inspection.title}
+                                    </td>
+                                    <td className="px-3 py-2">
+                                        {inspection.unit_name ?? '—'}
+                                    </td>
+                                    <td className="px-3 py-2">
+                                        {inspection.inspection_date}
+                                    </td>
+                                    <td className="px-3 py-2">
+                                        {inspection.photo_count}
+                                    </td>
                                     <td className="px-3 py-2">
                                         {inspection.has_report ? (
                                             <Badge>Generated</Badge>
                                         ) : (
-                                            <Badge variant="secondary">Pending</Badge>
+                                            <Badge variant="secondary">
+                                                Pending
+                                            </Badge>
                                         )}
                                     </td>
                                     <td className="px-3 py-2 text-right">
-                                        <Button asChild variant="ghost" size="sm">
+                                        <Button
+                                            asChild
+                                            variant="ghost"
+                                            size="sm"
+                                        >
                                             <Link
                                                 href={`/inspections/${inspection.id}`}
                                                 aria-label={`Open inspection ${inspection.title}`}

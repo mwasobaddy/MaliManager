@@ -5,7 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { index as rolesIndex, update as updateRole } from '@/routes/platform/roles';
+import {
+    index as rolesIndex,
+    update as updateRole,
+} from '@/routes/platform/roles';
 
 type Permission = {
     value: string;
@@ -52,13 +55,23 @@ export default function RoleEdit({ role, permissions }: Props) {
                     </CardHeader>
                     <CardContent className="space-y-3">
                         {permissions.map((permission) => (
-                            <div key={permission.value} className="flex items-center gap-3">
+                            <div
+                                key={permission.value}
+                                className="flex items-center gap-3"
+                            >
                                 <Checkbox
                                     id={permission.value}
-                                    checked={form.data.permissions.includes(permission.value)}
-                                    onCheckedChange={() => toggle(permission.value)}
+                                    checked={form.data.permissions.includes(
+                                        permission.value,
+                                    )}
+                                    onCheckedChange={() =>
+                                        toggle(permission.value)
+                                    }
                                 />
-                                <Label htmlFor={permission.value} className="cursor-pointer">
+                                <Label
+                                    htmlFor={permission.value}
+                                    className="cursor-pointer"
+                                >
                                     {permission.label}
                                 </Label>
                             </div>

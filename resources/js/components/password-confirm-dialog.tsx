@@ -70,13 +70,22 @@ export function PasswordConfirmDialog({
 
                             <DialogFooter className="gap-2">
                                 <DialogClose asChild>
-                                    <Button variant="secondary" onClick={() => resetAndClearErrors()}>
+                                    <Button
+                                        variant="secondary"
+                                        onClick={() => resetAndClearErrors()}
+                                    >
                                         Cancel
                                     </Button>
                                 </DialogClose>
 
-                                <Button variant="destructive" disabled={processing} asChild>
-                                    <button type="submit">{confirmLabel}</button>
+                                <Button
+                                    variant="destructive"
+                                    disabled={processing}
+                                    asChild
+                                >
+                                    <button type="submit">
+                                        {confirmLabel}
+                                    </button>
                                 </Button>
                             </DialogFooter>
                         </>
