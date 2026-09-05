@@ -441,12 +441,30 @@ export default function PropertiesDashboard({
                         )}
 
                         {units.length === 0 ? (
-                            <div className="py-10 text-center text-sm text-muted-foreground">
-                                <Building2 className="mx-auto size-8" />
-                                <p className="mt-3">
-                                    No units yet. Add the first unit to this
-                                    property.
+                            <div className="py-10 text-center">
+                                <Building2 className="mx-auto size-8 text-muted-foreground" />
+                                <p className="mt-3 text-sm font-medium">
+                                    No units yet
                                 </p>
+                                <p className="mt-1 text-sm text-muted-foreground">
+                                    Add your first unit to start managing tenants
+                                    and leases.
+                                </p>
+                                {!addUnit && (
+                                    <Button
+                                        className="mt-4"
+                                        onClick={() => setAddUnit(true)}
+                                        disabled={atUnitLimit}
+                                        title={
+                                            atUnitLimit
+                                                ? 'Your plan allows no more units'
+                                                : undefined
+                                        }
+                                    >
+                                        <Plus className="size-4" />
+                                        Add your first unit
+                                    </Button>
+                                )}
                             </div>
                         ) : (
                             <div className="divide-y divide-border rounded-lg border">

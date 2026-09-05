@@ -16,6 +16,7 @@ use App\Http\Controllers\Tenant\LandParcelSectionController;
 use App\Http\Controllers\Tenant\LeaseController;
 use App\Http\Controllers\Tenant\MaintenanceController;
 use App\Http\Controllers\Tenant\OccupantController;
+use App\Http\Controllers\Tenant\OrganizationDashboardController;
 use App\Http\Controllers\Tenant\PaymentController;
 use App\Http\Controllers\Tenant\PropertyController;
 use App\Http\Controllers\Tenant\ReportController;
@@ -62,6 +63,8 @@ Route::middleware([
         ->name('tenant.impersonate');
 
     Route::middleware(['auth', 'has-property'])->group(function () {
+        Route::get('/overview', [OrganizationDashboardController::class, 'index'])
+            ->name('tenant.overview');
         Route::get('/properties', [PropertyController::class, 'index'])
             ->middleware('sub-permission:property.manage')
             ->name('tenant.properties.index');

@@ -1,7 +1,8 @@
 ---
 paths:
-    - 'app/Services/**'
-    - app/Services/TenantService.php
+  - 'app/Services/**'
+  - app/Services/TenantService.php
+  - app/Services/OrganizationDashboardService.php
 ---
 
 # Services
@@ -13,3 +14,6 @@ All business logic with side effects goes in App\Services extending App\Services
 ## TenantService auto-creates the org subdomain
 
 createOrganization() now also creates the org subdomain {slug}.malimanager.test (base from config('tenancy.subdomain_base')) via $tenant->domains()->create(). Tests asserting onboarding redirects expect the tenant URL http://{slug}.malimanager.test/properties/create.
+
+## Scope org dashboard aggregates to accessible properties
+Every aggregate/stats/series in the organization dashboard (expense totals, maintenance, leases, flags, available years) must be scoped to the current user's accessible property IDs from PropertyAccessService::organizationsWithProperties. Owners see all; staff only their delegated properties. Do not query org-wide without that restriction, or staff leak other properties' figures.
