@@ -1,5 +1,13 @@
 import { usePage } from '@inertiajs/react';
-import { Building2, Layers, MapPin, Map } from 'lucide-react';
+import {
+    ArrowRight,
+    Building2,
+    Layers,
+    LayoutDashboard,
+    MapPin,
+    Map,
+    ShieldCheck,
+} from 'lucide-react';
 import { createContext, useContext, useEffect, useState } from 'react';
 import {
     Dialog,
@@ -58,6 +66,18 @@ function landUrl(organizationDomain: string | null, landSlug: string): string {
     return `${scheme}//${organizationDomain}/land-parcels/${landSlug}`;
 }
 
+// The organization-level overview lives on the tenant subdomain, so an owner
+// leaving the central dashboard crosses back into the tenancy context.
+function orgOverviewUrl(organizationDomain: string | null): string {
+    if (!organizationDomain) {
+        return '/overview';
+    }
+
+    const scheme = window.location.protocol;
+
+    return `${scheme}//${organizationDomain}/overview`;
+}
+
 // The central (platform) dashboard lives off the tenant subdomain. Admins who
 // choose "Continue as admin" leave the current tenant context and land on the
 // central dashboard, identified purely by host (the path is always /dashboard
@@ -103,10 +123,24 @@ export function PropertyPickerProvider({
     const hasAssets = hasProperties || hasLand;
 
     // Only users holding the central "access admin dashboard" permission may
-    // leave the picker without choosing an asset. Everyone else must pick one:
-    // any attempt to escape drops them into a random accessible asset.
+    // leave the picker via the platform admin dashboard.
     const canContinueAsAdmin = permissions.includes('access admin dashboard');
-    const mustChoose = hasAssets && !canContinueAsAdmin;
+
+    // Owners always see the organization overview card for any organization
+    // that has properties; staff only see it once they manage more than one
+    // property (a single delegated property means the property dashboard is
+    // their destination, not an overview).
+    const canAccessOrgDashboard = (organization: OrganizationSummary): boolean =>
+        organization.properties.length > 0 &&
+        (organization.is_owner || organization.properties.length > 1);
+
+    const overallOrganizations = organizations.filter(canAccessOrgDashboard);
+    const canContinueToOrgDashboard = overallOrganizations.length > 0;
+
+    // Unless they have the admin card or an overview card, users must pick an
+    // asset: any attempt to escape drops them into a random accessible asset.
+    const mustChoose =
+        hasAssets && !canContinueAsAdmin && !canContinueToOrgDashboard;
 
     // Persist that the picker was acknowledged so it does not re-open on the
     // next dashboard load/refresh within this login. The local close happens
@@ -152,6 +186,12 @@ export function PropertyPickerProvider({
     ) => {
         const navigate = () =>
             window.location.assign(landUrl(organizationDomain, landSlug));
+        acknowledge(navigate);
+    };
+
+    const continueToOrgDashboard = (organizationDomain: string | null) => {
+        const navigate = () =>
+            window.location.assign(orgOverviewUrl(organizationDomain));
         acknowledge(navigate);
     };
 
@@ -222,13 +262,13 @@ export function PropertyPickerProvider({
                     }}
                 >
                     <DialogHeader>
-                        <DialogTitle>
-                            Select a property or land parcel
-                        </DialogTitle>
+                        <DialogTitle>Where do you want to go?</DialogTitle>
                         <DialogDescription>
                             {canContinueAsAdmin
-                                ? 'Continue to the admin dashboard, or choose the organization, property, or land parcel you want to manage.'
-                                : 'Choose the organization, property, or land parcel you want to manage.'}
+                                ? 'Continue to a dashboard, or pick a specific asset below.'
+                                : canContinueToOrgDashboard
+                                  ? 'Continue to an organization overview, or pick a specific asset below.'
+                                  : 'Choose the organization, property, or land parcel you want to manage.'}
                         </DialogDescription>
                     </DialogHeader>
 
@@ -370,23 +410,66 @@ export function PropertyPickerProvider({
                             })}
                         </div>
                     )}
-                    {hasAssets && canContinueAsAdmin && (
-                        <div className="flex justify-end border-t pt-4">
-                            <button
-                                type="button"
-                                onClick={() =>
-                                    acknowledge(() =>
-                                        window.location.assign(
-                                            centralDashboardUrl(
-                                                page.props.centralUrl,
+                    {(canContinueAsAdmin || canContinueToOrgDashboard) && (
+                        <div className="space-y-2 border-t pt-4">
+                            {canContinueToOrgDashboard &&
+                                overallOrganizations.map((organization) => (
+                                    <button
+                                        key={`overview-${organization.id}`}
+                                        type="button"
+                                        onClick={() =>
+                                            continueToOrgDashboard(
+                                                organization.domain,
+                                            )
+                                        }
+                                        className="flex w-full items-center justify-between gap-3 rounded-lg bg-brand-accent p-4 text-left transition-colors hover:bg-brand-accent/90"
+                                    >
+                                        <span className="flex items-center gap-3">
+                                            <LayoutDashboard className="size-5 text-white dark:text-[#1A1917]" />
+                                            <span>
+                                                <span className="block text-sm font-medium text-white dark:text-[#1A1917]">
+                                                    Continue to overall
+                                                    dashboard
+                                                </span>
+                                                <span className="block text-xs text-white/80 dark:text-[#1A1917]/80">
+                                                    {organization.name} —
+                                                    see how all its assets are
+                                                    doing
+                                                </span>
+                                            </span>
+                                        </span>
+                                        <ArrowRight className="size-4 shrink-0 text-white dark:text-[#1A1917]" />
+                                    </button>
+                                ))}
+
+                            {canContinueAsAdmin && (
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        acknowledge(() =>
+                                            window.location.assign(
+                                                centralDashboardUrl(
+                                                    page.props.centralUrl,
+                                                ),
                                             ),
-                                        ),
-                                    )
-                                }
-                                className="inline-flex h-9 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-                            >
-                                Continue as admin
-                            </button>
+                                        )
+                                    }
+                                    className="flex w-full items-center justify-between gap-3 rounded-lg bg-brand-accent p-4 text-left transition-colors hover:bg-brand-accent/90"
+                                >
+                                    <span className="flex items-center gap-3">
+                                        <ShieldCheck className="size-5 text-white dark:text-[#1A1917]" />
+                                        <span>
+                                            <span className="block text-sm font-medium text-white dark:text-[#1A1917]">
+                                                Continue to admin dashboard
+                                            </span>
+                                            <span className="block text-xs text-white/80 dark:text-[#1A1917]/80">
+                                                Platform-level administration
+                                            </span>
+                                        </span>
+                                    </span>
+                                    <ArrowRight className="size-4 shrink-0 text-white dark:text-[#1A1917]" />
+                                </button>
+                            )}
                         </div>
                     )}
                 </DialogContent>

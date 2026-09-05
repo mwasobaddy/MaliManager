@@ -10,6 +10,7 @@ import {
     LayoutGrid,
     ArrowLeftRight,
     Map,
+    Plus,
     ReceiptText,
     ScrollText,
     Sparkles,
@@ -51,10 +52,14 @@ import { index as auditIndex } from '@/routes/tenant/audit';
 import { page as draftingPageIndex } from '@/routes/tenant/drafting';
 import { index as expensesIndex } from '@/routes/tenant/expenses';
 import { index as inspectionsIndex } from '@/routes/tenant/inspections';
-import { index as landParcelsIndex } from '@/routes/tenant/land-parcels';
+import {
+    index as landParcelsIndex,
+    create as landParcelCreate,
+} from '@/routes/tenant/land-parcels';
 import { index as leasesIndex } from '@/routes/tenant/leases';
 import { index as maintenanceIndex } from '@/routes/tenant/maintenance';
 import { index as occupantsIndex } from '@/routes/tenant/occupants';
+import { overview as overviewIndex } from '@/routes/tenant';
 import {
     dashboard as propertyDashboard,
     index as propertiesIndex,
@@ -87,6 +92,8 @@ export function AppSidebar() {
         context?.permissions?.includes('occupant.manage') ?? false;
     const canManageLandParcels =
         context?.permissions?.includes('land_parcel.manage') ?? false;
+    const canCreateLandParcel =
+        context?.permissions?.includes('land_parcel.create') ?? false;
     const canManageProperties =
         context?.permissions?.includes('property.manage') ?? false;
     const canManageInspections =
@@ -176,6 +183,7 @@ export function AppSidebar() {
                 label: 'Property',
                 items: [
                     item('Dashboard', propertyDashboard(slug), LayoutGrid),
+                    item('Units', `${propertyDashboard(slug).url}#units`, Building2),
                     ...(canManageOccupants || canViewLeases
                         ? [
                               dropdown('Tenancy', UserRound, [
@@ -210,7 +218,22 @@ export function AppSidebar() {
                           ]
                         : []),
                     ...(canManageLandParcels
-                        ? [item('Land parcels', landParcelsIndex(), Map)]
+                        ? [
+                              item(
+                                  'Land parcels',
+                                  landParcelsIndex(),
+                                  Map,
+                              ),
+                              ...(canCreateLandParcel
+                                  ? [
+                                        item(
+                                            'Add land parcel',
+                                            landParcelCreate(),
+                                            Plus,
+                                        ),
+                                    ]
+                                  : []),
+                          ]
                         : []),
                 ],
             },
@@ -277,7 +300,18 @@ export function AppSidebar() {
                           ]
                         : []),
                     ...(canManageLandParcels
-                        ? [item('Land parcels', landParcelsIndex(), Map)]
+                        ? [
+                              item('Land parcels', landParcelsIndex(), Map),
+                              ...(canCreateLandParcel
+                                  ? [
+                                        item(
+                                            'Add land parcel',
+                                            landParcelCreate(),
+                                            Plus,
+                                        ),
+                                    ]
+                                  : []),
+                          ]
                         : []),
                 ],
             },
@@ -398,7 +432,7 @@ export function AppSidebar() {
     const homeHref = property
         ? propertyDashboard(property.slug)
         : organization
-          ? propertiesIndex()
+          ? overviewIndex()
           : centralDashboard();
 
     return (

@@ -21,3 +21,6 @@ All auth URLs live under /auth/: Fortify prefix config is 'auth' (config/fortify
 ## Tenant property routes + mandatory first property
 
 Tenant property routes live under routes/tenant.php inside the tenancy group: GET /properties (picker), GET /properties/create, POST /properties (create + units), GET|POST /properties/{property:slug}(/units). Group is auth + has-property (EnsureOrganizationHasProperty) which blocks org owners with no properties until they create the first one. Wayfinder regenerated with php artisan wayfinder:generate.
+
+## Org dashboard lives at GET /overview (tenant.overview)
+The organization-level dashboard is a tenant route named tenant.overview at GET /overview (NOT /dashboard - that is the central route and would conflict). Its Wayfinder import is `import { overview } from '@/routes/tenant'` - the generated file is the tenant index module, NOT '@/routes/tenant/overview' (that module does not exist). New tenant routes require `php artisan wayfinder:generate` before the frontend can import them.
