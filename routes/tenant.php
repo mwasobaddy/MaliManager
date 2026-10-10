@@ -62,7 +62,7 @@ Route::middleware([
     Route::get('/impersonate/{token}', [ImpersonationController::class, 'login'])
         ->name('tenant.impersonate');
 
-    Route::middleware(['auth', 'has-property'])->group(function () {
+    Route::middleware(['auth', 'organization.active', 'has-property'])->group(function () {
         Route::get('/overview', [OrganizationDashboardController::class, 'index'])
             ->name('tenant.overview');
         Route::get('/properties', [PropertyController::class, 'index'])
@@ -248,7 +248,7 @@ Route::middleware([
         });
     });
 
-    Route::middleware(['auth'])->group(function () {
+    Route::middleware(['auth', 'organization.active'])->group(function () {
         Route::middleware('sub-permission:land_parcel.manage')->group(function () {
             Route::get('/land-parcels', [LandParcelController::class, 'index'])
                 ->name('tenant.land-parcels.index');

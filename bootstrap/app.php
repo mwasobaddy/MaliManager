@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\EnsureOrganizationHasProperty;
+use App\Http\Middleware\EnsureOrganizationIsActive;
 use App\Http\Middleware\EnsureSubPermission;
 use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\EnsureUserIsOnboarded;
@@ -37,6 +38,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin' => EnsureUserIsPlatformAdmin::class,
             'has-property' => EnsureOrganizationHasProperty::class,
             'sub-permission' => EnsureSubPermission::class,
+            'organization.active' => EnsureOrganizationIsActive::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\OrganizationStatus;
 use App\Models\Organization;
 use App\Models\Plan;
 use App\Models\User;
@@ -36,6 +37,37 @@ class OrganizationManagementService extends Service
             ])->save();
 
             activity()->performedOn($organization)->causedBy($actor)->log('Updated organization '.$organization->name);
+
+            return $organization;
+        });
+    }
+
+    /**
+     * Suspend or reactivate an organization.
+     *
+     * Suspending drops the active sessions of every member so a suspension
+     * takes effect immediately rather than at the next natural expiry — the
+     * `organization.active` middleware blocks new tenant requests, but without
+     * this an already-logged-in member would keep working until their cookie
+     * aged out.
+     */
+    public function setStatus(Organization $organization, OrganizationStatus $status, User $actor): Organization
+    {
+        return DB::transaction(function () use ($organization, $status, $actor): Organization {
+            $organization->forceFill(['status' => $status])->save();
+
+            if ($status === OrganizationStatus::Suspended) {
+                $memberIds = $organization->users()->pluck('users.id');
+
+                DB::table('sessions')->whereIn('user_id', $memberIds)->delete();
+            }
+
+            activity()
+                ->performedOn($organization)
+                ->causedBy($actor)
+                ->log($status === OrganizationStatus::Suspended
+                    ? 'Suspended organization '.$organization->name
+                    : 'Reactivated organization '.$organization->name);
 
             return $organization;
         });

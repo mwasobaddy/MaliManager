@@ -75,7 +75,13 @@ Route::middleware(['auth', 'verified', 'can:manageOrganizations'])->group(functi
     Route::post('organizations', [OrganizationController::class, 'store'])->name('organizations.store')->middleware('can:createOrganizations');
     Route::get('organizations/{organization}/edit', [OrganizationController::class, 'edit'])->name('organizations.edit')->middleware('can:editOrganizations');
     Route::patch('organizations/{organization}', [OrganizationController::class, 'update'])->name('organizations.update')->middleware('can:editOrganizations');
+    Route::patch('organizations/{organization}/status', [OrganizationController::class, 'setStatus'])
+        ->name('organizations.status')
+        ->middleware('can:editOrganizations');
     Route::delete('organizations/{organization}', [OrganizationController::class, 'destroy'])->name('organizations.destroy')->middleware('can:deleteOrganizations');
+    Route::post('organizations/{organization}/impersonate', [PlatformController::class, 'impersonateOwner'])
+        ->name('organizations.impersonate')
+        ->middleware(['admin', 'can:impersonateOrganizations']);
 });
 
 // Central plan management module, gated by central plan.* permissions.
