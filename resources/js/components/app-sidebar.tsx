@@ -44,6 +44,7 @@ import { index as rolesIndex } from '@/routes/platform/roles';
 import { index as subscriptionPaymentsIndex } from '@/routes/platform/subscription-payments';
 import { rentals as searcherRentals } from '@/routes/searcher';
 import { index as maintenanceRoute } from '@/routes/searcher/maintenance';
+import { overview as overviewIndex } from '@/routes/tenant';
 import agreementTemplates, {
     orgIndex as agreementTemplatesIndex,
 } from '@/routes/tenant/agreement-templates';
@@ -59,7 +60,6 @@ import {
 import { index as leasesIndex } from '@/routes/tenant/leases';
 import { index as maintenanceIndex } from '@/routes/tenant/maintenance';
 import { index as occupantsIndex } from '@/routes/tenant/occupants';
-import { overview as overviewIndex } from '@/routes/tenant';
 import {
     dashboard as propertyDashboard,
     index as propertiesIndex,

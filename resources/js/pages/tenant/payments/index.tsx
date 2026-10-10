@@ -14,7 +14,6 @@ import {
     index as paymentsIndexRoute,
     create as paymentsCreateRoute,
     edit as paymentsEditRoute,
-    destroy as paymentsDestroyRoute,
     show as paymentsShowRoute,
 } from '@/routes/tenant/payments';
 
