@@ -26,7 +26,6 @@ export default function PaymentReceipt({
     unitName,
     amount,
     currency,
-    paidOn,
     periodStart,
     periodEnd,
     method,
