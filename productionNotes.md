@@ -184,6 +184,7 @@ composer install --no-dev --optimize-autoloader
 npm ci && npm run build
 
 php artisan migrate --force
+php artisan db:seed --class=RolesAndPermissionsSeeder --force
 php artisan storage:link
 php artisan config:cache
 php artisan route:cache
@@ -191,6 +192,16 @@ php artisan view:cache
 php artisan event:cache
 php artisan optimize
 ```
+
+`RolesAndPermissionsSeeder` is idempotent and belongs in the deploy path: it creates
+the `SubPermission` catalog that organization sub-roles point at, and it calls
+`DefaultSubRoles::syncBundlesFor()` for every organization. That sync is what repairs
+organizations created **before** a permission was added to a bundle — e.g. Caretaker
+gained `property.manage` (the gate on the `GET /properties` picker, which the staff
+landing flow sends them to). Without running it after such a change, existing
+organizations keep their old bundles and those members are redirected away from
+`/properties`. The sync only ever *adds*; it never detaches a permission an owner
+granted or removed by hand, and re-running it is a no-op.
 
 ### Seed platform financial data (optional, dev/staging)
 
@@ -333,6 +344,16 @@ in production:
   `php artisan cache:clear` after deploy so role/permission lookups don't serve
   a stale set (a stale empty set surfaces as
   `PermissionDoesNotExist` during seeding/grants).
+- **Changing a sub-permission bundle?** Bundles only apply when an organization is
+  created (`DefaultSubRoles::createFor()` via `TenantService::createOrganization()`).
+  To push a newly-added permission to organizations that already exist, run
+  `php artisan db:seed --class=RolesAndPermissionsSeeder --force` — it calls
+  `DefaultSubRoles::syncBundlesFor()` per organization, which is additive and
+  idempotent. Skipping this is silent: the permission exists in the catalog and new
+  orgs get it, but existing orgs are left behind with no error anywhere.
+  Sanity check after a bundle change:
+  `php artisan tinker --execute="echo App\Support\DefaultSubRoles::syncBundlesFor(App\Models\Organization::first());"`
+  should print `0` once everyone is caught up.
 
 ---
 
