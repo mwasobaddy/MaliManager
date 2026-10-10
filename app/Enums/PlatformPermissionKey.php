@@ -33,6 +33,7 @@ enum PlatformPermissionKey: string
     case OrganizationDelete = 'organization.delete';
     case OrganizationExport = 'organization.export';
     case OrganizationImport = 'organization.import';
+    case OrganizationImpersonate = 'organization.impersonate';
 
     case PlanManage = 'plan.manage';
     case PlanCreate = 'plan.create';
@@ -74,6 +75,7 @@ enum PlatformPermissionKey: string
             self::OrganizationDelete => 'Delete organizations',
             self::OrganizationExport => 'Export organizations',
             self::OrganizationImport => 'Import organizations',
+            self::OrganizationImpersonate => 'Impersonate organization owners',
             self::PlanManage => 'Manage plans',
             self::PlanCreate => 'Create plans',
             self::PlanEdit => 'Edit plans',
@@ -113,6 +115,7 @@ enum PlatformPermissionKey: string
             self::OrganizationDelete => 'deleteOrganizations',
             self::OrganizationExport => 'exportOrganizations',
             self::OrganizationImport => 'importOrganizations',
+            self::OrganizationImpersonate => 'impersonateOrganizations',
             self::PlanManage => 'managePlans',
             self::PlanCreate => 'createPlans',
             self::PlanEdit => 'editPlans',
