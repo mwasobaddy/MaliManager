@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\OrganizationStatus;
 use App\Support\StorageLayout;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -17,7 +18,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string $slug
  * @property string|null $email
  * @property string|null $phone
- * @property string $status
+ * @property OrganizationStatus $status
  * @property int|null $plan_id
  * @property array|null $settings
  * @property int|null $created_by
@@ -42,6 +43,7 @@ class Organization extends Model
     {
         return [
             'settings' => 'array',
+            'status' => OrganizationStatus::class,
         ];
     }
 

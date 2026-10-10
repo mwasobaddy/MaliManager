@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers\Organizations;
 
+use App\Enums\OrganizationStatus;
 use App\Enums\PlatformRole;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Organizations\DestroyOrganizationRequest;
 use App\Http\Requests\Organizations\StoreOrganizationRequest;
 use App\Http\Requests\Organizations\UpdateOrganizationRequest;
+use App\Http\Requests\Organizations\UpdateOrganizationStatusRequest;
 use App\Models\Organization;
 use App\Models\Plan;
 use App\Models\User;
@@ -27,14 +29,32 @@ class OrganizationController extends Controller
 
     public function index(Request $request): Response
     {
+        // Allowlisted so a crafted `?sort=` can never reach the ORDER BY.
+        // `domain` is intentionally absent: it is a host string, not a
+        // meaningful ordering key for an admin scanning this list.
+        $sortable = [
+            'name' => 'organizations.name',
+            'plan' => 'plans.name',
+            'members' => 'users_count',
+            'status' => 'organizations.status',
+            'created_at' => 'organizations.created_at',
+        ];
+
+        $sort = $request->string('sort')->toString();
+        $sortColumn = $sortable[$sort] ?? null;
+        $direction = $request->string('direction')->toString() === 'asc' ? 'asc' : 'desc';
+
         $organizations = Organization::query()
             ->with(['plan:id,slug,name', 'tenant.domains'])
             ->withCount('users')
+            ->leftJoin('plans', 'plans.id', '=', 'organizations.plan_id')
             ->when($request->string('search')->trim(), function ($query, string $search) {
-                Search::apply($query, $search, ['name', 'slug', 'email']);
+                Search::apply($query, $search, ['organizations.name', 'organizations.slug', 'organizations.email']);
             })
-            ->when($request->string('status')->toString() !== '', fn ($query) => $query->where('status', $request->string('status')))
-            ->orderByDesc('created_at')
+            ->when($request->string('status')->toString() !== '', fn ($query) => $query->where('organizations.status', $request->string('status')))
+            ->when($sortColumn !== null, fn ($query) => $query->orderBy($sortColumn, $direction))
+            ->when($sortColumn === null, fn ($query) => $query->orderByDesc('organizations.created_at'))
+            ->orderBy('organizations.id')
             ->paginate(15)
             ->withQueryString()
             ->through(fn (Organization $organization): array => [
@@ -43,7 +63,8 @@ class OrganizationController extends Controller
                 'slug' => $organization->slug,
                 'email' => $organization->email,
                 'phone' => $organization->phone,
-                'status' => $organization->status,
+                'status' => $organization->status->value,
+                'status_label' => $organization->status->label(),
                 'plan' => $organization->plan?->name,
                 'plan_id' => $organization->plan_id,
                 'domain' => $organization->tenant?->domains->first()?->domain,
@@ -56,6 +77,10 @@ class OrganizationController extends Controller
             'filters' => [
                 'search' => (string) $request->string('search'),
                 'status' => (string) $request->string('status'),
+            ],
+            'sort' => [
+                'column' => $sortColumn === null ? null : $sort,
+                'direction' => $direction,
             ],
         ]);
     }
@@ -109,7 +134,8 @@ class OrganizationController extends Controller
                 'slug' => $organization->slug,
                 'email' => $organization->email,
                 'phone' => $organization->phone,
-                'status' => $organization->status,
+                'status' => $organization->status->value,
+                'status_label' => $organization->status->label(),
                 'plan_id' => $organization->plan_id,
             ],
             'plans' => Plan::orderBy('name')->get(['id', 'name', 'slug']),
@@ -123,6 +149,28 @@ class OrganizationController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Organization has been updated.']);
 
         return redirect()->route('organizations.index');
+    }
+
+    /**
+     * Suspend or reactivate an organization.
+     *
+     * Mirrors `users/{user}/status` so the row action is a real control
+     * rather than a display-only flag.
+     */
+    public function setStatus(UpdateOrganizationStatusRequest $request, Organization $organization): RedirectResponse
+    {
+        $status = OrganizationStatus::from($request->validated('status'));
+
+        $this->service->setStatus($organization, $status, $request->user());
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => $status === OrganizationStatus::Suspended
+                ? $organization->name.' has been suspended.'
+                : $organization->name.' has been reactivated.',
+        ]);
+
+        return back();
     }
 
     public function destroy(DestroyOrganizationRequest $request, Organization $organization): RedirectResponse
