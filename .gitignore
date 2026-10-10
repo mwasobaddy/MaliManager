@@ -33,3 +33,6 @@ yarn-error.log
 project.md
 info.md
 storage/tenant*/
+
+# Agent tooling worktrees
+.kilo/
