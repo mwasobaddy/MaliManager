@@ -62,6 +62,7 @@
     --color-destructive-foreground: var(--destructive-foreground);
 
     --color-border: var(--border);
+    --color-border-strong: var(--border-strong);
     --color-input: var(--input);
     --color-ring: var(--ring);
 
@@ -141,6 +142,7 @@
     --warning-foreground: #7c4a03;
 
     --border: #e7e1d6;
+    --border-strong: #d8cfbf;
     --input: #e7e1d6;
     --ring: #a85a36;
 
@@ -204,6 +206,7 @@
     --warning-foreground: #f6e2b8;
 
     --border: #36322d;
+    --border-strong: #4a443c;
     --input: #36322d;
     --ring: #c87a53;
 
