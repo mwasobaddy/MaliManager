@@ -5,7 +5,9 @@ namespace Database\Seeders;
 use App\Enums\PlatformPermissionKey;
 use App\Enums\PlatformRole;
 use App\Enums\SubPermissionKey;
+use App\Models\Organization;
 use App\Models\SubPermission;
+use App\Support\DefaultSubRoles;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -65,6 +67,12 @@ class RolesAndPermissionsSeeder extends Seeder
         // Retire catalog entries whose keys were removed from the enum
         // (e.g. the user.* keys promoted to central permissions).
         SubPermission::whereNotIn('key', array_column(SubPermissionKey::cases(), 'value'))->delete();
+
+        // Hand organizations created before a bundle gained a permission the
+        // missing keys. Additive only — owner customisations are preserved.
+        foreach (Organization::all() as $organization) {
+            DefaultSubRoles::syncBundlesFor($organization);
+        }
     }
 
     /**
