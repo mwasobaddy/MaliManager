@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\Platform;
 
+use App\Enums\OrganizationStatus;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Organizations\ImpersonateOrganizationRequest;
 use App\Models\Organization;
 use App\Models\User;
 use App\Support\InertiaRedirect;
@@ -49,8 +51,36 @@ class PlatformController extends Controller
             abort(403, 'User is not a member of this organization.');
         }
 
+        return $this->startImpersonating($request, $organization, $user);
+    }
+
+    /**
+     * Impersonate the organization's owner.
+     *
+     * Used by the organizations list, where only the organization is known and
+     * the target member has to be resolved server-side from the is_owner pivot.
+     */
+    public function impersonateOwner(ImpersonateOrganizationRequest $request, Organization $organization): RedirectResponse|\Illuminate\Http\Response
+    {
+        $owner = $organization->users()->wherePivot('is_owner', true)->first();
+
+        if (! $owner) {
+            abort(422, 'Organization has no owner to impersonate.');
+        }
+
+        return $this->startImpersonating($request, $organization, $owner);
+    }
+
+    private function startImpersonating(Request $request, Organization $organization, User $user): RedirectResponse|\Illuminate\Http\Response
+    {
         if ($user->hasRole('admin')) {
             abort(403, 'Admins cannot be impersonated.');
+        }
+
+        // Impersonating a suspended organization would land the admin behind
+        // the `organization.active` middleware, so refuse up front instead.
+        if ($organization->status === OrganizationStatus::Suspended) {
+            abort(403, 'Cannot impersonate a suspended organization.');
         }
 
         $domain = $organization->tenant?->domains()->first();
