@@ -4,12 +4,12 @@ import { Printer, Sparkles } from 'lucide-react';
 import { useRef, useState } from 'react';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
+import { OverlayFooter } from '@/components/overlay-footer';
 import PasswordInput from '@/components/password-input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
-    DialogClose,
     DialogContent,
     DialogDescription,
     DialogFooter,
@@ -397,15 +397,17 @@ export default function LeasesIndex({ leases, filters }: Props) {
                             />
                             <InputError message={passwordError} />
                         </div>
-                        <DialogFooter className="gap-2">
-                            <DialogClose asChild>
-                                <Button type="button" variant="secondary">
-                                    Cancel
-                                </Button>
-                            </DialogClose>
-                            <Button type="submit" variant="destructive">
-                                End lease
-                            </Button>
+                        <DialogFooter>
+                            <OverlayFooter
+                                cancelClosesDialog
+                                actions={[
+                                    {
+                                        label: 'End lease',
+                                        tone: 'danger',
+                                        type: 'submit',
+                                    },
+                                ]}
+                            />
                         </DialogFooter>
                     </form>
                 </DialogContent>
@@ -473,9 +475,10 @@ export default function LeasesIndex({ leases, filters }: Props) {
                     )}
 
                     <DialogFooter>
-                        <DialogClose asChild>
-                            <Button variant="secondary">Close</Button>
-                        </DialogClose>
+                        <OverlayFooter
+                            cancelClosesDialog
+                            cancelLabel="Close"
+                        />
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

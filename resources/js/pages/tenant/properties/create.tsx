@@ -252,7 +252,7 @@ export default function PropertiesCreate({
                                             ? 'Saving…'
                                             : 'Create property'}
                                     </Button>
-                                    <Button asChild variant="outline">
+                                    <Button asChild variant="ghost">
                                         <Link href={index()}>Cancel</Link>
                                     </Button>
                                 </div>

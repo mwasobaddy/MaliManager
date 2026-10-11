@@ -540,7 +540,7 @@ export default function OccupantCreate({
                                 <Button type="submit" disabled={processing}>
                                     {processing ? 'Adding…' : 'Add occupant'}
                                 </Button>
-                                <Button asChild variant="outline">
+                                <Button asChild variant="ghost">
                                     <Link href={occupantsIndex(property.slug)}>
                                         Cancel
                                     </Link>

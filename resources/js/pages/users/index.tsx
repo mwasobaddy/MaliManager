@@ -3,13 +3,13 @@ import { usePage } from '@inertiajs/react';
 import { Download, Pencil, Plus, Search } from 'lucide-react';
 import { useState } from 'react';
 import Heading from '@/components/heading';
+import { OverlayFooter } from '@/components/overlay-footer';
 import { PasswordConfirmDialog } from '@/components/password-confirm-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
     Dialog,
-    DialogClose,
     DialogContent,
     DialogDescription,
     DialogFooter,
@@ -402,28 +402,27 @@ export default function UsersIndex({ users, filters, platformRoles }: Props) {
                         </DialogDescription>
                     </DialogHeader>
 
-                    <DialogFooter className="gap-2">
-                        <DialogClose asChild>
-                            <Button
-                                variant="secondary"
-                                onClick={() => setSuspendTarget(null)}
-                            >
-                                Cancel
-                            </Button>
-                        </DialogClose>
-                        <Button
-                            variant={
-                                suspendTarget?.status === 'active'
-                                    ? 'destructive'
-                                    : 'default'
-                            }
-                            disabled={suspending}
-                            onClick={confirmToggleStatus}
-                        >
-                            {suspendTarget?.status === 'active'
-                                ? 'Suspend'
-                                : 'Activate'}
-                        </Button>
+                    <DialogFooter>
+                        <OverlayFooter
+                            onCancel={() => setSuspendTarget(null)}
+                            actions={[
+                                {
+                                    label:
+                                        suspendTarget?.status === 'active'
+                                            ? 'Suspend'
+                                            : 'Activate',
+                                    // Suspending locks people out, so it takes
+                                    // the danger colour; reactivating restores
+                                    // access and is an ordinary confirmation.
+                                    tone:
+                                        suspendTarget?.status === 'active'
+                                            ? 'danger'
+                                            : 'primary',
+                                    disabled: suspending,
+                                    onClick: confirmToggleStatus,
+                                },
+                            ]}
+                        />
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

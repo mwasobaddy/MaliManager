@@ -228,7 +228,7 @@ export default function PlatformExpenseForm({ expense }: Props) {
                     </Card>
 
                     <div className="flex justify-end gap-2 lg:col-span-2">
-                        <Button variant="outline" asChild>
+                        <Button variant="ghost" asChild>
                             <Link href={expenseRoutes.index().url}>Cancel</Link>
                         </Button>
                         <Button type="submit" disabled={form.processing}>

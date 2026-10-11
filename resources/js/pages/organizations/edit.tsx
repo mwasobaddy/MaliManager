@@ -120,7 +120,7 @@ export default function OrganizationsEdit({ organization, plans }: Props) {
                                         </Button>
                                         <Button
                                             type="button"
-                                            variant="outline"
+                                            variant="ghost"
                                             asChild
                                         >
                                             <Link href={index()}>Cancel</Link>

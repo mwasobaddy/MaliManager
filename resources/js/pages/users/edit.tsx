@@ -174,7 +174,7 @@ export default function UsersEdit({ user, platformRoles }: Props) {
                                         </Button>
                                         <Button
                                             type="button"
-                                            variant="outline"
+                                            variant="ghost"
                                             asChild
                                         >
                                             <Link href={index()}>Cancel</Link>

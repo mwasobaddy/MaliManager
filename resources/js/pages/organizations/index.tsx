@@ -18,6 +18,7 @@ import { ActionIconButton } from '@/components/action-icon-button';
 import { DataTable } from '@/components/data-table';
 import Heading from '@/components/heading';
 import { LabelledIconButton } from '@/components/labelled-icon-button';
+import { OverlayFooter } from '@/components/overlay-footer';
 import { ResponsiveOverlay } from '@/components/responsive-overlay';
 import { StatusIcon  } from '@/components/status-cell';
 import type {StatusTone} from '@/components/status-cell';
@@ -733,74 +734,60 @@ const isOwnersLoading = isCreateOpen && owners === undefined;
                 }
                 footer={
                     rowMode === 'edit' && viewedOrganization ? (
-                        <>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={closeRowSheet}
-                            >
-                                Cancel
-                            </Button>
-                            <Button form="organization-edit-form" type="submit">
-                                Save changes
-                            </Button>
-                        </>
+                        <OverlayFooter
+                            onCancel={closeRowSheet}
+                            actions={[
+                                {
+                                    label: 'Save changes',
+                                    form: 'organization-edit-form',
+                                    type: 'submit',
+                                },
+                            ]}
+                        />
                     ) : rowMode === 'delete' && viewedOrganization ? (
-                        <>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={closeRowSheet}
-                            >
-                                Cancel
-                            </Button>
-                            <Button
-                                form="organization-delete-form"
-                                type="submit"
-                                variant="destructive"
-                            >
-                                <Trash2 className="mr-2 size-4" />
-                                Delete organization
-                            </Button>
-                        </>
+                        <OverlayFooter
+                            onCancel={closeRowSheet}
+                            actions={[
+                                {
+                                    label: 'Delete organization',
+                                    tone: 'danger',
+                                    icon: <Trash2 className="size-4" />,
+                                    form: 'organization-delete-form',
+                                    type: 'submit',
+                                },
+                            ]}
+                        />
                     ) : viewedOrganization ? (
-                        <>
-                            {canEdit && (
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    onClick={() =>
+                        <OverlayFooter
+                            actions={[
+                                {
+                                    label: 'Edit',
+                                    tone: 'secondary',
+                                    icon: <Pencil className="size-4" />,
+                                    onClick: () =>
                                         openRow(
                                             viewedOrganization,
                                             'edit',
                                             orgRoutes.edit(
                                                 viewedOrganization.id,
                                             ).url,
-                                        )
-                                    }
-                                >
-                                    <Pencil className="mr-2 size-4" />
-                                    Edit
-                                </Button>
-                            )}
-                            {canDelete && (
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    onClick={() =>
+                                        ),
+                                    ...(canEdit ? {} : { disabled: true }),
+                                },
+                                {
+                                    label: 'Delete',
+                                    tone: 'danger-ghost',
+                                    icon: <Trash2 className="size-4" />,
+                                    onClick: () =>
                                         openRow(
                                             viewedOrganization,
                                             'delete',
                                             orgRoutes.index().url,
-                                        )
-                                    }
-                                    className="text-destructive hover:text-destructive"
-                                >
-                                    <Trash2 className="mr-2 size-4" />
-                                    Delete
-                                </Button>
-                            )}
-                        </>
+                                        ),
+                                    ...(canDelete ? {} : { disabled: true }),
+                                },
+                            ]}
+                        />
                     ) : null
                 }
             >
@@ -992,25 +979,18 @@ const isOwnersLoading = isCreateOpen && owners === undefined;
                 title="Create organization"
                 description="Set up the organization, its subdomain and its owner."
                 footer={
-                    <>
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() =>
-                                setOverlayParam('create', null, {
-                                    replace: true,
-                                })
-                            }
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            type="submit"
-                            form="organization-create-form"
-                        >
-                            Create
-                        </Button>
-                    </>
+                    <OverlayFooter
+                        onCancel={() =>
+                            setOverlayParam('create', null, { replace: true })
+                        }
+                        actions={[
+                            {
+                                label: 'Create',
+                                form: 'organization-create-form',
+                                type: 'submit',
+                            },
+                        ]}
+                    />
                 }
             >
                 <Form
@@ -1207,33 +1187,23 @@ const isOwnersLoading = isCreateOpen && owners === undefined;
                 title="Export organizations"
                 description="Choose how many rows to include in the CSV."
                 footer={
-                    <>
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() =>
-                                setOverlayParam('export', null, {
-                                    replace: true,
-                                })
-                            }
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => downloadExportUrl('page')}
-                        >
-                            Current page
-                        </Button>
-                        <Button
-                            type="button"
-                            onClick={() => downloadExportUrl('all')}
-                        >
-                            <Download className="mr-2 size-4" />
-                            Export all
-                        </Button>
-                    </>
+                    <OverlayFooter
+                        onCancel={() =>
+                            setOverlayParam('export', null, { replace: true })
+                        }
+                        actions={[
+                            {
+                                label: 'Current page',
+                                tone: 'secondary',
+                                onClick: () => downloadExportUrl('page'),
+                            },
+                            {
+                                label: 'Export all',
+                                icon: <Download className="size-4" />,
+                                onClick: () => downloadExportUrl('all'),
+                            },
+                        ]}
+                    />
                 }
             >
                 <div className="space-y-3 text-sm">
@@ -1285,17 +1255,12 @@ const isOwnersLoading = isCreateOpen && owners === undefined;
                 title="Import organizations"
                 description="Upload a CSV to create organizations."
                 footer={
-                    <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() =>
-                            setOverlayParam('import', null, {
-                                replace: true,
-                            })
+                    <OverlayFooter
+                        onCancel={() =>
+                            setOverlayParam('import', null, { replace: true })
                         }
-                    >
-                        Close
-                    </Button>
+                        cancelLabel="Close"
+                    />
                 }
             >
                 <Form
@@ -1393,40 +1358,33 @@ const isOwnersLoading = isCreateOpen && owners === undefined;
                 title="Filters"
                 description="Narrow the list of organizations."
                 footer={
-                    <>
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() =>
-                                setOverlayParam('filters', null, {
-                                    replace: true,
-                                })
-                            }
-                        >
-                            Close
-                        </Button>
-                        <Button
-                            type="button"
-                            onClick={() => {
-                                setSearchDraft('');
-                                refetchTable(
-                                    {
-                                        search: '',
-                                        status: '',
-                                        sort: sort.column ?? '',
-                                        direction: sort.direction,
-                                    },
-                                    { replace: true },
-                                );
-                                setOverlayParam('filters', null, {
-                                    replace: true,
-                                });
-                            }}
-                        >
-                            <X className="mr-2 size-4" />
-                            Clear all
-                        </Button>
-                    </>
+                    <OverlayFooter
+                        onCancel={() =>
+                            setOverlayParam('filters', null, { replace: true })
+                        }
+                        cancelLabel="Close"
+                        actions={[
+                            {
+                                label: 'Clear all',
+                                icon: <X className="size-4" />,
+                                onClick: () => {
+                                    setSearchDraft('');
+                                    refetchTable(
+                                        {
+                                            search: '',
+                                            status: '',
+                                            sort: sort.column ?? '',
+                                            direction: sort.direction,
+                                        },
+                                        { replace: true },
+                                    );
+                                    setOverlayParam('filters', null, {
+                                        replace: true,
+                                    });
+                                },
+                            },
+                        ]}
+                    />
                 }
             >
                 <fieldset className="space-y-3">

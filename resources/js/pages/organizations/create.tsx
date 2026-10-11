@@ -207,7 +207,7 @@ export default function OrganizationsCreate({ plans, owners }: Props) {
                                         </Button>
                                         <Button
                                             type="button"
-                                            variant="outline"
+                                            variant="ghost"
                                             asChild
                                         >
                                             <Link href={index()}>Cancel</Link>

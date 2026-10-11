@@ -3,12 +3,12 @@ import { Trash2 } from 'lucide-react';
 import { useRef, useState } from 'react';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
+import { OverlayFooter } from '@/components/overlay-footer';
 import PasswordInput from '@/components/password-input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
     Dialog,
-    DialogClose,
     DialogContent,
     DialogDescription,
     DialogFooter,
@@ -415,7 +415,7 @@ export default function LandParcelEdit({
                                             ? 'Saving…'
                                             : 'Save changes'}
                                     </Button>
-                                    <Button asChild variant="outline">
+                                    <Button asChild variant="ghost">
                                         <Link href={index()}>Cancel</Link>
                                     </Button>
                                 </div>
@@ -482,34 +482,22 @@ export default function LandParcelEdit({
                                                             />
                                                         </div>
 
-                                                        <DialogFooter className="gap-2">
-                                                            <DialogClose
-                                                                asChild
-                                                            >
-                                                                <Button
-                                                                    variant="secondary"
-                                                                    onClick={() =>
-                                                                        resetAndClearErrors()
-                                                                    }
-                                                                >
-                                                                    Cancel
-                                                                </Button>
-                                                            </DialogClose>
-                                                            <Button
-                                                                variant="destructive"
-                                                                disabled={
-                                                                    processing
-                                                                }
-                                                                asChild
-                                                            >
-                                                                <button
-                                                                    type="submit"
-                                                                    data-test="confirm-remove-land-parcel-button"
-                                                                >
-                                                                    Remove
-                                                                    parcel
-                                                                </button>
-                                                            </Button>
+                                                        <DialogFooter>
+                                                            <OverlayFooter
+                                                                onCancel={() => {
+                                                                    resetAndClearErrors();
+                                                                }}
+                                                                actions={[
+                                                                    {
+                                                                        label: 'Remove parcel',
+                                                                        tone: 'danger',
+                                                                        type: 'submit',
+                                                                        disabled:
+                                                                            processing,
+                                                                        testId: 'confirm-remove-land-parcel-button',
+                                                                    },
+                                                                ]}
+                                                            />
                                                         </DialogFooter>
                                                     </>
                                                 )}

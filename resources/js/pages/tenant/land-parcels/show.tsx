@@ -3,12 +3,12 @@ import { FileText, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
+import { OverlayFooter } from '@/components/overlay-footer';
 import PasswordInput from '@/components/password-input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
-    DialogClose,
     DialogContent,
     DialogDescription,
     DialogFooter,
@@ -713,31 +713,22 @@ export default function LandParcelShow({
                                                         />
                                                     </div>
 
-                                                    <DialogFooter className="gap-2">
-                                                        <DialogClose asChild>
-                                                            <Button
-                                                                variant="secondary"
-                                                                onClick={() =>
-                                                                    resetAndClearErrors()
-                                                                }
-                                                            >
-                                                                Cancel
-                                                            </Button>
-                                                        </DialogClose>
-                                                        <Button
-                                                            variant="destructive"
-                                                            disabled={
-                                                                processing
+                                                    <DialogFooter>
+                                                        <OverlayFooter
+                                                            onCancel={() =>
+                                                                resetAndClearErrors()
                                                             }
-                                                            asChild
-                                                        >
-                                                            <button
-                                                                type="submit"
-                                                                data-test="confirm-remove-land-parcel-button"
-                                                            >
-                                                                Remove parcel
-                                                            </button>
-                                                        </Button>
+                                                            actions={[
+                                                                {
+                                                                    label: 'Remove parcel',
+                                                                    tone: 'danger',
+                                                                    type: 'submit',
+                                                                    disabled:
+                                                                        processing,
+                                                                    testId: 'confirm-remove-land-parcel-button',
+                                                                },
+                                                            ]}
+                                                        />
                                                     </DialogFooter>
                                                 </>
                                             )}
@@ -767,9 +758,11 @@ export default function LandParcelShow({
                         />
                     )}
                     <DialogFooter>
-                        <Button onClick={() => setAgreementHtml(null)}>
-                            Close
-                        </Button>
+                        <OverlayFooter
+                            cancelClosesDialog
+                            cancelLabel="Close"
+                            onCancel={() => setAgreementHtml(null)}
+                        />
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
