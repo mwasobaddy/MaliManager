@@ -1,11 +1,10 @@
 import { Form } from '@inertiajs/react';
 import { useRef } from 'react';
 import InputError from '@/components/input-error';
+import { OverlayFooter } from '@/components/overlay-footer';
 import PasswordInput from '@/components/password-input';
-import { Button } from '@/components/ui/button';
 import {
     Dialog,
-    DialogClose,
     DialogContent,
     DialogDescription,
     DialogFooter,
@@ -68,25 +67,21 @@ export function PasswordConfirmDialog({
                                 <InputError message={errors.password} />
                             </div>
 
-                            <DialogFooter className="gap-2">
-                                <DialogClose asChild>
-                                    <Button
-                                        variant="secondary"
-                                        onClick={() => resetAndClearErrors()}
-                                    >
-                                        Cancel
-                                    </Button>
-                                </DialogClose>
-
-                                <Button
-                                    variant="destructive"
-                                    disabled={processing}
-                                    asChild
-                                >
-                                    <button type="submit">
-                                        {confirmLabel}
-                                    </button>
-                                </Button>
+                            <DialogFooter>
+                                <OverlayFooter
+                                    onCancel={() => {
+                                        resetAndClearErrors();
+                                        onOpenChange(false);
+                                    }}
+                                    actions={[
+                                        {
+                                            label: confirmLabel,
+                                            tone: 'danger',
+                                            type: 'submit',
+                                            disabled: processing,
+                                        },
+                                    ]}
+                                />
                             </DialogFooter>
                         </>
                     )}

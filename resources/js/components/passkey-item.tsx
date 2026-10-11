@@ -1,9 +1,9 @@
 import { KeyRound, Trash2 } from 'lucide-react';
 import { useState } from 'react';
+import { OverlayFooter } from '@/components/overlay-footer';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
-    DialogClose,
     DialogContent,
     DialogDescription,
     DialogFooter,
@@ -74,17 +74,20 @@ export default function PasskeyItem({ passkey, onDelete }: Props) {
                         passkey? You will no longer be able to use it to sign
                         in.
                     </DialogDescription>
-                    <DialogFooter className="gap-2">
-                        <DialogClose asChild>
-                            <Button variant="secondary">Cancel</Button>
-                        </DialogClose>
-                        <Button
-                            variant="destructive"
-                            onClick={handleDelete}
-                            disabled={isDeleting}
-                        >
-                            {isDeleting ? 'Removing...' : 'Remove passkey'}
-                        </Button>
+                    <DialogFooter>
+                        <OverlayFooter
+                            cancelClosesDialog
+                            actions={[
+                                {
+                                    label: isDeleting
+                                        ? 'Removing...'
+                                        : 'Remove passkey',
+                                    tone: 'danger',
+                                    onClick: handleDelete,
+                                    disabled: isDeleting,
+                                },
+                            ]}
+                        />
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

@@ -3,11 +3,11 @@ import { useRef } from 'react';
 import ProfileController from '@/actions/App/Http/Controllers/Settings/ProfileController';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
+import { OverlayFooter } from '@/components/overlay-footer';
 import PasswordInput from '@/components/password-input';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
-    DialogClose,
     DialogContent,
     DialogDescription,
     DialogFooter,
@@ -84,30 +84,21 @@ export default function DeleteUser() {
                                         <InputError message={errors.password} />
                                     </div>
 
-                                    <DialogFooter className="gap-2">
-                                        <DialogClose asChild>
-                                            <Button
-                                                variant="secondary"
-                                                onClick={() =>
-                                                    resetAndClearErrors()
-                                                }
-                                            >
-                                                Cancel
-                                            </Button>
-                                        </DialogClose>
-
-                                        <Button
-                                            variant="destructive"
-                                            disabled={processing}
-                                            asChild
-                                        >
-                                            <button
-                                                type="submit"
-                                                data-test="confirm-delete-user-button"
-                                            >
-                                                Delete account
-                                            </button>
-                                        </Button>
+                                    <DialogFooter>
+                                        <OverlayFooter
+                                            onCancel={() =>
+                                                resetAndClearErrors()
+                                            }
+                                            actions={[
+                                                {
+                                                    label: 'Delete account',
+                                                    tone: 'danger',
+                                                    type: 'submit',
+                                                    disabled: processing,
+                                                    testId: 'confirm-delete-user-button',
+                                                },
+                                            ]}
+                                        />
                                     </DialogFooter>
                                 </>
                             )}
