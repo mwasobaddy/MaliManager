@@ -74,10 +74,15 @@ class OrganizationController extends Controller
             // The edit + create sheets render on this page, so they need the
             // same options the standalone pages get.
             'plans' => Plan::orderBy('name')->get(['id', 'name', 'slug']),
-            'owners' => User::query()
+            // Every user on the platform, minus platform admins. This is by far
+            // the heaviest prop on the page and only the create sheet reads it,
+            // so it is optional rather than eager: it is not queried or
+            // serialised on a search, sort, page change, or sheet open. The
+            // page asks for it explicitly the first time the sheet opens.
+            'owners' => Inertia::optional(fn () => User::query()
                 ->whereDoesntHave('roles', fn ($query) => $query->where('name', PlatformRole::Admin->value))
                 ->orderBy('name')
-                ->get(['id', 'name', 'email']),
+                ->get(['id', 'name', 'email'])),
             'filters' => [
                 'search' => (string) $request->string('search'),
                 'status' => (string) $request->string('status'),

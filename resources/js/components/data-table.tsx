@@ -10,6 +10,7 @@ import type {
 } from '@tanstack/react-table';
 import { ArrowDown, ArrowUp, ChevronsUpDown } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
 declare module '@tanstack/react-table' {
@@ -35,6 +36,18 @@ type DataTableProps<TData> = {
     onRowClick?: (row: TData) => void;
     /** Server-side pagination; the table itself does not page. */
     empty?: ReactNode;
+    /**
+     * Swaps the body for skeleton rows while a server-side change is in
+     * flight. The header stays put so the table does not jump, and the
+     * skeleton keeps the row height of the real rows.
+     */
+    loading?: boolean;
+    /**
+     * How many skeleton rows to draw. Defaults to the visible row count, but
+     * never fewer than 5: filtering from 20 rows down to 1 would otherwise
+     * collapse the table to a single grey line and jump twice.
+     */
+    loadingRows?: number;
     className?: string;
 };
 
@@ -58,6 +71,8 @@ export function DataTable<TData>({
     onSortingChange,
     onRowClick,
     empty = 'Nothing to show.',
+    loading = false,
+    loadingRows,
     className,
 }: DataTableProps<TData>) {
     const table = useReactTable({
@@ -152,7 +167,49 @@ export function DataTable<TData>({
                     ))}
                 </thead>
                 <tbody>
-                    {table.getRowModel().rows.length === 0 ? (
+                    {loading ? (
+                        Array.from({
+                            length: loadingRows ?? Math.max(data.length, 5),
+                        }).map((_, rowIndex) => (
+                            <tr
+                                key={`skeleton-${rowIndex}`}
+                                className="border-border/60 border-b last:border-b-0"
+                                aria-hidden="true"
+                            >
+                                {columns.map((column, cellIndex) => {
+                                    const align =
+                                        column.meta?.align ?? 'left';
+
+                                    return (
+                                        <td
+                                            key={`skeleton-${rowIndex}-${cellIndex}`}
+                                            className={cn(
+                                                'px-3 py-2',
+                                                align === 'right'
+                                                    ? 'text-right'
+                                                    : align === 'center'
+                                                      ? 'text-center'
+                                                      : 'text-left',
+                                            )}
+                                        >
+                                            <Skeleton
+                                                className={cn(
+                                                    'h-4',
+                                                    // The widest column carries
+                                                    // the longest text.
+                                                    cellIndex === 0
+                                                        ? 'w-3/5'
+                                                        : cellIndex === 1
+                                                          ? 'w-2/5'
+                                                          : 'w-12',
+                                                )}
+                                            />
+                                        </td>
+                                    );
+                                })}
+                            </tr>
+                        ))
+                    ) : table.getRowModel().rows.length === 0 ? (
                         <tr>
                             <td
                                 colSpan={columns.length}

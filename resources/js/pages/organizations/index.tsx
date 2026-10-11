@@ -25,6 +25,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useIsMobile } from '@/hooks/use-mobile';
 import * as orgRoutes from '@/routes/organizations';
 
@@ -53,7 +54,8 @@ type Props = {
     filters: { search: string; status: string };
     sort: { column: string | null; direction: 'asc' | 'desc' };
     plans: { id: number; name: string; slug: string }[];
-    owners: { id: number; name: string; email: string }[];
+    /** Optional server-side: absent until the create sheet asks for it. */
+    owners?: { id: number; name: string; email: string }[];
 };
 
 const STATUS_TONES: Record<string, StatusTone> = {
@@ -74,6 +76,7 @@ export default function OrganizationsIndex({
     const [importErrors, setImportErrors] = useState<
         { row: number; message: string }[]
     >([]);
+    const [isTableLoading, setIsTableLoading] = useState(false);
     const page = usePage();
     const permissions =
         ((page.props.auth?.permissions ?? []) as string[]) ?? [];
@@ -152,15 +155,37 @@ export default function OrganizationsIndex({
 
     const isMobile = useIsMobile();
 
+    /**
+     * Changes only the URL, never the result set — opening or closing a sheet.
+     * No prop is requested because nothing on the page changes with the URL.
+     */
     function navigate(
         params: Record<string, string | number>,
         options?: { replace?: boolean },
     ) {
-        router.get(
-            orgRoutes.index().url,
-            params,
-            { preserveState: true, replace: options?.replace ?? false },
-        );
+        router.get(orgRoutes.index().url, params, {
+            preserveState: true,
+            replace: options?.replace ?? false,
+            only: ['organizations', 'filters', 'sort'],
+        });
+    }
+
+    /**
+     * Replaces the visible rows, so the table shows a skeleton while in flight.
+     * `only` keeps this off the optional owner list and the plan list.
+     */
+    function refetchTable(
+        params: Record<string, string | number>,
+        options?: { replace?: boolean },
+    ) {
+        setIsTableLoading(true);
+
+        router.get(orgRoutes.index().url, params, {
+            preserveState: true,
+            replace: options?.replace ?? false,
+            only: ['organizations', 'filters', 'sort'],
+            onFinish: () => setIsTableLoading(false),
+        });
     }
 
     // Overlays push history so Back closes them; closing replaces so Back does
@@ -213,20 +238,20 @@ export default function OrganizationsIndex({
                 onSuccess: () => {
                     // Keep the status filter honest: if you suspend while
                     // filtering by "active", the row no longer belongs.
-                    if (
-                        filters.status &&
-                        filters.status !== status
-                    ) {
-                        navigate(
-                            {
-                                search: filters.search,
-                                status: filters.status,
-                                sort: sort.column ?? '',
-                                direction: sort.direction,
-                            },
-                            { replace: true },
-                        );
-                    }
+if (
+                            filters.status &&
+                            filters.status !== status
+                        ) {
+                            refetchTable(
+                                {
+                                    search: filters.search,
+                                    status: filters.status,
+                                    sort: sort.column ?? '',
+                                    direction: sort.direction,
+                                },
+                                { replace: true },
+                            );
+                        }
                 },
             },
         );
@@ -267,7 +292,7 @@ export default function OrganizationsIndex({
     }
 
     function changePage(nextPage: number) {
-        navigate({
+        refetchTable({
             search: filters.search,
             status: filters.status,
             sort: sort.column ?? '',
@@ -278,7 +303,7 @@ export default function OrganizationsIndex({
 
     function applySorting(next: SortingState) {
         const first = next[0];
-        navigate(
+        refetchTable(
             {
                 search: filters.search,
                 status: filters.status,
@@ -306,7 +331,7 @@ export default function OrganizationsIndex({
         }
 
         const timer = window.setTimeout(() => {
-            navigate(
+            refetchTable(
                 {
                     search: searchDraft,
                     status: filters.status,
@@ -331,6 +356,18 @@ export default function OrganizationsIndex({
         setServerSearch(filters.search);
         setSearchDraft(filters.search);
     }
+
+// `owners` is an optional prop: the server does not send it unless asked.
+// Fetch it the first time the create sheet opens, and only then. Loading is
+// derived from the prop being absent rather than tracked separately, so there
+// is no second source of truth to fall out of sync with the request.
+useEffect(() => {
+    if (isCreateOpen && owners === undefined) {
+        router.reload({ only: ['owners'] });
+    }
+}, [isCreateOpen, owners]);
+
+const isOwnersLoading = isCreateOpen && owners === undefined;
 
     const columns = useMemo<ColumnDef<OrganizationRow, unknown>[]>(() => {
         const cells: ColumnDef<OrganizationRow, unknown>[] = [
@@ -624,6 +661,7 @@ export default function OrganizationsIndex({
                         getRowId={(row) => String(row.id)}
                         sorting={sorting}
                         onSortingChange={applySorting}
+                        loading={isTableLoading}
                         onRowClick={(organization) =>
                             setOverlayParam('mode', 'view', {
                                 keep: {
@@ -1082,18 +1120,26 @@ export default function OrganizationsIndex({
                             <select
                                 id="create-owner-user"
                                 name="owner_user_id"
-                                defaultValue={owners[0]?.id ?? ''}
-                                className="border-border-strong bg-background h-9 rounded-md border px-3 text-sm"
+                                disabled={owners === undefined}
+                                defaultValue={owners?.[0]?.id ?? ''}
+                                className="border-border-strong bg-background h-9 rounded-md border px-3 text-sm disabled:opacity-60"
                             >
-                                {owners.map((owner) => (
-                                    <option
-                                        key={owner.id}
-                                        value={owner.id}
-                                    >
-                                        {owner.name} ({owner.email})
-                                    </option>
-                                ))}
+                                {owners === undefined ? (
+                                    <option value="">Loading owners…</option>
+                                ) : (
+                                    owners.map((owner) => (
+                                        <option
+                                            key={owner.id}
+                                            value={owner.id}
+                                        >
+                                            {owner.name} ({owner.email})
+                                        </option>
+                                    ))
+                                )}
                             </select>
+                            {isOwnersLoading && (
+                                <Skeleton className="h-3 w-32" />
+                            )}
                             {errors.owner_user_id && (
                                 <p className="text-destructive text-xs">
                                     {errors.owner_user_id}
@@ -1363,7 +1409,7 @@ export default function OrganizationsIndex({
                             type="button"
                             onClick={() => {
                                 setSearchDraft('');
-                                navigate(
+                                refetchTable(
                                     {
                                         search: '',
                                         status: '',
@@ -1405,7 +1451,7 @@ export default function OrganizationsIndex({
                                     option.value
                                 }
                                 onChange={() =>
-                                    navigate(
+                                    refetchTable(
                                         {
                                             search: filters.search,
                                             status:
