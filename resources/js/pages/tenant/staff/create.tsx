@@ -204,7 +204,7 @@ export default function StaffCreate({
                                         ? 'Adding…'
                                         : 'Add staff member'}
                                 </Button>
-                                <Button asChild variant="outline">
+                                <Button asChild variant="ghost">
                                     <Link href={staffIndex()}>Cancel</Link>
                                 </Button>
                             </div>

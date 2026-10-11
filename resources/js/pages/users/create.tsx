@@ -143,7 +143,7 @@ export default function UsersCreate({ platformRoles }: Props) {
                                         </Button>
                                         <Button
                                             type="button"
-                                            variant="outline"
+                                            variant="ghost"
                                             asChild
                                         >
                                             <Link href={index()}>Cancel</Link>

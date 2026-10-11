@@ -353,7 +353,7 @@ export default function PlanForm({ plan }: Props) {
                     </Card>
 
                     <div className="flex justify-end gap-2 lg:col-span-2">
-                        <Button variant="outline" asChild>
+                        <Button variant="ghost" asChild>
                             <Link href={planRoutes.index().url}>Cancel</Link>
                         </Button>
                         <Button type="submit" disabled={form.processing}>

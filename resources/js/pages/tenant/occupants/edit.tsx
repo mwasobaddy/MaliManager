@@ -4,13 +4,13 @@ import { useRef, useState } from 'react';
 import DocumentBuilder from '@/components/document-builder';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
+import { OverlayFooter } from '@/components/overlay-footer';
 import PasswordInput from '@/components/password-input';
 import type { TemplateToken } from '@/components/rich-text-editor';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
     Dialog,
-    DialogClose,
     DialogContent,
     DialogDescription,
     DialogFooter,
@@ -160,7 +160,7 @@ export default function OccupantEdit({
                         title={`Edit ${occupant.first_name} ${occupant.last_name ?? ''}`}
                         description={`Update ${property.name} occupant details and unit assignments.`}
                     />
-                    <Button asChild variant="outline">
+                    <Button asChild variant="ghost">
                         <Link href={occupantsIndex(property.slug)}>
                             Back to occupants
                         </Link>
@@ -686,7 +686,7 @@ export default function OccupantEdit({
                                             ? 'Saving…'
                                             : 'Save changes'}
                                     </Button>
-                                    <Button asChild variant="outline">
+                                    <Button asChild variant="ghost">
                                         <Link
                                             href={occupantsIndex(property.slug)}
                                         >
@@ -732,29 +732,20 @@ export default function OccupantEdit({
                                                     className="space-y-6"
                                                 >
                                                     {({ processing }) => (
-                                                        <DialogFooter className="gap-2">
-                                                            <DialogClose
-                                                                asChild
-                                                            >
-                                                                <Button variant="secondary">
-                                                                    Cancel
-                                                                </Button>
-                                                            </DialogClose>
-
-                                                            <Button
-                                                                variant="destructive"
-                                                                disabled={
-                                                                    processing
-                                                                }
-                                                                asChild
-                                                            >
-                                                                <button
-                                                                    type="submit"
-                                                                    data-test="confirm-move-out-button"
-                                                                >
-                                                                    Move out
-                                                                </button>
-                                                            </Button>
+                                                        <DialogFooter>
+                                                            <OverlayFooter
+                                                                cancelClosesDialog
+                                                                actions={[
+                                                                    {
+                                                                        label: 'Move out',
+                                                                        tone: 'danger',
+                                                                        type: 'submit',
+                                                                        disabled:
+                                                                            processing,
+                                                                        testId: 'confirm-move-out-button',
+                                                                    },
+                                                                ]}
+                                                            />
                                                         </DialogFooter>
                                                     )}
                                                 </Form>
@@ -830,35 +821,22 @@ export default function OccupantEdit({
                                                             />
                                                         </div>
 
-                                                        <DialogFooter className="gap-2">
-                                                            <DialogClose
-                                                                asChild
-                                                            >
-                                                                <Button
-                                                                    variant="secondary"
-                                                                    onClick={() =>
-                                                                        resetAndClearErrors()
-                                                                    }
-                                                                >
-                                                                    Cancel
-                                                                </Button>
-                                                            </DialogClose>
-
-                                                            <Button
-                                                                variant="destructive"
-                                                                disabled={
-                                                                    processing
-                                                                }
-                                                                asChild
-                                                            >
-                                                                <button
-                                                                    type="submit"
-                                                                    data-test="confirm-remove-occupant-button"
-                                                                >
-                                                                    Remove
-                                                                    occupant
-                                                                </button>
-                                                            </Button>
+                                                        <DialogFooter>
+                                                            <OverlayFooter
+                                                                onCancel={() => {
+                                                                    resetAndClearErrors();
+                                                                }}
+                                                                actions={[
+                                                                    {
+                                                                        label: 'Remove occupant',
+                                                                        tone: 'danger',
+                                                                        type: 'submit',
+                                                                        disabled:
+                                                                            processing,
+                                                                        testId: 'confirm-remove-occupant-button',
+                                                                    },
+                                                                ]}
+                                                            />
                                                         </DialogFooter>
                                                     </>
                                                 )}

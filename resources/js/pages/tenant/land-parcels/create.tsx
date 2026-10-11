@@ -359,7 +359,7 @@ export default function LandParcelCreate({
                                 <Button type="submit" disabled={processing}>
                                     {processing ? 'Adding…' : 'Add land parcel'}
                                 </Button>
-                                <Button asChild variant="outline">
+                                <Button asChild variant="ghost">
                                     <Link href="/land-parcels">Cancel</Link>
                                 </Button>
                             </div>
