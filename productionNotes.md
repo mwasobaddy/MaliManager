@@ -216,6 +216,31 @@ This generates payments and expenses across 2024–2026. It is idempotent — it
 skips if data already exists. **Do not run in production** unless you want
 sample data; the seeder checks `count() > 0` and exits early.
 
+### Organization CSV import (operator note)
+
+`POST organizations/import` creates real organizations: each CSV row provisions a tenant
+row, a unique `<slug>.malimanager.test` subdomain, the default sub-role bundle, and an
+owner membership. **It is not a dry run.** Rows are processed independently, so a bad row
+is reported and skipped while the rest import.
+
+A clean run flashes a success toast and closes the import sheet. A run with any bad rows
+flashes an "N imported, M failed." toast and **leaves the sheet open** with a per-row
+report naming the line number and reason, so the operator can fix the file and re-upload
+without losing their place. Read that list before assuming a partial import was clean.
+
+Required CSV columns: `Name` and `Owner Email`. Optional: `Email`, `Phone`, `Plan`.
+Owners are created on demand and marked onboarded so they can sign in and reach the
+organization straight away — which means the operator is minting real accounts. Give the
+`organization.import` permission only to staff who should have that, and review any
+CSV that came from outside the team before uploading it.
+
+Two operational notes:
+- The upload is capped at **2 MB**. Every row provisions a tenant, a domain and three
+  sub-roles, so a very large file is expensive — import in batches.
+- `Plan` accepts a plan name or slug and falls back to the first plan. A typo silently
+  falls back rather than failing the row; check the plan column if the imported orgs are
+  not on the expected tier.
+
 ### Tenancy note: `FilesystemTenancyBootstrapper`
 
 The `FilesystemTenancyBootstrapper` in `config/tenancy.php` is **disabled**

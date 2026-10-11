@@ -11,9 +11,10 @@
 
 ```
 ┌────────────────────────────────────────────────────────────────┐
-│ Heading + description                        [+ New org]       │  ← page CTA
+│ Organization management      [⬆ New organization]            │  ← labelled CTA
+│ Create and manage orgs…                                        │  ← description
 │ ┌────────────────────────────────────────────────────────────┐ │
-│ │ [🔍 live search]                      [⚙ Filters] [Export] │ │  ← card header band
+│ │ [🔍 live search]                    [⚙] [↑ Import] [↓ Exp] │ │  ← card header band
 │ ├────────────────────────────────────────────────────────────┤ │  ← border-strong
 │ │ Organization ↕ │ Plan │ DOMAIN │ Members ↕ │ Status ↕ │ ACTIONS │
 │ │ name + slug    │ Free │ …      │ 6        │ ◉        │ 👁 ↩ ✎ 🗑 │
@@ -40,11 +41,29 @@ Research behind that decision:
 
 | Action | Home | Why |
 |---|---|---|
-| **New organization** | Page header | Page-level CTA, creates a resource |
-| **Export** | Card header band, right | Acts on *this table's result set* |
-| **Filters** | Card header band | Narrows the data |
+| **New organization** | Page header, as a `LabelledIconButton` | Page-level CTA; the permanent label under the icon is what distinguishes it from the utility icons |
+| **Import / Export** | Card header band, icon + tooltip | Act on *this table's result set* |
+| **Filters** | Card header band, icon + tooltip | Narrows the data |
 
 Search/filters (narrowing) are never mixed with page CTAs (creating).
+
+### Rows are the detail trigger
+
+There is **no View button**. `DataTable` takes `onRowClick`, which opens the row's
+sheet. Interactive children (the status toggle, and the whole action cell) call
+`event.stopPropagation()` so they do not also open the sheet — the action cell is
+already wrapped in one handler, and the status toggle stops it on its own.
+
+### Alignment
+
+`DataTable` reads `meta.align` per column (`left` | `right` | `center`), applied to
+both `<th>` and `<td>`. TanStack's `ColumnMeta` is empty by default so `data-table.tsx`
+augments it. Members is right-aligned with `tabular-nums`; Status is centred.
+
+### Long values
+
+Cells truncate (`truncate` + `max-w-*`) rather than wrapping, so row height stays
+constant; the full value rides on `title` for hover and remains in the a11y tree.
 
 Overlays triggered from the toolbar:
 - **View** → right-side `Sheet` on large screens, centred `Dialog` on small (see §6)
@@ -134,6 +153,66 @@ No new primitive was needed — shadcn `Sheet` already has the slide animation.
 The sheet/dialog switch happens in JS via `useIsMobile()` because CSS cannot swap
 two different Radix roots, and mounting both would trap focus twice.
 
+### One row sheet, three modes
+
+A row never opens a stack of nested sheets. It opens **one** overlay driven by two
+query params — `organization` (the row id) and `mode` (`view|edit|delete`):
+
+| Mode | Desktop | Mobile |
+|---|---|---|
+| `view` | Right-side Sheet | Centred Dialog |
+| `edit` | Right-side Sheet | **Full page** (`/organizations/{id}/edit`) |
+| `delete` | Right-side Sheet | **Centred Dialog** (password confirm) |
+| `create` | Right-side Sheet | **Full page** (`/organizations/create`) |
+
+Only **Edit** and **Create** fall back to a full page on small screens: they are
+long forms that are cramped in a dialog. View and Delete are short and stay as
+overlays.
+
+The reason View uses `replace` is that the row click is the *default* meaning of
+that URL. Opening Edit/Delete pushes an entry, so Back returns to View, then the
+row.
+
+```ts
+if (isMobile && mode === 'edit') {
+    router.visit(fallbackUrl); // RouteDefinition → visit needs the href
+
+    return;
+}
+
+setOverlayParam('mode', mode, {
+    replace: mode === 'view',
+    keep: { organization: String(organization.id) },
+});
+```
+
+Do not send mobile to the index for `delete` — that silently navigates away and
+performs nothing, which is exactly the bug the mode guard above prevents.
+
+### Overlays close on `onSuccess`, never `onSubmit`
+
+Every form inside an overlay closes it from `onSuccess`:
+
+```tsx
+<Form
+    id="organization-edit-form"
+    method="patch"
+    action={orgRoutes.update(id)}
+    onSuccess={() => closeRowSheet()}   // ✅
+    // onSubmit={() => closeRowSheet()} // ❌ closes before the response
+>
+```
+
+`onSubmit` fires the instant the button is pressed. The sheet then tears down the
+form and drops the URL params **before** the server has replied, so when the
+response finally comes back with validation errors there is no overlay left to
+render them in — the user is left on the bare table having "failed" a save they
+never got to make. This silently affects Create, Edit, Delete *and* the CSV
+import sheet, since `mimes`/`max` rejections arrive the same way.
+
+Rule of thumb: if the overlay has any server-side validation, it closes on
+`onSuccess`.
+
 ---
 
 ## 4. Contrast — `--border-strong` and the transparent Input
@@ -163,16 +242,17 @@ palette decision, not a layout one. Raise it if you want true AA on the boundary
 
 ---
 
-## 5. Status display — icon + tooltip, not a badge
+## 5. Status display — bare icon, no chip
 
 `ui-design-system.md` §1: *"never convey meaning by color alone — always pair with icon + label."*
-The status column uses a coloured icon with a tooltip carrying the human-readable status,
-rather than a filled badge pill.
+The status column is a **coloured glyph with no background tint** — a filled circle
+behind every row reads as a miniature badge and adds noise to a dense table. The icon
+shape carries the meaning; the tooltip carries the word.
 
 | Status | Icon | Token |
 |---|---|---|
-| `active` | filled circle / check | `--status-success` |
-| `suspended` | paused / alert triangle | `--status-warning` or `--status-danger` |
+| `active` | `CircleCheck` | `--status-success` |
+| `suspended` | `TriangleAlert` | `--status-danger` |
 
 ---
 
@@ -262,6 +342,10 @@ reachable", which was inaccurate.
 - [ ] Search/filters left; table-level actions (export) right; page CTAs in the page header
 - [ ] Inputs on card surfaces use `bg-background border-border-strong`, not bare `Input`
 - [ ] Overlays use `ResponsiveOverlay`, not a bare `Dialog`
+- [ ] Detail sheet opens from the row (`onRowClick`); no View button; action cell stops propagation
+- [ ] Columns that hold numbers use `meta: { align: 'right' }`; status uses `center`
+- [ ] Long cell values truncate + carry `title`, never wrap
+- [ ] Status is a bare glyph, not a tinted chip
 - [ ] URL-driven state reads `usePage().url`, never `window.location`
 
 ---
@@ -288,3 +372,19 @@ reachable", which was inaccurate.
 7. **Bundle edits only reach new organizations.** `DefaultSubRoles::createFor()` runs at
    org creation; existing orgs keep their old grants. `DefaultSubRoles::syncBundlesFor()`
    (called from `RolesAndPermissionsSeeder`) repairs them additively.
+8. **`query.has('key')` is true for an empty value.** Closing a URL-driven overlay
+   navigates to `?key=` (present but empty), so a `has()` check never clears. Compare
+   against `''`, or mirror the `Number(...) > 0` pattern used for id params.
+9. **A cast value can break CSV output silently-ish.** `Organization.status` is an enum;
+   `fputcsv` threw `Object of class OrganizationStatus could not be converted to string`.
+   Any new cast that reaches a string sink (CSV, mail, PDF) needs `->value`.
+10. **Exports must be a real navigation.** A `fetch()`-built blob URL would drop the
+    session cookie; submit a hidden GET form instead. The organizations page does this in
+    `downloadExportUrl()`.
+11. **A "responsive" overlay handler that redirects *everything* on mobile silently kills
+    the secondary flows.** `if (isMobile) router.visit(fallback)` made Delete navigate to
+    the index and do nothing, because Delete has no page to visit. Branch on the mode, not
+    on the viewport alone. See §3.
+12. **Closing an overlay from `onSubmit` throws away the validation response.** The sheet
+    unmounts before the server replies, so field errors render nowhere. Use `onSuccess`.
+    See §3.
