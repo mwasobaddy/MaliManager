@@ -240,6 +240,34 @@ it('filters the users index by a partial search term', function () {
             ->where('users.data', fn ($rows) => count($rows) === 1 && str_contains($rows[0]['email'], 'jane.doe')));
 });
 
+it('omits the owner list until it is explicitly requested', function () {
+    (new PlansSeeder)->run();
+    $admin = seededAdmin();
+
+    $this->actingAs($admin)
+        ->get(route('organizations.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('organizations/index')
+            // Optional prop: absent from a normal visit so a search, sort,
+            // page change or sheet open does not query and serialise every
+            // user on the platform.
+            ->missing('owners'));
+
+    $this->actingAs($admin)
+        ->get(route('organizations.index'), [
+            'X-Inertia-Partial-Component' => 'organizations/index',
+            'X-Inertia-Partial-Data' => 'owners',
+        ], [
+            'X-Inertia' => 'true',
+            'X-Requested-With' => 'XMLHttpRequest',
+        ])
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('organizations/index')
+            ->has('owners'));
+});
+
 it('filters the organizations index by a partial search term', function () {
     (new PlansSeeder)->run();
     $admin = seededAdmin();
