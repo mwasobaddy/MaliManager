@@ -30,7 +30,14 @@ test('sub-permission catalog is seeded', function () {
 test('default sub-roles bundle their expected permissions', function () {
     $caretaker = $this->organization->subRoles()->where('slug', 'caretaker')->first();
 
-    expect($caretaker->subPermissions()->count())->toBe(17)
+    expect($caretaker->subPermissions()->count())->toBe(18)
+        // Gates only GET /properties (the picker), which is where the staff
+        // landing flow sends a caretaker. Without it they are redirected away.
+        ->and($caretaker->hasSubPermissionFor(SubPermissionKey::PropertyManage))->toBeTrue()
+        // Still no property write access: create/edit/delete stay off.
+        ->and($caretaker->hasSubPermissionFor(SubPermissionKey::PropertyCreate))->toBeFalse()
+        ->and($caretaker->hasSubPermissionFor(SubPermissionKey::PropertyEdit))->toBeFalse()
+        ->and($caretaker->hasSubPermissionFor(SubPermissionKey::PropertyDelete))->toBeFalse()
         ->and($caretaker->hasSubPermissionFor(SubPermissionKey::UnitManage))->toBeTrue()
         ->and($caretaker->hasSubPermissionFor(SubPermissionKey::LandParcelManage))->toBeTrue()
         ->and($caretaker->hasSubPermissionFor(SubPermissionKey::LandParcelCreate))->toBeTrue()
@@ -39,6 +46,32 @@ test('default sub-roles bundle their expected permissions', function () {
         ->and($caretaker->hasSubPermissionFor(SubPermissionKey::StaffDelete))->toBeFalse()
         ->and($caretaker->hasSubPermissionFor(SubPermissionKey::OccupantDelete))->toBeFalse()
         ->and($caretaker->hasSubPermissionFor(SubPermissionKey::AiUse))->toBeTrue();
+});
+
+test('syncBundlesFor adds missing bundle permissions without removing customisations', function () {
+    $caretaker = $this->organization->subRoles()->where('slug', 'caretaker')->first();
+
+    // Simulate an organization created before a bundle gained a permission.
+    $propertyManage = SubPermission::where('key', SubPermissionKey::PropertyManage->value)->first();
+    $caretaker->subPermissions()->detach($propertyManage);
+
+    expect(DefaultSubRoles::syncBundlesFor($this->organization))->toBe(1);
+
+    // The new bundle permission is restored.
+    expect($caretaker->fresh()->hasSubPermissionFor(SubPermissionKey::PropertyManage))->toBeTrue();
+
+    // Additive only: a permission that is NOT in the bundle and that the owner
+    // granted by hand is never detached.
+    $custom = SubPermission::where('key', SubPermissionKey::PropertyDelete->value)->first();
+    $caretaker->subPermissions()->syncWithoutDetaching([$custom->id]);
+
+    DefaultSubRoles::syncBundlesFor($this->organization);
+
+    expect($caretaker->fresh()->hasSubPermissionFor(SubPermissionKey::PropertyDelete))->toBeTrue();
+});
+
+test('syncBundlesFor is idempotent', function () {
+    expect(DefaultSubRoles::syncBundlesFor($this->organization))->toBe(0);
 });
 
 test('owners bypass sub-permission checks', function () {

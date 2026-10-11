@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\OrganizationStatus;
 use App\Enums\PlatformRole;
 use App\Models\Organization;
 use App\Models\Plan;
@@ -212,7 +213,7 @@ it('suspends an organization through edit permission', function () {
         ])
         ->assertRedirect();
 
-    expect($organization->refresh()->status)->toBe('suspended');
+    expect($organization->refresh()->status)->toBe(OrganizationStatus::Suspended);
 });
 
 it('retires stale sub-permissions from the catalog on seeding', function () {
