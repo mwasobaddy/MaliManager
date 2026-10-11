@@ -2,6 +2,7 @@ import { useState } from 'react';
 import Cropper from 'react-easy-crop';
 import type { Area, Point } from 'react-easy-crop';
 import 'react-easy-crop/react-easy-crop.css';
+import { OverlayFooter } from '@/components/overlay-footer';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -180,23 +181,19 @@ export default function ImageCropDialog({
                 </div>
 
                 <DialogFooter>
-                    <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => {
+                    <OverlayFooter
+                        onCancel={() => {
                             setOpen(false);
                             onClose();
                         }}
-                    >
-                        Cancel
-                    </Button>
-                    <Button
-                        type="button"
-                        disabled={!area || applying}
-                        onClick={handleApply}
-                    >
-                        {applying ? 'Applying…' : 'Apply crop'}
-                    </Button>
+                        actions={[
+                            {
+                                label: applying ? 'Applying…' : 'Apply crop',
+                                onClick: handleApply,
+                                disabled: !area || applying,
+                            },
+                        ]}
+                    />
                 </DialogFooter>
             </DialogContent>
         </Dialog>
