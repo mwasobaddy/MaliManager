@@ -147,6 +147,44 @@ Header markup follows `ui-design-system.md` §4.2: uppercase 12px muted labels,
 `--border-strong` rule, `--brand-primary` icon on the active sort. Non-sortable
 columns set `enableSorting: false`.
 
+#### Loading — `loading` swaps the body, not the table
+
+`loading` replaces the `<tbody>` with skeleton rows and leaves the `<thead>` alone.
+Hiding the header too would make the table collapse and re-expand, which reads as a
+layout bug rather than as loading. The skeleton honours each column's `meta.align`,
+so the bars line up under their real columns.
+
+```tsx
+<DataTable columns={columns} data={organizations.data} loading={isTableLoading} />
+```
+
+Row count defaults to the visible row count with a floor of **5**
+(`loadingRows ?? Math.max(data.length, 5)`). Using the previous count alone looks
+right on a page change but collapses to a single grey line when a filter narrows 20
+rows to 1, so the table jumps twice. Pass `loadingRows` to override — usually with
+the page size, when that is known.
+
+Drive it from `onFinish` on the request that replaces the rows, not from a global
+"is navigating" flag:
+
+```tsx
+function refetchTable(params: Record<string, string | number>, options?: { replace?: boolean }) {
+    setIsTableLoading(true);
+
+    router.get(orgRoutes.index().url, params, {
+        preserveState: true,
+        replace: options?.replace ?? false,
+        only: ['organizations', 'filters', 'sort'],
+        onFinish: () => setIsTableLoading(false),
+    });
+}
+```
+
+`onFinish` fires on failure too, so the skeleton cannot get stuck. A global
+navigation flag is wrong here for two reasons: it would also cover sheet
+open/close, which change no data and are instant, and it needs to distinguish
+navigation from form submissions, which have their own busy state.
+
 ### ResponsiveOverlay
 
 No new primitive was needed — shadcn `Sheet` already has the slide animation.
@@ -388,3 +426,13 @@ reachable", which was inaccurate.
 12. **Closing an overlay from `onSubmit` throws away the validation response.** The sheet
     unmounts before the server replies, so field errors render nowhere. Use `onSuccess`.
     See §3.
+13. **A dropdown prop that nobody is looking at still costs a query per keystroke.** The
+    owner picker is the only consumer of the full user list, but it was an eager prop, so
+    every debounced search, sort, page change and sheet open re-queried and re-serialised
+    all ~80 users. Wrapping it in `Inertia::optional()` dropped it from the initial payload
+    entirely; the page now asks for it once, when the sheet opens, and derives its loading
+    state from the prop being absent rather than tracking a second flag.
+14. **A page usually needs two navigation helpers, not one.** Opening a sheet changes only
+    the URL; a search changes the rows. They look identical at the call site but have very
+    different costs — one asks the server to resend props the page already has, the other
+    should show a skeleton. Splitting them keeps each honest.
