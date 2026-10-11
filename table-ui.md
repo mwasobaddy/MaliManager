@@ -191,6 +191,15 @@ No new primitive was needed — shadcn `Sheet` already has the slide animation.
 The sheet/dialog switch happens in JS via `useIsMobile()` because CSS cannot swap
 two different Radix roots, and mounting both would trap focus twice.
 
+The action row is **not** taken from the footer primitives. shadcn's own
+`SheetFooter` is `flex flex-col`, which stretches each button to the panel's full
+width; `DialogFooter` is `flex-col-reverse` until `sm`. Neither gives the
+right-aligned row the design system asks for. Rather than patch the vendored
+primitives — which the next `shadcn add` would silently revert — `OverlayFooter`
+renders its own `flex w-full flex-wrap items-center justify-end gap-2`, so the row
+lays out identically in both branches and wraps instead of stacking on a narrow
+viewport. Colour roles live in `ui-design-system.md` §Action Row.
+
 ### One row sheet, three modes
 
 A row never opens a stack of nested sheets. It opens **one** overlay driven by two
