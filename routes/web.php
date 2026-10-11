@@ -70,6 +70,7 @@ Route::middleware(['auth', 'verified', 'can:manageUsers'])->group(function () {
 // Central organization management module, gated by central organization.* permissions.
 Route::middleware(['auth', 'verified', 'can:manageOrganizations'])->group(function () {
     Route::get('organizations', [OrganizationController::class, 'index'])->name('organizations.index');
+    Route::post('organizations/import', [OrganizationController::class, 'import'])->name('organizations.import')->middleware('can:importOrganizations');
     Route::get('organizations/export', [OrganizationController::class, 'export'])->name('organizations.export')->middleware('can:exportOrganizations');
     Route::get('organizations/create', [OrganizationController::class, 'create'])->name('organizations.create')->middleware('can:createOrganizations');
     Route::post('organizations', [OrganizationController::class, 'store'])->name('organizations.store')->middleware('can:createOrganizations');
