@@ -4,12 +4,17 @@ import { cn } from '@/lib/utils';
 
 export type StatusTone = 'success' | 'warning' | 'danger' | 'info' | 'muted';
 
+/**
+ * Glyph colour only — no tinted chip. A filled circle behind every status reads
+ * as a badge in miniature and adds visual noise to a dense table; the icon
+ * shape already carries the meaning.
+ */
 const toneClasses: Record<StatusTone, string> = {
-    success: 'bg-status-success/12 text-status-success',
-    warning: 'bg-status-warning/12 text-status-warning',
-    danger: 'bg-status-danger/12 text-status-danger',
-    info: 'bg-action-view/12 text-action-view',
-    muted: 'bg-muted text-muted-foreground',
+    success: 'text-status-success',
+    warning: 'text-status-warning',
+    danger: 'text-status-danger',
+    info: 'text-action-view',
+    muted: 'text-muted-foreground',
 };
 
 /**
@@ -42,7 +47,7 @@ export function StatusIcon({
             aria-label={label}
             role="img"
             className={cn(
-                'inline-flex size-7 items-center justify-center rounded-md',
+                'inline-flex size-6 items-center justify-center',
                 toneClasses[tone],
                 className,
             )}
@@ -72,7 +77,7 @@ export function StatusToggleButton({
     return (
         <ActionIconButton
             color="default"
-            className={cn(toneClasses[tone], 'hover:brightness-95')}
+            className={cn(toneClasses[tone], 'hover:opacity-75')}
             icon={<StatusIcon tone={tone} label={label} />}
             label={actionLabel}
             onClick={onClick}

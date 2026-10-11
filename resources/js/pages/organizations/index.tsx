@@ -1,23 +1,23 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import { Form, usePage } from '@inertiajs/react';
 import type { ColumnDef, SortingState } from '@tanstack/react-table';
 import {
     Building2,
     Download,
-    Eye,
     ListFilter,
     LogIn,
     Pencil,
     Plus,
     Search,
     Trash2,
+    Upload,
     X,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActionIconButton } from '@/components/action-icon-button';
 import { DataTable } from '@/components/data-table';
 import Heading from '@/components/heading';
-import { PasswordConfirmDialog } from '@/components/password-confirm-dialog';
+import { LabelledIconButton } from '@/components/labelled-icon-button';
 import { ResponsiveOverlay } from '@/components/responsive-overlay';
 import { StatusIcon  } from '@/components/status-cell';
 import type {StatusTone} from '@/components/status-cell';
@@ -25,6 +25,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useIsMobile } from '@/hooks/use-mobile';
 import * as orgRoutes from '@/routes/organizations';
 
 type OrganizationRow = {
@@ -36,6 +37,7 @@ type OrganizationRow = {
     status: string;
     status_label: string;
     plan: string | null;
+    plan_id: number | null;
     domain: string | null;
     users_count: number;
     created_at: string | null;
@@ -50,6 +52,8 @@ type Props = {
     };
     filters: { search: string; status: string };
     sort: { column: string | null; direction: 'asc' | 'desc' };
+    plans: { id: number; name: string; slug: string }[];
+    owners: { id: number; name: string; email: string }[];
 };
 
 const STATUS_TONES: Record<string, StatusTone> = {
@@ -64,7 +68,12 @@ export default function OrganizationsIndex({
     organizations,
     filters,
     sort,
+    plans,
+    owners,
 }: Props) {
+    const [importErrors, setImportErrors] = useState<
+        { row: number; message: string }[]
+    >([]);
     const page = usePage();
     const permissions =
         ((page.props.auth?.permissions ?? []) as string[]) ?? [];
@@ -72,11 +81,12 @@ export default function OrganizationsIndex({
     const canEdit = permissions.includes('organization.edit');
     const canDelete = permissions.includes('organization.delete');
     const canExport = permissions.includes('organization.export');
+    const canImport = permissions.includes('organization.import');
     const canImpersonate = permissions.includes('organization.impersonate');
 
-    const [deleteTarget, setDeleteTarget] = useState<OrganizationRow | null>(
-        null,
-    );
+    const errors = (page.props.errors ?? {}) as Record<string, string>;
+
+    const [ownerMode, setOwnerMode] = useState<'existing' | 'new'>('existing');
 
     // Read query params off Inertia's page.url, NOT window.location. Inertia
     // pushes history *after* React renders, so window.location is stale during
@@ -96,7 +106,51 @@ export default function OrganizationsIndex({
           )
         : undefined;
 
-    const isFiltersOpen = query.has('filters');
+    const isExportOpen = query.get('export') === '1';
+    const isImportOpen = query.get('import') === '1';
+
+    // One row sheet with switchable content rather than a sheet per action:
+    // stacking Radix modals fights over the focus trap and double-dims the page.
+    type RowMode = 'view' | 'edit' | 'delete';
+    const rowMode = (query.get('mode') as RowMode | null) ?? 'view';
+    const isCreateOpen = query.get('create') === '1';
+
+    // Downloads must be a real navigation: a plain <a download> would not carry
+    // the session cookie, and fetch() would have to read the blob and save it by
+    // hand. Triggering a hidden form GET keeps it a normal authenticated request.
+    function downloadExportUrl(scope: 'all' | 'page') {
+        const url = new URL(orgRoutes.exportMethod().url, window.location.origin);
+
+        if (filters.search) {
+            url.searchParams.set('search', filters.search);
+        }
+
+        if (filters.status) {
+            url.searchParams.set('status', filters.status);
+        }
+
+        url.searchParams.set('scope', scope);
+
+        if (scope === 'page') {
+            url.searchParams.set('page', String(organizations.current_page));
+        }
+
+        const form = document.createElement('form');
+
+        form.method = 'GET';
+        form.action = url.pathname + url.search;
+        document.body.appendChild(form);
+        form.submit();
+        form.remove();
+
+        setOverlayParam('export', null, { replace: true });
+    }
+
+    // `query.has()` is true even for an empty value, and closing navigates to
+    // `filters=` — so comparing against '' is what actually closes the sheet.
+    const isFiltersOpen = query.get('filters') !== null && query.get('filters') !== '';
+
+    const isMobile = useIsMobile();
 
     function navigate(
         params: Record<string, string | number>,
@@ -114,7 +168,11 @@ export default function OrganizationsIndex({
     function setOverlayParam(
         key: string,
         value: string | null,
-        options?: { replace?: boolean },
+        options?: {
+            replace?: boolean;
+            /** Extra params to carry through, e.g. the row being opened. */
+            keep?: Record<string, string>;
+        },
     ) {
         navigate(
             {
@@ -122,9 +180,23 @@ export default function OrganizationsIndex({
                 status: filters.status,
                 sort: sort.column ?? '',
                 direction: sort.direction,
+                ...(options?.keep ?? {}),
                 [key]: value ?? '',
             },
-            options,
+            { replace: options?.replace },
+        );
+    }
+
+    /** Close the row sheet, dropping both the row id and the mode. */
+    function closeRowSheet() {
+        navigate(
+            {
+                search: filters.search,
+                status: filters.status,
+                sort: sort.column ?? '',
+                direction: sort.direction,
+            },
+            { replace: true },
         );
     }
 
@@ -158,6 +230,40 @@ export default function OrganizationsIndex({
                 },
             },
         );
+    }
+
+    /**
+     * Open the row sheet in a given mode. On a narrow screen the same actions
+     * fall back to their full pages, which have room for the longer forms.
+     */
+    function openRow(
+        organization: OrganizationRow,
+        mode: RowMode,
+        fallbackUrl: string,
+    ) {
+        // `orgRoutes.edit()` returns a RouteDefinition; visit needs the href.
+        // Only Edit needs a full page on small screens: a form sheet is too
+        // cramped there. View and Delete stay as centred dialogs.
+        if (isMobile && mode === 'edit') {
+            router.visit(fallbackUrl);
+
+            return;
+        }
+
+        setOverlayParam('mode', mode, {
+            replace: mode === 'view',
+            keep: { organization: String(organization.id) },
+        });
+    }
+
+    function openCreateSheet(fallbackUrl: string) {
+        if (isMobile) {
+            router.visit(fallbackUrl);
+
+            return;
+        }
+
+        setOverlayParam('create', '1');
     }
 
     function changePage(nextPage: number) {
@@ -259,22 +365,42 @@ export default function OrganizationsIndex({
                 accessorKey: 'domain',
                 header: 'Domain',
                 enableSorting: false,
-                cell: ({ row }) => (
-                    <span className="text-xs">
-                        {row.original.domain ?? '—'}
-                    </span>
-                ),
+                cell: ({ row }) => {
+                    const domain = row.original.domain;
+
+                    if (!domain) {
+                        return <span className="text-xs">—</span>;
+                    }
+
+                    // Truncate rather than wrap, so the row height stays
+                    // constant; the full host is available on hover and to
+                    // screen readers via the title.
+                    return (
+                        <span
+                            title={domain}
+                            className="block max-w-40 truncate text-xs sm:max-w-56"
+                        >
+                            {domain}
+                        </span>
+                    );
+                },
             },
             {
                 id: 'members',
                 accessorKey: 'users_count',
                 header: 'Members',
-                cell: ({ row }) => row.original.users_count,
+                meta: { align: 'right' },
+                cell: ({ row }) => (
+                    <span className="block text-right tabular-nums">
+                        {row.original.users_count}
+                    </span>
+                ),
             },
             {
                 id: 'status',
                 accessorKey: 'status',
                 header: 'Status',
+                meta: { align: 'center' },
                 cell: ({ row }) => {
                     const organization = row.original;
                     const suspended = organization.status === 'suspended';
@@ -302,17 +428,19 @@ export default function OrganizationsIndex({
                             title={`${suspended ? 'Reactivate' : 'Suspend'} ${organization.name}`}
                             aria-label={`${suspended ? 'Reactivate' : 'Suspend'} ${organization.name}`}
                             className="focus-visible:ring-ring rounded-md focus-visible:ring-[3px] focus-visible:outline-none"
-                            onClick={() =>
+                            onClick={(event) => {
+                                event.stopPropagation();
+
                                 setStatus(
                                     organization,
                                     suspended ? 'active' : 'suspended',
-                                )
-                            }
+                                );
+                            }}
                         >
                             <StatusIcon
                                 tone={tone}
                                 label={organization.status_label}
-                                className="hover:brightness-95"
+                                className="hover:opacity-70"
                             />
                         </button>
                     );
@@ -326,18 +454,12 @@ export default function OrganizationsIndex({
                     const organization = row.original;
 
                     return (
-                        <div className="flex justify-end gap-1.5">
-                            <ActionIconButton
-                                icon={<Eye />}
-                                label={`View ${organization.name}`}
-                                color="view"
-                                onClick={() =>
-                                    setOverlayParam(
-                                        'organization',
-                                        String(organization.id),
-                                    )
-                                }
-                            />
+                        <div
+                            className="flex justify-end gap-1.5"
+                            // The whole row opens the detail sheet; interactive
+                            // controls inside it must not also trigger that.
+                            onClick={(event) => event.stopPropagation()}
+                        >
                             {canImpersonate && (
                                 <Form
                                     method="post"
@@ -361,18 +483,19 @@ export default function OrganizationsIndex({
                             )}
                             {canEdit && (
                                 <ActionIconButton
-                                    asChild
+                                    icon={<Pencil />}
                                     label={`Edit ${organization.name}`}
                                     color="edit"
-                                >
-                                    <Link
-                                        href={orgRoutes.edit(
-                                            organization.id,
-                                        )}
-                                    >
-                                        <Pencil />
-                                    </Link>
-                                </ActionIconButton>
+                                    onClick={() =>
+                                        openRow(
+                                            organization,
+                                            'edit',
+                                            orgRoutes.edit(
+                                                organization.id,
+                                            ).url,
+                                        )
+                                    }
+                                />
                             )}
                             {canDelete && (
                                 <ActionIconButton
@@ -380,7 +503,11 @@ export default function OrganizationsIndex({
                                     label={`Delete ${organization.name}`}
                                     color="danger"
                                     onClick={() =>
-                                        setDeleteTarget(organization)
+                                        openRow(
+                                            organization,
+                                            'delete',
+                                            orgRoutes.index().url,
+                                        )
                                     }
                                 />
                             )}
@@ -406,21 +533,33 @@ export default function OrganizationsIndex({
         <>
             <Head title="Organizations" />
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                    <Heading
-                        title="Organization management"
-                        description="Create and manage organizations, their plans and tenancy."
-                    />
-                    <div className="flex gap-2">
-                        {canCreate && (
-                            <Button asChild>
-                                <Link href={orgRoutes.create()}>
-                                    <Plus className="mr-2 size-4" />
-                                    New organization
-                                </Link>
-                            </Button>
-                        )}
+                {/*
+                 * Title and the primary CTA are partners on one line and stay
+                 * side by side all the way down to small screens. The heading
+                 * component owns its own title/description spacing, so the
+                 * description is rendered here rather than inside Heading to
+                 * keep the two elements on one baseline.
+                 */}
+                <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                        <Heading title="Organization management" />
+                        <p className="text-muted-foreground mt-1 text-sm">
+                            Create and manage organizations, their plans and
+                            tenancy.
+                        </p>
                     </div>
+                    {canCreate && (
+                        <LabelledIconButton
+                            icon={<Plus />}
+                            label="Create"
+                            tooltip="Create organisation"
+                            color="primary"
+                            onClick={() =>
+                                openCreateSheet(orgRoutes.create().url)
+                            }
+                            className="max-w-20 sm:max-w-24"
+                        />
+                    )}
                 </div>
 
                 {/*
@@ -460,13 +599,23 @@ export default function OrganizationsIndex({
                                     : setOverlayParam('filters', '1')
                             }
                         />
+                        {canImport && (
+                            <ActionIconButton
+                                icon={<Upload />}
+                                label="Import from CSV"
+                                color="default"
+                                onClick={() =>
+                                    setOverlayParam('import', '1')
+                                }
+                            />
+                        )}
                         {canExport && (
-                            <Button variant="outline" size="sm" asChild>
-                                <a href={orgRoutes.exportMethod().url}>
-                                    <Download className="mr-2 size-4" />
-                                    Export
-                                </a>
-                            </Button>
+                            <ActionIconButton
+                                icon={<Download />}
+                                label="Export"
+                                color="default"
+                                onClick={() => setOverlayParam('export', '1')}
+                            />
                         )}
                     </div>
                     <DataTable
@@ -475,6 +624,13 @@ export default function OrganizationsIndex({
                         getRowId={(row) => String(row.id)}
                         sorting={sorting}
                         onSortingChange={applySorting}
+                        onRowClick={(organization) =>
+                            setOverlayParam('mode', 'view', {
+                                keep: {
+                                    organization: String(organization.id),
+                                },
+                            })
+                        }
                         empty="No organizations match your filters."
                     />
                 </Card>
@@ -516,35 +672,101 @@ export default function OrganizationsIndex({
                 )}
             </div>
 
-            <PasswordConfirmDialog
-                open={deleteTarget !== null}
-                onOpenChange={(open) => {
-                    if (!open) {
-                        setDeleteTarget(null);
-                    }
-                }}
-                formAction={orgRoutes.destroy.form(deleteTarget?.id ?? 0)}
-                title={`Delete ${deleteTarget?.name ?? ''}?`}
-                description="This soft-deletes the organization. Its tenant, members and records are kept, so it can be restored. Please enter your password to confirm."
-            />
-
             <ResponsiveOverlay
                 open={isViewOpen}
                 onOpenChange={(open) => {
                     if (!open) {
-                        setOverlayParam('organization', null, {
-                            replace: true,
-                        });
+                        closeRowSheet();
                     }
                 }}
-                title={viewedOrganization?.name ?? 'Organization'}
+                title={
+                    rowMode === 'delete'
+                        ? `Delete ${viewedOrganization?.name ?? ''}?`
+                        : (viewedOrganization?.name ?? 'Organization')
+                }
                 description={
-                    viewedOrganization
-                        ? 'Details for this organization.'
-                        : 'This organization is not on the current page of results.'
+                    !viewedOrganization
+                        ? 'This organization is not on the current page of results.'
+                        : rowMode === 'edit'
+                          ? 'Update this organization.'
+                          : rowMode === 'delete'
+                            ? 'Confirm with your password to continue.'
+                            : 'Details for this organization.'
+                }
+                footer={
+                    rowMode === 'edit' && viewedOrganization ? (
+                        <>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={closeRowSheet}
+                            >
+                                Cancel
+                            </Button>
+                            <Button form="organization-edit-form" type="submit">
+                                Save changes
+                            </Button>
+                        </>
+                    ) : rowMode === 'delete' && viewedOrganization ? (
+                        <>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={closeRowSheet}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                form="organization-delete-form"
+                                type="submit"
+                                variant="destructive"
+                            >
+                                <Trash2 className="mr-2 size-4" />
+                                Delete organization
+                            </Button>
+                        </>
+                    ) : viewedOrganization ? (
+                        <>
+                            {canEdit && (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() =>
+                                        openRow(
+                                            viewedOrganization,
+                                            'edit',
+                                            orgRoutes.edit(
+                                                viewedOrganization.id,
+                                            ).url,
+                                        )
+                                    }
+                                >
+                                    <Pencil className="mr-2 size-4" />
+                                    Edit
+                                </Button>
+                            )}
+                            {canDelete && (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() =>
+                                        openRow(
+                                            viewedOrganization,
+                                            'delete',
+                                            orgRoutes.index().url,
+                                        )
+                                    }
+                                    className="text-destructive hover:text-destructive"
+                                >
+                                    <Trash2 className="mr-2 size-4" />
+                                    Delete
+                                </Button>
+                            )}
+                        </>
+                    ) : null
                 }
             >
-                {viewedOrganization && (
+                {viewedOrganization && rowMode === 'view' && (
                     <dl className="grid grid-cols-3 gap-x-4 gap-y-3 text-sm">
                         <dt className="text-muted-foreground">Slug</dt>
                         <dd className="col-span-2 font-medium">
@@ -587,6 +809,530 @@ export default function OrganizationsIndex({
                         </dd>
                     </dl>
                 )}
+
+                {viewedOrganization && rowMode === 'edit' && (
+                    <Form
+                        id="organization-edit-form"
+                        method="patch"
+                        action={orgRoutes.update(viewedOrganization.id)}
+                        onSuccess={() => closeRowSheet()}
+                        className="grid gap-3"
+                    >
+                        <div className="grid gap-2">
+                            <Label htmlFor="edit-name">Name</Label>
+                            <Input
+                                id="edit-name"
+                                name="name"
+                                defaultValue={viewedOrganization.name}
+                                required
+                            />
+                            {errors.name && (
+                                <p className="text-destructive text-xs">
+                                    {errors.name}
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="grid gap-2">
+                            <Label htmlFor="edit-email">Email</Label>
+                            <Input
+                                id="edit-email"
+                                name="email"
+                                type="email"
+                                defaultValue={viewedOrganization.email ?? ''}
+                            />
+                            {errors.email && (
+                                <p className="text-destructive text-xs">
+                                    {errors.email}
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="grid gap-2">
+                            <Label htmlFor="edit-phone">Phone</Label>
+                            <Input
+                                id="edit-phone"
+                                name="phone"
+                                defaultValue={viewedOrganization.phone ?? ''}
+                            />
+                            {errors.phone && (
+                                <p className="text-destructive text-xs">
+                                    {errors.phone}
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="grid gap-2">
+                            <Label htmlFor="edit-plan">Plan</Label>
+                            <select
+                                id="edit-plan"
+                                name="plan_id"
+                                defaultValue={viewedOrganization.plan_id ?? ''}
+                                className="border-border-strong bg-background h-9 rounded-md border px-3 text-sm"
+                            >
+                                {plans.map((plan) => (
+                                    <option
+                                        key={plan.id}
+                                        value={plan.id}
+                                    >
+                                        {plan.name}
+                                    </option>
+                                ))}
+                            </select>
+                            {errors.plan_id && (
+                                <p className="text-destructive text-xs">
+                                    {errors.plan_id}
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="grid gap-2">
+                            <Label htmlFor="edit-status">Status</Label>
+                            <select
+                                id="edit-status"
+                                name="status"
+                                defaultValue={viewedOrganization.status}
+                                className="border-border-strong bg-background h-9 rounded-md border px-3 text-sm"
+                            >
+                                <option value="active">Active</option>
+                                <option value="suspended">Suspended</option>
+                            </select>
+                            {errors.status && (
+                                <p className="text-destructive text-xs">
+                                    {errors.status}
+                                </p>
+                            )}
+                        </div>
+                    </Form>
+                )}
+
+                {viewedOrganization && rowMode === 'delete' && (
+                    <Form
+                        id="organization-delete-form"
+                        method="delete"
+                        action={orgRoutes.destroy(viewedOrganization.id)}
+                        onSuccess={() => closeRowSheet()}
+                        className="grid gap-3"
+                    >
+                        <p className="text-sm">
+                            This soft-deletes{' '}
+                            <span className="font-medium">
+                                {viewedOrganization.name}
+                            </span>
+                            . Its tenant, members and records are kept, so it
+                            can be restored.
+                        </p>
+
+                        <div className="grid gap-2">
+                            <Label htmlFor="delete-password">
+                                Confirm with your password
+                            </Label>
+                            <Input
+                                id="delete-password"
+                                name="password"
+                                type="password"
+                                autoComplete="current-password"
+                                required
+                            />
+                            {errors.password && (
+                                <p className="text-destructive text-xs">
+                                    {errors.password}
+                                </p>
+                            )}
+                        </div>
+                    </Form>
+                )}
+            </ResponsiveOverlay>
+
+            <ResponsiveOverlay
+                open={isCreateOpen}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setOverlayParam('create', null, { replace: true });
+                    }
+                }}
+                title="Create organization"
+                description="Set up the organization, its subdomain and its owner."
+                footer={
+                    <>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() =>
+                                setOverlayParam('create', null, {
+                                    replace: true,
+                                })
+                            }
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            type="submit"
+                            form="organization-create-form"
+                        >
+                            Create
+                        </Button>
+                    </>
+                }
+            >
+                <Form
+                    id="organization-create-form"
+                    method="post"
+                    action={orgRoutes.store()}
+                    onSuccess={() =>
+                        setOverlayParam('create', null, { replace: true })
+                    }
+                    className="grid gap-3"
+                >
+                    <div className="grid gap-2">
+                        <Label htmlFor="create-name">Name</Label>
+                        <Input id="create-name" name="name" required />
+                        {errors.name && (
+                            <p className="text-destructive text-xs">
+                                {errors.name}
+                            </p>
+                        )}
+                    </div>
+
+                    <div className="grid gap-2">
+                        <Label htmlFor="create-email">Email</Label>
+                        <Input
+                            id="create-email"
+                            name="email"
+                            type="email"
+                        />
+                        {errors.email && (
+                            <p className="text-destructive text-xs">
+                                {errors.email}
+                            </p>
+                        )}
+                    </div>
+
+                    <div className="grid gap-2">
+                        <Label htmlFor="create-phone">Phone</Label>
+                        <Input id="create-phone" name="phone" />
+                        {errors.phone && (
+                            <p className="text-destructive text-xs">
+                                {errors.phone}
+                            </p>
+                        )}
+                    </div>
+
+                    <div className="grid gap-2">
+                        <Label htmlFor="create-plan">Plan</Label>
+                        <select
+                            id="create-plan"
+                            name="plan_id"
+                            defaultValue={plans[0]?.id ?? ''}
+                            className="border-border-strong bg-background h-9 rounded-md border px-3 text-sm"
+                        >
+                            {plans.map((plan) => (
+                                <option key={plan.id} value={plan.id}>
+                                    {plan.name}
+                                </option>
+                            ))}
+                        </select>
+                        {errors.plan_id && (
+                            <p className="text-destructive text-xs">
+                                {errors.plan_id}
+                            </p>
+                        )}
+                    </div>
+
+                    <div className="grid gap-2">
+                        <Label>Owner</Label>
+                        <div className="flex gap-2">
+                            <Button
+                                type="button"
+                                size="sm"
+                                variant={
+                                    ownerMode === 'existing'
+                                        ? 'default'
+                                        : 'outline'
+                                }
+                                onClick={() => setOwnerMode('existing')}
+                            >
+                                Existing user
+                            </Button>
+                            <Button
+                                type="button"
+                                size="sm"
+                                variant={
+                                    ownerMode === 'new'
+                                        ? 'default'
+                                        : 'outline'
+                                }
+                                onClick={() => setOwnerMode('new')}
+                            >
+                                Create new person &amp; user
+                            </Button>
+                        </div>
+                        <input
+                            type="hidden"
+                            name="owner_mode"
+                            value={ownerMode}
+                        />
+                    </div>
+
+                    {ownerMode === 'existing' ? (
+                        <div className="grid gap-2">
+                            <Label htmlFor="create-owner-user">
+                                Owner user
+                            </Label>
+                            <select
+                                id="create-owner-user"
+                                name="owner_user_id"
+                                defaultValue={owners[0]?.id ?? ''}
+                                className="border-border-strong bg-background h-9 rounded-md border px-3 text-sm"
+                            >
+                                {owners.map((owner) => (
+                                    <option
+                                        key={owner.id}
+                                        value={owner.id}
+                                    >
+                                        {owner.name} ({owner.email})
+                                    </option>
+                                ))}
+                            </select>
+                            {errors.owner_user_id && (
+                                <p className="text-destructive text-xs">
+                                    {errors.owner_user_id}
+                                </p>
+                            )}
+                        </div>
+                    ) : (
+                        <>
+                            <div className="grid gap-2">
+                                <Label htmlFor="create-owner-first">
+                                    Owner first name
+                                </Label>
+                                <Input
+                                    id="create-owner-first"
+                                    name="owner_first_name"
+                                    required
+                                />
+                                {errors.owner_first_name && (
+                                    <p className="text-destructive text-xs">
+                                        {errors.owner_first_name}
+                                    </p>
+                                )}
+                            </div>
+
+                            <div className="grid gap-2">
+                                <Label htmlFor="create-owner-last">
+                                    Owner last name
+                                </Label>
+                                <Input
+                                    id="create-owner-last"
+                                    name="owner_last_name"
+                                />
+                            </div>
+
+                            <div className="grid gap-2">
+                                <Label htmlFor="create-owner-email">
+                                    Owner email
+                                </Label>
+                                <Input
+                                    id="create-owner-email"
+                                    name="owner_email"
+                                    type="email"
+                                    required
+                                />
+                                {errors.owner_email && (
+                                    <p className="text-destructive text-xs">
+                                        {errors.owner_email}
+                                    </p>
+                                )}
+                            </div>
+                        </>
+                    )}
+                </Form>
+            </ResponsiveOverlay>
+
+            <ResponsiveOverlay
+                open={isExportOpen}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setOverlayParam('export', null, {
+                            replace: true,
+                        });
+                    }
+                }}
+                title="Export organizations"
+                description="Choose how many rows to include in the CSV."
+                footer={
+                    <>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() =>
+                                setOverlayParam('export', null, {
+                                    replace: true,
+                                })
+                            }
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => downloadExportUrl('page')}
+                        >
+                            Current page
+                        </Button>
+                        <Button
+                            type="button"
+                            onClick={() => downloadExportUrl('all')}
+                        >
+                            <Download className="mr-2 size-4" />
+                            Export all
+                        </Button>
+                    </>
+                }
+            >
+                <div className="space-y-3 text-sm">
+                    <div className="border-border-strong bg-background rounded-lg border p-3">
+                        <div className="font-medium">All matching</div>
+                        <div className="text-muted-foreground mt-1 text-xs">
+                            Every organization matching
+                            {filters.search || filters.status ? (
+                                <>
+                                    {' '}
+                                    the active search
+                                    {filters.search && filters.status
+                                        ? ' and '
+                                        : ''}
+                                    {filters.status
+                                        ? 'status'
+                                        : ''}{' '}
+                                    filter
+                                </>
+                            ) : (
+                                <> (no filters are active)</>
+                            )}
+                            . Ignores pagination — {organizations.total} row
+                            {organizations.total === 1 ? '' : 's'} in total.
+                        </div>
+                    </div>
+
+                    <div className="border-border-strong bg-background rounded-lg border p-3">
+                        <div className="font-medium">Current page</div>
+                        <div className="text-muted-foreground mt-1 text-xs">
+                            Only the {organizations.data.length} row
+                            {organizations.data.length === 1 ? '' : 's'} visible
+                            on page {organizations.current_page}.
+                        </div>
+                    </div>
+                </div>
+            </ResponsiveOverlay>
+
+            <ResponsiveOverlay
+                open={isImportOpen}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setImportErrors([]);
+                        setOverlayParam('import', null, {
+                            replace: true,
+                        });
+                    }
+                }}
+                title="Import organizations"
+                description="Upload a CSV to create organizations."
+                footer={
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() =>
+                            setOverlayParam('import', null, {
+                                replace: true,
+                            })
+                        }
+                    >
+                        Close
+                    </Button>
+                }
+            >
+                <Form
+                    method="post"
+                    action={orgRoutes.importMethod()}
+                    encType="multipart/form-data"
+                    onSuccess={(page) => {
+                        // Flash rides on the page object itself, not `props`.
+                        // A partial failure must leave the sheet open so the
+                        // per-row report stays readable; only a clean run closes.
+                        const reported =
+                            (
+                                page as unknown as {
+                                    flash?: {
+                                        importErrors?: {
+                                            row: number;
+                                            message: string;
+                                        }[];
+                                    };
+                                }
+                            ).flash?.importErrors ?? [];
+
+                        setImportErrors(reported);
+
+                        if (reported.length === 0) {
+                            setOverlayParam('import', null, { replace: true });
+                        }
+                    }}
+                >
+                    <div className="space-y-3">
+                        <div className="border-border-strong bg-background rounded-lg border p-3 text-xs">
+                            <div className="font-medium">Required columns</div>
+                            <div className="text-muted-foreground mt-1">
+                                Name, Owner Email
+                            </div>
+                            <div className="font-medium mt-3">Optional</div>
+                            <div className="text-muted-foreground mt-1">
+                                Email, Phone, Plan (name or slug)
+                            </div>
+                        </div>
+
+                        <Input
+                            id="organizations-import-file"
+                            name="file"
+                            type="file"
+                            accept=".csv,text/csv,text/plain"
+                            aria-label="CSV file"
+                        />
+
+                        {errors.file && (
+                            <p className="text-destructive text-xs">
+                                {errors.file}
+                            </p>
+                        )}
+
+                        {importErrors.length > 0 && (
+                            <div
+                                role="status"
+                                className="border-destructive/40 bg-destructive/5 space-y-1 rounded-lg border p-3"
+                            >
+                                <div className="text-destructive text-xs font-medium">
+                                    {importErrors.length}{' '}
+                                    {importErrors.length === 1
+                                        ? 'row was'
+                                        : 'rows were'}{' '}
+                                    skipped
+                                </div>
+                                <ul className="text-muted-foreground space-y-1 text-xs">
+                                    {importErrors.map((problem, index) => (
+                                        <li key={`${problem.row}-${index}`}>
+                                            {problem.message}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+
+                        <Button type="submit" className="w-full">
+                            <Upload className="mr-2 size-4" />
+                            Import
+                        </Button>
+                    </div>
+                </Form>
             </ResponsiveOverlay>
 
             <ResponsiveOverlay
