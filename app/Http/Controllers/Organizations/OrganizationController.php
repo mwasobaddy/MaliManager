@@ -6,6 +6,7 @@ use App\Enums\OrganizationStatus;
 use App\Enums\PlatformRole;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Organizations\DestroyOrganizationRequest;
+use App\Http\Requests\Organizations\ImportOrganizationsRequest;
 use App\Http\Requests\Organizations\StoreOrganizationRequest;
 use App\Http\Requests\Organizations\UpdateOrganizationRequest;
 use App\Http\Requests\Organizations\UpdateOrganizationStatusRequest;
@@ -15,6 +16,7 @@ use App\Models\User;
 use App\Services\OrganizationManagementService;
 use App\Services\UserService;
 use App\Support\Search;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -44,14 +46,9 @@ class OrganizationController extends Controller
         $sortColumn = $sortable[$sort] ?? null;
         $direction = $request->string('direction')->toString() === 'asc' ? 'asc' : 'desc';
 
-        $organizations = Organization::query()
+        $organizations = $this->filtered($request)
             ->with(['plan:id,slug,name', 'tenant.domains'])
             ->withCount('users')
-            ->leftJoin('plans', 'plans.id', '=', 'organizations.plan_id')
-            ->when($request->string('search')->trim(), function ($query, string $search) {
-                Search::apply($query, $search, ['organizations.name', 'organizations.slug', 'organizations.email']);
-            })
-            ->when($request->string('status')->toString() !== '', fn ($query) => $query->where('organizations.status', $request->string('status')))
             ->when($sortColumn !== null, fn ($query) => $query->orderBy($sortColumn, $direction))
             ->when($sortColumn === null, fn ($query) => $query->orderByDesc('organizations.created_at'))
             ->orderBy('organizations.id')
@@ -74,6 +71,13 @@ class OrganizationController extends Controller
 
         return Inertia::render('organizations/index', [
             'organizations' => $organizations,
+            // The edit + create sheets render on this page, so they need the
+            // same options the standalone pages get.
+            'plans' => Plan::orderBy('name')->get(['id', 'name', 'slug']),
+            'owners' => User::query()
+                ->whereDoesntHave('roles', fn ($query) => $query->where('name', PlatformRole::Admin->value))
+                ->orderBy('name')
+                ->get(['id', 'name', 'email']),
             'filters' => [
                 'search' => (string) $request->string('search'),
                 'status' => (string) $request->string('status'),
@@ -183,11 +187,45 @@ class OrganizationController extends Controller
     }
 
     /**
-     * CSV export of all organizations.
+     * Base query for the index and the CSV export, so both always agree on
+     * which organizations are in scope.
      */
-    public function export(): \Symfony\Component\HttpFoundation\Response
+    private function filtered(Request $request): Builder
     {
-        $rows = Organization::query()
+        return Organization::query()
+            ->leftJoin('plans', 'plans.id', '=', 'organizations.plan_id')
+            ->when($request->string('search')->trim(), function ($query, string $search) {
+                Search::apply($query, $search, ['organizations.name', 'organizations.slug', 'organizations.email']);
+            })
+            ->when(
+                $request->string('status')->toString() !== '',
+                fn ($query) => $query->where('organizations.status', $request->string('status'))
+            );
+    }
+
+    /**
+     * CSV export.
+     *
+     * `scope` picks the row set:
+     *   - `all`  (default) — every organization matching the active search and
+     *     status filters, ignoring pagination;
+     *   - `page`          — only the rows on the current page, still filtered.
+     *
+     * Both share the index filters so the CSV always matches what the user is
+     * looking at.
+     */
+    public function export(Request $request): \Symfony\Component\HttpFoundation\Response
+    {
+        $scope = $request->string('scope')->toString() === 'page' ? 'page' : 'all';
+        $perPage = 15;
+
+        $query = $this->filtered($request);
+
+        if ($scope === 'page') {
+            $query->forPage((int) $request->integer('page', 1), $perPage);
+        }
+
+        $rows = $query
             ->with(['plan', 'tenant'])
             ->withCount('users')
             ->orderBy('id')
@@ -198,7 +236,9 @@ class OrganizationController extends Controller
                 $organization->slug,
                 $organization->email ?? '',
                 $organization->phone ?? '',
-                $organization->status,
+                // `status` is cast to the OrganizationStatus enum, which fputcsv
+                // cannot stringify — use ->value.
+                $organization->status->value,
                 $organization->plan?->name ?? '',
                 $organization->tenant?->domains()->value('domain') ?? '',
                 $organization->users_count,
@@ -212,8 +252,47 @@ class OrganizationController extends Controller
         }
         rewind($csv);
 
-        return response()->streamDownload(fn () => fpassthru($csv), 'organizations.csv', [
-            'Content-Type' => 'text/csv',
+        $suffix = $scope === 'page' ? '-page'.$request->integer('page', 1) : '-all';
+
+        return response()->streamDownload(
+            fn () => fpassthru($csv),
+            'organizations'.$suffix.'.csv',
+            ['Content-Type' => 'text/csv']
+        );
+    }
+
+    /**
+     * Create organizations from an uploaded CSV.
+     *
+     * Redirects back keeping the `import` flag when some rows failed, so the
+     * import sheet stays open and can render the per-row report.
+     */
+    public function import(ImportOrganizationsRequest $request): RedirectResponse
+    {
+        $result = $this->service->import(
+            $request->file('file'),
+            $request->validated('plan_id'),
+            $request->user(),
+        );
+
+        if ($result['failed'] === 0) {
+            Inertia::flash('toast', [
+                'type' => 'success',
+                'message' => $result['imported'] === 1
+                    ? '1 organization imported.'
+                    : $result['imported'].' organizations imported.',
+            ]);
+
+            return redirect()->route('organizations.index');
+        }
+
+        Inertia::flash('toast', [
+            'type' => $result['imported'] > 0 ? 'warning' : 'error',
+            'message' => $result['imported'].' imported, '.$result['failed'].' failed.',
         ]);
+
+        Inertia::flash('importErrors', $result['errors']);
+
+        return back();
     }
 }
