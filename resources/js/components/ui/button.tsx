@@ -11,6 +11,15 @@ const buttonVariants = cva(
       variant: {
         default:
           "bg-primary text-primary-foreground shadow-xs hover:bg-primary/90",
+        /**
+         * Stock shadcn's default button: the neutral fill, not a colour. We
+         * repointed `--primary` at the brand terracotta, so `default` now means
+         * "the primary action" and this is the neutral chrome for dismiss
+         * controls (Cancel, the overlay close button). Deliberately not
+         * `secondary`: same look today, different intent, so they can diverge.
+         */
+        shadcndefault:
+          "bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80",
         destructive:
           "bg-destructive text-white shadow-xs hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40",
         outline:
