@@ -27,7 +27,6 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useIsMobile } from '@/hooks/use-mobile';
 import * as orgRoutes from '@/routes/organizations';
 
 type OrganizationRow = {
@@ -154,7 +153,6 @@ export default function OrganizationsIndex({
     // `filters=` — so comparing against '' is what actually closes the sheet.
     const isFiltersOpen = query.get('filters') !== null && query.get('filters') !== '';
 
-    const isMobile = useIsMobile();
 
     /**
      * Changes only the URL, never the result set — opening or closing a sheet.
@@ -262,33 +260,19 @@ if (
      * Open the row sheet in a given mode. On a narrow screen the same actions
      * fall back to their full pages, which have room for the longer forms.
      */
-    function openRow(
-        organization: OrganizationRow,
-        mode: RowMode,
-        fallbackUrl: string,
-    ) {
-        // `orgRoutes.edit()` returns a RouteDefinition; visit needs the href.
-        // Only Edit needs a full page on small screens: a form sheet is too
-        // cramped there. View and Delete stay as centred dialogs.
-        if (isMobile && mode === 'edit') {
-            router.visit(fallbackUrl);
-
-            return;
-        }
-
+    /**
+     * Opens the row overlay in `mode`. Every mode is available on every
+     * viewport — on a phone the overlay is a bottom drawer rather than a side
+     * sheet, but nothing has to be reached by redirecting to a separate page.
+     */
+    function openRow(organization: OrganizationRow, mode: RowMode) {
         setOverlayParam('mode', mode, {
             replace: mode === 'view',
             keep: { organization: String(organization.id) },
         });
     }
 
-    function openCreateSheet(fallbackUrl: string) {
-        if (isMobile) {
-            router.visit(fallbackUrl);
-
-            return;
-        }
-
+    function openCreateSheet() {
         setOverlayParam('create', '1');
     }
 
@@ -525,13 +509,7 @@ const isOwnersLoading = isCreateOpen && owners === undefined;
                                     label={`Edit ${organization.name}`}
                                     color="edit"
                                     onClick={() =>
-                                        openRow(
-                                            organization,
-                                            'edit',
-                                            orgRoutes.edit(
-                                                organization.id,
-                                            ).url,
-                                        )
+                                        openRow(organization, 'edit')
                                     }
                                 />
                             )}
@@ -541,11 +519,7 @@ const isOwnersLoading = isCreateOpen && owners === undefined;
                                     label={`Delete ${organization.name}`}
                                     color="danger"
                                     onClick={() =>
-                                        openRow(
-                                            organization,
-                                            'delete',
-                                            orgRoutes.index().url,
-                                        )
+                                        openRow(organization, 'delete')
                                     }
                                 />
                             )}
@@ -593,7 +567,7 @@ const isOwnersLoading = isCreateOpen && owners === undefined;
                             tooltip="Create organisation"
                             color="primary"
                             onClick={() =>
-                                openCreateSheet(orgRoutes.create().url)
+                                openCreateSheet()
                             }
                             className="max-w-20 sm:max-w-24"
                         />
@@ -765,13 +739,7 @@ const isOwnersLoading = isCreateOpen && owners === undefined;
                                     tone: 'secondary',
                                     icon: <Pencil className="size-4" />,
                                     onClick: () =>
-                                        openRow(
-                                            viewedOrganization,
-                                            'edit',
-                                            orgRoutes.edit(
-                                                viewedOrganization.id,
-                                            ).url,
-                                        ),
+                                        openRow(viewedOrganization, 'edit'),
                                     ...(canEdit ? {} : { disabled: true }),
                                 },
                                 {
@@ -779,11 +747,7 @@ const isOwnersLoading = isCreateOpen && owners === undefined;
                                     tone: 'danger-ghost',
                                     icon: <Trash2 className="size-4" />,
                                     onClick: () =>
-                                        openRow(
-                                            viewedOrganization,
-                                            'delete',
-                                            orgRoutes.index().url,
-                                        ),
+                                        openRow(viewedOrganization, 'delete'),
                                     ...(canDelete ? {} : { disabled: true }),
                                 },
                             ]}
