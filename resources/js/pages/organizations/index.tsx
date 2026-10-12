@@ -20,12 +20,16 @@ import Heading from '@/components/heading';
 import { LabelledIconButton } from '@/components/labelled-icon-button';
 import { OverlayFooter } from '@/components/overlay-footer';
 import { ResponsiveOverlay } from '@/components/responsive-overlay';
-import { StatusIcon } from '@/components/status-cell';
+import { StatusIcon, StatusPowerToggle } from '@/components/status-cell';
 import type { StatusTone } from '@/components/status-cell';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    RadioGroup,
+    RadioGroupItem,
+} from '@/components/ui/radio-group';
 import {
     Select,
     SelectContent,
@@ -439,46 +443,19 @@ export default function OrganizationsIndex({
                 meta: { align: 'center' },
                 cell: ({ row }) => {
                     const organization = row.original;
-                    const suspended = organization.status === 'suspended';
-                    const tone = STATUS_TONES[organization.status] ?? 'muted';
 
-                    if (!canEdit) {
-                        return (
-                            <StatusIcon
-                                tone={tone}
-                                label={organization.status_label}
-                            />
-                        );
-                    }
-
-                    // The status icon *is* the control: one affordance instead
-                    // of a separate button in the actions column.
-                    //
-                    // router.patch(...) is used rather than an Inertia <Form>
-                    // because <Form> only serialises fields bound to its own
-                    // data object — with no bound input it submits an empty
-                    // body and the server receives no `status` at all.
                     return (
-                        <button
-                            type="button"
-                            title={`${suspended ? 'Reactivate' : 'Suspend'} ${organization.name}`}
-                            aria-label={`${suspended ? 'Reactivate' : 'Suspend'} ${organization.name}`}
-                            className="rounded-md focus-visible:ring-[3px] focus-visible:ring-ring focus-visible:outline-none"
-                            onClick={(event) => {
-                                event.stopPropagation();
-
-                                setStatus(
-                                    organization,
-                                    suspended ? 'active' : 'suspended',
-                                );
-                            }}
-                        >
-                            <StatusIcon
-                                tone={tone}
-                                label={organization.status_label}
-                                className="hover:opacity-70"
-                            />
-                        </button>
+                    // Reports state only. The control that changes it is the
+                    // Power toggle in the action cell, so this column never
+                    // looks editable and the two are not confused.
+                    <div className="flex items-center justify-center">
+                        <StatusIcon
+                            tone={
+                                STATUS_TONES[organization.status] ?? 'muted'
+                            }
+                            label={organization.status_label}
+                        />
+                    </div>
                     );
                 },
             },
@@ -516,6 +493,22 @@ export default function OrganizationsIndex({
                                         disabled={!organization.domain}
                                     />
                                 </Form>
+                            )}
+                            {canEdit && (
+                                <StatusPowerToggle
+                                    status={organization.status}
+                                    activeLabel={`Suspend ${organization.name}`}
+                                    inactiveLabel={`Reactivate ${organization.name}`}
+                                    onClick={() =>
+                                        setStatus(
+                                            organization,
+                                            organization.status ===
+                                                'suspended'
+                                                ? 'active'
+                                                : 'suspended',
+                                        )
+                                    }
+                                />
                             )}
                             {canEdit && (
                                 <ActionIconButton
@@ -622,7 +615,7 @@ export default function OrganizationsIndex({
                         <ActionIconButton
                             icon={<ListFilter />}
                             label="Filters"
-                            color={isFiltersOpen ? 'primary' : 'default'}
+                            color="teal"
                             onClick={() =>
                                 isFiltersOpen
                                     ? setOverlayParam('filters', null, {
@@ -635,7 +628,7 @@ export default function OrganizationsIndex({
                             <ActionIconButton
                                 icon={<Upload />}
                                 label="Import from CSV"
-                                color="default"
+                                color="teal"
                                 onClick={() => setOverlayParam('import', '1')}
                             />
                         )}
@@ -643,7 +636,7 @@ export default function OrganizationsIndex({
                             <ActionIconButton
                                 icon={<Download />}
                                 label="Export"
-                                color="default"
+                                color="teal"
                                 onClick={() => setOverlayParam('export', '1')}
                             />
                         )}
@@ -1385,43 +1378,44 @@ export default function OrganizationsIndex({
             >
                 <fieldset className="space-y-3">
                     <legend className="text-sm font-medium">Status</legend>
-                    {[
-                        { value: 'all', label: 'Any status' },
-                        { value: 'active', label: 'Active' },
-                        { value: 'suspended', label: 'Suspended' },
-                    ].map((option) => (
-                        <Label
-                            key={option.value}
-                            htmlFor={`status-${option.value}`}
-                            className="flex cursor-pointer items-center gap-2"
-                        >
-                            <input
-                                type="radio"
-                                id={`status-${option.value}`}
-                                name="status-filter"
-                                className="size-4 accent-brand-primary"
-                                checked={
-                                    (filters.status || 'all') === option.value
-                                }
-                                onChange={() =>
-                                    refetchTable(
-                                        {
-                                            search: filters.search,
-                                            status:
-                                                option.value === 'all'
-                                                    ? ''
-                                                    : option.value,
-                                            sort: sort.column ?? '',
-                                            direction: sort.direction,
-                                            filters: '1',
-                                        },
-                                        { replace: true },
-                                    )
-                                }
-                            />
-                            {option.label}
-                        </Label>
-                    ))}
+                    <RadioGroup
+                        value={filters.status || 'all'}
+                        onValueChange={(value) =>
+                            refetchTable(
+                                {
+                                    search: filters.search,
+                                    status: value === 'all' ? '' : value,
+                                    sort: sort.column ?? '',
+                                    direction: sort.direction,
+                                    filters: '1',
+                                },
+                                { replace: true },
+                            )
+                        }
+                        className="space-y-3"
+                    >
+                        {[
+                            { value: 'all', label: 'Any status' },
+                            { value: 'active', label: 'Active' },
+                            { value: 'suspended', label: 'Suspended' },
+                        ].map((option) => (
+                            <div
+                                key={option.value}
+                                className="flex items-center gap-2"
+                            >
+                                <RadioGroupItem
+                                    id={`status-${option.value}`}
+                                    value={option.value}
+                                />
+                                <Label
+                                    htmlFor={`status-${option.value}`}
+                                    className="cursor-pointer"
+                                >
+                                    {option.label}
+                                </Label>
+                            </div>
+                        ))}
+                    </RadioGroup>
                 </fieldset>
             </ResponsiveOverlay>
         </>

@@ -10,6 +10,7 @@ use App\Http\Controllers\Platform\RolesController;
 use App\Http\Controllers\Platform\SubscriptionPaymentController;
 use App\Http\Controllers\Users\UserController;
 use App\Models\Organization;
+use App\Models\User;
 use Illuminate\Auth\Middleware\RequirePassword;
 use Illuminate\Support\Facades\Route;
 
@@ -52,12 +53,23 @@ Route::middleware(['auth', 'verified', 'can:exportAudit'])->group(function () {
 });
 
 // Central user management module, gated by central user.* permissions.
+//
+// Create and edit are overlays, not pages — the forms live in
+// ResponsiveOverlay on users/index and are addressed by query params. The GET
+// routes below redirect so bookmarks from before the overlay landed still open
+// the overlay instead of 404ing.
 Route::middleware(['auth', 'verified', 'can:manageUsers'])->group(function () {
     Route::get('users', [UserController::class, 'index'])->name('users.index');
+    Route::post('users/import', [UserController::class, 'import'])->name('users.import')->middleware('can:importUsers');
     Route::get('users/export', [UserController::class, 'export'])->name('users.export')->middleware('can:exportUsers');
-    Route::get('users/create', [UserController::class, 'create'])->name('users.create')->middleware('can:createUsers');
+    Route::get('users/create', fn () => redirect()->route('users.index', ['create' => 1]))
+        ->name('users.create')
+        ->middleware('can:createUsers');
     Route::post('users', [UserController::class, 'store'])->name('users.store')->middleware('can:createUsers');
-    Route::get('users/{user}/edit', [UserController::class, 'edit'])->name('users.edit')->middleware('can:editUsers');
+    Route::get('users/{user}/edit', fn (User $user) => redirect()
+        ->route('users.index', ['mode' => 'edit', 'user' => $user->id]))
+        ->name('users.edit')
+        ->middleware('can:editUsers');
     Route::patch('users/{user}', [UserController::class, 'update'])->name('users.update')->middleware('can:editUsers');
     Route::patch('users/{user}/status', [UserController::class, 'setStatus'])->name('users.status')->middleware('can:editUsers');
     Route::delete('users/{user}', [UserController::class, 'destroy'])->name('users.destroy')->middleware('can:deleteUsers');

@@ -88,6 +88,7 @@
     --color-brand-secondary: var(--brand-secondary);
     --color-brand-accent: var(--brand-accent);
     --color-brand-accent-100: var(--brand-accent-100);
+    --color-brand-accent-foreground: var(--brand-accent-foreground);
     --color-action-view: var(--action-view);
     --color-action-edit: var(--action-edit);
     --color-action-danger: var(--action-danger);
@@ -115,6 +116,8 @@
     --brand-secondary: #2e2622;
     --brand-accent: #0e7c7e;
     --brand-accent-100: #d7eeed;
+    /* Dark teal fill, so the label must be light. */
+    --brand-accent-foreground: #f2fbfb;
 
     /* shadcn primary = AA-safe terracotta button fill */
     --primary: #a85a36;
@@ -181,6 +184,9 @@
     --brand-secondary: #14110d;
     --brand-accent: #2bb3ac;
     --brand-accent-100: #13343a;
+    /* The dark-mode accent is a *light* teal, so a white label would only
+       reach ~2.1:1 against it. Flip the foreground instead. */
+    --brand-accent-foreground: #0c2426;
 
     --primary: #c87a53;
     --primary-foreground: #1a1917;
