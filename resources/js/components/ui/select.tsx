@@ -70,7 +70,13 @@ function SelectContent({
         position={position}
         side={side}
         sideOffset={sideOffset}
-        avoidCollisions={false}
+        // Collision avoidance must stay ON. With it off, the list always opens
+        // downward and is clamped to whatever gap is left below the trigger —
+        // which in a bottom drawer means a field near the bottom gets a ~60px
+        // list showing two options, with the rest unreachable. Letting Radix
+        // flip the list upward when there is more room above is what makes a
+        // long option list usable on a phone.
+        avoidCollisions
         align={align}
         {...props}
       >
