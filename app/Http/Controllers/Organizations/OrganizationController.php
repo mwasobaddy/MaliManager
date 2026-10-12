@@ -54,33 +54,57 @@ class OrganizationController extends Controller
             ->orderBy('organizations.id')
             ->paginate(15)
             ->withQueryString()
-            ->through(fn (Organization $organization): array => [
-                'id' => $organization->id,
-                'name' => $organization->name,
-                'slug' => $organization->slug,
-                'email' => $organization->email,
-                'phone' => $organization->phone,
-                'status' => $organization->status->value,
-                'status_label' => $organization->status->label(),
-                'plan' => $organization->plan?->name,
-                'plan_id' => $organization->plan_id,
-                'domain' => $organization->tenant?->domains->first()?->domain,
-                'users_count' => $organization->users_count,
-                'created_at' => $organization->created_at?->toDateTimeString(),
-            ]);
+            ->through(fn (Organization $organization): array => $this->serialize($organization));
+
+        // The row overlay is addressed by URL (`?organization=42`), so it has
+        // to work from a shared link as well as from a tap. But the row is
+        // normally just `organizations.data.find(...)`, and that only covers
+        // the current page — so a link to row 42 lands on "not on the current
+        // page of results" whenever 42 is on page 3. Fetch that one row when
+        // the page cannot supply it. This is what lets the standalone edit
+        // page be a redirect instead of a second copy of the form.
+        $focusedId = $request->integer('organization') ?: null;
+
+        $focused = null;
+
+        if ($focusedId !== null
+            && ! $organizations->getCollection()->contains('id', $focusedId)) {
+            $focused = Organization::query()
+                ->with(['plan:id,slug,name', 'tenant.domains'])
+                ->withCount('users')
+                ->find($focusedId);
+        }
 
         return Inertia::render('organizations/index', [
             'organizations' => $organizations,
+            'focusedOrganization' => $focused
+                ? $this->serialize($focused)
+                : null,
             // The edit + create sheets render on this page, so they need the
-            // same options the standalone pages get.
+            // same options the standalone pages got.
             'plans' => Plan::orderBy('name')->get(['id', 'name', 'slug']),
-            // Every user on the platform, minus platform admins. This is by far
-            // the heaviest prop on the page and only the create sheet reads it,
-            // so it is optional rather than eager: it is not queried or
-            // serialised on a search, sort, page change, or sheet open. The
-            // page asks for it explicitly the first time the sheet opens.
+            // Owner candidates. There is no separate "owner" entity — an owner
+            // is a User holding the `organization-owner` platform role — so the
+            // candidate pool is users. It is narrowed to accounts that could
+            // sensibly hold that role: anything carrying a *conflicting*
+            // platform role is excluded. Admins are already superusers, and
+            // searchers/occupants are end-user personas, not account owners;
+            // offering them produced a list of ~80 names led by tenants'
+            // renters and standalone staff. Accounts with no platform role, or
+            // with `organization-owner`, remain eligible.
+            //
+            // Optional rather than eager: this is the heaviest prop on the
+            // page and only the create sheet reads it, so it is not queried or
+            // serialised on a search, sort, page change or sheet open.
             'owners' => Inertia::optional(fn () => User::query()
-                ->whereDoesntHave('roles', fn ($query) => $query->where('name', PlatformRole::Admin->value))
+                ->whereDoesntHave(
+                    'roles',
+                    fn ($query) => $query->whereIn('name', [
+                        PlatformRole::Admin->value,
+                        PlatformRole::Searcher->value,
+                        PlatformRole::Occupant->value,
+                    ])
+                )
                 ->orderBy('name')
                 ->get(['id', 'name', 'email'])),
             'filters' => [
@@ -94,15 +118,28 @@ class OrganizationController extends Controller
         ]);
     }
 
-    public function create(): Response
+    /**
+     * One row shape for both the paginated table and the focused row, so the
+     * overlay renders identically whichever way the row was resolved.
+     *
+     * @return array<string, mixed>
+     */
+    private function serialize(Organization $organization): array
     {
-        return Inertia::render('organizations/create', [
-            'plans' => Plan::orderBy('name')->get(['id', 'name', 'slug']),
-            'owners' => User::query()
-                ->whereDoesntHave('roles', fn ($query) => $query->where('name', PlatformRole::Admin->value))
-                ->orderBy('name')
-                ->get(['id', 'name', 'email']),
-        ]);
+        return [
+            'id' => $organization->id,
+            'name' => $organization->name,
+            'slug' => $organization->slug,
+            'email' => $organization->email,
+            'phone' => $organization->phone,
+            'status' => $organization->status->value,
+            'status_label' => $organization->status->label(),
+            'plan' => $organization->plan?->name,
+            'plan_id' => $organization->plan_id,
+            'domain' => $organization->tenant?->domains->first()?->domain,
+            'users_count' => $organization->users_count,
+            'created_at' => $organization->created_at?->toDateTimeString(),
+        ];
     }
 
     public function store(StoreOrganizationRequest $request): RedirectResponse
@@ -132,23 +169,6 @@ class OrganizationController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => "Organization {$organization->name} has been created."]);
 
         return redirect()->route('organizations.index');
-    }
-
-    public function edit(Organization $organization): Response
-    {
-        return Inertia::render('organizations/edit', [
-            'organization' => [
-                'id' => $organization->id,
-                'name' => $organization->name,
-                'slug' => $organization->slug,
-                'email' => $organization->email,
-                'phone' => $organization->phone,
-                'status' => $organization->status->value,
-                'status_label' => $organization->status->label(),
-                'plan_id' => $organization->plan_id,
-            ],
-            'plans' => Plan::orderBy('name')->get(['id', 'name', 'slug']),
-        ]);
     }
 
     public function update(UpdateOrganizationRequest $request, Organization $organization): RedirectResponse

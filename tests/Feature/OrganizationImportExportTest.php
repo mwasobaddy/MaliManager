@@ -1,8 +1,10 @@
 <?php
 
 use App\Models\Organization;
+use App\Models\Plan;
 use App\Models\User;
 use App\Services\OrganizationManagementService;
+use App\Services\TenantService;
 use Database\Seeders\PlansSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Http\UploadedFile;
@@ -228,4 +230,124 @@ test('import does not create an organization when the file is missing', function
 
     expect(Organization::count())->toBe(0);
     expect(DB::table('tenants')->count())->toBe(0);
+});
+
+test('an off-page organization id in the url resolves the row for the overlay', function () {
+    (new RolesAndPermissionsSeeder)->run();
+    (new PlansSeeder)->run();
+    $admin = User::factory()->create();
+    $admin->assignRole('admin');
+
+    $plan = Plan::where('slug', 'free')->firstOrFail();
+    $owners = User::factory()->count(20)->create();
+
+    $target = null;
+
+    // Push the row we want onto a later page than page 1.
+    foreach ($owners as $index => $owner) {
+        $org = app(TenantService::class)->createOrganization(
+            owner: $owner,
+            name: 'Deep Link Org '.$index,
+            plan: $plan,
+        );
+
+        if ($index === 19) {
+            $target = $org;
+        }
+    }
+
+    $this->actingAs($admin)
+        ->get(route('organizations.index', ['organization' => $target->id, 'mode' => 'view']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('organizations/index')
+            ->where('focusedOrganization.id', $target->id)
+            ->where('focusedOrganization.name', 'Deep Link Org 19'));
+});
+
+test('a row already on the page is not re-sent as the focused row', function () {
+    (new RolesAndPermissionsSeeder)->run();
+    (new PlansSeeder)->run();
+    $admin = User::factory()->create();
+    $admin->assignRole('admin');
+
+    $plan = Plan::where('slug', 'free')->firstOrFail();
+    $org = app(TenantService::class)->createOrganization(
+        owner: User::factory()->create(),
+        name: 'On Page Org',
+        plan: $plan,
+    );
+
+    $this->actingAs($admin)
+        ->get(route('organizations.index', ['organization' => $org->id]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('organizations/index')
+            ->where('focusedOrganization', null));
+});
+
+test('the legacy create and edit pages redirect to the overlay urls', function () {
+    (new RolesAndPermissionsSeeder)->run();
+    (new PlansSeeder)->run();
+    $admin = User::factory()->create();
+    $admin->assignRole('admin');
+
+    $org = app(TenantService::class)->createOrganization(
+        owner: User::factory()->create(),
+        name: 'Redirect Co',
+        plan: Plan::where('slug', 'free')->firstOrFail(),
+    );
+
+    $this->actingAs($admin)
+        ->get(route('organizations.create'))
+        ->assertRedirect(route('organizations.index', ['create' => 1]));
+
+    $this->actingAs($admin)
+        ->get(route('organizations.edit', $org))
+        ->assertRedirect(route('organizations.index', [
+            'mode' => 'edit',
+            'organization' => $org->id,
+        ]));
+});
+
+test('owner candidates exclude accounts holding a conflicting platform role', function () {
+    (new RolesAndPermissionsSeeder)->run();
+    (new PlansSeeder)->run();
+    $admin = User::factory()->create();
+    $admin->assignRole('admin');
+
+    $eligible = User::factory()->create(['email' => 'eligible@owner.test']);
+    $alreadyOwner = User::factory()->create(['email' => 'already@owner.test']);
+    $alreadyOwner->assignRole('organization-owner');
+    $searcher = User::factory()->create(['email' => 'nobody@searcher.test']);
+    $searcher->assignRole('searcher');
+    $occupant = User::factory()->create(['email' => 'nobody@occupant.test']);
+    $occupant->assignRole('occupant');
+
+    $this->actingAs($admin)
+        ->get(route('organizations.index'), [
+            'X-Inertia-Partial-Component' => 'organizations/index',
+            'X-Inertia-Partial-Data' => 'owners',
+        ], [
+            'X-Inertia' => 'true',
+            'X-Requested-With' => 'XMLHttpRequest',
+        ])
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('organizations/index')
+            // Assert inclusion/exclusion rather than the whole list: other
+            // tests seed their own users, and the owner pool is every account
+            // without a conflicting platform role.
+            ->where('owners', function ($owners) use ($eligible, $alreadyOwner, $searcher, $occupant, $admin) {
+                $emails = collect($owners)->pluck('email');
+
+                expect($emails)
+                    ->toContain($eligible->email)
+                    ->toContain($alreadyOwner->email)
+                    ->not->toContain($searcher->email)
+                    ->not->toContain($occupant->email)
+                    ->not->toContain($admin->email);
+
+                return true;
+            }));
 });

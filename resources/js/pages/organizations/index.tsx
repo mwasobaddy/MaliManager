@@ -33,7 +33,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Skeleton } from '@/components/ui/skeleton';
 import * as orgRoutes from '@/routes/organizations';
 
 type OrganizationRow = {
@@ -60,6 +59,12 @@ type Props = {
     };
     filters: { search: string; status: string };
     sort: { column: string | null; direction: 'asc' | 'desc' };
+    /**
+     * The row the URL points at, when it is not on the current page. The
+     * controller only fills this in for a `?organization=` id the paginated
+     * result set does not already contain.
+     */
+    focusedOrganization?: OrganizationRow | null;
     plans: { id: number; name: string; slug: string }[];
     /** Optional server-side: absent until the create sheet asks for it. */
     owners?: { id: number; name: string; email: string }[];
@@ -77,6 +82,7 @@ export default function OrganizationsIndex({
     organizations,
     filters,
     sort,
+    focusedOrganization,
     plans,
     owners,
 }: Props) {
@@ -110,10 +116,13 @@ export default function OrganizationsIndex({
 
     const viewedId = Number(query.get('organization'));
     const isViewOpen = Number.isFinite(viewedId) && viewedId > 0;
+    // Prefer the row already on this page; fall back to the one the server
+    // fetched for the URL. That fallback is what makes a shared link to a row
+    // on another page work, and is why this overlay does not need its own page.
     const viewedOrganization = isViewOpen
-        ? organizations.data.find(
+        ? (organizations.data.find(
               (organization) => organization.id === viewedId,
-          )
+          ) ?? focusedOrganization)
         : undefined;
 
     const isExportOpen = query.get('export') === '1';
@@ -358,8 +367,6 @@ export default function OrganizationsIndex({
             router.reload({ only: ['owners'] });
         }
     }, [isCreateOpen, owners]);
-
-    const isOwnersLoading = isCreateOpen && owners === undefined;
 
     const columns = useMemo<ColumnDef<OrganizationRow, unknown>[]>(() => {
         const cells: ColumnDef<OrganizationRow, unknown>[] = [
@@ -1080,26 +1087,37 @@ export default function OrganizationsIndex({
                             <Label htmlFor="create-owner-user">
                                 Owner user
                             </Label>
-                            <Select
-                                name="owner_user_id"
-                                defaultValue={String(owners?.[0]?.id ?? '')}
-                            >
-                                <SelectTrigger id="create-owner-user">
-                                    <SelectValue placeholder="Loading owners…" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {owners?.map((owner) => (
-                                        <SelectItem
-                                            key={owner.id}
-                                            value={String(owner.id)}
-                                        >
-                                            {owner.name} ({owner.email})
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            {isOwnersLoading && (
-                                <Skeleton className="h-3 w-32" />
+                            {/* Mounted only once the owners prop exists.
+                                Radix reads defaultValue on first mount, so a
+                                Select rendered while `owners` is undefined
+                                locks in an empty default and never pre-selects
+                                the first owner when the list arrives. */}
+                            {owners ? (
+                                <Select
+                                    name="owner_user_id"
+                                    defaultValue={String(owners[0]?.id ?? '')}
+                                >
+                                    <SelectTrigger id="create-owner-user">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {owners.map((owner) => (
+                                            <SelectItem
+                                                key={owner.id}
+                                                value={String(owner.id)}
+                                            >
+                                                {owner.name} ({owner.email})
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            ) : (
+                                <div
+                                    id="create-owner-user"
+                                    className="border-input text-muted-foreground flex h-9 w-full items-center rounded-md border bg-transparent px-3 text-sm"
+                                >
+                                    Loading owners…
+                                </div>
                             )}
                             {errors.owner_user_id && (
                                 <p className="text-xs text-destructive">
