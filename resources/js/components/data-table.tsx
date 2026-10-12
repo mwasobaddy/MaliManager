@@ -10,6 +10,7 @@ import type {
 } from '@tanstack/react-table';
 import { ArrowDown, ArrowUp, ChevronsUpDown } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
@@ -90,6 +91,29 @@ export function DataTable<TData>({
         getCoreRowModel: getCoreRowModel(),
     });
 
+    // Skeleton rows have to be exactly as tall as real ones, and that height is
+    // content-dependent — a two-line name cell makes a 53px row, a single-line
+    // one makes a 36px row — so guessing a constant looks wrong on at least one
+    // table. Measure a real row whenever we have one, then reuse it for the
+    // skeleton. Left unset on the very first paint (no rows yet), where the
+    // two-bar fallback in the skeleton cell keeps the shape roughly right.
+    const tbodyRef = useRef<HTMLTableSectionElement>(null);
+    const [rowHeight, setRowHeight] = useState<number | null>(null);
+
+    useLayoutEffect(() => {
+        if (loading) {
+            return;
+        }
+
+        const measured =
+            tbodyRef.current?.querySelector('tr')?.getBoundingClientRect()
+                .height ?? null;
+
+        if (measured && measured !== rowHeight) {
+            setRowHeight(measured);
+        }
+    }, [loading, data, rowHeight]);
+
     return (
         <div className="overflow-x-auto">
             <table className={cn('w-full border-collapse', className)}>
@@ -166,7 +190,7 @@ export function DataTable<TData>({
                         </tr>
                     ))}
                 </thead>
-                <tbody>
+                <tbody ref={tbodyRef}>
                     {loading ? (
                         Array.from({
                             length: loadingRows ?? Math.max(data.length, 5),
@@ -174,6 +198,15 @@ export function DataTable<TData>({
                             <tr
                                 key={`skeleton-${rowIndex}`}
                                 className="border-border/60 border-b last:border-b-0"
+                                // Pin the row to the measured height of a real
+                                // row. Without it the single 4px bar leaves a
+                                // ~32px row against a 53px real one, which
+                                // reads as "thin" rather than "loading".
+                                style={
+                                    rowHeight
+                                        ? { height: `${rowHeight}px` }
+                                        : undefined
+                                }
                                 aria-hidden="true"
                             >
                                 {columns.map((column, cellIndex) => {
@@ -192,18 +225,26 @@ export function DataTable<TData>({
                                                       : 'text-left',
                                             )}
                                         >
-                                            <Skeleton
-                                                className={cn(
-                                                    'h-4',
-                                                    // The widest column carries
-                                                    // the longest text.
-                                                    cellIndex === 0
-                                                        ? 'w-3/5'
-                                                        : cellIndex === 1
-                                                          ? 'w-2/5'
-                                                          : 'w-12',
-                                                )}
-                                            />
+                                            {cellIndex === 0 ? (
+                                                // Two bars, mirroring the
+                                                // primary column's title +
+                                                // subtitle, so the fallback
+                                                // shape is right before the
+                                                // first measurement lands.
+                                                <span className="flex flex-col gap-1.5">
+                                                    <Skeleton className="h-4 w-3/5" />
+                                                    <Skeleton className="h-3 w-2/5" />
+                                                </span>
+                                            ) : (
+                                                <Skeleton
+                                                    className={cn(
+                                                        'h-4',
+                                                        cellIndex === 1
+                                                            ? 'w-2/5'
+                                                            : 'w-12',
+                                                    )}
+                                                />
+                                            )}
                                         </td>
                                     );
                                 })}
