@@ -215,34 +215,76 @@ query params — `organization` (the row id) and `mode` (`view|edit|delete`):
 
 | Mode | Desktop | Mobile |
 |---|---|---|
-| `view` | Right-side Sheet | Centred Dialog |
-| `edit` | Right-side Sheet | **Full page** (`/organizations/{id}/edit`) |
-| `delete` | Right-side Sheet | **Centred Dialog** (password confirm) |
-| `create` | Right-side Sheet | **Full page** (`/organizations/create`) |
+| `view` | Right-side Sheet | Bottom drawer |
+| `edit` | Right-side Sheet | Bottom drawer |
+| `delete` | Right-side Sheet | Bottom drawer |
+| `create` | Right-side Sheet | Bottom drawer |
 
-Only **Edit** and **Create** fall back to a full page on small screens: they are
-long forms that are cramped in a dialog. View and Delete are short and stay as
-overlays.
+**Every mode is available on every viewport.** `ResponsiveOverlay` picks the
+surface — a side `Sheet` on larger screens, a bottom `Drawer` on phones — and
+nothing redirects to a separate page. `openRow()` and `openCreateSheet()` have no
+`isMobile` branch at all; the same URL opens the same overlay everywhere.
+
+This was a deliberate reversal. The research on this split: NN/g is blunt that a
+bottom sheet should not replace page-to-page flows — *"a bottom sheet is a
+transient UI element that is not intended to be a stable place for users to return
+to"* — and Apple says *"for complex or prolonged user flows, consider alternatives
+to sheets."* Both are about sheets being navigated *through* and about long
+multi-step tasks. These overlays are neither: each is short, terminal and
+single-screen.
+
+Measured on a 390x844 phone, the largest of them (create, 6 fields) is **588px
+tall with no internal overflow** against an 844px viewport:
+
+| Overlay | Height | Internal overflow |
+|---|---|---|
+| Create | 588px | 0 |
+| View | 428px | 0 |
+| Delete | ~470px | 0 |
+| Import | 370px | 0 |
+| Export | ~350px | 0 |
+| Filters | 268px | 0 |
+
+So the form-goes-full-page rule was written against the wrong page. Keep it for
+genuinely long forms, but re-measure before assuming a short one needs a page.
+
+**Dismissal is never gesture-only.** `vaul` gives drag-to-dismiss, but Material,
+NN/g and the accessibility guidance all require a visible alternative — swipe is
+ambiguous (it can open the notification drawer) and unavailable to anyone who
+cannot perform a precise vertical drag. Every drawer therefore carries an explicit
+close button as well as Cancel. `DrawerHeader` centres its text via a
+`group-data-…:text-center` variant that `tailwind-merge` will not override, so
+the left alignment needs `!`.
 
 The reason View uses `replace` is that the row click is the *default* meaning of
 that URL. Opening Edit/Delete pushes an entry, so Back returns to View, then the
 row.
 
 ```ts
-if (isMobile && mode === 'edit') {
-    router.visit(fallbackUrl); // RouteDefinition → visit needs the href
-
-    return;
+function openRow(organization: OrganizationRow, mode: RowMode) {
+    setOverlayParam('mode', mode, {
+        replace: mode === 'view',
+        keep: { organization: String(organization.id) },
+    });
 }
-
-setOverlayParam('mode', mode, {
-    replace: mode === 'view',
-    keep: { organization: String(organization.id) },
-});
 ```
 
-Do not send mobile to the index for `delete` — that silently navigates away and
-performs nothing, which is exactly the bug the mode guard above prevents.
+`DrawerContent` caps at `max-h-[80vh]` and its body scrolls. That matters once
+the soft keyboard is open: it removes roughly 300px of usable viewport, so create
+*does* overflow there even though it does not at rest. A sheet that fits at rest
+is not automatically a sheet that fits while typing.
+
+### Known limitation — overlays only resolve rows on the current page
+
+`viewedOrganization` is `organizations.data.find(...)`, so
+`/organizations?mode=view&organization=42` renders the "not on the current page of
+results" state whenever row 42 is not in the current result set. That is invisible
+while browsing (you always tap a row you can see) but breaks **deep links**, and
+it is why the legacy `organizations/{id}/edit` page still exists as the only URL
+that can open an off-page row today.
+
+The fix is to resolve the row server-side when the URL asks for one the page does
+not have, rather than to keep a second copy of the form alive for it.
 
 ### Overlays close on `onSuccess`, never `onSubmit`
 
@@ -436,10 +478,13 @@ reachable", which was inaccurate.
 10. **Exports must be a real navigation.** A `fetch()`-built blob URL would drop the
     session cookie; submit a hidden GET form instead. The organizations page does this in
     `downloadExportUrl()`.
-11. **A "responsive" overlay handler that redirects *everything* on mobile silently kills
-    the secondary flows.** `if (isMobile) router.visit(fallback)` made Delete navigate to
-    the index and do nothing, because Delete has no page to visit. Branch on the mode, not
-    on the viewport alone. See §3.
+11. **Don't branch a navigation helper on the viewport — branch on nothing.** The
+    original `if (isMobile) router.visit(fallback)` sent Delete to the index, where it did
+    nothing, because Delete had no page to visit. The follow-up mistake was "fixing" that
+    by adding a `mode === 'edit'` exception. The real answer was that the mode branch
+    should not exist at all: the overlay already adapts via `ResponsiveOverlay`, so a
+    separate page per viewport only ever creates a second copy of the form to keep in
+    sync. See §3.
 12. **Closing an overlay from `onSubmit` throws away the validation response.** The sheet
     unmounts before the server replies, so field errors render nowhere. Use `onSuccess`.
     See §3.

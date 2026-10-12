@@ -13,6 +13,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import * as subscriptionPaymentRoutes from '@/routes/platform/subscription-payments';
 
 type Option = {
@@ -332,7 +333,7 @@ export default function SubscriptionPaymentForm({
 
                             <div className="grid gap-2">
                                 <Label htmlFor="notes">Notes</Label>
-                                <textarea
+                                <Textarea
                                     id="notes"
                                     name="notes"
                                     rows={3}

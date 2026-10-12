@@ -18,6 +18,13 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import {
     destroy as destroySection,
     lease,
     store,
@@ -283,22 +290,33 @@ export default function LandParcelShow({
                                                 <Label htmlFor="section-status">
                                                     Status
                                                 </Label>
-                                                <select
-                                                    id="section-status"
-                                                    name="status"
-                                                    className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-                                                    defaultValue="vacant"
-                                                >
-                                                    <option value="vacant">
-                                                        Vacant
-                                                    </option>
-                                                    <option value="leased">
-                                                        Leased
-                                                    </option>
-                                                    <option value="maintenance">
-                                                        Maintenance
-                                                    </option>
-                                                </select>
+                                                <Select
+    name="status"
+    defaultValue="vacant"
+>
+    <SelectTrigger
+        id="section-status"
+    >
+        <SelectValue />
+    </SelectTrigger>
+    <SelectContent>
+        <SelectItem
+            value={"vacant"}
+        >
+            Vacant
+        </SelectItem>
+        <SelectItem
+            value={"leased"}
+        >
+            Leased
+        </SelectItem>
+        <SelectItem
+            value={"maintenance"}
+        >
+            Maintenance
+        </SelectItem>
+    </SelectContent>
+</Select>
                                                 <InputError
                                                     message={errors.status}
                                                 />

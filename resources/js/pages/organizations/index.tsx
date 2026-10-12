@@ -20,12 +20,19 @@ import Heading from '@/components/heading';
 import { LabelledIconButton } from '@/components/labelled-icon-button';
 import { OverlayFooter } from '@/components/overlay-footer';
 import { ResponsiveOverlay } from '@/components/responsive-overlay';
-import { StatusIcon  } from '@/components/status-cell';
-import type {StatusTone} from '@/components/status-cell';
+import { StatusIcon } from '@/components/status-cell';
+import type { StatusTone } from '@/components/status-cell';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import * as orgRoutes from '@/routes/organizations';
 
@@ -122,7 +129,10 @@ export default function OrganizationsIndex({
     // the session cookie, and fetch() would have to read the blob and save it by
     // hand. Triggering a hidden form GET keeps it a normal authenticated request.
     function downloadExportUrl(scope: 'all' | 'page') {
-        const url = new URL(orgRoutes.exportMethod().url, window.location.origin);
+        const url = new URL(
+            orgRoutes.exportMethod().url,
+            window.location.origin,
+        );
 
         if (filters.search) {
             url.searchParams.set('search', filters.search);
@@ -151,8 +161,8 @@ export default function OrganizationsIndex({
 
     // `query.has()` is true even for an empty value, and closing navigates to
     // `filters=` — so comparing against '' is what actually closes the sheet.
-    const isFiltersOpen = query.get('filters') !== null && query.get('filters') !== '';
-
+    const isFiltersOpen =
+        query.get('filters') !== null && query.get('filters') !== '';
 
     /**
      * Changes only the URL, never the result set — opening or closing a sheet.
@@ -237,20 +247,17 @@ export default function OrganizationsIndex({
                 onSuccess: () => {
                     // Keep the status filter honest: if you suspend while
                     // filtering by "active", the row no longer belongs.
-if (
-                            filters.status &&
-                            filters.status !== status
-                        ) {
-                            refetchTable(
-                                {
-                                    search: filters.search,
-                                    status: filters.status,
-                                    sort: sort.column ?? '',
-                                    direction: sort.direction,
-                                },
-                                { replace: true },
-                            );
-                        }
+                    if (filters.status && filters.status !== status) {
+                        refetchTable(
+                            {
+                                search: filters.search,
+                                status: filters.status,
+                                sort: sort.column ?? '',
+                                direction: sort.direction,
+                            },
+                            { replace: true },
+                        );
+                    }
                 },
             },
         );
@@ -342,17 +349,17 @@ if (
         setSearchDraft(filters.search);
     }
 
-// `owners` is an optional prop: the server does not send it unless asked.
-// Fetch it the first time the create sheet opens, and only then. Loading is
-// derived from the prop being absent rather than tracked separately, so there
-// is no second source of truth to fall out of sync with the request.
-useEffect(() => {
-    if (isCreateOpen && owners === undefined) {
-        router.reload({ only: ['owners'] });
-    }
-}, [isCreateOpen, owners]);
+    // `owners` is an optional prop: the server does not send it unless asked.
+    // Fetch it the first time the create sheet opens, and only then. Loading is
+    // derived from the prop being absent rather than tracked separately, so there
+    // is no second source of truth to fall out of sync with the request.
+    useEffect(() => {
+        if (isCreateOpen && owners === undefined) {
+            router.reload({ only: ['owners'] });
+        }
+    }, [isCreateOpen, owners]);
 
-const isOwnersLoading = isCreateOpen && owners === undefined;
+    const isOwnersLoading = isCreateOpen && owners === undefined;
 
     const columns = useMemo<ColumnDef<OrganizationRow, unknown>[]>(() => {
         const cells: ColumnDef<OrganizationRow, unknown>[] = [
@@ -362,12 +369,12 @@ const isOwnersLoading = isCreateOpen && owners === undefined;
                 header: 'Organization',
                 cell: ({ row }) => (
                     <div className="flex items-center gap-2">
-                        <Building2 className="text-muted-foreground size-4 shrink-0" />
+                        <Building2 className="size-4 shrink-0 text-muted-foreground" />
                         <div className="min-w-0">
                             <div className="truncate font-medium">
                                 {row.original.name}
                             </div>
-                            <div className="text-muted-foreground truncate text-xs">
+                            <div className="truncate text-xs text-muted-foreground">
                                 {row.original.slug}
                             </div>
                         </div>
@@ -449,7 +456,7 @@ const isOwnersLoading = isCreateOpen && owners === undefined;
                             type="button"
                             title={`${suspended ? 'Reactivate' : 'Suspend'} ${organization.name}`}
                             aria-label={`${suspended ? 'Reactivate' : 'Suspend'} ${organization.name}`}
-                            className="focus-visible:ring-ring rounded-md focus-visible:ring-[3px] focus-visible:outline-none"
+                            className="rounded-md focus-visible:ring-[3px] focus-visible:ring-ring focus-visible:outline-none"
                             onClick={(event) => {
                                 event.stopPropagation();
 
@@ -531,7 +538,15 @@ const isOwnersLoading = isCreateOpen && owners === undefined;
 
         return cells;
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [canEdit, canImpersonate, canDelete, filters.search, filters.status, sort.column, sort.direction]);
+    }, [
+        canEdit,
+        canImpersonate,
+        canDelete,
+        filters.search,
+        filters.status,
+        sort.column,
+        sort.direction,
+    ]);
 
     const sorting = useMemo<SortingState>(
         () =>
@@ -555,7 +570,7 @@ const isOwnersLoading = isCreateOpen && owners === undefined;
                 <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0 flex-1">
                         <Heading title="Organization management" />
-                        <p className="text-muted-foreground mt-1 text-sm">
+                        <p className="mt-1 text-sm text-muted-foreground">
                             Create and manage organizations, their plans and
                             tenancy.
                         </p>
@@ -566,9 +581,7 @@ const isOwnersLoading = isCreateOpen && owners === undefined;
                             label="Create"
                             tooltip="Create organisation"
                             color="primary"
-                            onClick={() =>
-                                openCreateSheet()
-                            }
+                            onClick={() => openCreateSheet()}
                             className="max-w-20 sm:max-w-24"
                         />
                     )}
@@ -582,9 +595,9 @@ const isOwnersLoading = isCreateOpen && owners === undefined;
                  * page-level CTA and stays in the page header.
                  */}
                 <Card className="gap-0 py-0">
-                    <div className="border-border-strong flex flex-wrap items-center gap-2 border-b p-4">
+                    <div className="flex flex-wrap items-center gap-2 border-b border-border-strong p-4">
                         <div className="relative min-w-56 flex-1">
-                            <Search className="text-muted-foreground pointer-events-none absolute top-2.5 left-2.5 size-4" />
+                            <Search className="pointer-events-none absolute top-2.5 left-2.5 size-4 text-muted-foreground" />
                             <Input
                                 value={searchDraft}
                                 onChange={(event) =>
@@ -596,7 +609,7 @@ const isOwnersLoading = isCreateOpen && owners === undefined;
                                 // field defined by a 1.2:1 border alone. On a card
                                 // surface it needs a fill + a stronger border to be
                                 // readable in both schemes.
-                                className="bg-background border-border-strong pr-3 pl-9"
+                                className="border-border-strong bg-background pr-3 pl-9"
                             />
                         </div>
                         <ActionIconButton
@@ -616,9 +629,7 @@ const isOwnersLoading = isCreateOpen && owners === undefined;
                                 icon={<Upload />}
                                 label="Import from CSV"
                                 color="default"
-                                onClick={() =>
-                                    setOverlayParam('import', '1')
-                                }
+                                onClick={() => setOverlayParam('import', '1')}
                             />
                         )}
                         {canExport && (
@@ -647,7 +658,6 @@ const isOwnersLoading = isCreateOpen && owners === undefined;
                         empty="No organizations match your filters."
                     />
                 </Card>
-
 
                 {organizations.last_page > 1 && (
                     <div className="flex items-center justify-between text-sm">
@@ -816,7 +826,7 @@ const isOwnersLoading = isCreateOpen && owners === undefined;
                                 required
                             />
                             {errors.name && (
-                                <p className="text-destructive text-xs">
+                                <p className="text-xs text-destructive">
                                     {errors.name}
                                 </p>
                             )}
@@ -831,7 +841,7 @@ const isOwnersLoading = isCreateOpen && owners === undefined;
                                 defaultValue={viewedOrganization.email ?? ''}
                             />
                             {errors.email && (
-                                <p className="text-destructive text-xs">
+                                <p className="text-xs text-destructive">
                                     {errors.email}
                                 </p>
                             )}
@@ -845,7 +855,7 @@ const isOwnersLoading = isCreateOpen && owners === undefined;
                                 defaultValue={viewedOrganization.phone ?? ''}
                             />
                             {errors.phone && (
-                                <p className="text-destructive text-xs">
+                                <p className="text-xs text-destructive">
                                     {errors.phone}
                                 </p>
                             )}
@@ -853,23 +863,25 @@ const isOwnersLoading = isCreateOpen && owners === undefined;
 
                         <div className="grid gap-2">
                             <Label htmlFor="edit-plan">Plan</Label>
-                            <select
-                                id="edit-plan"
+                            <Select
                                 name="plan_id"
-                                defaultValue={viewedOrganization.plan_id ?? ''}
-                                className="border-border-strong bg-background h-9 rounded-md border px-3 text-sm"
+                                defaultValue={String(
+                                    viewedOrganization.plan_id ?? '',
+                                )}
                             >
-                                {plans.map((plan) => (
-                                    <option
-                                        key={plan.id}
-                                        value={plan.id}
-                                    >
-                                        {plan.name}
-                                    </option>
-                                ))}
-                            </select>
+                                <SelectTrigger id="edit-plan">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {plans.map((plan) => (
+                                        <SelectItem value={String(plan.id)}>
+                                            {plan.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                             {errors.plan_id && (
-                                <p className="text-destructive text-xs">
+                                <p className="text-xs text-destructive">
                                     {errors.plan_id}
                                 </p>
                             )}
@@ -877,17 +889,24 @@ const isOwnersLoading = isCreateOpen && owners === undefined;
 
                         <div className="grid gap-2">
                             <Label htmlFor="edit-status">Status</Label>
-                            <select
-                                id="edit-status"
+                            <Select
                                 name="status"
                                 defaultValue={viewedOrganization.status}
-                                className="border-border-strong bg-background h-9 rounded-md border px-3 text-sm"
                             >
-                                <option value="active">Active</option>
-                                <option value="suspended">Suspended</option>
-                            </select>
+                                <SelectTrigger id="edit-status">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value={'active'}>
+                                        Active
+                                    </SelectItem>
+                                    <SelectItem value={'suspended'}>
+                                        Suspended
+                                    </SelectItem>
+                                </SelectContent>
+                            </Select>
                             {errors.status && (
-                                <p className="text-destructive text-xs">
+                                <p className="text-xs text-destructive">
                                     {errors.status}
                                 </p>
                             )}
@@ -924,7 +943,7 @@ const isOwnersLoading = isCreateOpen && owners === undefined;
                                 required
                             />
                             {errors.password && (
-                                <p className="text-destructive text-xs">
+                                <p className="text-xs text-destructive">
                                     {errors.password}
                                 </p>
                             )}
@@ -970,7 +989,7 @@ const isOwnersLoading = isCreateOpen && owners === undefined;
                         <Label htmlFor="create-name">Name</Label>
                         <Input id="create-name" name="name" required />
                         {errors.name && (
-                            <p className="text-destructive text-xs">
+                            <p className="text-xs text-destructive">
                                 {errors.name}
                             </p>
                         )}
@@ -978,13 +997,9 @@ const isOwnersLoading = isCreateOpen && owners === undefined;
 
                     <div className="grid gap-2">
                         <Label htmlFor="create-email">Email</Label>
-                        <Input
-                            id="create-email"
-                            name="email"
-                            type="email"
-                        />
+                        <Input id="create-email" name="email" type="email" />
                         {errors.email && (
-                            <p className="text-destructive text-xs">
+                            <p className="text-xs text-destructive">
                                 {errors.email}
                             </p>
                         )}
@@ -994,7 +1009,7 @@ const isOwnersLoading = isCreateOpen && owners === undefined;
                         <Label htmlFor="create-phone">Phone</Label>
                         <Input id="create-phone" name="phone" />
                         {errors.phone && (
-                            <p className="text-destructive text-xs">
+                            <p className="text-xs text-destructive">
                                 {errors.phone}
                             </p>
                         )}
@@ -1002,20 +1017,26 @@ const isOwnersLoading = isCreateOpen && owners === undefined;
 
                     <div className="grid gap-2">
                         <Label htmlFor="create-plan">Plan</Label>
-                        <select
-                            id="create-plan"
+                        <Select
                             name="plan_id"
-                            defaultValue={plans[0]?.id ?? ''}
-                            className="border-border-strong bg-background h-9 rounded-md border px-3 text-sm"
+                            defaultValue={String(plans[0]?.id ?? '')}
                         >
-                            {plans.map((plan) => (
-                                <option key={plan.id} value={plan.id}>
-                                    {plan.name}
-                                </option>
-                            ))}
-                        </select>
+                            <SelectTrigger id="create-plan">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {plans.map((plan) => (
+                                    <SelectItem
+                                        key={plan.id}
+                                        value={String(plan.id)}
+                                    >
+                                        {plan.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                         {errors.plan_id && (
-                            <p className="text-destructive text-xs">
+                            <p className="text-xs text-destructive">
                                 {errors.plan_id}
                             </p>
                         )}
@@ -1040,9 +1061,7 @@ const isOwnersLoading = isCreateOpen && owners === undefined;
                                 type="button"
                                 size="sm"
                                 variant={
-                                    ownerMode === 'new'
-                                        ? 'default'
-                                        : 'outline'
+                                    ownerMode === 'new' ? 'default' : 'outline'
                                 }
                                 onClick={() => setOwnerMode('new')}
                             >
@@ -1061,31 +1080,29 @@ const isOwnersLoading = isCreateOpen && owners === undefined;
                             <Label htmlFor="create-owner-user">
                                 Owner user
                             </Label>
-                            <select
-                                id="create-owner-user"
+                            <Select
                                 name="owner_user_id"
-                                disabled={owners === undefined}
-                                defaultValue={owners?.[0]?.id ?? ''}
-                                className="border-border-strong bg-background h-9 rounded-md border px-3 text-sm disabled:opacity-60"
+                                defaultValue={String(owners?.[0]?.id ?? '')}
                             >
-                                {owners === undefined ? (
-                                    <option value="">Loading owners…</option>
-                                ) : (
-                                    owners.map((owner) => (
-                                        <option
+                                <SelectTrigger id="create-owner-user">
+                                    <SelectValue placeholder="Loading owners…" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {owners?.map((owner) => (
+                                        <SelectItem
                                             key={owner.id}
-                                            value={owner.id}
+                                            value={String(owner.id)}
                                         >
                                             {owner.name} ({owner.email})
-                                        </option>
-                                    ))
-                                )}
-                            </select>
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                             {isOwnersLoading && (
                                 <Skeleton className="h-3 w-32" />
                             )}
                             {errors.owner_user_id && (
-                                <p className="text-destructive text-xs">
+                                <p className="text-xs text-destructive">
                                     {errors.owner_user_id}
                                 </p>
                             )}
@@ -1102,7 +1119,7 @@ const isOwnersLoading = isCreateOpen && owners === undefined;
                                     required
                                 />
                                 {errors.owner_first_name && (
-                                    <p className="text-destructive text-xs">
+                                    <p className="text-xs text-destructive">
                                         {errors.owner_first_name}
                                     </p>
                                 )}
@@ -1129,7 +1146,7 @@ const isOwnersLoading = isCreateOpen && owners === undefined;
                                     required
                                 />
                                 {errors.owner_email && (
-                                    <p className="text-destructive text-xs">
+                                    <p className="text-xs text-destructive">
                                         {errors.owner_email}
                                     </p>
                                 )}
@@ -1171,9 +1188,9 @@ const isOwnersLoading = isCreateOpen && owners === undefined;
                 }
             >
                 <div className="space-y-3 text-sm">
-                    <div className="border-border-strong bg-background rounded-lg border p-3">
+                    <div className="rounded-lg border border-border-strong bg-background p-3">
                         <div className="font-medium">All matching</div>
-                        <div className="text-muted-foreground mt-1 text-xs">
+                        <div className="mt-1 text-xs text-muted-foreground">
                             Every organization matching
                             {filters.search || filters.status ? (
                                 <>
@@ -1182,10 +1199,7 @@ const isOwnersLoading = isCreateOpen && owners === undefined;
                                     {filters.search && filters.status
                                         ? ' and '
                                         : ''}
-                                    {filters.status
-                                        ? 'status'
-                                        : ''}{' '}
-                                    filter
+                                    {filters.status ? 'status' : ''} filter
                                 </>
                             ) : (
                                 <> (no filters are active)</>
@@ -1195,9 +1209,9 @@ const isOwnersLoading = isCreateOpen && owners === undefined;
                         </div>
                     </div>
 
-                    <div className="border-border-strong bg-background rounded-lg border p-3">
+                    <div className="rounded-lg border border-border-strong bg-background p-3">
                         <div className="font-medium">Current page</div>
-                        <div className="text-muted-foreground mt-1 text-xs">
+                        <div className="mt-1 text-xs text-muted-foreground">
                             Only the {organizations.data.length} row
                             {organizations.data.length === 1 ? '' : 's'} visible
                             on page {organizations.current_page}.
@@ -1255,13 +1269,13 @@ const isOwnersLoading = isCreateOpen && owners === undefined;
                     }}
                 >
                     <div className="space-y-3">
-                        <div className="border-border-strong bg-background rounded-lg border p-3 text-xs">
+                        <div className="rounded-lg border border-border-strong bg-background p-3 text-xs">
                             <div className="font-medium">Required columns</div>
-                            <div className="text-muted-foreground mt-1">
+                            <div className="mt-1 text-muted-foreground">
                                 Name, Owner Email
                             </div>
-                            <div className="font-medium mt-3">Optional</div>
-                            <div className="text-muted-foreground mt-1">
+                            <div className="mt-3 font-medium">Optional</div>
+                            <div className="mt-1 text-muted-foreground">
                                 Email, Phone, Plan (name or slug)
                             </div>
                         </div>
@@ -1275,7 +1289,7 @@ const isOwnersLoading = isCreateOpen && owners === undefined;
                         />
 
                         {errors.file && (
-                            <p className="text-destructive text-xs">
+                            <p className="text-xs text-destructive">
                                 {errors.file}
                             </p>
                         )}
@@ -1283,16 +1297,16 @@ const isOwnersLoading = isCreateOpen && owners === undefined;
                         {importErrors.length > 0 && (
                             <div
                                 role="status"
-                                className="border-destructive/40 bg-destructive/5 space-y-1 rounded-lg border p-3"
+                                className="space-y-1 rounded-lg border border-destructive/40 bg-destructive/5 p-3"
                             >
-                                <div className="text-destructive text-xs font-medium">
+                                <div className="text-xs font-medium text-destructive">
                                     {importErrors.length}{' '}
                                     {importErrors.length === 1
                                         ? 'row was'
                                         : 'rows were'}{' '}
                                     skipped
                                 </div>
-                                <ul className="text-muted-foreground space-y-1 text-xs">
+                                <ul className="space-y-1 text-xs text-muted-foreground">
                                     {importErrors.map((problem, index) => (
                                         <li key={`${problem.row}-${index}`}>
                                             {problem.message}
@@ -1367,10 +1381,9 @@ const isOwnersLoading = isCreateOpen && owners === undefined;
                                 type="radio"
                                 id={`status-${option.value}`}
                                 name="status-filter"
-                                className="accent-brand-primary size-4"
+                                className="size-4 accent-brand-primary"
                                 checked={
-                                    (filters.status || 'all') ===
-                                    option.value
+                                    (filters.status || 'all') === option.value
                                 }
                                 onChange={() =>
                                     refetchTable(

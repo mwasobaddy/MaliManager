@@ -14,6 +14,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import {
     index as expensesIndexRoute,
     store as storeExpense,
@@ -292,11 +293,10 @@ export default function ExpenseForm({ expense, targets }: Props) {
 
                         <div className="grid gap-2 md:col-span-2">
                             <Label htmlFor="notes">Notes</Label>
-                            <textarea
+                            <Textarea
                                 id="notes"
                                 rows={3}
-                                className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
-                                value={form.data.notes}
+                                                                value={form.data.notes}
                                 onChange={(e) =>
                                     form.setData('notes', e.target.value)
                                 }

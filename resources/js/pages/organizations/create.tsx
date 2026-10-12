@@ -6,6 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { index, store } from '@/routes/organizations';
 
 type Plan = { id: number; name: string; slug: string };
@@ -63,21 +70,25 @@ export default function OrganizationsCreate({ plans, owners }: Props) {
                                     </div>
                                     <div className="grid gap-2 sm:col-span-2">
                                         <Label htmlFor="plan_id">Plan</Label>
-                                        <select
-                                            id="plan_id"
-                                            name="plan_id"
-                                            defaultValue={plans[0]?.id ?? ''}
-                                            className="h-9 rounded-md border bg-background px-3 text-sm"
-                                        >
-                                            {plans.map((plan) => (
-                                                <option
-                                                    key={plan.id}
-                                                    value={plan.id}
-                                                >
-                                                    {plan.name}
-                                                </option>
-                                            ))}
-                                        </select>
+                                        <Select
+    name="plan_id"
+    defaultValue={String(plans[0]?.id ?? '')}
+>
+    <SelectTrigger
+        id="plan_id"
+    >
+        <SelectValue />
+    </SelectTrigger>
+    <SelectContent>
+        {plans.map((plan) => (
+            <SelectItem
+                value={String(plan.id)}
+            >
+                {plan.name}
+            </SelectItem>
+        ))}
+    </SelectContent>
+</Select>
                                         <InputError message={errors.plan_id} />
                                     </div>
 
@@ -120,24 +131,23 @@ export default function OrganizationsCreate({ plans, owners }: Props) {
                                             <Label htmlFor="owner_user_id">
                                                 Owner user
                                             </Label>
-                                            <select
-                                                id="owner_user_id"
-                                                name="owner_user_id"
-                                                defaultValue={
-                                                    owners[0]?.id ?? ''
-                                                }
-                                                className="h-9 rounded-md border bg-background px-3 text-sm"
-                                            >
-                                                {owners.map((owner) => (
-                                                    <option
-                                                        key={owner.id}
-                                                        value={owner.id}
-                                                    >
-                                                        {owner.name} (
-                                                        {owner.email})
-                                                    </option>
-                                                ))}
-                                            </select>
+                                            <Select
+    name="owner_user_id"
+    defaultValue={String(owners[0]?.id ?? '')}
+>
+    <SelectTrigger
+        id="owner_user_id"
+    >
+        <SelectValue />
+    </SelectTrigger>
+    <SelectContent>
+        {owners.map((owner) => (
+            <SelectItem key={owner.id} value={String(owner.id)}>
+                {owner.name} ({owner.email})
+            </SelectItem>
+        ))}
+    </SelectContent>
+</Select>
                                             <InputError
                                                 message={errors.owner_user_id}
                                             />

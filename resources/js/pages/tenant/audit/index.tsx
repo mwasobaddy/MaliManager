@@ -4,6 +4,13 @@ import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import {
     exportMethod as auditExport,
     index as auditIndex,
     show as auditShow,
@@ -109,36 +116,42 @@ export default function AuditIndex({
                                     form.setData('actor', e.target.value)
                                 }
                             />
-                            <select
-                                className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+                            <Select
                                 value={form.data.event}
-                                onChange={(e) =>
-                                    form.setData('event', e.target.value)
+                                onValueChange={(value) =>
+                                    form.setData('event', value)
                                 }
                             >
-                                <option value="">Any action</option>
-                                {options.events.map((event) => (
-                                    <option key={event} value={event}>
-                                        {event}
-                                    </option>
-                                ))}
-                            </select>
-                            <select
-                                className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Any action" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {options.events.map((event) => (
+                                        <SelectItem key={event} value={event}>
+                                            {event}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <Select
                                 value={form.data.subject_type}
-                                onChange={(e) =>
-                                    form.setData('subject_type', e.target.value)
+                                onValueChange={(value) =>
+                                    form.setData('subject_type', value)
                                 }
                             >
-                                <option value="">Any resource</option>
-                                {Object.entries(options.subjectTypes).map(
-                                    ([type, label]) => (
-                                        <option key={type} value={type}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Any resource" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {Object.entries(
+                                        options.subjectTypes,
+                                    ).map(([type, label]) => (
+                                        <SelectItem key={type} value={type}>
                                             {label}
-                                        </option>
-                                    ),
-                                )}
-                            </select>
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                             <input
                                 type="date"
                                 className="h-9 rounded-md border border-input bg-background px-3 text-sm"
