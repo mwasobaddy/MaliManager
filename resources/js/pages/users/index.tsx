@@ -1,21 +1,21 @@
-import { Head, Link, router, useForm } from '@inertiajs/react';
-import { usePage } from '@inertiajs/react';
-import { Download, Pencil, Plus, Search } from 'lucide-react';
-import { useState } from 'react';
+import { Head, router, usePage } from '@inertiajs/react';
+import type { ColumnDef, SortingState } from '@tanstack/react-table';
+import { Download, Pencil, Plus, Search, Trash2 } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ActionIconButton } from '@/components/action-icon-button';
+import { DataTable } from '@/components/data-table';
 import Heading from '@/components/heading';
+import { LabelledIconButton } from '@/components/labelled-icon-button';
 import { OverlayFooter } from '@/components/overlay-footer';
 import { PasswordConfirmDialog } from '@/components/password-confirm-dialog';
+import { ResponsiveOverlay } from '@/components/responsive-overlay';
+import { StatusIcon, StatusToggleButton } from '@/components/status-cell';
+import type { StatusTone } from '@/components/status-cell';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog';
+import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
     Select,
     SelectContent,
@@ -44,7 +44,7 @@ type UserRow = {
     status: string;
     roles: { id: number; name: string }[];
     person?: PersonRow | null;
-    created_at?: string;
+    created_at?: string | null;
 };
 
 type Props = {
@@ -54,18 +54,29 @@ type Props = {
         last_page: number;
         total: number;
     };
+    /** Row the URL points at when it is not on the current page. */
+    focusedUser?: UserRow | null;
     filters: { search: string; status: string; role: string };
+    sort: { column: string | null; direction: 'asc' | 'desc' };
     platformRoles: { value: string; label: string }[];
 };
 
-const statusStyles: Record<string, string> = {
-    active: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400',
-    inactive:
-        'bg-neutral-200 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-400',
-    suspended: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400',
+const STATUS_TONES: Record<string, StatusTone> = {
+    active: 'success',
+    inactive: 'muted',
+    suspended: 'danger',
 };
 
-export default function UsersIndex({ users, filters, platformRoles }: Props) {
+/** Debounce so a fast typist issues one request, not one per keystroke. */
+const SEARCH_DEBOUNCE_MS = 350;
+
+export default function UsersIndex({
+    users,
+    focusedUser,
+    filters,
+    sort,
+    platformRoles,
+}: Props) {
     const page = usePage();
     const permissions =
         ((page.props.auth?.permissions ?? []) as string[]) ?? [];
@@ -74,23 +85,177 @@ export default function UsersIndex({ users, filters, platformRoles }: Props) {
     const canDelete = permissions.includes('user.delete');
     const canExport = permissions.includes('user.export');
 
-    const form = useForm({
-        search: filters.search,
-        status: filters.status,
-        role: filters.role,
-    });
+    const [isTableLoading, setIsTableLoading] = useState(false);
+    const [sorting, setSorting] = useState<SortingState>(
+        sort.column
+            ? [{ id: sort.column, desc: sort.direction === 'desc' }]
+            : [],
+    );
 
-    const applyFilters = () => {
-        form.get(usersRoutes.index().url, {
-            preserveState: true,
-            replace: true,
-        });
-    };
+    // Read the overlay state from the URL rather than component state, so the
+    // sheet survives Back/Forward and can be deep-linked.
+    const query = useMemo(() => {
+        const index = page.url.indexOf('?');
 
-    const [suspendTarget, setSuspendTarget] = useState<UserRow | null>(null);
+        return new URLSearchParams(index === -1 ? '' : page.url.slice(index));
+    }, [page.url]);
+
+
+    const viewedId = Number(query.get('user'));
+    const isViewOpen = Number.isFinite(viewedId) && viewedId > 0;
+    const viewedUser = isViewOpen
+        ? (users.data.find((user) => user.id === viewedId) ?? focusedUser)
+        : undefined;
+
+    const rowMode = (query.get('mode') as 'view' | 'delete' | null) ?? 'view';
+    const [deleteTarget, setDeleteTarget] = useState<UserRow | null>(null);
     const [suspending, setSuspending] = useState(false);
+    const [suspendTarget, setSuspendTarget] = useState<UserRow | null>(null);
 
-    const confirmToggleStatus = () => {
+    const errors = (page.props.errors ?? {}) as Record<string, string>;
+
+    /**
+     * Changes only the URL, never the result set — opening or closing a sheet.
+     * No prop is requested because nothing on the page changes with the URL.
+     */
+    function navigate(
+        params: Record<string, string | number>,
+        options?: { replace?: boolean },
+    ) {
+        router.get(usersRoutes.index().url, params, {
+            preserveState: true,
+            replace: options?.replace ?? false,
+            only: ['users', 'focusedUser', 'filters', 'sort'],
+        });
+    }
+
+    /**
+     * Replaces the visible rows, so the table shows a skeleton while in flight.
+     * `only` keeps this off props the table does not read.
+     */
+    function refetchTable(
+        params: Record<string, string | number>,
+        options?: { replace?: boolean },
+    ) {
+        setIsTableLoading(true);
+
+        router.get(usersRoutes.index().url, params, {
+            preserveState: true,
+            replace: options?.replace ?? false,
+            only: ['users', 'focusedUser', 'filters', 'sort'],
+            onFinish: () => setIsTableLoading(false),
+        });
+    }
+
+    function setOverlayParam(
+        key: string,
+        value: string | null,
+        options?: {
+            replace?: boolean;
+            keep?: Record<string, string>;
+        },
+    ) {
+        navigate(
+            {
+                search: filters.search,
+                status: filters.status,
+                role: filters.role,
+                sort: sort.column ?? '',
+                direction: sort.direction,
+                ...(options?.keep ?? {}),
+                [key]: value ?? '',
+            },
+            { replace: options?.replace },
+        );
+    }
+
+    function closeRowSheet() {
+        navigate(
+            {
+                search: filters.search,
+                status: filters.status,
+                role: filters.role,
+                sort: sort.column ?? '',
+                direction: sort.direction,
+            },
+            { replace: true },
+        );
+    }
+
+    function openRow(user: UserRow, mode: 'view' | 'delete') {
+        setOverlayParam('mode', mode, { keep: { user: String(user.id) } });
+    }
+
+    function changePage(nextPage: number) {
+        refetchTable({
+            search: filters.search,
+            status: filters.status,
+            role: filters.role,
+            sort: sort.column ?? '',
+            direction: sort.direction,
+            page: nextPage,
+        });
+    }
+
+    function applySorting(next: SortingState) {
+        setSorting(next);
+        const first = next[0];
+        refetchTable(
+            {
+                search: filters.search,
+                status: filters.status,
+                role: filters.role,
+                sort: first?.id ?? '',
+                direction: first?.desc ? 'desc' : 'asc',
+            },
+            { replace: true },
+        );
+    }
+
+    // Live search: local input for responsiveness, debounced server round-trip.
+    const [searchDraft, setSearchDraft] = useState(filters.search);
+    const firstRender = useRef(true);
+
+    useEffect(() => {
+        // Never fire on mount — the server already sent the filtered result.
+        if (firstRender.current) {
+            firstRender.current = false;
+
+            return;
+        }
+
+        if (searchDraft === filters.search) {
+            return;
+        }
+
+        const timer = window.setTimeout(() => {
+            refetchTable(
+                {
+                    search: searchDraft,
+                    status: filters.status,
+                    role: filters.role,
+                    sort: sort.column ?? '',
+                    direction: sort.direction,
+                },
+                { replace: true },
+            );
+        }, SEARCH_DEBOUNCE_MS);
+
+        return () => window.clearTimeout(timer);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [searchDraft]);
+
+    // Keep the box in step with Back/Forward and with the filters overlay
+    // clearing the search. Adjusting during render (rather than in an effect)
+    // is React's documented pattern for derived-from-props state.
+    const [serverSearch, setServerSearch] = useState(filters.search);
+
+    if (filters.search !== serverSearch) {
+        setServerSearch(filters.search);
+        setSearchDraft(filters.search);
+    }
+
+    function confirmToggleStatus() {
         if (!suspendTarget) {
             return;
         }
@@ -110,9 +275,129 @@ export default function UsersIndex({ users, filters, platformRoles }: Props) {
                 },
             },
         );
-    };
+    }
 
-    const [deleteTarget, setDeleteTarget] = useState<UserRow | null>(null);
+    const columns = useMemo<ColumnDef<UserRow, unknown>[]>(() => {
+        const cells: ColumnDef<UserRow, unknown>[] = [
+            {
+                id: 'name',
+                accessorKey: 'name',
+                header: 'User',
+                cell: ({ row }) => (
+                    <div className="flex items-center gap-2">
+                        <div className="min-w-0">
+                            <div className="truncate font-medium">
+                                {row.original.name}
+                            </div>
+                            {row.original.person && (
+                                <div className="text-muted-foreground truncate text-xs">
+                                    {[row.original.person.first_name, row.original.person.last_name]
+                                        .filter(Boolean)
+                                        .join(' ') || '—'}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                ),
+            },
+            {
+                id: 'email',
+                accessorKey: 'email',
+                header: 'Email',
+                cell: ({ row }) => (
+                    <span className="block truncate">
+                        {row.original.email}
+                    </span>
+                ),
+            },
+            {
+                id: 'roles',
+                header: 'Roles',
+                enableSorting: false,
+                cell: ({ row }) => (
+                    <div className="flex flex-wrap gap-1">
+                        {row.original.roles.length === 0 && (
+                            <span className="text-muted-foreground">—</span>
+                        )}
+                        {row.original.roles.map((role) => (
+                            <Badge key={role.id} variant="secondary">
+                                {role.name}
+                            </Badge>
+                        ))}
+                    </div>
+                ),
+            },
+            {
+                id: 'status',
+                accessorKey: 'status',
+                header: 'Status',
+                meta: { align: 'center' },
+                cell: ({ row }) => {
+                    const status = row.original.status;
+
+                    return (
+                        <StatusIcon
+                            tone={STATUS_TONES[status] ?? 'muted'}
+                            label={status}
+                        />
+                    );
+                },
+            },
+            {
+                id: 'actions',
+                header: 'Actions',
+                enableSorting: false,
+                meta: { align: 'right' },
+                cell: ({ row }) => {
+                    const user = row.original;
+
+                    return (
+                        <div
+                            className="flex justify-end gap-1"
+                            onClick={(event) => event.stopPropagation()}
+                        >
+                            {canEdit && (
+                                <>
+                                    <StatusToggleButton
+                                        tone={
+                                            STATUS_TONES[user.status] ?? 'muted'
+                                        }
+                                        label={user.status}
+                                        actionLabel={`${
+                                            user.status === 'active'
+                                                ? 'Suspend'
+                                                : 'Activate'
+                                        } ${user.name}`}
+                                        onClick={() => setSuspendTarget(user)}
+                                    />
+                                    <ActionIconButton
+                                        icon={<Pencil />}
+                                        label={`Edit ${user.name}`}
+                                        color="edit"
+                                        onClick={() =>
+                                            router.visit(
+                                                usersRoutes.edit(user.id).url,
+                                            )
+                                        }
+                                    />
+                                </>
+                            )}
+                            {canDelete && (
+                                <ActionIconButton
+                                    icon={<Trash2 />}
+                                    label={`Delete ${user.name}`}
+                                    color="danger"
+                                    onClick={() => setDeleteTarget(user)}
+                                />
+                            )}
+                        </div>
+                    );
+                },
+            },
+        ];
+
+        return cells;
+    }, [canEdit, canDelete]);
 
     return (
         <>
@@ -123,223 +408,69 @@ export default function UsersIndex({ users, filters, platformRoles }: Props) {
                         title="User management"
                         description="Create and manage people and their user accounts."
                     />
-                    <div className="flex gap-2">
-                        {canExport && (
-                            <Button variant="outline" asChild>
-                                <a href={usersRoutes.exportMethod().url}>
-                                    <Download className="mr-2 size-4" />
-                                    Export
-                                </a>
-                            </Button>
-                        )}
-                        {canCreate && (
-                            <Button asChild>
-                                <Link href={usersRoutes.create()}>
-                                    <Plus className="mr-2 size-4" />
-                                    New user
-                                </Link>
-                            </Button>
-                        )}
-                    </div>
+                    {canCreate && (
+                        <LabelledIconButton
+                            icon={<Plus />}
+                            label="New user"
+                            tooltip="Create user"
+                            color="primary"
+                            onClick={() =>
+                                router.visit(usersRoutes.create().url)
+                            }
+                            className="max-w-20 sm:max-w-24"
+                        />
+                    )}
                 </div>
 
                 <Card>
-                    <CardContent className="p-4">
-                        <form
-                            onSubmit={(event) => {
-                                event.preventDefault();
-                                applyFilters();
-                            }}
-                            className="flex flex-wrap items-center gap-2"
-                        >
-                            <div className="relative min-w-56 flex-1">
-                                <Search className="absolute top-2.5 left-2 size-4 text-muted-foreground" />
-                                <input
-                                    value={form.data.search}
-                                    onChange={(event) =>
-                                        form.setData(
-                                            'search',
-                                            event.target.value,
+                    <div className="flex items-center justify-between gap-3 border-b p-4">
+                        <div className="relative min-w-56 flex-1">
+                            <Search className="absolute top-2.5 left-2 size-4 text-muted-foreground" />
+                            <Input
+                                value={searchDraft}
+                                onChange={(event) =>
+                                    setSearchDraft(event.target.value)
+                                }
+                                placeholder="Search name, email, phone..."
+                                className="pr-3 pl-8"
+                                aria-label="Search users"
+                            />
+                        </div>
+                        <div className="flex gap-1">
+                            <ActionIconButton
+                                icon={<Plus />}
+                                label="Filters"
+                                color="default"
+                                onClick={() =>
+                                    setOverlayParam('filters', '1')
+                                }
+                                className="sm:hidden"
+                            />
+                            {canExport && (
+                                <ActionIconButton
+                                    icon={<Download />}
+                                    label="Export"
+                                    color="default"
+                                    onClick={() =>
+                                        router.visit(
+                                            usersRoutes.exportMethod().url,
                                         )
                                     }
-                                    placeholder="Search name, email, phone..."
-                                    className="w-full rounded-md border bg-background py-2 pr-3 pl-8 text-sm"
                                 />
-                            </div>
-                            <Select
-                                value={form.data.status}
-                                onValueChange={(value) =>
-                                    form.setData('status', value)
-                                }
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Any status" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="active">Active</SelectItem>
-                                    <SelectItem value="inactive">
-                                        Inactive
-                                    </SelectItem>
-                                    <SelectItem value="suspended">
-                                        Suspended
-                                    </SelectItem>
-                                </SelectContent>
-                            </Select>
-                            <Select
-                                value={form.data.role}
-                                onValueChange={(value) =>
-                                    form.setData('role', value)
-                                }
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Any role" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {platformRoles.map((role) => (
-                                        <SelectItem
-                                            key={role.value}
-                                            value={role.value}
-                                        >
-                                            {role.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            <Button type="submit" variant="secondary">
-                                Filter
-                            </Button>
-                        </form>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardContent className="p-0">
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                                <thead>
-                                    <tr className="border-b text-left text-muted-foreground">
-                                        <th className="px-3 py-2 font-medium">
-                                            Name
-                                        </th>
-                                        <th className="px-3 py-2 font-medium">
-                                            Email
-                                        </th>
-                                        <th className="px-3 py-2 font-medium">
-                                            Phone
-                                        </th>
-                                        <th className="px-3 py-2 font-medium">
-                                            Roles
-                                        </th>
-                                        <th className="px-3 py-2 font-medium">
-                                            Status
-                                        </th>
-                                        <th className="px-3 py-2 text-right font-medium">
-                                            Actions
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {users.data.length === 0 && (
-                                        <tr>
-                                            <td
-                                                colSpan={6}
-                                                className="py-8 text-center text-muted-foreground"
-                                            >
-                                                No users found.
-                                            </td>
-                                        </tr>
-                                    )}
-                                    {users.data.map((user) => (
-                                        <tr key={user.id} className="border-b">
-                                            <td className="px-3 py-2 font-medium">
-                                                {user.name}
-                                            </td>
-                                            <td className="px-3 py-2">
-                                                {user.email}
-                                            </td>
-                                            <td className="px-3 py-2">
-                                                {user.phone ?? '—'}
-                                            </td>
-                                            <td className="px-3 py-2">
-                                                <div className="flex flex-wrap gap-1">
-                                                    {user.roles.length ===
-                                                        0 && (
-                                                        <span className="text-muted-foreground">
-                                                            —
-                                                        </span>
-                                                    )}
-                                                    {user.roles.map((role) => (
-                                                        <Badge
-                                                            key={role.id}
-                                                            variant="secondary"
-                                                        >
-                                                            {role.name}
-                                                        </Badge>
-                                                    ))}
-                                                </div>
-                                            </td>
-                                            <td className="px-3 py-2">
-                                                <span
-                                                    className={`rounded-full px-2 py-0.5 text-xs font-medium capitalize ${statusStyles[user.status] ?? ''}`}
-                                                >
-                                                    {user.status}
-                                                </span>
-                                            </td>
-                                            <td className="px-3 py-2 text-right">
-                                                <div className="flex justify-end gap-1">
-                                                    {canEdit && (
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            asChild
-                                                        >
-                                                            <Link
-                                                                href={usersRoutes.edit(
-                                                                    user.id,
-                                                                )}
-                                                            >
-                                                                <Pencil className="size-4" />
-                                                            </Link>
-                                                        </Button>
-                                                    )}
-                                                    {canEdit && (
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            onClick={() =>
-                                                                setSuspendTarget(
-                                                                    user,
-                                                                )
-                                                            }
-                                                        >
-                                                            {user.status ===
-                                                            'active'
-                                                                ? 'Suspend'
-                                                                : 'Activate'}
-                                                        </Button>
-                                                    )}
-                                                    {canDelete && (
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            onClick={() =>
-                                                                setDeleteTarget(
-                                                                    user,
-                                                                )
-                                                            }
-                                                            className="text-red-600"
-                                                        >
-                                                            Delete
-                                                        </Button>
-                                                    )}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                            )}
                         </div>
-                    </CardContent>
+                    </div>
+
+                    <DataTable
+                        columns={columns}
+                        data={users.data}
+                        getRowId={(row) => String(row.id)}
+                        sorting={sorting}
+                        onSortingChange={applySorting}
+                        loading={isTableLoading}
+                        onRowClick={(user) => openRow(user, 'view')}
+                        empty="No users match your filters."
+                    />
                 </Card>
 
                 {users.last_page > 1 && (
@@ -354,14 +485,7 @@ export default function UsersIndex({ users, filters, platformRoles }: Props) {
                                 size="sm"
                                 disabled={users.current_page <= 1}
                                 onClick={() =>
-                                    router.get(
-                                        usersRoutes.index().url,
-                                        {
-                                            ...form.data,
-                                            page: users.current_page - 1,
-                                        },
-                                        { preserveState: true },
-                                    )
+                                    changePage(users.current_page - 1)
                                 }
                             >
                                 Previous
@@ -371,14 +495,7 @@ export default function UsersIndex({ users, filters, platformRoles }: Props) {
                                 size="sm"
                                 disabled={users.current_page >= users.last_page}
                                 onClick={() =>
-                                    router.get(
-                                        usersRoutes.index().url,
-                                        {
-                                            ...form.data,
-                                            page: users.current_page + 1,
-                                        },
-                                        { preserveState: true },
-                                    )
+                                    changePage(users.current_page + 1)
                                 }
                             >
                                 Next
@@ -387,6 +504,228 @@ export default function UsersIndex({ users, filters, platformRoles }: Props) {
                     </div>
                 )}
             </div>
+
+            <ResponsiveOverlay
+                open={isViewOpen && viewedUser !== undefined}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        closeRowSheet();
+                    }
+                }}
+                title={viewedUser?.name ?? 'User'}
+                description={
+                    !viewedUser
+                        ? 'This user is not on the current page of results.'
+                        : rowMode === 'delete'
+                          ? 'This soft-deletes the account. Its records are kept.'
+                          : 'Details for this user.'
+                }
+                footer={
+                    rowMode === 'delete' && viewedUser ? (
+                        <OverlayFooter
+                            onCancel={closeRowSheet}
+                            actions={[
+                                {
+                                    label: 'Delete account',
+                                    tone: 'danger',
+                                    icon: <Trash2 className="size-4" />,
+                                    onClick: () => {
+                                        setDeleteTarget(viewedUser);
+                                        closeRowSheet();
+                                    },
+                                },
+                            ]}
+                        />
+                    ) : (
+                        <OverlayFooter
+                            actions={[
+                                {
+                                    label: 'Edit',
+                                    tone: 'secondary',
+                                    icon: <Pencil className="size-4" />,
+                                    onClick: () =>
+                                        router.visit(
+                                            usersRoutes.edit(
+                                                viewedUser?.id ?? 0,
+                                            ).url,
+                                        ),
+                                    ...(canEdit ? {} : { disabled: true }),
+                                },
+                            ]}
+                        />
+                    )
+                }
+            >
+                {viewedUser && (
+                    <dl className="grid gap-3 py-2 text-sm">
+                        {[
+                            ['Email', viewedUser.email],
+                            ['Phone', viewedUser.phone ?? '—'],
+                            ['Status', viewedUser.status],
+                            [
+                                'Roles',
+                                viewedUser.roles.length > 0
+                                    ? viewedUser.roles
+                                          .map((role) => role.name)
+                                          .join(', ')
+                                    : '—',
+                            ],
+                            [
+                                'Person',
+                                viewedUser.person
+                                    ? [
+                                          viewedUser.person.first_name,
+                                          viewedUser.person.last_name,
+                                      ]
+                                          .filter(Boolean)
+                                          .join(' ') ||
+                                      '—'
+                                    : '—',
+                            ],
+                            [
+                                'National ID',
+                                viewedUser.person?.national_id ?? '—',
+                            ],
+                            ['Created', viewedUser.created_at ?? '—'],
+                        ].map(([label, value]) => (
+                            <div
+                                key={label}
+                                className="grid grid-cols-[7rem_1fr] gap-2"
+                            >
+                                <dt className="text-muted-foreground">
+                                    {label}
+                                </dt>
+                                <dd className="min-w-0 break-words">
+                                    {value}
+                                </dd>
+                            </div>
+                        ))}
+                    </dl>
+                )}
+            </ResponsiveOverlay>
+
+            <ResponsiveOverlay
+                open={query.get('filters') !== null && query.get('filters') !== ''}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setOverlayParam('filters', null, { replace: true });
+                    }
+                }}
+                title="Filters"
+                description="Narrow the list of users."
+                footer={
+                    <OverlayFooter
+                        onCancel={() =>
+                            setOverlayParam('filters', null, { replace: true })
+                        }
+                        cancelLabel="Close"
+                        actions={[
+                            {
+                                label: 'Clear all',
+                                onClick: () => {
+                                    setSearchDraft('');
+                                    refetchTable({
+                                        search: '',
+                                        status: '',
+                                        role: '',
+                                        sort: sort.column ?? '',
+                                        direction: sort.direction,
+                                    });
+                                    setOverlayParam('filters', null, {
+                                        replace: true,
+                                    });
+                                },
+                            },
+                        ]}
+                    />
+                }
+            >
+                <div className="grid gap-4 py-2">
+                    <div className="grid gap-2">
+                        <Label htmlFor="filter-status">Status</Label>
+                        <Select
+                            value={filters.status}
+                            onValueChange={(value) =>
+                                refetchTable(
+                                    {
+                                        search: filters.search,
+                                        status: value,
+                                        role: filters.role,
+                                        sort: sort.column ?? '',
+                                        direction: sort.direction,
+                                        filters: '1',
+                                    },
+                                    { replace: true },
+                                )
+                            }
+                        >
+                            <SelectTrigger id="filter-status">
+                                <SelectValue placeholder="Any status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="active">Active</SelectItem>
+                                <SelectItem value="inactive">
+                                    Inactive
+                                </SelectItem>
+                                <SelectItem value="suspended">
+                                    Suspended
+                                </SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div className="grid gap-2">
+                        <Label htmlFor="filter-role">Role</Label>
+                        <Select
+                            value={filters.role}
+                            onValueChange={(value) =>
+                                refetchTable(
+                                    {
+                                        search: filters.search,
+                                        status: filters.status,
+                                        role: value,
+                                        sort: sort.column ?? '',
+                                        direction: sort.direction,
+                                        filters: '1',
+                                    },
+                                    { replace: true },
+                                )
+                            }
+                        >
+                            <SelectTrigger id="filter-role">
+                                <SelectValue placeholder="Any role" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {platformRoles.map((role) => (
+                                    <SelectItem
+                                        key={role.value}
+                                        value={role.value}
+                                    >
+                                        {role.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div className="grid gap-2">
+                        <Label htmlFor="filter-search">Search</Label>
+                        <Input
+                            id="filter-search"
+                            value={searchDraft}
+                            onChange={(event) =>
+                                setSearchDraft(event.target.value)
+                            }
+                            placeholder="Name, email, phone..."
+                        />
+                        {errors.search && (
+                            <p className="text-xs text-destructive">
+                                {errors.search}
+                            </p>
+                        )}
+                    </div>
+                </div>
+            </ResponsiveOverlay>
 
             <PasswordConfirmDialog
                 open={deleteTarget !== null}
@@ -400,52 +739,48 @@ export default function UsersIndex({ users, filters, platformRoles }: Props) {
                 description="This soft-deletes the user account. Please enter your password to confirm."
             />
 
-            <Dialog
+            <ResponsiveOverlay
                 open={suspendTarget !== null}
                 onOpenChange={(open) => {
                     if (!open) {
                         setSuspendTarget(null);
                     }
                 }}
+                title={
+                    suspendTarget?.status === 'active'
+                        ? 'Suspend user?'
+                        : 'Activate user?'
+                }
+                description={
+                    suspendTarget?.status === 'active'
+                        ? `Suspend ${suspendTarget?.email ?? ''}? They will be signed out of every device and unable to access the platform until reactivated.`
+                        : `Reactivate ${suspendTarget?.email ?? ''}? They will be able to sign in again.`
+                }
+                footer={
+                    <OverlayFooter
+                        onCancel={() => setSuspendTarget(null)}
+                        actions={[
+                            {
+                                label:
+                                    suspendTarget?.status === 'active'
+                                        ? 'Suspend'
+                                        : 'Activate',
+                                // Suspending locks people out, so it takes the
+                                // danger colour; reactivating restores access
+                                // and is an ordinary confirmation.
+                                tone:
+                                    suspendTarget?.status === 'active'
+                                        ? 'danger'
+                                        : 'primary',
+                                disabled: suspending,
+                                onClick: confirmToggleStatus,
+                            },
+                        ]}
+                    />
+                }
             >
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>
-                            {suspendTarget?.status === 'active'
-                                ? 'Suspend user?'
-                                : 'Activate user?'}
-                        </DialogTitle>
-                        <DialogDescription>
-                            {suspendTarget?.status === 'active'
-                                ? `Suspend ${suspendTarget?.email ?? ''}? They will be signed out of every device and unable to access the platform until reactivated.`
-                                : `Reactivate ${suspendTarget?.email ?? ''}? They will be able to sign in again.`}
-                        </DialogDescription>
-                    </DialogHeader>
-
-                    <DialogFooter>
-                        <OverlayFooter
-                            onCancel={() => setSuspendTarget(null)}
-                            actions={[
-                                {
-                                    label:
-                                        suspendTarget?.status === 'active'
-                                            ? 'Suspend'
-                                            : 'Activate',
-                                    // Suspending locks people out, so it takes
-                                    // the danger colour; reactivating restores
-                                    // access and is an ordinary confirmation.
-                                    tone:
-                                        suspendTarget?.status === 'active'
-                                            ? 'danger'
-                                            : 'primary',
-                                    disabled: suspending,
-                                    onClick: confirmToggleStatus,
-                                },
-                            ]}
-                        />
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+                <div className="py-2" />
+            </ResponsiveOverlay>
         </>
     );
 }
