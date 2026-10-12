@@ -305,21 +305,21 @@ export default function LandParcelShow({
                                             </div>
                                             <div className="flex items-end gap-2">
                                                 <Button
+                                                    type="button"
+                                                    variant="shadcndefault"
+                                                    onClick={() =>
+                                                        setAddSection(false)
+                                                    }
+                                                >
+                                                    Cancel
+                                                </Button>
+                                                <Button
                                                     type="submit"
                                                     disabled={processing}
                                                 >
                                                     {processing
                                                         ? 'Saving…'
                                                         : 'Add'}
-                                                </Button>
-                                                <Button
-                                                    type="button"
-                                                    variant="ghost"
-                                                    onClick={() =>
-                                                        setAddSection(false)
-                                                    }
-                                                >
-                                                    Cancel
                                                 </Button>
                                             </div>
                                         </>
@@ -586,6 +586,17 @@ export default function LandParcelShow({
                                                             </div>
                                                             <div className="flex items-end gap-2 md:col-span-2">
                                                                 <Button
+                                                                    type="button"
+                                                                    variant="shadcndefault"
+                                                                    onClick={() =>
+                                                                        setLeaseSectionId(
+                                                                            null,
+                                                                        )
+                                                                    }
+                                                                >
+                                                                    Cancel
+                                                                </Button>
+                                                                <Button
                                                                     type="submit"
                                                                     disabled={
                                                                         processing
@@ -594,17 +605,6 @@ export default function LandParcelShow({
                                                                     {processing
                                                                         ? 'Creating…'
                                                                         : 'Create lease'}
-                                                                </Button>
-                                                                <Button
-                                                                    type="button"
-                                                                    variant="ghost"
-                                                                    onClick={() =>
-                                                                        setLeaseSectionId(
-                                                                            null,
-                                                                        )
-                                                                    }
-                                                                >
-                                                                    Cancel
                                                                 </Button>
                                                             </div>
                                                         </>

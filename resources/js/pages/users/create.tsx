@@ -136,17 +136,17 @@ export default function UsersCreate({ platformRoles }: Props) {
                                     </div>
                                     <div className="flex gap-2 sm:col-span-2">
                                         <Button
+                                            type="button"
+                                            variant="shadcndefault"
+                                            asChild
+                                        >
+                                            <Link href={index()}>Cancel</Link>
+                                        </Button>
+                                        <Button
                                             type="submit"
                                             disabled={processing}
                                         >
                                             Create user
-                                        </Button>
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            asChild
-                                        >
-                                            <Link href={index()}>Cancel</Link>
                                         </Button>
                                     </div>
                                 </>

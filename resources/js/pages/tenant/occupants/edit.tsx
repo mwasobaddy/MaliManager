@@ -681,17 +681,17 @@ export default function OccupantEdit({
 
                             <div className="flex flex-wrap items-center justify-between gap-4">
                                 <div className="flex gap-3">
-                                    <Button type="submit" disabled={processing}>
-                                        {processing
-                                            ? 'Saving…'
-                                            : 'Save changes'}
-                                    </Button>
-                                    <Button asChild variant="ghost">
+                                    <Button asChild variant="shadcndefault">
                                         <Link
                                             href={occupantsIndex(property.slug)}
                                         >
                                             Cancel
                                         </Link>
+                                    </Button>
+                                    <Button type="submit" disabled={processing}>
+                                        {processing
+                                            ? 'Saving…'
+                                            : 'Save changes'}
                                     </Button>
                                 </div>
 

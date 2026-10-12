@@ -356,11 +356,11 @@ export default function LandParcelCreate({
                             </div>
 
                             <div className="flex gap-3">
+                                <Button asChild variant="shadcndefault">
+                                    <Link href="/land-parcels">Cancel</Link>
+                                </Button>
                                 <Button type="submit" disabled={processing}>
                                     {processing ? 'Adding…' : 'Add land parcel'}
-                                </Button>
-                                <Button asChild variant="ghost">
-                                    <Link href="/land-parcels">Cancel</Link>
                                 </Button>
                             </div>
                         </>

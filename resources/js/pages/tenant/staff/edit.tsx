@@ -235,13 +235,13 @@ export default function StaffEdit({
 
                             <div className="flex flex-wrap items-center justify-between gap-4">
                                 <div className="flex gap-3">
+                                    <Button asChild variant="shadcndefault">
+                                        <Link href={staffIndex()}>Cancel</Link>
+                                    </Button>
                                     <Button type="submit" disabled={processing}>
                                         {processing
                                             ? 'Saving…'
                                             : 'Save changes'}
-                                    </Button>
-                                    <Button asChild variant="ghost">
-                                        <Link href={staffIndex()}>Cancel</Link>
                                     </Button>
                                 </div>
 

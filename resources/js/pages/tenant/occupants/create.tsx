@@ -537,13 +537,13 @@ export default function OccupantCreate({
                             </div>
 
                             <div className="flex gap-3">
-                                <Button type="submit" disabled={processing}>
-                                    {processing ? 'Adding…' : 'Add occupant'}
-                                </Button>
-                                <Button asChild variant="ghost">
+                                <Button asChild variant="shadcndefault">
                                     <Link href={occupantsIndex(property.slug)}>
                                         Cancel
                                     </Link>
+                                </Button>
+                                <Button type="submit" disabled={processing}>
+                                    {processing ? 'Adding…' : 'Add occupant'}
                                 </Button>
                             </div>
                         </>
