@@ -31,6 +31,16 @@ const actionColorVariants = cva('', {
             brand: 'bg-brand-primary/12 text-brand-primary hover:bg-brand-primary/20 focus-visible:ring-brand-primary/30',
             accent:
                 'bg-brand-accent/12 text-brand-accent hover:bg-brand-accent/20 focus-visible:ring-brand-accent/30',
+            /**
+             * Solid teal for the table's utility controls (filter, export,
+             * import). `accent` above is the *tint* used inside the action
+             * cell; this is the filled button, matching the weight of the
+             * brand-primary CTA but in the accent hue. The label uses
+             * `--brand-accent-foreground` rather than a literal `text-white`:
+             * the dark-mode accent is a light teal, so white would sit near
+             * 2.1:1. The token flips per theme, mirroring `--primary-foreground`.
+             */
+            teal: 'bg-brand-accent text-brand-accent-foreground hover:bg-brand-accent/90 focus-visible:ring-brand-accent/40',
         },
     },
     defaultVariants: {
@@ -53,7 +63,7 @@ type ActionIconButtonProps = React.ComponentProps<typeof Button> & {
      * Semantic color. `view` blue, `edit` green, `danger` red, `brand`
      * terracotta, `accent` teal, or a shadcn default.
      */
-    color?: 'default' | 'primary' | 'view' | 'edit' | 'danger' | 'brand' | 'accent';
+    color?: 'default' | 'primary' | 'view' | 'edit' | 'danger' | 'brand' | 'accent' | 'teal';
     /** Which side the tooltip opens on. */
     tooltipSide?: 'top' | 'right' | 'bottom' | 'left';
 };

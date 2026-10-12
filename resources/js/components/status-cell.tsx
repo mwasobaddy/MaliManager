@@ -1,4 +1,10 @@
-import { CircleCheck, CirclePause, TriangleAlert } from 'lucide-react';
+import {
+    CircleCheck,
+    CirclePause,
+    Power,
+    PowerOff,
+    TriangleAlert,
+} from 'lucide-react';
 import { ActionIconButton } from '@/components/action-icon-button';
 import { cn } from '@/lib/utils';
 
@@ -58,28 +64,47 @@ export function StatusIcon({
 }
 
 /**
- * Icon-only status cell. The icon is the button so the state can be clicked
- * to toggle it; the tooltip carries the full sentence.
+ * The status *control* for a table's action cell.
+ *
+ * Split deliberately from `StatusIcon`: the status column only reports state,
+ * and this button in the action cell is what changes it. Putting the toggle
+ * in the status column made the column look editable while the real affordance
+ * was three columns away.
+ *
+ * The glyph carries the state rather than just colouring it — `Power` for
+ * active, `PowerOff` for suspended — so the meaning survives greyscale and
+ * colour-blindness, which is the same rule `ui-design-system.md` §1 sets for
+ * status generally. Colour reinforces it: green when active, red when
+ * suspended.
  */
-export function StatusToggleButton({
-    tone,
-    label,
-    actionLabel,
+export function StatusPowerToggle({
+    status,
+    activeLabel,
+    inactiveLabel,
     onClick,
     disabled,
 }: {
-    tone: StatusTone;
-    label: string;
-    actionLabel: string;
+    status: string;
+    /** Sentence the tooltip reads while the row is active, e.g. "Suspend X". */
+    activeLabel: string;
+    /** Sentence the tooltip reads while the row is inactive. */
+    inactiveLabel: string;
     onClick: () => void;
     disabled?: boolean;
 }) {
+    const isActive = status === 'active';
+
     return (
         <ActionIconButton
             color="default"
-            className={cn(toneClasses[tone], 'hover:opacity-75')}
-            icon={<StatusIcon tone={tone} label={label} />}
-            label={actionLabel}
+            className={cn(
+                isActive
+                    ? 'bg-status-success/12 text-status-success hover:bg-status-success/20 focus-visible:ring-status-success/30'
+                    : 'bg-status-danger/12 text-status-danger hover:bg-status-danger/20 focus-visible:ring-status-danger/30',
+            )}
+            icon={isActive ? <Power /> : <PowerOff />}
+            label={isActive ? activeLabel : inactiveLabel}
+            tooltipSide="top"
             onClick={onClick}
             disabled={disabled}
         />

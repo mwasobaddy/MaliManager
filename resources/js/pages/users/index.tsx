@@ -1,6 +1,14 @@
-import { Head, router, usePage } from '@inertiajs/react';
+import { Form, Head, router, usePage } from '@inertiajs/react';
 import type { ColumnDef, SortingState } from '@tanstack/react-table';
-import { Download, Pencil, Plus, Search, Trash2 } from 'lucide-react';
+import {
+    Download,
+    ListFilter,
+    Pencil,
+    Plus,
+    Search,
+    Trash2,
+    Upload,
+} from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActionIconButton } from '@/components/action-icon-button';
 import { DataTable } from '@/components/data-table';
@@ -9,13 +17,17 @@ import { LabelledIconButton } from '@/components/labelled-icon-button';
 import { OverlayFooter } from '@/components/overlay-footer';
 import { PasswordConfirmDialog } from '@/components/password-confirm-dialog';
 import { ResponsiveOverlay } from '@/components/responsive-overlay';
-import { StatusIcon, StatusToggleButton } from '@/components/status-cell';
+import { StatusPowerToggle, StatusIcon } from '@/components/status-cell';
 import type { StatusTone } from '@/components/status-cell';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    RadioGroup,
+    RadioGroupItem,
+} from '@/components/ui/radio-group';
 import {
     Select,
     SelectContent,
@@ -45,6 +57,16 @@ type UserRow = {
     roles: { id: number; name: string }[];
     person?: PersonRow | null;
     created_at?: string | null;
+};
+
+type RowMode = 'view' | 'edit' | 'delete';
+
+const FIELD_LABELS: Record<string, string> = {
+    first_name: 'First name',
+    last_name: 'Last name',
+    email: 'Email',
+    phone: 'Phone',
+    national_id: 'National ID',
 };
 
 type Props = {
@@ -84,6 +106,7 @@ export default function UsersIndex({
     const canEdit = permissions.includes('user.edit');
     const canDelete = permissions.includes('user.delete');
     const canExport = permissions.includes('user.export');
+    const canImport = permissions.includes('user.import');
 
     const [isTableLoading, setIsTableLoading] = useState(false);
     const [sorting, setSorting] = useState<SortingState>(
@@ -107,7 +130,15 @@ export default function UsersIndex({
         ? (users.data.find((user) => user.id === viewedId) ?? focusedUser)
         : undefined;
 
-    const rowMode = (query.get('mode') as 'view' | 'delete' | null) ?? 'view';
+    const rowMode =
+        (query.get('mode') as RowMode | null) ?? 'view';
+    const isCreateOpen = query.get('create') === '1';
+    const isImportOpen = query.get('import') === '1';
+    const isExportOpen = query.get('export') === '1';
+
+    const [importErrors, setImportErrors] = useState<
+        { row: number; message: string }[]
+    >([]);
     const [deleteTarget, setDeleteTarget] = useState<UserRow | null>(null);
     const [suspending, setSuspending] = useState(false);
     const [suspendTarget, setSuspendTarget] = useState<UserRow | null>(null);
@@ -182,7 +213,72 @@ export default function UsersIndex({
         );
     }
 
-    function openRow(user: UserRow, mode: 'view' | 'delete') {
+    // A plain <a download> would not carry the session cookie and fetch()
+    // would force us to hand-save a blob, so export is a hidden form GET.
+    function downloadExportUrl(scope: 'all' | 'page') {
+        const url = new URL(
+            usersRoutes.exportMethod().url,
+            window.location.origin,
+        );
+
+        if (filters.search) {
+            url.searchParams.set('search', filters.search);
+        }
+
+        if (filters.status) {
+            url.searchParams.set('status', filters.status);
+        }
+
+        if (filters.role) {
+            url.searchParams.set('role', filters.role);
+        }
+
+        url.searchParams.set('scope', scope);
+
+        if (sort.column) {
+            url.searchParams.set('sort', sort.column);
+        }
+
+        if (sort.direction) {
+            url.searchParams.set('direction', sort.direction);
+        }
+
+        if (scope === 'page') {
+            url.searchParams.set('page', String(users.current_page));
+        }
+
+        const form = document.createElement('form');
+        form.method = 'GET';
+        form.action = url.toString();
+        form.hidden = true;
+
+        const fields: Record<string, string> = {
+            search: filters.search,
+            status: filters.status,
+            role: filters.role,
+            scope,
+            sort: sort.column ?? '',
+            direction: sort.direction,
+        };
+
+        for (const [name, value] of Object.entries(fields)) {
+            if (value !== '') {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = name;
+                input.value = value;
+                form.appendChild(input);
+            }
+        }
+
+        document.body.appendChild(form);
+        form.submit();
+        form.remove();
+
+        setOverlayParam('export', null, { replace: true });
+    }
+
+    function openRow(user: UserRow, mode: RowMode) {
         setOverlayParam('mode', mode, { keep: { user: String(user.id) } });
     }
 
@@ -358,16 +454,10 @@ export default function UsersIndex({
                         >
                             {canEdit && (
                                 <>
-                                    <StatusToggleButton
-                                        tone={
-                                            STATUS_TONES[user.status] ?? 'muted'
-                                        }
-                                        label={user.status}
-                                        actionLabel={`${
-                                            user.status === 'active'
-                                                ? 'Suspend'
-                                                : 'Activate'
-                                        } ${user.name}`}
+                                    <StatusPowerToggle
+                                        status={user.status}
+                                        activeLabel={`Suspend ${user.name}`}
+                                        inactiveLabel={`Reactivate ${user.name}`}
                                         onClick={() => setSuspendTarget(user)}
                                     />
                                     <ActionIconButton
@@ -375,9 +465,7 @@ export default function UsersIndex({
                                         label={`Edit ${user.name}`}
                                         color="edit"
                                         onClick={() =>
-                                            router.visit(
-                                                usersRoutes.edit(user.id).url,
-                                            )
+                                            openRow(user, 'edit')
                                         }
                                     />
                                 </>
@@ -415,7 +503,7 @@ export default function UsersIndex({
                             tooltip="Create user"
                             color="primary"
                             onClick={() =>
-                                router.visit(usersRoutes.create().url)
+                                setOverlayParam('create', '1')
                             }
                             className="max-w-20 sm:max-w-24"
                         />
@@ -432,29 +520,40 @@ export default function UsersIndex({
                                     setSearchDraft(event.target.value)
                                 }
                                 placeholder="Search name, email, phone..."
-                                className="pr-3 pl-8"
                                 aria-label="Search users"
+                                // shadcn Input is bg-transparent, which leaves
+                                // the field defined by a 1.2:1 border alone. On
+                                // a card surface it needs a fill + a stronger
+                                // border to be readable in both schemes.
+                                className="border-border-strong bg-background pr-3 pl-9"
                             />
                         </div>
                         <div className="flex gap-1">
                             <ActionIconButton
-                                icon={<Plus />}
+                                icon={<ListFilter />}
                                 label="Filters"
-                                color="default"
+                                color="teal"
                                 onClick={() =>
                                     setOverlayParam('filters', '1')
                                 }
-                                className="sm:hidden"
                             />
+                            {canImport && (
+                                <ActionIconButton
+                                    icon={<Upload />}
+                                    label="Import from CSV"
+                                    color="teal"
+                                    onClick={() =>
+                                        setOverlayParam('import', '1')
+                                    }
+                                />
+                            )}
                             {canExport && (
                                 <ActionIconButton
                                     icon={<Download />}
                                     label="Export"
-                                    color="default"
+                                    color="teal"
                                     onClick={() =>
-                                        router.visit(
-                                            usersRoutes.exportMethod().url,
-                                        )
+                                        setOverlayParam('export', '1')
                                     }
                                 />
                             )}
@@ -518,7 +617,9 @@ export default function UsersIndex({
                         ? 'This user is not on the current page of results.'
                         : rowMode === 'delete'
                           ? 'This soft-deletes the account. Its records are kept.'
-                          : 'Details for this user.'
+                          : rowMode === 'edit'
+                            ? 'Update the person, the account and their roles.'
+                            : 'Details for this user.'
                 }
                 footer={
                     rowMode === 'delete' && viewedUser ? (
@@ -536,6 +637,17 @@ export default function UsersIndex({
                                 },
                             ]}
                         />
+                    ) : rowMode === 'edit' && viewedUser ? (
+                        <OverlayFooter
+                            onCancel={closeRowSheet}
+                            actions={[
+                                {
+                                    label: 'Save changes',
+                                    form: 'user-edit-form',
+                                    type: 'submit',
+                                },
+                            ]}
+                        />
                     ) : (
                         <OverlayFooter
                             actions={[
@@ -543,12 +655,7 @@ export default function UsersIndex({
                                     label: 'Edit',
                                     tone: 'secondary',
                                     icon: <Pencil className="size-4" />,
-                                    onClick: () =>
-                                        router.visit(
-                                            usersRoutes.edit(
-                                                viewedUser?.id ?? 0,
-                                            ).url,
-                                        ),
+                                    onClick: () => openRow(viewedUser!, 'edit'),
                                     ...(canEdit ? {} : { disabled: true }),
                                 },
                             ]}
@@ -556,52 +663,152 @@ export default function UsersIndex({
                     )
                 }
             >
-                {viewedUser && (
-                    <dl className="grid gap-3 py-2 text-sm">
-                        {[
-                            ['Email', viewedUser.email],
-                            ['Phone', viewedUser.phone ?? '—'],
-                            ['Status', viewedUser.status],
-                            [
-                                'Roles',
-                                viewedUser.roles.length > 0
-                                    ? viewedUser.roles
-                                          .map((role) => role.name)
-                                          .join(', ')
-                                    : '—',
-                            ],
-                            [
-                                'Person',
-                                viewedUser.person
-                                    ? [
-                                          viewedUser.person.first_name,
-                                          viewedUser.person.last_name,
-                                      ]
-                                          .filter(Boolean)
-                                          .join(' ') ||
-                                      '—'
-                                    : '—',
-                            ],
-                            [
-                                'National ID',
-                                viewedUser.person?.national_id ?? '—',
-                            ],
-                            ['Created', viewedUser.created_at ?? '—'],
-                        ].map(([label, value]) => (
-                            <div
-                                key={label}
-                                className="grid grid-cols-[7rem_1fr] gap-2"
-                            >
-                                <dt className="text-muted-foreground">
-                                    {label}
-                                </dt>
-                                <dd className="min-w-0 break-words">
-                                    {value}
-                                </dd>
+                {viewedUser &&
+                    (rowMode === 'edit' ? (
+                        <Form
+                            id="user-edit-form"
+                            method="patch"
+                            action={usersRoutes.update(viewedUser.id)}
+                            onSuccess={() => closeRowSheet()}
+                            className="grid gap-3 py-2"
+                        >
+                            {(['first_name', 'last_name', 'email', 'phone', 'national_id'] as const).map(
+                                (field) => (
+                                    <div key={field} className="grid gap-2">
+                                        <Label htmlFor={`edit-${field}`}>
+                                            {FIELD_LABELS[field]}
+                                        </Label>
+                                        <Input
+                                            id={`edit-${field}`}
+                                            name={field}
+                                            defaultValue={
+                                                (viewedUser.person?.[
+                                                    field as keyof PersonRow
+                                                ] as string | null) ??
+                                                (field === 'email'
+                                                    ? viewedUser.email
+                                                    : null) ??
+                                                ''
+                                            }
+                                            required={field === 'first_name' || field === 'email'}
+                                        />
+                                        {errors[field] && (
+                                            <p className="text-xs text-destructive">
+                                                {errors[field]}
+                                            </p>
+                                        )}
+                                    </div>
+                                ),
+                            )}
+
+                            <div className="grid gap-2">
+                                <Label htmlFor="edit-status">Status</Label>
+                                <Select
+                                    name="status"
+                                    defaultValue={viewedUser.status}
+                                >
+                                    <SelectTrigger id="edit-status">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="active">
+                                            Active
+                                        </SelectItem>
+                                        <SelectItem value="inactive">
+                                            Inactive
+                                        </SelectItem>
+                                        <SelectItem value="suspended">
+                                            Suspended
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
-                        ))}
-                    </dl>
-                )}
+
+                            <div className="grid gap-2">
+                                <Label>Platform roles</Label>
+                                <RadioGroup
+                                    name="roles"
+                                    defaultValue={viewedUser.roles
+                                        .map((r) => r.name)
+                                        .join(',')}
+                                    className="grid gap-2"
+                                >
+                                    {platformRoles.map((role) => (
+                                        <div
+                                            key={role.value}
+                                            className="flex items-center gap-2"
+                                        >
+                                            <RadioGroupItem
+                                                id={`edit-role-${role.value}`}
+                                                value={role.value}
+                                            />
+                                            <Label
+                                                htmlFor={`edit-role-${role.value}`}
+                                                className="cursor-pointer"
+                                            >
+                                                {role.label}
+                                            </Label>
+                                        </div>
+                                    ))}
+                                </RadioGroup>
+                                <input
+                                    type="hidden"
+                                    name="roles[]"
+                                    value={viewedUser.roles.map((r) => r.name).join(',')}
+                                />
+                                {errors.roles && (
+                                    <p className="text-xs text-destructive">
+                                        {errors.roles}
+                                    </p>
+                                )}
+                            </div>
+                        </Form>
+                    ) : (
+                        <dl className="grid gap-3 py-2 text-sm">
+                            {[
+                                ['Email', viewedUser.email],
+                                ['Phone', viewedUser.phone ?? '—'],
+                                ['Status', viewedUser.status],
+                                [
+                                    'Roles',
+                                    viewedUser.roles.length > 0
+                                        ? viewedUser.roles
+                                              .map((role) => role.name)
+                                              .join(', ')
+                                        : '—',
+                                ],
+                                [
+                                    'Person',
+                                    viewedUser.person
+                                        ? [
+                                              viewedUser.person
+                                                  .first_name,
+                                              viewedUser.person.last_name,
+                                          ]
+                                              .filter(Boolean)
+                                              .join(' ') || '—'
+                                        : '—',
+                                ],
+                                [
+                                    'National ID',
+                                    viewedUser.person?.national_id ?? '—',
+                                ],
+                                ['Created', viewedUser.created_at ?? '—'],
+                            ].map(([label, value]) => (
+                                <div
+                                    key={label}
+                                    className="grid grid-cols-[7rem_1fr] gap-2"
+                                >
+                                    <dt className="text-muted-foreground">
+                                        {label}
+                                    </dt>
+                                    <dd className="min-w-0 break-words">
+                                        {value}
+                                    </dd>
+                                </div>
+                            ))}
+                        </dl>
+                    ))}
             </ResponsiveOverlay>
 
             <ResponsiveOverlay
@@ -642,14 +849,16 @@ export default function UsersIndex({
             >
                 <div className="grid gap-4 py-2">
                     <div className="grid gap-2">
-                        <Label htmlFor="filter-status">Status</Label>
-                        <Select
-                            value={filters.status}
+                        <Label>Status</Label>
+                        {/* Same reasoning as the role filter: three options
+                            plus "any" is a radio group, not a dropdown. */}
+                        <RadioGroup
+                            value={filters.status || 'any'}
                             onValueChange={(value) =>
                                 refetchTable(
                                     {
                                         search: filters.search,
-                                        status: value,
+                                        status: value === 'any' ? '' : value,
                                         role: filters.role,
                                         sort: sort.column ?? '',
                                         direction: sort.direction,
@@ -658,32 +867,43 @@ export default function UsersIndex({
                                     { replace: true },
                                 )
                             }
+                            className="grid gap-2"
                         >
-                            <SelectTrigger id="filter-status">
-                                <SelectValue placeholder="Any status" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="active">Active</SelectItem>
-                                <SelectItem value="inactive">
-                                    Inactive
-                                </SelectItem>
-                                <SelectItem value="suspended">
-                                    Suspended
-                                </SelectItem>
-                            </SelectContent>
-                        </Select>
+                            {[
+                                ['any', 'Any status'],
+                                ['active', 'Active'],
+                                ['inactive', 'Inactive'],
+                                ['suspended', 'Suspended'],
+                            ].map(([value, text]) => (
+                                <div key={value} className="flex items-center gap-2">
+                                    <RadioGroupItem
+                                        id={`filter-status-${value}`}
+                                        value={value}
+                                    />
+                                    <Label
+                                        htmlFor={`filter-status-${value}`}
+                                        className="cursor-pointer"
+                                    >
+                                        {text}
+                                    </Label>
+                                </div>
+                            ))}
+                        </RadioGroup>
                     </div>
 
                     <div className="grid gap-2">
-                        <Label htmlFor="filter-role">Role</Label>
-                        <Select
-                            value={filters.role}
+                        <Label>Platform roles</Label>
+                        {/* Radix Select reserves the empty value for the
+                            placeholder, so "Any role" is not expressible as an
+                            item. A RadioGroup has no such reservation. */}
+                        <RadioGroup
+                            value={filters.role || 'all'}
                             onValueChange={(value) =>
                                 refetchTable(
                                     {
                                         search: filters.search,
                                         status: filters.status,
-                                        role: value,
+                                        role: value === 'all' ? '' : value,
                                         sort: sort.column ?? '',
                                         direction: sort.direction,
                                         filters: '1',
@@ -691,21 +911,38 @@ export default function UsersIndex({
                                     { replace: true },
                                 )
                             }
+                            className="grid gap-2"
                         >
-                            <SelectTrigger id="filter-role">
-                                <SelectValue placeholder="Any role" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {platformRoles.map((role) => (
-                                    <SelectItem
-                                        key={role.value}
+                            <div className="flex items-center gap-2">
+                                <RadioGroupItem
+                                    id="filter-role-all"
+                                    value="all"
+                                />
+                                <Label
+                                    htmlFor="filter-role-all"
+                                    className="cursor-pointer"
+                                >
+                                    Any role
+                                </Label>
+                            </div>
+                            {platformRoles.map((role) => (
+                                <div
+                                    key={role.value}
+                                    className="flex items-center gap-2"
+                                >
+                                    <RadioGroupItem
+                                        id={`filter-role-${role.value}`}
                                         value={role.value}
+                                    />
+                                    <Label
+                                        htmlFor={`filter-role-${role.value}`}
+                                        className="cursor-pointer"
                                     >
                                         {role.label}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                                    </Label>
+                                </div>
+                            ))}
+                        </RadioGroup>
                     </div>
 
                     <div className="grid gap-2">
@@ -725,6 +962,270 @@ export default function UsersIndex({
                         )}
                     </div>
                 </div>
+            </ResponsiveOverlay>
+
+            <ResponsiveOverlay
+                open={isExportOpen}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setOverlayParam('export', null, { replace: true });
+                    }
+                }}
+                title="Export users"
+                description="Choose how many rows to include in the CSV."
+                footer={
+                    <OverlayFooter
+                        onCancel={() =>
+                            setOverlayParam('export', null, { replace: true })
+                        }
+                        actions={[
+                            {
+                                label: 'Current page',
+                                tone: 'secondary',
+                                onClick: () => downloadExportUrl('page'),
+                            },
+                            {
+                                label: 'Export all',
+                                icon: <Download className="size-4" />,
+                                onClick: () => downloadExportUrl('all'),
+                            },
+                        ]}
+                    />
+                }
+            >
+                <div className="space-y-3 text-sm">
+                    <div className="rounded-lg border border-border-strong bg-background p-3">
+                        <div className="font-medium">All matching</div>
+                        <div className="mt-1 text-xs text-muted-foreground">
+                            Every user matching
+                            {filters.search || filters.status || filters.role ? (
+                                <>
+                                    {' '}
+                                    the active search
+                                    {filters.status ? ' and status' : ''}
+                                    {filters.role ? ' and role' : ''} filter
+                                </>
+                            ) : (
+                                <> (no filters are active)</>
+                            )}
+                            . Ignores pagination — {users.total} row
+                            {users.total === 1 ? '' : 's'} in total.
+                        </div>
+                    </div>
+
+                    <div className="rounded-lg border border-border-strong bg-background p-3">
+                        <div className="font-medium">Current page</div>
+                        <div className="mt-1 text-xs text-muted-foreground">
+                            Only the {users.data.length} row
+                            {users.data.length === 1 ? '' : 's'} visible on page{' '}
+                            {users.current_page}.
+                        </div>
+                    </div>
+                </div>
+            </ResponsiveOverlay>
+
+            <ResponsiveOverlay
+                open={isCreateOpen}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setOverlayParam('create', null, { replace: true });
+                    }
+                }}
+                title="Create user"
+                description="Set up the person, their account and their platform roles."
+                footer={
+                    <OverlayFooter
+                        onCancel={() =>
+                            setOverlayParam('create', null, { replace: true })
+                        }
+                        actions={[
+                            {
+                                label: 'Create user',
+                                form: 'user-create-form',
+                                type: 'submit',
+                            },
+                        ]}
+                    />
+                }
+            >
+                <Form
+                    id="user-create-form"
+                    method="post"
+                    action={usersRoutes.store()}
+                    onSuccess={() =>
+                        setOverlayParam('create', null, { replace: true })
+                    }
+                    className="grid gap-3 py-2"
+                >
+                    {(['first_name', 'last_name', 'email', 'phone', 'national_id'] as const).map(
+                        (field) => (
+                            <div key={field} className="grid gap-2">
+                                <Label htmlFor={`create-${field}`}>
+                                    {FIELD_LABELS[field]}
+                                </Label>
+                                <Input
+                                    id={`create-${field}`}
+                                    name={field}
+                                    required={field === 'first_name' || field === 'email'}
+                                />
+                                {errors[field] && (
+                                    <p className="text-xs text-destructive">
+                                        {errors[field]}
+                                    </p>
+                                )}
+                            </div>
+                        ),
+                    )}
+
+                    <div className="grid gap-2">
+                        <Label htmlFor="create-status">Status</Label>
+                        <Select name="status" defaultValue="active">
+                            <SelectTrigger id="create-status">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="active">Active</SelectItem>
+                                <SelectItem value="inactive">
+                                    Inactive
+                                </SelectItem>
+                                <SelectItem value="suspended">
+                                    Suspended
+                                </SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div className="grid gap-2">
+                        <Label>Platform roles</Label>
+                        <RadioGroup name="roles" defaultValue="" className="grid gap-2">
+                            {platformRoles.map((role) => (
+                                <div
+                                    key={role.value}
+                                    className="flex items-center gap-2"
+                                >
+                                    <RadioGroupItem
+                                        id={`create-role-${role.value}`}
+                                        value={role.value}
+                                    />
+                                    <Label
+                                        htmlFor={`create-role-${role.value}`}
+                                        className="cursor-pointer"
+                                    >
+                                        {role.label}
+                                    </Label>
+                                </div>
+                            ))}
+                        </RadioGroup>
+                        <input type="hidden" name="roles[]" value="" readOnly />
+                        {errors.roles && (
+                            <p className="text-xs text-destructive">
+                                {errors.roles}
+                            </p>
+                        )}
+                    </div>
+                </Form>
+            </ResponsiveOverlay>
+
+            <ResponsiveOverlay
+                open={isImportOpen}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setImportErrors([]);
+                        setOverlayParam('import', null, { replace: true });
+                    }
+                }}
+                title="Import users"
+                description="Upload a CSV to create users."
+                footer={
+                    <OverlayFooter
+                        onCancel={() =>
+                            setOverlayParam('import', null, { replace: true })
+                        }
+                        cancelLabel="Close"
+                    />
+                }
+            >
+                <Form
+                    method="post"
+                    action={usersRoutes.importMethod()}
+                    encType="multipart/form-data"
+                    onSuccess={(page) => {
+                        // Flash rides on the page object itself, not `props`.
+                        // A partial failure must leave the sheet open so the
+                        // per-row report stays readable.
+                        const reported =
+                            (
+                                page as unknown as {
+                                    flash?: {
+                                        importErrors?: {
+                                            row: number;
+                                            message: string;
+                                        }[];
+                                    };
+                                }
+                            ).flash?.importErrors ?? [];
+
+                        setImportErrors(reported);
+
+                        if (reported.length === 0) {
+                            setOverlayParam('import', null, { replace: true });
+                        }
+                    }}
+                    className="space-y-3 py-2"
+                >
+                    <div className="border-border-strong bg-background space-y-1 rounded-lg border p-3 text-xs">
+                        <div className="font-medium">Required columns</div>
+                        <div className="text-muted-foreground mt-1">
+                            First Name, Email
+                        </div>
+                        <div className="font-medium mt-3">Optional</div>
+                        <div className="text-muted-foreground">
+                            Last Name, Phone, National ID, Gender, Status, Roles
+                            (pipe-separated)
+                        </div>
+                    </div>
+
+                    <Input
+                        id="users-import-file"
+                        name="file"
+                        type="file"
+                        accept=".csv,text/csv,text/plain"
+                        aria-label="CSV file"
+                    />
+
+                    {errors.file && (
+                        <p className="text-xs text-destructive">
+                            {errors.file}
+                        </p>
+                    )}
+
+                    {importErrors.length > 0 && (
+                        <div
+                            role="status"
+                            className="border-destructive/40 bg-destructive/5 space-y-1 rounded-lg border p-3"
+                        >
+                            <div className="text-destructive text-xs font-medium">
+                                {importErrors.length}{' '}
+                                {importErrors.length === 1
+                                    ? 'row was'
+                                    : 'rows were'}{' '}
+                                skipped
+                            </div>
+                            <ul className="text-muted-foreground space-y-1 text-xs">
+                                {importErrors.map((problem, index) => (
+                                    <li key={`${problem.row}-${index}`}>
+                                        {problem.message}
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
+
+                    <Button type="submit" className="w-full">
+                        <Upload className="mr-2 size-4" />
+                        Import
+                    </Button>
+                </Form>
             </ResponsiveOverlay>
 
             <PasswordConfirmDialog

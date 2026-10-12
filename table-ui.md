@@ -369,19 +369,35 @@ palette decision, not a layout one. Raise it if you want true AA on the boundary
 
 ---
 
-## 5. Status display — bare icon, no chip
+## 5. Status display — bare icon in the cell, Power toggle in the action cell
 
 `ui-design-system.md` §1: *"never convey meaning by color alone — always pair with icon + label."*
-The status column is a **coloured glyph with no background tint** — a filled circle
-behind every row reads as a miniature badge and adds noise to a dense table. The icon
-shape carries the meaning; the tooltip carries the word.
+The status column is a **coloured glyph with no background tint** — a filled circle behind
+every row reads as a miniature badge and adds noise to a dense table.
 
 | Status | Icon | Token |
 |---|---|---|
 | `active` | `CircleCheck` | `--status-success` |
 | `suspended` | `TriangleAlert` | `--status-danger` |
 
----
+Status used to be a toggle button in the action cell. That was wrong for two reasons: the
+status *readout* is not an action, and a text button that reads "active" next to a row that
+is already labelled "active" gave the same word two meanings. Now:
+
+- **Status column** — `StatusIcon`: display-only, colour + shape + tooltip.
+- **Action cell** — `StatusPowerToggle`: a `Power` icon while the row is active (click to
+  suspend) and a `PowerOff` icon while it is not (click to reactivate). Green for active,
+  red for suspended, matching the action it performs rather than the state it sits in.
+
+Both organizations and users use the same pair, so the two tables stay symmetrical.
+
+### Teal needs a foreground token, not `text-white`
+
+`--brand-accent` is `#0e7c7e` in light mode and `#2bb3ac` in dark mode. The dark value is a
+**light** teal, so a hard-coded `text-white` lands at roughly 2.1:1 — far under AA. The
+fill now pairs with `--brand-accent-foreground`, which is `#f2fbfb` light and `#0c2426`
+dark, exactly as `--primary-foreground` already did. Any new solid brand fill must use the
+matching `*-foreground` token rather than a literal colour.
 
 ## 6. Overlays
 
@@ -541,3 +557,28 @@ reachable", which was inaccurate.
     the URL; a search changes the rows. They look identical at the call site but have very
     different costs — one asks the server to resend props the page already has, the other
     should show a skeleton. Splitting them keeps each honest.
+17. **Radix `Select` cannot express "no role selected".** `SelectItem value=""` is reserved
+    for the placeholder, so a filter offering *Any role* alongside four roles cannot be
+    built from `Select` without fake sentinels. A `RadioGroup` has no such reservation and,
+    with four options, is fewer taps than opening a dropdown. The users role filter and the
+    role pickers in the create/edit sheets are all `RadioGroup` for this reason. The
+    controlled value maps the empty filter onto an explicit `all` option rather than
+    letting the group be uncontrolled and empty.
+18. **`RadioGroup` serialises its value as a single comma-joined string.** A multi-select
+    (platform roles) needs one `name` per checked value, which `RadioGroup` cannot do. The
+    edit sheet therefore pairs the group with a hidden `roles[]` input carrying the
+    comma-joined names, and the server splits on `,`. A hidden `roles[]` with an empty
+    value is also what makes "no roles" submittable at all.
+19. **A CSV export must reuse the table's own query builder.** `UserController::export()`
+    originally ran `User::query()` with no filters, so "Export all" silently ignored the
+    active search and status filter. Both controllers now share a private `filtered()`
+    helper with `index()`; anything the table can filter by, the export can filter by.
+20. **`scope=page` needs the server's page, not the table's.** The export helper reads
+    `users.current_page` from the props rather than reaching into a TanStack table
+    instance that the page does not hold — one source of truth for "what page am I on".
+21. **Do not leave a dead status toggle behind.** `StatusToggleButton` was the old
+    status-column affordance. Once `StatusIcon` became display-only and
+    `StatusPowerToggle` took over the action cell, nothing referenced the old
+    component — it was added and removed inside a single uncommitted branch, so
+    `git log` never showed it and nothing failed to compile. Grep for a symbol
+    before committing a rename, not only after.

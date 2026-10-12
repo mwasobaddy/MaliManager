@@ -5,11 +5,13 @@ namespace App\Http\Controllers\Users;
 use App\Enums\PlatformRole;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Users\DestroyUserRequest;
+use App\Http\Requests\Users\ImportUsersRequest;
 use App\Http\Requests\Users\StoreUserRequest;
 use App\Http\Requests\Users\UpdateUserRequest;
 use App\Models\User;
 use App\Services\UserService;
 use App\Support\Search;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -18,6 +20,24 @@ use Inertia\Response;
 class UserController extends Controller
 {
     public function __construct(private UserService $service) {}
+
+    /**
+     * The shared search/filter base for the table and the CSV export, so
+     * "Export all" can never disagree with what the table is showing.
+     *
+     * @return Builder<User>
+     */
+    private function filtered(Request $request): Builder
+    {
+        return User::query()
+            ->with('person:id,first_name,last_name,email,phone,national_id,gender,status')
+            ->with('roles:id,name')
+            ->when($request->string('search')->trim(), function ($query, string $search) {
+                Search::apply($query, $search, ['name', 'email', 'phone']);
+            })
+            ->when($request->string('status')->toString() !== '', fn ($query) => $query->where('status', $request->string('status')))
+            ->when($request->string('role')->toString() !== '', fn ($query) => $query->whereHas('roles', fn ($q) => $q->where('name', $request->string('role'))));
+    }
 
     public function index(Request $request): Response
     {
@@ -35,14 +55,7 @@ class UserController extends Controller
         $sortColumn = $sortable[$sort] ?? null;
         $direction = $request->string('direction')->toString() === 'asc' ? 'asc' : 'desc';
 
-        $users = User::query()
-            ->with('person:id,first_name,last_name,email,phone,national_id,gender,status')
-            ->with('roles:id,name')
-            ->when($request->string('search')->trim(), function ($query, string $search) {
-                Search::apply($query, $search, ['name', 'email', 'phone']);
-            })
-            ->when($request->string('status')->toString() !== '', fn ($query) => $query->where('status', $request->string('status')))
-            ->when($request->string('role')->toString() !== '', fn ($query) => $query->whereHas('roles', fn ($q) => $q->where('name', $request->string('role'))))
+        $users = $this->filtered($request)
             ->when($sortColumn !== null, fn ($query) => $query->orderBy($sortColumn, $direction))
             ->when($sortColumn === null, fn ($query) => $query->orderByDesc('created_at'))
             ->orderBy('id')
@@ -113,13 +126,6 @@ class UserController extends Controller
         ];
     }
 
-    public function create(): Response
-    {
-        return Inertia::render('users/create', [
-            'platformRoles' => $this->platformRoles(),
-        ]);
-    }
-
     public function store(StoreUserRequest $request): RedirectResponse
     {
         $user = $this->service->create($request->validated(), $request->user());
@@ -127,30 +133,6 @@ class UserController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => "User {$user->email} has been created."]);
 
         return redirect()->route('users.index');
-    }
-
-    public function edit(User $user): Response
-    {
-        $user->load(['person', 'roles:id,name']);
-
-        return Inertia::render('users/edit', [
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'phone' => $user->phone,
-                'status' => $user->status,
-                'roles' => $user->roles->pluck('name')->all(),
-                'person' => $user->person ? [
-                    'first_name' => $user->person->first_name,
-                    'last_name' => $user->person->last_name,
-                    'national_id' => $user->person->national_id,
-                    'gender' => $user->person->gender,
-                    'status' => $user->person->status,
-                ] : null,
-            ],
-            'platformRoles' => $this->platformRoles(),
-        ]);
     }
 
     public function update(UpdateUserRequest $request, User $user): RedirectResponse
@@ -191,12 +173,55 @@ class UserController extends Controller
     }
 
     /**
-     * CSV export of all users with their person record and roles.
+     * Create users from an uploaded CSV.
+     *
+     * Redirects back keeping the `import` flag when some rows failed, so the
+     * import sheet stays open and can render the per-row report.
      */
-    public function export(): \Symfony\Component\HttpFoundation\Response
+    public function import(ImportUsersRequest $request): RedirectResponse
     {
-        $rows = User::query()
-            ->with(['person', 'roles'])
+        $result = $this->service->import(
+            $request->file('file'),
+            $request->user(),
+        );
+
+        if ($result['failed'] === 0) {
+            Inertia::flash('toast', [
+                'type' => 'success',
+                'message' => $result['imported'] === 1
+                    ? '1 user imported.'
+                    : $result['imported'].' users imported.',
+            ]);
+
+            return redirect()->route('users.index');
+        }
+
+        Inertia::flash('toast', [
+            'type' => $result['imported'] > 0 ? 'warning' : 'error',
+            'message' => $result['imported'].' imported, '.$result['failed'].' failed.',
+        ]);
+
+        Inertia::flash('importErrors', $result['errors']);
+
+        return back();
+    }
+
+    /**
+     * Streams the CSV. `scope=page` honours the pagination the user is looking
+     * at; anything else exports the whole filtered set.
+     */
+    public function export(Request $request): \Symfony\Component\HttpFoundation\Response
+    {
+        $scope = $request->string('scope')->toString() === 'page' ? 'page' : 'all';
+        $perPage = 15;
+
+        $query = $this->filtered($request);
+
+        if ($scope === 'page') {
+            $query->forPage((int) $request->integer('page', 1), $perPage);
+        }
+
+        $rows = $query
             ->orderBy('id')
             ->get()
             ->map(fn (User $user): array => [
@@ -217,9 +242,13 @@ class UserController extends Controller
         }
         rewind($csv);
 
-        return response()->streamDownload(fn () => fpassthru($csv), 'users.csv', [
-            'Content-Type' => 'text/csv',
-        ]);
+        $suffix = $scope === 'page' ? '-page'.$request->integer('page', 1) : '-all';
+
+        return response()->streamDownload(
+            fn () => fpassthru($csv),
+            'users'.$suffix.'.csv',
+            ['Content-Type' => 'text/csv']
+        );
     }
 
     /**
