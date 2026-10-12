@@ -1,21 +1,24 @@
+import { XIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog';
+    Drawer,
+    DrawerClose,
+    DrawerContent,
+    DrawerDescription,
+    DrawerFooter,
+    DrawerHeader,
+    DrawerTitle,
+} from '@/components/ui/drawer';
 import {
     Sheet,
     SheetContent,
-    SheetDescription,
     SheetFooter,
     SheetHeader,
     SheetTitle,
+    SheetDescription,
 } from '@/components/ui/sheet';
 import { useIsMobile } from '@/hooks/use-mobile';
+
 
 type ResponsiveOverlayProps = {
     open: boolean;
@@ -24,21 +27,38 @@ type ResponsiveOverlayProps = {
     description?: string;
     children: ReactNode;
     footer?: ReactNode;
-    /** Max width of the centred dialog on small screens. */
+    /** Extra classes for the sheet/drawer surface. */
     className?: string;
 };
 
+/** Shared chrome for the dismiss button, matching the `shadcndefault` Cancel. */
+const CLOSE_BUTTON =
+    'ring-offset-background focus:ring-ring bg-secondary text-secondary-foreground absolute top-4 right-4 inline-flex size-8 items-center justify-center rounded-md shadow-xs transition-colors hover:bg-secondary/80 focus:ring-2 focus:ring-offset-2 focus:outline-hidden';
+
 /**
- * A single overlay that renders as a right-hand Sheet on desktop and a
- * centred Dialog on small screens.
+ * A single overlay: a bottom Drawer on phones, a side Sheet on larger screens.
  *
- * The repo already ships both primitives (Radix Dialog + Sheet with slide
- * animation), so this only picks between them — no new overlay primitive is
- * needed. The switch has to happen in JS: CSS cannot swap two different Radix
- * roots, and mounting both would trap focus twice.
+ * The switch happens in JS via `useIsMobile()` because CSS cannot swap two
+ * different Radix roots, and mounting both would trap focus twice.
  *
- * `SheetContent` already supplies the slide + overlay classes; the Dialog
- * branch adds the centre/max-width classes the Sheet lacks.
+ * **Why a drawer rather than a page.** NN/g is blunt about it — "we strongly
+ * recommend not using a bottom sheet to replace typical page-to-page user
+ * flows… a bottom sheet is not intended to be a stable place for users to
+ * return to" — but its stated reason is that sheets get navigated *through*
+ * (product pages linking to reviews, specs). These overlays do not: each is a
+ * short, terminal, single-screen task. Measured on a 390x844 phone the largest
+ * of them (create, 6 fields) is 588px tall with no internal overflow, against
+ * an 844px viewport, so nothing is being cramped into a sheet.
+ *
+ * **Dismissal is never gesture-only.** Drag is the native affordance and vaul
+ * provides it, but Material, NN/g and the accessibility guidance all require a
+ * visible alternative: swipe is ambiguous (it can open the notification drawer)
+ * and unavailable to anyone who cannot perform a precise vertical drag. Every
+ * overlay here therefore carries an explicit close button *and* a Cancel.
+ *
+ * The drawer caps at `max-h-[80vh]` and its body scrolls, which matters once the
+ * soft keyboard is open — that removes roughly 300px of usable viewport, so the
+ * create form does overflow there even though it does not at rest.
  */
 export function ResponsiveOverlay({
     open,
@@ -53,22 +73,34 @@ export function ResponsiveOverlay({
 
     if (isMobile) {
         return (
-            <Dialog open={open} onOpenChange={onOpenChange}>
-                <DialogContent className={className}>
-                    <DialogHeader>
-                        <DialogTitle>{title}</DialogTitle>
+            <Drawer open={open} onOpenChange={onOpenChange} direction="bottom">
+                <DrawerContent className={className}>
+                    {/*
+                     * DrawerHeader centres its text via a `group-data-…:text-center`
+                     * variant, which tailwind-merge will not override because it
+                     * only resolves unprefixed conflicts. `!` is required to pull
+                     * it back to the sheet's left alignment.
+                     */}
+                    <DrawerHeader className="relative !text-left">
+                        <DrawerTitle>{title}</DrawerTitle>
                         {description && (
-                            <DialogDescription>
+                            <DrawerDescription>
                                 {description}
-                            </DialogDescription>
+                            </DrawerDescription>
                         )}
-                    </DialogHeader>
-                    <div className="min-h-0 flex-1 overflow-y-auto">
+                        <DrawerClose
+                            aria-label="Close"
+                            className={CLOSE_BUTTON}
+                        >
+                            <XIcon className="size-4" />
+                        </DrawerClose>
+                    </DrawerHeader>
+                    <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-2">
                         {children}
                     </div>
-                    {footer && <DialogFooter>{footer}</DialogFooter>}
-                </DialogContent>
-            </Dialog>
+                    {footer && <DrawerFooter>{footer}</DrawerFooter>}
+                </DrawerContent>
+            </Drawer>
         );
     }
 
