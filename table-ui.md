@@ -164,6 +164,14 @@ right on a page change but collapses to a single grey line when a filter narrows
 rows to 1, so the table jumps twice. Pass `loadingRows` to override — usually with
 the page size, when that is known.
 
+**Row height is measured, not guessed.** A real row here is 53px because the
+primary cell stacks a title and a subtitle; a single-line table would be 36px. A
+constant is wrong on at least one table, and a single `h-4` bar gives a ~32px row
+that reads as *thin* rather than as loading. So `DataTable` measures the first real
+row in a layout effect whenever it is not loading and pins the skeleton rows to
+that height. Before the first measurement lands (no rows rendered yet) the primary
+cell falls back to two stacked bars mirroring the title + subtitle shape.
+
 Drive it from `onFinish` on the request that replaces the rows, not from a global
 "is navigating" flag:
 
