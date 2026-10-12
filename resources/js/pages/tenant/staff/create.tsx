@@ -199,13 +199,13 @@ export default function StaffCreate({
                             </div>
 
                             <div className="flex gap-3">
+                                <Button asChild variant="shadcndefault">
+                                    <Link href={staffIndex()}>Cancel</Link>
+                                </Button>
                                 <Button type="submit" disabled={processing}>
                                     {processing
                                         ? 'Adding…'
                                         : 'Add staff member'}
-                                </Button>
-                                <Button asChild variant="ghost">
-                                    <Link href={staffIndex()}>Cancel</Link>
                                 </Button>
                             </div>
                         </>

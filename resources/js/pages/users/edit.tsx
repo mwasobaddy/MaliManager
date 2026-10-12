@@ -167,17 +167,17 @@ export default function UsersEdit({ user, platformRoles }: Props) {
                                     </div>
                                     <div className="flex gap-2 sm:col-span-2">
                                         <Button
+                                            type="button"
+                                            variant="shadcndefault"
+                                            asChild
+                                        >
+                                            <Link href={index()}>Cancel</Link>
+                                        </Button>
+                                        <Button
                                             type="submit"
                                             disabled={processing}
                                         >
                                             Save changes
-                                        </Button>
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            asChild
-                                        >
-                                            <Link href={index()}>Cancel</Link>
                                         </Button>
                                     </div>
                                 </>

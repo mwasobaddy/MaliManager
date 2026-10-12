@@ -419,19 +419,19 @@ export default function PropertiesDashboard({
                                         </div>
                                         <div className="flex items-end gap-2">
                                             <Button
-                                                type="submit"
-                                                disabled={processing}
-                                            >
-                                                {processing ? 'Adding…' : 'Add'}
-                                            </Button>
-                                            <Button
                                                 type="button"
-                                                variant="ghost"
+                                                variant="shadcndefault"
                                                 onClick={() =>
                                                     setAddUnit(false)
                                                 }
                                             >
                                                 Cancel
+                                            </Button>
+                                            <Button
+                                                type="submit"
+                                                disabled={processing}
+                                            >
+                                                {processing ? 'Adding…' : 'Add'}
                                             </Button>
                                         </div>
                                         <InputError message={errors.plan} />
