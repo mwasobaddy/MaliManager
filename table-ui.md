@@ -193,6 +193,36 @@ navigation flag is wrong here for two reasons: it would also cover sheet
 open/close, which change no data and are instant, and it needs to distinguish
 navigation from form submissions, which have their own busy state.
 
+### Form controls — one recipe for Input, Select and Textarea
+
+A form should read as one row of controls, so the three share a recipe rather than each
+page improvising: same border, radius, transparent surface, `shadow-xs`, `px-3`,
+focus ring at `border-ring` + `ring-ring/50` + `ring-[3px]`, `aria-invalid` mapped to
+destructive, and the same disabled treatment. Height is the only difference — `h-9` for
+Input and Select, `min-h-16` with `py-2` for Textarea.
+
+Two details are load-bearing rather than stylistic:
+
+- **`text-base md:text-sm` on every control.** Below the `md` breakpoint the control is
+  16px. iOS Safari zooms the viewport when it focuses an input under 16px and does not
+  zoom back until the field loses focus, which strands users mid-form. This has to hold on
+  Select and Textarea too, or they become the one control on the page that breaks it.
+- **`w-full`.** Not one of the 52 `SelectTrigger` call sites passed `w-full`, so every
+  Select in the app hugged its content while the Input above it filled the row.
+
+Use the primitives. There are no native `<select>` or `<textarea>` elements left in
+`resources/js`; the last 21 selects were hand-styled to imitate the component, which is
+how four slightly different border/padding/focus recipes got into circulation in the first
+place.
+
+Two things to know when converting:
+
+- Radix renders a **visually hidden native `<select>`** carrying `name`, so Inertia's
+  `<Form>` still serialises a converted Select. Verify it rather than assuming: check that
+  `form.querySelectorAll('select')` includes the field with its options.
+- Radix reserves `value=""` for the placeholder and will not select it as an item. A native
+  `<option value="">Unspecified</option>` becomes a `SelectValue placeholder` instead.
+
 ### ResponsiveOverlay
 
 No new primitive was needed — shadcn `Sheet` already has the slide animation.
@@ -494,6 +524,19 @@ reachable", which was inaccurate.
     all ~80 users. Wrapping it in `Inertia::optional()` dropped it from the initial payload
     entirely; the page now asks for it once, when the sheet opens, and derives its loading
     state from the prop being absent rather than tracking a second flag.
+15. **`avoidCollisions={false}` on SelectContent silently destroys long option lists.** With
+    it off, the list always opens *downward* and is clamped to the gap between the trigger
+    and the viewport edge. In a bottom drawer the last field sits near the bottom of the
+    screen, so a 76-option list was clamped to **62px — about two visible rows**, with the
+    rest unreachable and no scrollbar to signal it. With collision avoidance on, Radix
+    flips it upward: 718px, 21 visible options, scrollable. `SelectContent` must not carry
+    `avoidCollisions={false}`.
+16. **A Select's `defaultValue` is read once, on first mount.** The owner picker is behind
+    an `Inertia::optional()` prop, so it first rendered with `owners === undefined` and
+    locked in an empty default; when the list arrived the trigger still read "Loading
+    owners…" with nothing selected. Render the Select only once its options exist and show a
+    plain disabled control while loading, rather than mounting it empty and patching it later.
+
 14. **A page usually needs two navigation helpers, not one.** Opening a sheet changes only
     the URL; a search changes the rows. They look identical at the call site but have very
     different costs — one asks the server to resend props the page already has, the other

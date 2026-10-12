@@ -21,6 +21,20 @@ class UserController extends Controller
 
     public function index(Request $request): Response
     {
+        // Allowlisted so a crafted `?sort=` can never reach the ORDER BY.
+        // Roles are a relation and deliberately absent: sorting by them needs a
+        // subquery, and it is not an ordering an admin scans this list for.
+        $sortable = [
+            'name' => 'name',
+            'email' => 'email',
+            'status' => 'status',
+            'created_at' => 'created_at',
+        ];
+
+        $sort = $request->string('sort')->toString();
+        $sortColumn = $sortable[$sort] ?? null;
+        $direction = $request->string('direction')->toString() === 'asc' ? 'asc' : 'desc';
+
         $users = User::query()
             ->with('person:id,first_name,last_name,email,phone,national_id,gender,status')
             ->with('roles:id,name')
@@ -29,19 +43,74 @@ class UserController extends Controller
             })
             ->when($request->string('status')->toString() !== '', fn ($query) => $query->where('status', $request->string('status')))
             ->when($request->string('role')->toString() !== '', fn ($query) => $query->whereHas('roles', fn ($q) => $q->where('name', $request->string('role'))))
-            ->orderByDesc('created_at')
+            ->when($sortColumn !== null, fn ($query) => $query->orderBy($sortColumn, $direction))
+            ->when($sortColumn === null, fn ($query) => $query->orderByDesc('created_at'))
+            ->orderBy('id')
             ->paginate(15)
-            ->withQueryString();
+            ->withQueryString()
+            ->through(fn (User $user): array => $this->serialize($user));
+
+        // The row overlay is addressed by URL, so it must work from a shared
+        // link and not only from a tap on a visible row. Same fallback as the
+        // organizations index: fetch the row only when the page cannot supply it.
+        $focusedId = $request->integer('user') ?: null;
+
+        $focused = null;
+
+        if ($focusedId !== null
+            && ! $users->getCollection()->contains('id', $focusedId)) {
+            $focused = User::query()
+                ->with('person:id,first_name,last_name,email,phone,national_id,gender,status')
+                ->with('roles:id,name')
+                ->find($focusedId);
+        }
 
         return Inertia::render('users/index', [
             'users' => $users,
+            'focusedUser' => $focused ? $this->serialize($focused) : null,
             'filters' => [
                 'search' => (string) $request->string('search'),
                 'status' => (string) $request->string('status'),
                 'role' => (string) $request->string('role'),
             ],
+            'sort' => [
+                'column' => $sortColumn === null ? null : $sort,
+                'direction' => $direction,
+            ],
             'platformRoles' => $this->platformRoles(),
         ]);
+    }
+
+    /**
+     * One row shape for both the paginated table and the focused row, so the
+     * overlay renders identically whichever way the row was resolved.
+     *
+     * @return array<string, mixed>
+     */
+    private function serialize(User $user): array
+    {
+        return [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'phone' => $user->phone,
+            'status' => $user->status,
+            'roles' => $user->roles->map(fn ($role) => [
+                'id' => $role->id,
+                'name' => $role->name,
+            ])->all(),
+            'person' => $user->person ? [
+                'id' => $user->person->id,
+                'first_name' => $user->person->first_name,
+                'last_name' => $user->person->last_name,
+                'email' => $user->person->email,
+                'phone' => $user->person->phone,
+                'national_id' => $user->person->national_id,
+                'gender' => $user->person->gender,
+                'status' => $user->person->status,
+            ] : null,
+            'created_at' => $user->created_at?->toDateTimeString(),
+        ];
     }
 
     public function create(): Response
