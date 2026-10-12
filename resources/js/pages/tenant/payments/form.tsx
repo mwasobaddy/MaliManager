@@ -13,6 +13,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import {
     index as paymentsIndexRoute,
     store as storePaymentRoute,
@@ -249,10 +250,9 @@ export default function PaymentForm({ payment, leases }: Props) {
 
                         <div className="grid gap-2 md:col-span-2">
                             <Label>Notes</Label>
-                            <textarea
+                            <Textarea
                                 rows={3}
-                                className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
-                                value={form.data.notes}
+                                                                value={form.data.notes}
                                 onChange={(e) =>
                                     form.setData('notes', e.target.value)
                                 }

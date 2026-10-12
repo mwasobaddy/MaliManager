@@ -13,6 +13,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import * as expenseRoutes from '@/routes/platform/expenses';
 
 const CATEGORIES = [
@@ -212,7 +213,7 @@ export default function PlatformExpenseForm({ expense }: Props) {
 
                             <div className="grid gap-2">
                                 <Label htmlFor="notes">Notes</Label>
-                                <textarea
+                                <Textarea
                                     id="notes"
                                     name="notes"
                                     rows={3}

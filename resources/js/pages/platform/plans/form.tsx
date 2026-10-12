@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import * as planRoutes from '@/routes/platform/plans';
 
 type PlanData = {
@@ -163,7 +164,7 @@ export default function PlanForm({ plan }: Props) {
                             </div>
                             <div className="grid gap-2 sm:col-span-2">
                                 <Label htmlFor="description">Description</Label>
-                                <textarea
+                                <Textarea
                                     id="description"
                                     name="description"
                                     rows={3}
@@ -285,7 +286,7 @@ export default function PlanForm({ plan }: Props) {
                                 <Label htmlFor="features">
                                     Features (one per line)
                                 </Label>
-                                <textarea
+                                <Textarea
                                     id="features"
                                     name="features"
                                     rows={4}

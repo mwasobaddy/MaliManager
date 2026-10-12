@@ -5,6 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { index, update } from '@/routes/users';
 
 type PlatformRole = { value: string; label: string };
@@ -53,9 +60,7 @@ export default function UsersEdit({ user, platformRoles }: Props) {
                                         <Input
                                             id="first_name"
                                             name="first_name"
-                                            defaultValue={
-                                                user.person?.first_name ?? ''
-                                            }
+                                            defaultValue={String(user.person?.first_name ?? '')}
                                             required
                                         />
                                         <InputError
@@ -69,9 +74,7 @@ export default function UsersEdit({ user, platformRoles }: Props) {
                                         <Input
                                             id="last_name"
                                             name="last_name"
-                                            defaultValue={
-                                                user.person?.last_name ?? ''
-                                            }
+                                            defaultValue={String(user.person?.last_name ?? '')}
                                         />
                                     </div>
                                     <div className="grid gap-2">
@@ -100,48 +103,66 @@ export default function UsersEdit({ user, platformRoles }: Props) {
                                         <Input
                                             id="national_id"
                                             name="national_id"
-                                            defaultValue={
-                                                user.person?.national_id ?? ''
-                                            }
+                                            defaultValue={String(user.person?.national_id ?? '')}
                                         />
                                     </div>
                                     <div className="grid gap-2">
                                         <Label htmlFor="gender">Gender</Label>
-                                        <select
-                                            id="gender"
-                                            name="gender"
-                                            defaultValue={
-                                                user.person?.gender ?? ''
-                                            }
-                                            className="h-9 rounded-md border bg-background px-3 text-sm"
-                                        >
-                                            <option value="">
-                                                Unspecified
-                                            </option>
-                                            <option value="male">Male</option>
-                                            <option value="female">
-                                                Female
-                                            </option>
-                                        </select>
+                                        <Select
+    name="gender"
+    defaultValue={String(user.person?.gender ?? '')}
+>
+    <SelectTrigger
+        id="gender"
+    >
+        <SelectValue />
+    </SelectTrigger>
+    <SelectContent>
+<SelectItem value="X">
+Unspecified
+        </SelectItem>
+        <SelectItem
+            value={"male"}
+        >
+            Male
+        </SelectItem>
+        <SelectItem
+            value={"female"}
+        >
+            Female
+        </SelectItem>
+    </SelectContent>
+</Select>
                                     </div>
                                     <div className="grid gap-2">
                                         <Label htmlFor="status">Status</Label>
-                                        <select
-                                            id="status"
-                                            name="status"
-                                            defaultValue={user.status}
-                                            className="h-9 rounded-md border bg-background px-3 text-sm"
-                                        >
-                                            <option value="active">
-                                                Active
-                                            </option>
-                                            <option value="inactive">
-                                                Inactive
-                                            </option>
-                                            <option value="suspended">
-                                                Suspended
-                                            </option>
-                                        </select>
+                                        <Select
+    name="status"
+    defaultValue={user.status}
+>
+    <SelectTrigger
+        id="status"
+    >
+        <SelectValue />
+    </SelectTrigger>
+    <SelectContent>
+        <SelectItem
+            value={"active"}
+        >
+            Active
+        </SelectItem>
+        <SelectItem
+            value={"inactive"}
+        >
+            Inactive
+        </SelectItem>
+        <SelectItem
+            value={"suspended"}
+        >
+            Suspended
+        </SelectItem>
+    </SelectContent>
+</Select>
                                         <InputError message={errors.status} />
                                     </div>
                                     <div className="grid gap-2 sm:col-span-2">

@@ -16,6 +16,13 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import * as usersRoutes from '@/routes/users';
 
 type PersonRow = {
@@ -159,32 +166,45 @@ export default function UsersIndex({ users, filters, platformRoles }: Props) {
                                     className="w-full rounded-md border bg-background py-2 pr-3 pl-8 text-sm"
                                 />
                             </div>
-                            <select
+                            <Select
                                 value={form.data.status}
-                                onChange={(event) =>
-                                    form.setData('status', event.target.value)
+                                onValueChange={(value) =>
+                                    form.setData('status', value)
                                 }
-                                className="rounded-md border bg-background px-3 py-2 text-sm"
                             >
-                                <option value="">Any status</option>
-                                <option value="active">Active</option>
-                                <option value="inactive">Inactive</option>
-                                <option value="suspended">Suspended</option>
-                            </select>
-                            <select
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Any status" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="active">Active</SelectItem>
+                                    <SelectItem value="inactive">
+                                        Inactive
+                                    </SelectItem>
+                                    <SelectItem value="suspended">
+                                        Suspended
+                                    </SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <Select
                                 value={form.data.role}
-                                onChange={(event) =>
-                                    form.setData('role', event.target.value)
+                                onValueChange={(value) =>
+                                    form.setData('role', value)
                                 }
-                                className="rounded-md border bg-background px-3 py-2 text-sm"
                             >
-                                <option value="">Any role</option>
-                                {platformRoles.map((role) => (
-                                    <option key={role.value} value={role.value}>
-                                        {role.label}
-                                    </option>
-                                ))}
-                            </select>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Any role" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {platformRoles.map((role) => (
+                                        <SelectItem
+                                            key={role.value}
+                                            value={role.value}
+                                        >
+                                            {role.label}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                             <Button type="submit" variant="secondary">
                                 Filter
                             </Button>

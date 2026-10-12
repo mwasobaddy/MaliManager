@@ -14,6 +14,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { store as maintenanceStore } from '@/routes/searcher/maintenance';
 
 type RequestRow = {
@@ -136,13 +137,12 @@ export default function SearcherMaintenance({
                                 <Label htmlFor="description">
                                     Describe the issue
                                 </Label>
-                                <textarea
-                                    id="description"
+                                <Textarea
+id="description"
                                     name="description"
                                     rows={4}
-                                    className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
-                                    placeholder="Tell us what needs to be fixed and where."
-                                />
+                    placeholder="Tell us what needs to be fixed and where."
+                />
                                 <InputError message={errors.description} />
                             </div>
 

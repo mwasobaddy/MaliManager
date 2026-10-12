@@ -13,6 +13,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import {
     index as inspectionsIndex,
     store as storeInspection,
@@ -118,11 +119,10 @@ export default function InspectionCreate({ units }: Props) {
                             <Label htmlFor="notes">
                                 Notes (helps the AI report)
                             </Label>
-                            <textarea
+                            <Textarea
                                 id="notes"
                                 rows={3}
-                                className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
-                                placeholder="Anything you noticed during the walkthrough."
+                                                                placeholder="Anything you noticed during the walkthrough."
                                 value={form.data.notes}
                                 onChange={(e) =>
                                     form.setData('notes', e.target.value)

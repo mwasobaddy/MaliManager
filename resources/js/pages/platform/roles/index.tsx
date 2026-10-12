@@ -4,6 +4,13 @@ import Heading from '@/components/heading';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { edit as editRole } from '@/routes/platform/roles';
 import { role as assignRoleRoute } from '@/routes/platform/users';
 
@@ -157,25 +164,26 @@ export default function RolesIndex({ roles, permissions, users }: Props) {
                                             {user.roles.join(', ') || '—'}
                                         </td>
                                         <td className="px-3 py-2 text-right">
-                                            <select
-                                                className="w-full rounded-md border border-input bg-background px-2 py-1 text-sm"
-                                                defaultValue=""
-                                                onChange={(e) =>
-                                                    assignRole(
-                                                        user,
-                                                        e.target.value,
-                                                    )
+                                            <Select
+                                                value=""
+                                                onValueChange={(value) =>
+                                                    assignRole(user, value)
                                                 }
                                             >
-                                                <option value="" disabled>
-                                                    Pick a role…
-                                                </option>
-                                                {ROLE_OPTIONS.map((r) => (
-                                                    <option key={r} value={r}>
-                                                        {r}
-                                                    </option>
-                                                ))}
-                                            </select>
+                                                <SelectTrigger size="sm">
+                                                    <SelectValue placeholder="Pick a role…" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {ROLE_OPTIONS.map((r) => (
+                                                        <SelectItem
+                                                            key={r}
+                                                            value={r}
+                                                        >
+                                                            {r}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
                                         </td>
                                     </tr>
                                 ))}

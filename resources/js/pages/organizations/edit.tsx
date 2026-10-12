@@ -5,6 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { index, update } from '@/routes/organizations';
 
 type Plan = { id: number; name: string; slug: string };
@@ -59,9 +66,7 @@ export default function OrganizationsEdit({ organization, plans }: Props) {
                                             id="email"
                                             name="email"
                                             type="email"
-                                            defaultValue={
-                                                organization.email ?? ''
-                                            }
+                                            defaultValue={String(organization.email ?? '')}
                                         />
                                     </div>
                                     <div className="grid gap-2">
@@ -69,46 +74,55 @@ export default function OrganizationsEdit({ organization, plans }: Props) {
                                         <Input
                                             id="phone"
                                             name="phone"
-                                            defaultValue={
-                                                organization.phone ?? ''
-                                            }
+                                            defaultValue={String(organization.phone ?? '')}
                                         />
                                     </div>
                                     <div className="grid gap-2">
                                         <Label htmlFor="plan_id">Plan</Label>
-                                        <select
-                                            id="plan_id"
-                                            name="plan_id"
-                                            defaultValue={
-                                                organization.plan_id ?? ''
-                                            }
-                                            className="h-9 rounded-md border bg-background px-3 text-sm"
-                                        >
-                                            {plans.map((plan) => (
-                                                <option
-                                                    key={plan.id}
-                                                    value={plan.id}
-                                                >
-                                                    {plan.name}
-                                                </option>
-                                            ))}
-                                        </select>
+                                        <Select
+    name="plan_id"
+    defaultValue={String(organization.plan_id ?? '')}
+>
+    <SelectTrigger
+        id="plan_id"
+    >
+        <SelectValue />
+    </SelectTrigger>
+    <SelectContent>
+        {plans.map((plan) => (
+            <SelectItem
+                value={String(plan.id)}
+            >
+                {plan.name}
+            </SelectItem>
+        ))}
+    </SelectContent>
+</Select>
                                     </div>
                                     <div className="grid gap-2">
                                         <Label htmlFor="status">Status</Label>
-                                        <select
-                                            id="status"
-                                            name="status"
-                                            defaultValue={organization.status}
-                                            className="h-9 rounded-md border bg-background px-3 text-sm"
-                                        >
-                                            <option value="active">
-                                                Active
-                                            </option>
-                                            <option value="suspended">
-                                                Suspended
-                                            </option>
-                                        </select>
+                                        <Select
+    name="status"
+    defaultValue={organization.status}
+>
+    <SelectTrigger
+        id="status"
+    >
+        <SelectValue />
+    </SelectTrigger>
+    <SelectContent>
+        <SelectItem
+            value={"active"}
+        >
+            Active
+        </SelectItem>
+        <SelectItem
+            value={"suspended"}
+        >
+            Suspended
+        </SelectItem>
+    </SelectContent>
+</Select>
                                         <InputError message={errors.status} />
                                     </div>
                                     <div className="flex gap-2 sm:col-span-2">

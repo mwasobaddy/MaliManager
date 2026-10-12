@@ -5,6 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { index, store } from '@/routes/users';
 
 type PlatformRole = { value: string; label: string };
@@ -81,39 +88,49 @@ export default function UsersCreate({ platformRoles }: Props) {
                                     </div>
                                     <div className="grid gap-2">
                                         <Label htmlFor="gender">Gender</Label>
-                                        <select
-                                            id="gender"
-                                            name="gender"
-                                            defaultValue=""
-                                            className="h-9 rounded-md border bg-background px-3 text-sm"
-                                        >
-                                            <option value="">
-                                                Unspecified
-                                            </option>
-                                            <option value="male">Male</option>
-                                            <option value="female">
-                                                Female
-                                            </option>
-                                        </select>
+                                        <Select name="gender">
+                                            <SelectTrigger id="gender">
+                                                <SelectValue placeholder="Unspecified" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="male">
+                                                    Male
+                                                </SelectItem>
+                                                <SelectItem value="female">
+                                                    Female
+                                                </SelectItem>
+                                            </SelectContent>
+                                        </Select>
                                     </div>
                                     <div className="grid gap-2">
                                         <Label htmlFor="status">Status</Label>
-                                        <select
-                                            id="status"
-                                            name="status"
-                                            defaultValue="active"
-                                            className="h-9 rounded-md border bg-background px-3 text-sm"
-                                        >
-                                            <option value="active">
-                                                Active
-                                            </option>
-                                            <option value="inactive">
-                                                Inactive
-                                            </option>
-                                            <option value="suspended">
-                                                Suspended
-                                            </option>
-                                        </select>
+                                        <Select
+    name="status"
+    defaultValue="active"
+>
+    <SelectTrigger
+        id="status"
+    >
+        <SelectValue />
+    </SelectTrigger>
+    <SelectContent>
+        <SelectItem
+            value={"active"}
+        >
+            Active
+        </SelectItem>
+        <SelectItem
+            value={"inactive"}
+        >
+            Inactive
+        </SelectItem>
+        <SelectItem
+            value={"suspended"}
+        >
+            Suspended
+        </SelectItem>
+    </SelectContent>
+</Select>
                                         <InputError message={errors.status} />
                                     </div>
                                     <div className="grid gap-2 sm:col-span-2">

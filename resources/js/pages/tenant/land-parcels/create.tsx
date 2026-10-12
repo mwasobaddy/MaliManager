@@ -13,6 +13,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { store } from '@/routes/tenant/land-parcels';
 
 type Organization = {
@@ -273,13 +274,12 @@ export default function LandParcelCreate({
                                     <Label htmlFor="notes">
                                         Notes (optional)
                                     </Label>
-                                    <textarea
-                                        id="notes"
+                                    <Textarea
+id="notes"
                                         name="notes"
                                         rows={3}
-                                        className="rounded-md border border-input bg-transparent px-3 py-2 text-sm"
-                                        placeholder="Anything worth noting about this parcel."
-                                    />
+                    placeholder="Anything worth noting about this parcel."
+                />
                                     <InputError message={errors.notes} />
                                 </div>
 
