@@ -47,7 +47,7 @@ class OrganizationController extends Controller
         $direction = $request->string('direction')->toString() === 'asc' ? 'asc' : 'desc';
 
         $organizations = $this->filtered($request)
-            ->with(['plan:id,slug,name', 'tenant.domains'])
+            ->with(['plan:id,slug,name', 'tenant.domains', 'owner:id,name,email'])
             ->withCount('users')
             ->when($sortColumn !== null, fn ($query) => $query->orderBy($sortColumn, $direction))
             ->when($sortColumn === null, fn ($query) => $query->orderByDesc('organizations.created_at'))
@@ -70,7 +70,7 @@ class OrganizationController extends Controller
         if ($focusedId !== null
             && ! $organizations->getCollection()->contains('id', $focusedId)) {
             $focused = Organization::query()
-                ->with(['plan:id,slug,name', 'tenant.domains'])
+                ->with(['plan:id,slug,name', 'tenant.domains', 'owner:id,name,email'])
                 ->withCount('users')
                 ->find($focusedId);
         }
@@ -126,6 +126,11 @@ class OrganizationController extends Controller
      */
     private function serialize(Organization $organization): array
     {
+        // Whether the impersonate button should be offered. The endpoint refuses
+        // when the owner is a platform admin, and a button that is enabled and
+        // then fails with a toast is worse than one that explains itself.
+        $owner = $organization->owner->first();
+
         return [
             'id' => $organization->id,
             'name' => $organization->name,
@@ -139,7 +144,36 @@ class OrganizationController extends Controller
             'domain' => $organization->tenant?->domains->first()?->domain,
             'users_count' => $organization->users_count,
             'created_at' => $organization->created_at?->toDateTimeString(),
+            'impersonation_blocked_reason' => $this->impersonationBlockedReason($organization, $owner),
         ];
+    }
+
+    /**
+     * Why this organization's owner cannot be impersonated, or null if it can.
+     *
+     * Mirrors the checks in `PlatformController::startImpersonating()` so the UI
+     * and the endpoint agree; the endpoint still re-checks, because this is only
+     * a hint about what to render.
+     */
+    private function impersonationBlockedReason(Organization $organization, ?User $owner): ?string
+    {
+        if ($organization->status === OrganizationStatus::Suspended) {
+            return 'Suspended organizations cannot be impersonated.';
+        }
+
+        if (! $organization->tenant?->domains->first()) {
+            return 'This organization has no domain configured yet.';
+        }
+
+        if (! $owner) {
+            return 'This organization has no owner to impersonate.';
+        }
+
+        if ($owner->hasRole(PlatformRole::Admin->value)) {
+            return 'Admins cannot be impersonated. This organization\'s owner is a platform admin.';
+        }
+
+        return null;
     }
 
     public function store(StoreOrganizationRequest $request): RedirectResponse
