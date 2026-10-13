@@ -1,10 +1,10 @@
 # MaliManager Table UI — Reference Pattern
 
 > Living notes from rebuilding the **Organizations** table (`resources/js/pages/organizations/index.tsx`).
-> This page is the reference implementation. **Users** (`pages/users/index.tsx`) and
-> Every platform table has been migrated to it — **Plans**,
-> **Subscription payments**, **Expenses** and **Audit** — as has **Users**. Only
-> the tenant tables (properties, staff, occupants, land-parcels, drafting) have not.
+> This page is the reference implementation. **Users** has been migrated to it, as
+> have the **Plans**, **Subscription payments**, **Expenses** and **Audit** platform
+> tables. Still to migrate: the tenant tables (properties, staff, occupants,
+> land-parcels, drafting).
 > Visual language is defined in `ui-design-system.md` — this file covers *structure*.
 
 ---
@@ -507,6 +507,7 @@ reachable", which was inaccurate.
 | Subscription payments | `pages/platform/subscription-payments/index.tsx` | view / edit / delete / confirm-delete / create / filters | No status; optional org/plan lists; date-range filter |
 | Expenses | `pages/platform/expenses/index.tsx` | view / edit / delete / confirm-delete / create / filters | No status; category is a closed set, so a radio filter |
 | Audit | `pages/platform/audit/index.tsx` | view / filters / export | Read-only: no create, edit or actions column at all |
+| Roles | `pages/platform/roles/index.tsx` | edit only | Four fixed rows, so **no** toolbar — see below |
 
 ---
 
@@ -718,3 +719,31 @@ the usual reason a parameter has to be additive rather than required.
     filters overlay where all six are visible at once. In the two-column form a
     Select reads better, so the same closed set is a dropdown there. The rule is
     about room to show the options, not about the size of the set alone.
+
+## 13. When *not* to apply the pattern
+
+The checklist is written for a list someone scans and narrows. On the roles page
+it would actively make things worse, so only the parts that fix real defects
+were taken.
+
+- **No search band, no filters overlay, no pagination.** The platform role set
+  is a fixed enum of four. A toolbar over four rows hides them behind a click,
+  and there is nothing to page. The one table that *could* have been long — a
+  `limit(200)` user list with a per-row role picker — is **gone**: role
+  assignment belongs to the users index, which validates against the
+  `PlatformRole` enum instead of a hardcoded copy of it, and takes an array of
+  roles instead of `syncRoles()`-ing a single one and silently dropping the rest.
+- **No status column.** Roles have no state.
+- **No import/export.** The feature does not exist.
+- **Two cards is not the box-in-box §1 warns about.** That warning is about a
+  search card stacked above *its own* table. Two unrelated entities in two
+  separate cards is fine.
+
+What did transfer: `DataTable` (which brings the empty state, alignment and
+`getRowId` that the hand-written table had none of), `ActionIconButton` with
+`color="edit"` and the role name in the label, and the edit form as a
+URL-driven `ResponsiveOverlay`.
+
+Two defects fixed along the way that were not about style at all: the Edit link
+was a raw `<a href>` inside `Button asChild`, so every role edit was a **full
+page reload**; and the `isAdmin` prop was sent by the controller and never read.
