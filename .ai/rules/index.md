@@ -10,6 +10,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | resources/js/components/rich-text-editor.tsx, resources/js/components/property-picker-dialog.tsx, resources/js/components/** | .ai/rules/components.md |
 | config/tenancy.php, config/purifier.php | .ai/rules/config.md |
 | config/tenancy.php, app/Models/**, app/Http/Controllers/Tenant/** | .ai/rules/controllers-tenant.md |
+| app/Http/Controllers/**/*.php | .ai/rules/controllers.md |
 | resources/js/components/rich-text-editor.tsx, resources/css/editor.css | .ai/rules/css.md |
 | resources/js/lib/editor/** | .ai/rules/editor.md |
 | app/Http/** | .ai/rules/http.md |
