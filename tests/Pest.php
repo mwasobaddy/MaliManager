@@ -60,3 +60,13 @@ function assertErrorToast(): void
 
     expect($flash['toast']['type'] ?? null)->toBe('error');
 }
+
+/**
+ * Assert that a success toast was flashed for the previous request.
+ */
+function assertSuccessToast(): void
+{
+    $flash = session()->get('inertia.flash_data', []);
+
+    expect($flash['toast']['type'] ?? null)->toBe('success');
+}

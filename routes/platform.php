@@ -10,6 +10,8 @@ use App\Http\Controllers\Platform\RolesController;
 use App\Http\Controllers\Platform\SubscriptionPaymentController;
 use App\Http\Controllers\Users\UserController;
 use App\Models\Organization;
+use App\Models\Plan;
+use App\Models\SubscriptionPayment;
 use App\Models\User;
 use Illuminate\Auth\Middleware\RequirePassword;
 use Illuminate\Support\Facades\Route;
@@ -112,21 +114,38 @@ Route::middleware(['auth', 'verified', 'can:manageOrganizations'])->group(functi
 });
 
 // Central plan management module, gated by central plan.* permissions.
+//
+// Create and edit are overlays on the index, addressed by query params, so the
+// old page routes redirect there instead of rendering a second copy of the form.
 Route::middleware(['auth', 'verified', 'can:managePlans'])->group(function () {
     Route::get('platform/plans', [PlanController::class, 'index'])->name('platform.plans.index');
-    Route::get('platform/plans/create', [PlanController::class, 'create'])->name('platform.plans.create')->middleware('can:createPlans');
+    Route::get('platform/plans/create', fn () => redirect()->route('platform.plans.index', ['create' => 1]))
+        ->name('platform.plans.create')
+        ->middleware('can:createPlans');
     Route::post('platform/plans', [PlanController::class, 'store'])->name('platform.plans.store')->middleware('can:createPlans');
-    Route::get('platform/plans/{plan}/edit', [PlanController::class, 'edit'])->name('platform.plans.edit')->middleware('can:editPlans');
+    Route::get('platform/plans/{plan}/edit', fn (Plan $plan) => redirect()
+        ->route('platform.plans.index', ['mode' => 'edit', 'plan' => $plan->id]))
+        ->name('platform.plans.edit')
+        ->middleware('can:editPlans');
     Route::patch('platform/plans/{plan}', [PlanController::class, 'update'])->name('platform.plans.update')->middleware('can:editPlans');
+    Route::patch('platform/plans/{plan}/status', [PlanController::class, 'setStatus'])->name('platform.plans.status')->middleware('can:editPlans');
     Route::delete('platform/plans/{plan}', [PlanController::class, 'destroy'])->name('platform.plans.destroy')->middleware('can:deletePlans');
 });
 
 // Central subscription-income module, gated by central subscription.* permissions.
+//
+// Create and edit are overlays on the index, addressed by query params, so the
+// old page routes redirect there instead of rendering a second copy of the form.
 Route::middleware(['auth', 'verified', 'can:manageSubscriptionPayments'])->group(function () {
     Route::get('platform/subscription-payments', [SubscriptionPaymentController::class, 'index'])->name('platform.subscription-payments.index');
-    Route::get('platform/subscription-payments/create', [SubscriptionPaymentController::class, 'create'])->name('platform.subscription-payments.create')->middleware('can:createSubscriptionPayments');
+    Route::get('platform/subscription-payments/create', fn () => redirect()->route('platform.subscription-payments.index', ['create' => 1]))
+        ->name('platform.subscription-payments.create')
+        ->middleware('can:createSubscriptionPayments');
     Route::post('platform/subscription-payments', [SubscriptionPaymentController::class, 'store'])->name('platform.subscription-payments.store')->middleware('can:createSubscriptionPayments');
-    Route::get('platform/subscription-payments/{subscriptionPayment}/edit', [SubscriptionPaymentController::class, 'edit'])->name('platform.subscription-payments.edit')->middleware('can:editSubscriptionPayments');
+    Route::get('platform/subscription-payments/{subscriptionPayment}/edit', fn (SubscriptionPayment $subscriptionPayment) => redirect()
+        ->route('platform.subscription-payments.index', ['mode' => 'edit', 'payment' => $subscriptionPayment->id]))
+        ->name('platform.subscription-payments.edit')
+        ->middleware('can:editSubscriptionPayments');
     Route::patch('platform/subscription-payments/{subscriptionPayment}', [SubscriptionPaymentController::class, 'update'])->name('platform.subscription-payments.update')->middleware('can:editSubscriptionPayments');
     Route::delete('platform/subscription-payments/{subscriptionPayment}', [SubscriptionPaymentController::class, 'destroy'])->name('platform.subscription-payments.destroy')->middleware('can:deleteSubscriptionPayments');
 });

@@ -40,7 +40,7 @@ test('import creates users and their person records', function () {
 
     $response->assertRedirect(route('users.index'));
 
-    expect(session()->get('inertia.flash_data')['toast']['type'] ?? null)->toBe('success');
+    assertSuccessToast();
 
     $this->assertSame(2, User::whereIn('email', ['ada@example.com', 'grace@example.com'])->count());
     expect(Person::where('email', 'ada@example.com')->exists())->toBeTrue();
