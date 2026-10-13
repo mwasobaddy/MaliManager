@@ -16,7 +16,14 @@ test('platform admin can view expenses index', function () {
 
     $this->actingAs($admin)
         ->get(route('platform.expenses.index'))
-        ->assertOk();
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('platform/expenses/index')
+            ->has('expenses.data', 2)
+            // The filters overlay renders a radio group from this list, so it
+            // has to be the same closed set the `category` rule validates.
+            ->where('categories', PlatformExpense::CATEGORIES),
+        );
 });
 
 test('platform admin can create an expense', function () {
@@ -56,10 +63,6 @@ test('platform admin can edit and update an expense', function () {
     $admin->assignRole('admin');
     $expense = PlatformExpense::factory()->create(['amount' => 5000]);
 
-    $this->actingAs($admin)
-        ->get(route('platform.expenses.edit', $expense))
-        ->assertOk();
-
     $response = $this->actingAs($admin)->patch(route('platform.expenses.update', $expense), [
         'category' => 'marketing',
         'amount' => 8000,
@@ -71,6 +74,129 @@ test('platform admin can edit and update an expense', function () {
     $response->assertRedirect(route('platform.expenses.index'));
     expect($expense->fresh()->category)->toBe('marketing');
     expect($expense->fresh()->vendor_name)->toBe('Google Ads');
+    assertSuccessToast();
+});
+
+test('the legacy create and edit pages redirect to the overlay urls', function () {
+    $admin = User::factory()->create(['email_verified_at' => now()]);
+    $admin->assignRole('admin');
+    $expense = PlatformExpense::factory()->create();
+
+    $this->actingAs($admin)
+        ->get(route('platform.expenses.create'))
+        ->assertRedirect(route('platform.expenses.index', ['create' => 1]));
+
+    $this->actingAs($admin)
+        ->get(route('platform.expenses.edit', $expense))
+        ->assertRedirect(route('platform.expenses.index', [
+            'mode' => 'edit',
+            'expense' => $expense->id,
+        ]));
+});
+
+test('the amount is serialised as a number so the column can sort numerically', function () {
+    // `amount` is cast to `decimal:2`, which stringifies. A string amount would
+    // sort "1000" after "900" and would need Number() at every call site.
+    $admin = User::factory()->create(['email_verified_at' => now()]);
+    $admin->assignRole('admin');
+    PlatformExpense::factory()->create(['amount' => 1234.5, 'spent_on' => '2026-05-05']);
+
+    $this->actingAs($admin)
+        ->get(route('platform.expenses.index'))
+        ->assertInertia(fn ($page) => $page
+            ->where('expenses.data.0.amount', 1234.5)
+            ->where('expenses.data.0.spent_on', '2026-05-05'),
+        );
+});
+
+test('the index filters by search, category and date range', function () {
+    $admin = User::factory()->create(['email_verified_at' => now()]);
+    $admin->assignRole('admin');
+
+    PlatformExpense::factory()->create([
+        'category' => 'hosting',
+        'vendor_name' => 'Hetzner',
+        'spent_on' => '2026-01-15',
+    ]);
+    PlatformExpense::factory()->create([
+        'category' => 'marketing',
+        'vendor_name' => 'Google Ads',
+        'notes' => 'settlement batch 9',
+        'spent_on' => '2026-06-15',
+    ]);
+
+    foreach (['Hetzner', 'Google', 'settlement'] as $needle) {
+        $this->actingAs($admin)
+            ->get(route('platform.expenses.index', ['search' => $needle]))
+            ->assertInertia(fn ($page) => $page->has('expenses.data', 1));
+    }
+
+    $this->actingAs($admin)
+        ->get(route('platform.expenses.index', ['category' => 'hosting']))
+        ->assertInertia(fn ($page) => $page
+            ->has('expenses.data', 1)
+            ->where('filters.category', 'hosting'),
+        );
+
+    $this->actingAs($admin)
+        ->get(route('platform.expenses.index', [
+            'from' => '2026-06-01',
+            'to' => '2026-06-30',
+        ]))
+        ->assertInertia(fn ($page) => $page
+            ->has('expenses.data', 1)
+            ->where('expenses.data.0.vendor_name', 'Google Ads'),
+        );
+});
+
+test('the index sorts by amount and ignores a crafted sort column', function () {
+    $admin = User::factory()->create(['email_verified_at' => now()]);
+    $admin->assignRole('admin');
+    PlatformExpense::factory()->create(['amount' => 900, 'spent_on' => '2026-01-01']);
+    PlatformExpense::factory()->create(['amount' => 100, 'spent_on' => '2026-02-01']);
+
+    $this->actingAs($admin)
+        ->get(route('platform.expenses.index', ['sort' => 'amount', 'direction' => 'asc']))
+        ->assertInertia(fn ($page) => $page
+            ->where('sort.column', 'amount')
+            ->where('expenses.data.0.amount', 100)
+            ->where('expenses.data.1.amount', 900),
+        );
+
+    // Not in the allowlist, so it must not reach the ORDER BY.
+    $this->actingAs($admin)
+        ->get(route('platform.expenses.index', ['sort' => 'notes; drop table platform_expenses']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('sort.column', null));
+});
+
+test('an off-page expense id in the url resolves the row for the overlay', function () {
+    $admin = User::factory()->create(['email_verified_at' => now()]);
+    $admin->assignRole('admin');
+
+    // Pin the fillers' date so the target genuinely lands on page 2; the
+    // default order is spent_on desc.
+    $onPage = collect(range(1, 15))->map(fn (int $day) => PlatformExpense::factory()->create([
+        'vendor_name' => "Filler {$day}",
+        'spent_on' => '2026-06-01',
+    ]));
+    $offPage = PlatformExpense::factory()->create([
+        'vendor_name' => 'Off page',
+        'spent_on' => '2025-01-01',
+    ]);
+
+    $this->actingAs($admin)
+        ->get(route('platform.expenses.index', ['expense' => $offPage->id]))
+        ->assertInertia(fn ($page) => $page
+            ->component('platform/expenses/index')
+            ->where('focusedExpense.id', $offPage->id)
+            ->where('focusedExpense.vendor_name', 'Off page'),
+        );
+
+    // A row that is already on the page is not sent twice.
+    $this->actingAs($admin)
+        ->get(route('platform.expenses.index', ['expense' => $onPage->first()->id]))
+        ->assertInertia(fn ($page) => $page->where('focusedExpense', null));
 });
 
 test('platform admin can delete an expense', function () {
