@@ -1,8 +1,10 @@
 # MaliManager Table UI — Reference Pattern
 
 > Living notes from rebuilding the **Organizations** table (`resources/js/pages/organizations/index.tsx`).
-> This page is the reference implementation. Other tables (Users, Plans, Expenses,
-> Subscription payments, tenant tables) should be migrated to match it.
+> This page is the reference implementation. **Users** (`pages/users/index.tsx`) and
+> **Plans** (`pages/platform/plans/index.tsx`) and **Subscription payments**
+> (`pages/platform/subscription-payments/index.tsx`) have been migrated to it;
+> Expenses and the tenant tables have not.
 > Visual language is defined in `ui-design-system.md` — this file covers *structure*.
 
 ---
@@ -490,8 +492,44 @@ reachable", which was inaccurate.
 - [ ] Long cell values truncate + carry `title`, never wrap
 - [ ] Status is a bare glyph, not a tinted chip
 - [ ] URL-driven state reads `usePage().url`, never `window.location`
+- [ ] Destructive **forms inside an overlay** submit via Inertia `<Form>` with
+      `method="delete"`; only row-cell buttons go through `ActionIconButton`
 
 ---
+
+### Migrated tables
+
+| Table | Page | Overlays | Notes |
+|---|---|---|---|
+| Organizations | `pages/organizations/index.tsx` | view / edit / delete / create / filters / import / export | The reference |
+| Users | `pages/users/index.tsx` | same as organizations | Radio filters for status + role |
+| Plans | `pages/platform/plans/index.tsx` | view / edit / delete / confirm-delete / create / filters | No import/export; status is a boolean |
+| Subscription payments | `pages/platform/subscription-payments/index.tsx` | view / edit / delete / confirm-delete / create / filters | No status; optional org/plan lists; date-range filter |
+
+---
+
+## 9a. Plans — the boolean-status variant
+
+Plans differ from the other two in three ways worth knowing before copying the
+pattern again:
+
+1. **`is_active` is a boolean, not an enum.** There is no `PlanStatus`, so the
+   controller takes `['required', 'boolean']` and the toggle sends `is_active`
+   rather than a status string. Sorting allowlists the column directly.
+2. **The default order is merchandising, not recency.** Plans list cheapest tier
+   first (`sort_order`, then `name`). `direction` still defaults to `desc` for
+   user-chosen sorts, so the *unsorted* branch must not apply it — otherwise
+   clicking away from a sort silently reverses the default.
+3. **Delete takes two steps inside one sheet.** The row Delete opens `mode=delete`
+   which only states the consequence; the footer button moves to
+   `mode=confirm-delete`, which is where the password prompt lives. That is a
+   fourth `RowMode`, not a second overlay — stacking Radix modals fights over the
+   focus trap and double-dims the page (same reason as §3).
+
+**An inactive plan is not a broken one.** It is off sale. So the toggle passes
+`inactiveTone="warning"` instead of the default `danger` that a suspended user gets.
+`StatusPowerToggle` takes `activeTone`/`inactiveTone` for exactly this — the glyph
+and tooltip stay the same, only the colour semantics change.
 
 ## 10. Traps found the hard way
 
@@ -582,3 +620,54 @@ reachable", which was inaccurate.
     component — it was added and removed inside a single uncommitted branch, so
     `git log` never showed it and nothing failed to compile. Grep for a symbol
     before committing a rename, not only after.
+22. **The shadcn `Checkbox` is a `<button>`, so it submits nothing.** It renders no
+    hidden input, so a form built from `<Form>` plus `<Checkbox>` never sends `true`,
+    and an unticked box never sends `false` either — leaving the old value in place on
+    an update, which looks like the save silently failed. The plans form pairs each box
+    with an explicit hidden input carrying `"1"`/`"0"`, which the `nullable|boolean`
+    rule accepts. Any boolean that is not a radio needs this pairing.
+23. **`features[]` cannot come from a `<textarea>`.** The plans request validates an
+    array; the form edits it as one-per-line text. The textarea is therefore left
+    *unnamed* and the split lines ride along as `features[]` hidden inputs — a named
+    textarea would submit one string and fail the `array` rule. With an empty list
+    nothing is sent, which is what `nullable` is for.
+24. **`php artisan wayfinder:generate` silently drops `formVariants`.** That flag is
+    set in `vite.config.ts` (`wayfinder({ formVariants: true })`), which the Artisan
+    command does not read. Running it rewrites every generated route without the
+    `.form` helper and `tsc` reports ~34 bogus errors across auth, nav and platform
+    pages — all of them in files nobody had touched. Regenerate with `npm run build`
+    or `npm run dev`, which run the plugin with the right options.
+25. **A sort direction default must not leak into the unsorted branch.** `direction`
+    defaults to `desc` because that is right for "newest first" lists, but plans are
+    ordered by `sort_order` ascending. Applying `desc` there silently reversed the
+    merchandising order. The unsorted branch orders on its own terms.
+26. **Assert on `where('plans.data.0.name', …)`, not on `->json('plans.data')`.** An
+    Inertia page is only JSON when the request carries Inertia's headers, so
+    `->json()` on a plain `get()` throws "Invalid JSON was returned from the route".
+    Use `assertInertia` with dotted paths, and pin `sort_order` in factories so the
+    expected row order does not depend on what the factory filled in.
+27. **A radio group needs a closed, small option set — do not force one.** The users
+    and plans filters use `RadioGroup` because status and role are fixed vocabularies
+    of three to five values. `subscription_payments.method` is free text typed by
+    whoever logged the payment, so its option set is open and a closed list of
+    choices would be a lie. That table filters on a received-on **date range** instead,
+    which is the filter someone reconciling income actually wants.
+28. **`decimal:2` casts serialise as a string, which silently breaks sorting.** The
+    `amount` column was cast to `decimal:2`, so `$payment->amount` is `"1000.00"`.
+    Left alone it sorts lexicographically — `"1000"` after `"900"` — and every
+    consumer needs its own `Number()`. The controller casts once in `serialize()`
+    instead. Money is whole-currency in this app, so a float is safe; a table that
+    ever holds minor units must keep the string and cast at the edges.
+29. **A Radix `Select` cannot submit "nothing selected".** Both the organization and
+    plan pickers are optional, but `SelectItem value=""` is reserved for the
+    placeholder. Each picker therefore renders a hidden `""` input alongside it —
+    always present, so it submits `null` rather than omitting the key — which is
+    what makes "no organization" a real choice rather than a missing one.
+30. **`only` on a partial reload silently drops the props the sheet needs.** The
+    organization and plan lists are `Inertia::optional()`, so they arrive only when
+    the form asks. Every helper here therefore passes `only: ['payments', 'filters',
+    'sort']` — without it, the debounced search would refetch the whole organization
+    list on each keystroke. The catch is that a `->missing('organizations')`
+    assertion on a plain request proves nothing about partial reloads; testing the
+    optional prop needs `X-Inertia-Partial-Data`, or the test passes while the
+    feature is broken.
