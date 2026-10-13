@@ -50,7 +50,11 @@ class SubscriptionPaymentController extends Controller
     {
         return SubscriptionPayment::query()
             ->with(['organization:id,name', 'plan:id,name'])
-            ->when($request->string('search')->trim(), fn ($query, string $search) => $query->where(function (Builder $q) use ($search) {
+            // `Request::string()` returns a Stringable and an object is always truthy,
+            // so `->when($request->string('search')->trim(), ...)` ran the filter even
+            // with no term — binding `like '%%'`, and for a category also `= ''`, which
+            // matched nothing and emptied the table. ->toString() gives a real string.
+            ->when($request->string('search')->trim()->toString(), fn ($query, string $search) => $query->where(function (Builder $q) use ($search) {
                 $q->where('reference', 'like', "%{$search}%")
                     ->orWhere('method', 'like', "%{$search}%")
                     ->orWhere('notes', 'like', "%{$search}%")
