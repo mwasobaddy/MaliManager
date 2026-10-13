@@ -89,6 +89,25 @@ class PlatformController extends Controller
             abort(422, 'Organization has no domain configured yet.');
         }
 
+        // Stancl's impersonation is fire-and-forget: redeeming the token calls
+        // Auth::loginUsingId() and overwrites the session user, keeping the
+        // previous identity nowhere. Without this the admin is unrecoverable
+        // short of a full logout and a fresh login. The session cookie is
+        // scoped to `.malimanager.test`, so the flag written here is visible on
+        // the tenant domain too, and SessionGuard::login()'s migrate(true)
+        // keeps the payload across the token redemption.
+        $actor = $request->user();
+
+        $request->session()->put('impersonated_by', [
+            'user_id' => $actor->getKey(),
+            'name' => $actor->name,
+            'email' => $actor->email,
+            'organization_id' => $organization->getKey(),
+            'organization' => $organization->name,
+            'tenant_id' => $organization->tenant_id,
+            'started_at' => now()->toIso8601String(),
+        ]);
+
         $token = tenancy()->impersonate(
             $organization->tenant,
             $user->getKey(),
@@ -97,7 +116,7 @@ class PlatformController extends Controller
         );
 
         activity()->inLog('auth')
-            ->causedBy($request->user())
+            ->causedBy($actor)
             ->performedOn($user)
             ->event('impersonation.started')
             ->tap(function ($activity) use ($organization) {

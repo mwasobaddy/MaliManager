@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ImpersonationController;
 use App\Http\Controllers\Organizations\OrganizationController;
 use App\Http\Controllers\Platform\AssistantController;
 use App\Http\Controllers\Platform\AuditController;
@@ -16,6 +17,13 @@ use App\Models\SubscriptionPayment;
 use App\Models\User;
 use Illuminate\Auth\Middleware\RequirePassword;
 use Illuminate\Support\Facades\Route;
+
+// Ending an impersonation. Deliberately *not* behind the `admin` middleware:
+// the current user is the impersonated owner, who is by definition not an
+// admin, so gating it there would make the only way out unreachable.
+Route::post('impersonation/stop', [ImpersonationController::class, 'stop'])
+    ->middleware('auth')
+    ->name('impersonation.stop');
 
 // Central platform administration, gated by the `admin` middleware.
 Route::middleware(['auth', 'verified', 'admin'])->group(function () {

@@ -71,6 +71,18 @@ class Organization extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    /**
+     * The single owner, eager-loadable.
+     *
+     * Exists so a list can show or hide an "impersonate" control per row
+     * without a query per row. `first()` on a relation returns null when the
+     * organization has no owner yet, which is a legitimate state.
+     */
+    public function owner(): BelongsToMany
+    {
+        return $this->users()->wherePivot('is_owner', true);
+    }
+
     public function users(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'organization_user')
