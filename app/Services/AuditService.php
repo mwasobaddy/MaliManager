@@ -14,9 +14,26 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 class AuditService
 {
     /**
-     * @param  array<string, mixed>  $filters
+     * Allowlisted so a crafted `?sort=` can never reach the ORDER BY.
+     *
+     * `subject_type` is a class name, which is a useless thing to sort a log by
+     * (it groups by namespace, not by what happened). The label a person reads
+     * is the short type, and ordering by that needs a CASE the allowlist does
+     * not want to carry.
+     *
+     * @var array<string, string>
      */
-    public function query(array $filters, ?string $tenantId): Builder
+    private const SORTABLE = [
+        'created_at' => 'created_at',
+        'event' => 'event',
+        'log_name' => 'log_name',
+    ];
+
+    /**
+     * @param  array<string, mixed>  $filters
+     * @param  array{column: string|null, direction: string}  $sort
+     */
+    public function query(array $filters, ?string $tenantId, array $sort = ['column' => null, 'direction' => 'desc']): Builder
     {
         $query = Audit::query()->with('causer')->forTenant($tenantId);
 
@@ -55,7 +72,31 @@ class AuditService
             $query->whereDate('created_at', '<=', $dateTo);
         }
 
-        return $query->latest('created_at');
+        $column = self::SORTABLE[$sort['column'] ?? ''] ?? null;
+        $direction = ($sort['direction'] ?? null) === 'asc' ? 'asc' : 'desc';
+
+        // Newest first is the only useful default for a log, and it is also
+        // what every existing caller of this method relied on, so the unsorted
+        // branch has to keep it.
+        return $column !== null
+            ? $query->orderBy($column, $direction)->orderBy('id')
+            : $query->latest('created_at');
+    }
+
+    /**
+     * The requested sort, normalised so the controller does not have to repeat
+     * the allowlist. Returns a null column for anything not on the list.
+     *
+     * @return array{column: string|null, direction: string}
+     */
+    public function sortFromRequest(Request $request): array
+    {
+        $column = $request->string('sort')->toString();
+
+        return [
+            'column' => isset(self::SORTABLE[$column]) ? $column : null,
+            'direction' => $request->string('direction')->toString() === 'asc' ? 'asc' : 'desc',
+        ];
     }
 
     /**
