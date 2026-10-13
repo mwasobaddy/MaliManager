@@ -219,7 +219,11 @@ class OrganizationController extends Controller
     {
         return Organization::query()
             ->leftJoin('plans', 'plans.id', '=', 'organizations.plan_id')
-            ->when($request->string('search')->trim(), function ($query, string $search) {
+            // `Request::string()` returns a Stringable and an object is always truthy,
+            // so `->when($request->string('search')->trim(), ...)` ran the filter even
+            // with no term — binding `like '%%'`, and for a category also `= ''`, which
+            // matched nothing and emptied the table. ->toString() gives a real string.
+            ->when($request->string('search')->trim()->toString(), function ($query, string $search) {
                 Search::apply($query, $search, ['organizations.name', 'organizations.slug', 'organizations.email']);
             })
             ->when(

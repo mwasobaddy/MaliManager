@@ -32,7 +32,11 @@ class UserController extends Controller
         return User::query()
             ->with('person:id,first_name,last_name,email,phone,national_id,gender,status')
             ->with('roles:id,name')
-            ->when($request->string('search')->trim(), function ($query, string $search) {
+            // `Request::string()` returns a Stringable and an object is always truthy,
+            // so `->when($request->string('search')->trim(), ...)` ran the filter even
+            // with no term — binding `like '%%'`, and for a category also `= ''`, which
+            // matched nothing and emptied the table. ->toString() gives a real string.
+            ->when($request->string('search')->trim()->toString(), function ($query, string $search) {
                 Search::apply($query, $search, ['name', 'email', 'phone']);
             })
             ->when($request->string('status')->toString() !== '', fn ($query) => $query->where('status', $request->string('status')))
