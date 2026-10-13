@@ -11,6 +11,7 @@ use App\Http\Controllers\Platform\SubscriptionPaymentController;
 use App\Http\Controllers\Users\UserController;
 use App\Models\Organization;
 use App\Models\Plan;
+use App\Models\PlatformExpense;
 use App\Models\SubscriptionPayment;
 use App\Models\User;
 use Illuminate\Auth\Middleware\RequirePassword;
@@ -151,11 +152,19 @@ Route::middleware(['auth', 'verified', 'can:manageSubscriptionPayments'])->group
 });
 
 // Central platform-expense module, gated by central platform-expense.* permissions.
+//
+// Create and edit are overlays on the index, addressed by query params, so the
+// old page routes redirect there instead of rendering a second copy of the form.
 Route::middleware(['auth', 'verified', 'can:managePlatformExpenses'])->group(function () {
     Route::get('platform/expenses', [PlatformExpenseController::class, 'index'])->name('platform.expenses.index');
-    Route::get('platform/expenses/create', [PlatformExpenseController::class, 'create'])->name('platform.expenses.create')->middleware('can:createPlatformExpenses');
+    Route::get('platform/expenses/create', fn () => redirect()->route('platform.expenses.index', ['create' => 1]))
+        ->name('platform.expenses.create')
+        ->middleware('can:createPlatformExpenses');
     Route::post('platform/expenses', [PlatformExpenseController::class, 'store'])->name('platform.expenses.store')->middleware('can:createPlatformExpenses');
-    Route::get('platform/expenses/{platformExpense}/edit', [PlatformExpenseController::class, 'edit'])->name('platform.expenses.edit')->middleware('can:editPlatformExpenses');
+    Route::get('platform/expenses/{platformExpense}/edit', fn (PlatformExpense $platformExpense) => redirect()
+        ->route('platform.expenses.index', ['mode' => 'edit', 'expense' => $platformExpense->id]))
+        ->name('platform.expenses.edit')
+        ->middleware('can:editPlatformExpenses');
     Route::patch('platform/expenses/{platformExpense}', [PlatformExpenseController::class, 'update'])->name('platform.expenses.update')->middleware('can:editPlatformExpenses');
     Route::delete('platform/expenses/{platformExpense}', [PlatformExpenseController::class, 'destroy'])->name('platform.expenses.destroy')->middleware('can:deletePlatformExpenses');
 });
