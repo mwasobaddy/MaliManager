@@ -1,22 +1,24 @@
 <?php
 
 use App\Http\Controllers\ImpersonationController;
-use App\Http\Controllers\Organizations\OrganizationController;
 use App\Http\Controllers\Platform\AssistantController;
 use App\Http\Controllers\Platform\AuditController;
+use App\Http\Controllers\Platform\OrganizationController;
 use App\Http\Controllers\Platform\PlanController;
 use App\Http\Controllers\Platform\PlatformController;
 use App\Http\Controllers\Platform\PlatformExpenseController;
 use App\Http\Controllers\Platform\RolesController;
 use App\Http\Controllers\Platform\SubscriptionPaymentController;
-use App\Http\Controllers\Users\UserController;
+use App\Http\Controllers\Platform\UserController;
 use App\Models\Organization;
 use App\Models\Plan;
 use App\Models\PlatformExpense;
 use App\Models\SubscriptionPayment;
 use App\Models\User;
 use Illuminate\Auth\Middleware\RequirePassword;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Spatie\Permission\Models\Role;
 
 // Ending an impersonation. Deliberately *not* behind the `admin` middleware:
 // the current user is the impersonated owner, who is by definition not an
@@ -63,27 +65,55 @@ Route::middleware(['auth', 'verified', 'can:exportAudit'])->group(function () {
         ->name('platform.audit.export');
 });
 
+/**
+ * Send a legacy module path to its new home, keeping the query string.
+ *
+ * Both modules moved from `/users` and `/organizations` to `/platform/...`
+ * alongside the rest of the central admin. A bookmarked overlay link like
+ * `/organizations?mode=edit&organization=5` has to keep working, so the query
+ * is carried across — `redirect()->route()` would silently drop it and land
+ * the visitor on a bare list with the sheet closed.
+ */
+$legacyModuleRedirect = function (string $target) {
+    return function (Request $request) use ($target) {
+        $query = $request->query();
+
+        return redirect()->to(
+            route($target).($query === [] ? '' : '?'.http_build_query($query)),
+        );
+    };
+};
+
 // Central user management module, gated by central user.* permissions.
 //
+// Prefixed with `platform/` and named `platform.users.*` so it sits with the other
+// central modules and the controller lives in App\Http\Controllers\Platform, like
+// plans, expenses, audit and roles. It used to be the odd one out: a bare
+// `/users` and `/organizations` at the top level.
+//
 // Create and edit are overlays, not pages — the forms live in
-// ResponsiveOverlay on users/index and are addressed by query params. The GET
+// ResponsiveOverlay on platform/users/index and are addressed by query params. The GET
 // routes below redirect so bookmarks from before the overlay landed still open
 // the overlay instead of 404ing.
+Route::middleware(['auth', 'verified'])
+    ->get('users', $legacyModuleRedirect('platform.users.index'))
+    ->name('legacy.users');
+
 Route::middleware(['auth', 'verified', 'can:manageUsers'])->group(function () {
-    Route::get('users', [UserController::class, 'index'])->name('users.index');
-    Route::post('users/import', [UserController::class, 'import'])->name('users.import')->middleware('can:importUsers');
-    Route::get('users/export', [UserController::class, 'export'])->name('users.export')->middleware('can:exportUsers');
-    Route::get('users/create', fn () => redirect()->route('users.index', ['create' => 1]))
-        ->name('users.create')
+    Route::get('platform/users', [UserController::class, 'index'])->name('platform.users.index');
+    Route::post('platform/users/import', [UserController::class, 'import'])->name('platform.users.import')->middleware('can:importUsers');
+    Route::get('platform/users/export', [UserController::class, 'export'])->name('platform.users.export')->middleware('can:exportUsers');
+    Route::get('platform/users/create', fn () => redirect()->route('platform.users.index', ['create' => 1]))
+        ->name('platform.users.create')
         ->middleware('can:createUsers');
-    Route::post('users', [UserController::class, 'store'])->name('users.store')->middleware('can:createUsers');
-    Route::get('users/{user}/edit', fn (User $user) => redirect()
-        ->route('users.index', ['mode' => 'edit', 'user' => $user->id]))
-        ->name('users.edit')
+    Route::post('platform/users', [UserController::class, 'store'])->name('platform.users.store')->middleware('can:createUsers');
+    Route::get('platform/users/{user}/edit', fn (User $user) => redirect()
+        ->route('platform.users.index', ['mode' => 'edit', 'user' => $user->id]))
+        ->name('platform.users.edit')
         ->middleware('can:editUsers');
-    Route::patch('users/{user}', [UserController::class, 'update'])->name('users.update')->middleware('can:editUsers');
-    Route::patch('users/{user}/status', [UserController::class, 'setStatus'])->name('users.status')->middleware('can:editUsers');
-    Route::delete('users/{user}', [UserController::class, 'destroy'])->name('users.destroy')->middleware('can:deleteUsers');
+    Route::patch('platform/users/{user}', [UserController::class, 'update'])->name('platform.users.update')->middleware('can:editUsers');
+    Route::patch('platform/users/{user}/status', [UserController::class, 'setStatus'])->name('platform.users.status')->middleware('can:editUsers');
+    Route::delete('platform/users/{user}', [UserController::class, 'destroy'])->name('platform.users.destroy')->middleware('can:deleteUsers');
 });
 
 // Central organization management module, gated by central organization.* permissions.
@@ -93,32 +123,36 @@ Route::middleware(['auth', 'verified', 'can:manageUsers'])->group(function () {
 // here won purely by load order. web.php's copy had quietly grown three extra
 // routes (import, status, impersonate) that this one never received. Keep the
 // module in one place; if you add a route here, add it here only.
+Route::middleware(['auth', 'verified'])
+    ->get('organizations', $legacyModuleRedirect('platform.organizations.index'))
+    ->name('legacy.organizations');
+
 Route::middleware(['auth', 'verified', 'can:manageOrganizations'])->group(function () {
-    Route::get('organizations', [OrganizationController::class, 'index'])->name('organizations.index');
-    Route::post('organizations/import', [OrganizationController::class, 'import'])->name('organizations.import')->middleware('can:importOrganizations');
-    Route::get('organizations/export', [OrganizationController::class, 'export'])->name('organizations.export')->middleware('can:exportOrganizations');
+    Route::get('platform/organizations', [OrganizationController::class, 'index'])->name('platform.organizations.index');
+    Route::post('platform/organizations/import', [OrganizationController::class, 'import'])->name('platform.organizations.import')->middleware('can:importOrganizations');
+    Route::get('platform/organizations/export', [OrganizationController::class, 'export'])->name('platform.organizations.export')->middleware('can:exportOrganizations');
 
     // Create and edit are overlays, not pages: the forms live in
     // ResponsiveOverlay on organizations/index and are addressed by query
     // params. These redirects exist so bookmarks and shared links from before
     // the overlay landed still land on the open overlay instead of a 404.
-    Route::get('organizations/create', fn () => redirect()
-        ->route('organizations.index', ['create' => 1]))
-        ->name('organizations.create')
+    Route::get('platform/organizations/create', fn () => redirect()
+        ->route('platform.organizations.index', ['create' => 1]))
+        ->name('platform.organizations.create')
         ->middleware('can:createOrganizations');
-    Route::get('organizations/{organization}/edit', fn (Organization $organization) => redirect()
-        ->route('organizations.index', ['mode' => 'edit', 'organization' => $organization->id]))
-        ->name('organizations.edit')
+    Route::get('platform/organizations/{organization}/edit', fn (Organization $organization) => redirect()
+        ->route('platform.organizations.index', ['mode' => 'edit', 'organization' => $organization->id]))
+        ->name('platform.organizations.edit')
         ->middleware('can:editOrganizations');
 
-    Route::post('organizations', [OrganizationController::class, 'store'])->name('organizations.store')->middleware('can:createOrganizations');
-    Route::patch('organizations/{organization}', [OrganizationController::class, 'update'])->name('organizations.update')->middleware('can:editOrganizations');
-    Route::patch('organizations/{organization}/status', [OrganizationController::class, 'setStatus'])
-        ->name('organizations.status')
+    Route::post('platform/organizations', [OrganizationController::class, 'store'])->name('platform.organizations.store')->middleware('can:createOrganizations');
+    Route::patch('platform/organizations/{organization}', [OrganizationController::class, 'update'])->name('platform.organizations.update')->middleware('can:editOrganizations');
+    Route::patch('platform/organizations/{organization}/status', [OrganizationController::class, 'setStatus'])
+        ->name('platform.organizations.status')
         ->middleware('can:editOrganizations');
-    Route::delete('organizations/{organization}', [OrganizationController::class, 'destroy'])->name('organizations.destroy')->middleware('can:deleteOrganizations');
-    Route::post('organizations/{organization}/impersonate', [PlatformController::class, 'impersonateOwner'])
-        ->name('organizations.impersonate')
+    Route::delete('platform/organizations/{organization}', [OrganizationController::class, 'destroy'])->name('platform.organizations.destroy')->middleware('can:deleteOrganizations');
+    Route::post('platform/organizations/{organization}/impersonate', [PlatformController::class, 'impersonateOwner'])
+        ->name('platform.organizations.impersonate')
         ->middleware(['admin', 'can:impersonateOrganizations']);
 });
 
@@ -178,13 +212,16 @@ Route::middleware(['auth', 'verified', 'can:managePlatformExpenses'])->group(fun
 });
 
 // Platform role & central-permission management (admin via PlatformPermissionKey::ManageRoles).
+//
+// Editing a role's permissions is an overlay on the index, addressed by query
+// params, so the old page route redirects there rather than rendering a second
+// copy of the checkbox list.
 Route::middleware(['auth', 'verified', 'can:manageRoles'])->group(function () {
     Route::get('platform/roles', [RolesController::class, 'index'])->name('platform.roles.index');
-    Route::get('platform/roles/{role}/edit', [RolesController::class, 'edit'])->name('platform.roles.edit');
+    Route::get('platform/roles/{role}/edit', fn (Role $role) => redirect()
+        ->route('platform.roles.index', ['mode' => 'edit', 'role' => $role->id]))
+        ->name('platform.roles.edit');
     Route::patch('platform/roles/{role}', [RolesController::class, 'update'])
         ->middleware(RequirePassword::class)
         ->name('platform.roles.update');
-    Route::patch('platform/users/{user}/role', [RolesController::class, 'assignRole'])
-        ->middleware(RequirePassword::class)
-        ->name('platform.users.role');
 });

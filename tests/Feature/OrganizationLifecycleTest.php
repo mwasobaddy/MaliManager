@@ -30,7 +30,7 @@ it('suspends an organization through the status endpoint', function () {
     [$organization] = orgWithOwner();
 
     $this->actingAs($admin)
-        ->patch(route('organizations.status', $organization), ['status' => 'suspended'])
+        ->patch(route('platform.organizations.status', $organization), ['status' => 'suspended'])
         ->assertRedirect();
 
     expect($organization->refresh()->status)->toBe(OrganizationStatus::Suspended);
@@ -43,7 +43,7 @@ it('reactivates a suspended organization', function () {
     $organization->forceFill(['status' => OrganizationStatus::Suspended])->save();
 
     $this->actingAs($admin)
-        ->patch(route('organizations.status', $organization), ['status' => 'active'])
+        ->patch(route('platform.organizations.status', $organization), ['status' => 'active'])
         ->assertRedirect();
 
     expect($organization->refresh()->status)->toBe(OrganizationStatus::Active);
@@ -55,7 +55,7 @@ it('rejects an unknown status value', function () {
     [$organization] = orgWithOwner();
 
     $this->actingAs($admin)
-        ->patch(route('organizations.status', $organization), ['status' => 'banished'])
+        ->patch(route('platform.organizations.status', $organization), ['status' => 'banished'])
         ->assertSessionHasErrors('status');
 
     expect($organization->refresh()->status)->toBe(OrganizationStatus::Active);
@@ -69,7 +69,7 @@ it('forbids users without the edit permission from changing status', function ()
     [$organization] = orgWithOwner();
 
     $this->actingAs($user)
-        ->patch(route('organizations.status', $organization), ['status' => 'suspended'])
+        ->patch(route('platform.organizations.status', $organization), ['status' => 'suspended'])
         ->assertRedirect();
     assertErrorToast();
 
@@ -93,7 +93,7 @@ it('drops member sessions when an organization is suspended', function () {
     expect(DB::table('sessions')->where('user_id', $owner->id)->count())->toBe(1);
 
     $this->actingAs($admin)
-        ->patch(route('organizations.status', $organization), ['status' => 'suspended'])
+        ->patch(route('platform.organizations.status', $organization), ['status' => 'suspended'])
         ->assertRedirect();
 
     expect(DB::table('sessions')->where('user_id', $owner->id)->count())->toBe(0);
@@ -152,7 +152,7 @@ it('refuses to impersonate into a suspended organization', function () {
     $organization->forceFill(['status' => OrganizationStatus::Suspended])->save();
 
     $this->actingAs($admin)
-        ->post(route('organizations.impersonate', $organization))
+        ->post(route('platform.organizations.impersonate', $organization))
         ->assertRedirect();
     assertErrorToast();
 
@@ -167,15 +167,15 @@ it('sorts the organizations index by an allowlisted column', function () {
     orgWithOwner('Alpha');
 
     $this->actingAs($admin)
-        ->get(route('organizations.index', ['sort' => 'name', 'direction' => 'asc']))
+        ->get(route('platform.organizations.index', ['sort' => 'name', 'direction' => 'asc']))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('organizations/index')
+            ->component('platform/organizations/index')
             ->where('sort.column', 'name')
             ->where('sort.direction', 'asc'));
 
     $this->actingAs($admin)
-        ->get(route('organizations.index', ['sort' => 'bogus_column']))
+        ->get(route('platform.organizations.index', ['sort' => 'bogus_column']))
         ->assertOk()
         ->assertInertia(fn ($page) => $page->where('sort.column', null));
 });
@@ -186,7 +186,7 @@ it('exposes a human readable status label', function () {
     [$organization] = orgWithOwner();
 
     $this->actingAs($admin)
-        ->get(route('organizations.index'))
+        ->get(route('platform.organizations.index'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('organizations.data.0.status', 'active')

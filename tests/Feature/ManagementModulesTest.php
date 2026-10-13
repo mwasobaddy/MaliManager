@@ -58,8 +58,8 @@ it('forbids users without the manage permission from listing users', function ()
     $user = User::factory()->create(['onboarded_at' => now()]);
 
     // The app converts 403s into a redirect with an error toast.
-    $this->actingAs($user)->get(route('users.index'))->assertRedirect();
-    $this->actingAs($user)->get(route('organizations.index'))->assertRedirect();
+    $this->actingAs($user)->get(route('platform.users.index'))->assertRedirect();
+    $this->actingAs($user)->get(route('platform.organizations.index'))->assertRedirect();
 });
 
 it('creates a person and user account together, deduping by email', function () {
@@ -96,7 +96,7 @@ it('prevents admins from deleting their own account with a toast', function () {
     $admin = seededAdmin();
 
     $this->actingAs($admin)
-        ->delete(route('users.destroy', $admin), ['password' => 'password'])
+        ->delete(route('platform.users.destroy', $admin), ['password' => 'password'])
         ->assertRedirect()
         ->assertSessionHas('inertia.flash_data', fn (array $flash) => ($flash['toast']['message'] ?? null) === 'You cannot delete your own account.');
 
@@ -108,7 +108,7 @@ it('requires the current password to delete a user', function () {
     $other = User::factory()->create(['onboarded_at' => now(), 'status' => 'active']);
 
     $this->actingAs($admin)
-        ->delete(route('users.destroy', $other), ['password' => 'wrong-password'])
+        ->delete(route('platform.users.destroy', $other), ['password' => 'wrong-password'])
         ->assertSessionHasErrors('password');
 
     expect($other->refresh()->trashed())->toBeFalse();
@@ -119,7 +119,7 @@ it('allows a permitted admin to delete another user with their password', functi
     $other = User::factory()->create(['onboarded_at' => now(), 'status' => 'active']);
 
     $this->actingAs($admin)
-        ->delete(route('users.destroy', $other), ['password' => 'password'])
+        ->delete(route('platform.users.destroy', $other), ['password' => 'password'])
         ->assertRedirect();
 
     expect($other->refresh()->trashed())->toBeTrue();
@@ -138,14 +138,14 @@ it('requires the current password to delete an organization', function () {
     );
 
     $this->actingAs($admin)
-        ->delete(route('organizations.destroy', $organization), ['password' => 'wrong-password'])
+        ->delete(route('platform.organizations.destroy', $organization), ['password' => 'wrong-password'])
         ->assertSessionHasErrors('password');
 
     expect($organization->refresh()->trashed())->toBeFalse();
 
     $this->actingAs($admin)
-        ->delete(route('organizations.destroy', $organization), ['password' => 'password'])
-        ->assertRedirect(route('organizations.index'));
+        ->delete(route('platform.organizations.destroy', $organization), ['password' => 'password'])
+        ->assertRedirect(route('platform.organizations.index'));
 
     expect($organization->refresh()->trashed())->toBeTrue();
 });
@@ -153,7 +153,7 @@ it('requires the current password to delete an organization', function () {
 it('exports users as csv', function () {
     $admin = seededAdmin();
 
-    $response = $this->actingAs($admin)->get(route('users.export'));
+    $response = $this->actingAs($admin)->get(route('platform.users.export'));
 
     $response->assertOk();
     expect($response->headers->get('content-type'))->toContain('text/csv');
@@ -164,7 +164,7 @@ it('creates an organization with full tenancy provisioning', function () {
     $owner = User::factory()->create(['onboarded_at' => now()]);
     $plan = Plan::factory()->create();
 
-    $this->actingAs($admin)->post(route('organizations.store'), [
+    $this->actingAs($admin)->post(route('platform.organizations.store'), [
         'name' => 'Acme Estates Central',
         'owner_mode' => 'existing',
         'owner_user_id' => $owner->id,
@@ -184,7 +184,7 @@ it('creates a brand new owner when requested', function () {
     $admin = seededAdmin();
     $plan = Plan::factory()->create();
 
-    $this->actingAs($admin)->post(route('organizations.store'), [
+    $this->actingAs($admin)->post(route('platform.organizations.store'), [
         'name' => 'Fresh Owner Org',
         'owner_mode' => 'new',
         'owner_first_name' => 'Olivia',
@@ -206,7 +206,7 @@ it('suspends an organization through edit permission', function () {
     $organization = app(TenantService::class)->createOrganization($owner, 'Suspend Me', $plan);
 
     $this->actingAs($admin)
-        ->patch(route('organizations.update', $organization), [
+        ->patch(route('platform.organizations.update', $organization), [
             'name' => $organization->name,
             'status' => 'suspended',
             'plan_id' => $plan->id,
@@ -233,10 +233,10 @@ it('filters the users index by a partial search term', function () {
     User::factory()->create(['name' => 'John Smith', 'email' => 'john.smith@example.test', 'onboarded_at' => now()]);
 
     $this->actingAs($admin)
-        ->get(route('users.index', ['search' => 'jane.doe']))
+        ->get(route('platform.users.index', ['search' => 'jane.doe']))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('users/index')
+            ->component('platform/users/index')
             ->where('users.data', fn ($rows) => count($rows) === 1 && str_contains($rows[0]['email'], 'jane.doe')));
 });
 
@@ -245,18 +245,18 @@ it('omits the owner list until it is explicitly requested', function () {
     $admin = seededAdmin();
 
     $this->actingAs($admin)
-        ->get(route('organizations.index'))
+        ->get(route('platform.organizations.index'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('organizations/index')
+            ->component('platform/organizations/index')
             // Optional prop: absent from a normal visit so a search, sort,
             // page change or sheet open does not query and serialise every
             // user on the platform.
             ->missing('owners'));
 
     $this->actingAs($admin)
-        ->get(route('organizations.index'), [
-            'X-Inertia-Partial-Component' => 'organizations/index',
+        ->get(route('platform.organizations.index'), [
+            'X-Inertia-Partial-Component' => 'platform/organizations/index',
             'X-Inertia-Partial-Data' => 'owners',
         ], [
             'X-Inertia' => 'true',
@@ -264,7 +264,7 @@ it('omits the owner list until it is explicitly requested', function () {
         ])
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('organizations/index')
+            ->component('platform/organizations/index')
             ->has('owners'));
 });
 
@@ -277,9 +277,36 @@ it('filters the organizations index by a partial search term', function () {
     app(TenantService::class)->createOrganization(owner: $admin, name: 'Aardvark Group', plan: $plan);
 
     $this->actingAs($admin)
-        ->get(route('organizations.index', ['search' => 'zebra']))
+        ->get(route('platform.organizations.index', ['search' => 'zebra']))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('organizations/index')
+            ->component('platform/organizations/index')
             ->where('organizations.data', fn ($rows) => count($rows) === 1));
+});
+
+test('the old module paths redirect to their new platform homes, query string intact', function () {
+    (new RolesAndPermissionsSeeder)->run();
+    (new PlansSeeder)->run();
+
+    $admin = User::factory()->create();
+    $admin->assignRole(PlatformRole::Admin->value);
+
+    $organization = Organization::factory()->create();
+
+    // A bookmarked overlay link has to survive the move, or the visitor lands on
+    // a bare list with the sheet closed and no idea why.
+    $this->actingAs($admin)
+        ->get('/organizations?mode=edit&organization='.$organization->id)
+        ->assertRedirect(route('platform.organizations.index', [
+            'mode' => 'edit',
+            'organization' => $organization->id,
+        ]));
+
+    $this->actingAs($admin)
+        ->get('/users?mode=view&user=1')
+        ->assertRedirect(route('platform.users.index', ['mode' => 'view', 'user' => 1]));
+
+    $this->actingAs($admin)
+        ->get('/users')
+        ->assertRedirect(route('platform.users.index'));
 });
