@@ -65,6 +65,28 @@ return Application::configure(basePath: dirname(__DIR__))
             }
 
             if ($e instanceof HttpException && $e->getStatusCode() === 403) {
+                // A 403 during an impersonation session is almost never about
+                // the impersonated user's own permissions — the person has none,
+                // because they are an admin wearing an owner's session. Saying
+                // only "you do not have permission" sends them hunting for a
+                // permission they never had, when the real answer is that they
+                // are in someone else's session and can hand it back.
+                $impersonatedBy = $request->session()->get('impersonated_by');
+
+                if (is_array($impersonatedBy) && isset($impersonatedBy['organization'])) {
+                    Inertia::flash('toast', [
+                        'type' => 'warning',
+                        'message' => 'You are signed in as an owner of '
+                            .$impersonatedBy['organization']
+                            .' because an admin started an impersonation session. '
+                            .'Use "Return to admin" to get your own account back.',
+                    ]);
+
+                    return $request->headers->get('referer')
+                        ? redirect()->back()
+                        : redirect()->route('dashboard');
+                }
+
                 return $toastBack(
                     $e->getMessage() !== ''
                         ? $e->getMessage()

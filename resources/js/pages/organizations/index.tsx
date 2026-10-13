@@ -52,6 +52,12 @@ type OrganizationRow = {
     domain: string | null;
     users_count: number;
     created_at: string | null;
+    /**
+     * Why this organization's owner cannot be impersonated, or null when it
+     * can. Mirrors the endpoint's own checks so the button can explain itself
+     * instead of failing after the click.
+     */
+    impersonation_blocked_reason: string | null;
 };
 
 type Props = {
@@ -484,12 +490,19 @@ export default function OrganizationsIndex({
                                         type="submit"
                                         icon={<LogIn />}
                                         label={
-                                            organization.domain
-                                                ? `Log in as owner of ${organization.name}`
-                                                : `${organization.name} has no domain configured`
+                                            organization.impersonation_blocked_reason
+                                                ? `${organization.impersonation_blocked_reason} (${organization.name})`
+                                                : `Log in as owner of ${organization.name}`
                                         }
                                         color="brand"
-                                        disabled={!organization.domain}
+                                        // The endpoint refuses in exactly these
+                                        // cases. Disabled here, the reason is
+                                        // readable on hover instead of arriving
+                                        // as a toast after a dead click.
+                                        disabled={
+                                            organization.impersonation_blocked_reason !==
+                                            null
+                                        }
                                     />
                                 </Form>
                             )}
