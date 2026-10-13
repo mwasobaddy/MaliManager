@@ -10,6 +10,9 @@ import { cn } from '@/lib/utils';
 
 export type StatusTone = 'success' | 'warning' | 'danger' | 'info' | 'muted';
 
+/** Tones a *toggle* can wear — `info` has no status token and `muted` reads as broken. */
+export type ToggleTone = Exclude<StatusTone, 'info' | 'muted'>;
+
 /**
  * Glyph colour only — no tinted chip. A filled circle behind every status reads
  * as a badge in miniature and adds visual noise to a dense table; the icon
@@ -64,6 +67,21 @@ export function StatusIcon({
 }
 
 /**
+ * The full class triple for a toggle tone.
+ *
+ * Written out rather than interpolated from the tone name on purpose: Tailwind
+ * extracts class names by scanning source text, so `` `bg-status-${tone}/12` ``
+ * never makes it into the build and the rule silently disappears. Only `info`
+ * is excluded — its glyph colour is `--action-view`, which has no
+ * `--status-info` token to tint against.
+ */
+const TOGGLE_TONE_CLASSES = {
+    success: 'bg-status-success/12 text-status-success hover:bg-status-success/20 focus-visible:ring-status-success/30',
+    warning: 'bg-status-warning/12 text-status-warning hover:bg-status-warning/20 focus-visible:ring-status-warning/30',
+    danger: 'bg-status-danger/12 text-status-danger hover:bg-status-danger/20 focus-visible:ring-status-danger/30',
+} satisfies Record<Exclude<StatusTone, 'info' | 'muted'>, string>;
+
+/**
  * The status *control* for a table's action cell.
  *
  * Split deliberately from `StatusIcon`: the status column only reports state,
@@ -72,10 +90,14 @@ export function StatusIcon({
  * was three columns away.
  *
  * The glyph carries the state rather than just colouring it — `Power` for
- * active, `PowerOff` for suspended — so the meaning survives greyscale and
+ * active, `PowerOff` for inactive — so the meaning survives greyscale and
  * colour-blindness, which is the same rule `ui-design-system.md` §1 sets for
- * status generally. Colour reinforces it: green when active, red when
- * suspended.
+ * status generally.
+ *
+ * The tones are overridable because "inactive" is not one meaning. For users
+ * and organizations it means *suspended*, which is a red flag and defaults to
+ * `danger`. For plans it means the tier is off sale, which is an ordinary
+ * merchandising choice and reads as a warning instead.
  */
 export function StatusPowerToggle({
     status,
@@ -83,6 +105,8 @@ export function StatusPowerToggle({
     inactiveLabel,
     onClick,
     disabled,
+    activeTone = 'success',
+    inactiveTone = 'danger',
 }: {
     status: string;
     /** Sentence the tooltip reads while the row is active, e.g. "Suspend X". */
@@ -91,17 +115,15 @@ export function StatusPowerToggle({
     inactiveLabel: string;
     onClick: () => void;
     disabled?: boolean;
+    activeTone?: ToggleTone;
+    inactiveTone?: ToggleTone;
 }) {
     const isActive = status === 'active';
 
     return (
         <ActionIconButton
             color="default"
-            className={cn(
-                isActive
-                    ? 'bg-status-success/12 text-status-success hover:bg-status-success/20 focus-visible:ring-status-success/30'
-                    : 'bg-status-danger/12 text-status-danger hover:bg-status-danger/20 focus-visible:ring-status-danger/30',
-            )}
+            className={TOGGLE_TONE_CLASSES[isActive ? activeTone : inactiveTone]}
             icon={isActive ? <Power /> : <PowerOff />}
             label={isActive ? activeLabel : inactiveLabel}
             tooltipSide="top"
