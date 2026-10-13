@@ -100,8 +100,7 @@ export default function UsersIndex({
     platformRoles,
 }: Props) {
     const page = usePage();
-    const permissions =
-        ((page.props.auth?.permissions ?? []) as string[]) ?? [];
+    const permissions = (page.props.auth?.permissions ?? []) as string[];
     const canCreate = permissions.includes('user.create');
     const canEdit = permissions.includes('user.edit');
     const canDelete = permissions.includes('user.delete');
@@ -135,6 +134,11 @@ export default function UsersIndex({
     const isCreateOpen = query.get('create') === '1';
     const isImportOpen = query.get('import') === '1';
     const isExportOpen = query.get('export') === '1';
+
+    // `query.has()` is true even for an empty value, and closing navigates to
+    // `filters=` — so comparing against '' is what actually closes the sheet.
+    const isFiltersOpen =
+        query.get('filters') !== null && query.get('filters') !== '';
 
     const [importErrors, setImportErrors] = useState<
         { row: number; message: string }[]
@@ -491,7 +495,7 @@ export default function UsersIndex({
         <>
             <Head title="Users" />
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center justify-between gap-3">
                     <Heading
                         title="User management"
                         description="Create and manage people and their user accounts."
@@ -510,10 +514,21 @@ export default function UsersIndex({
                     )}
                 </div>
 
-                <Card>
-                    <div className="flex items-center justify-between gap-3 border-b p-4">
+                {/*
+                 * One card = the table's frame. Search/filters live in a header
+                 * band above the rows rather than in their own floating card
+                 * (that produced a box-in-box). Export sits here too because it
+                 * acts on this table's result set; "New user" is a page-level
+                 * CTA and stays in the page header.
+                 *
+                 * `gap-0 py-0` is what makes the band flush with the card edge:
+                 * the Card's own padding would otherwise inset the search row
+                 * relative to the table below it.
+                 */}
+                <Card className="gap-0 py-0">
+                    <div className="flex flex-wrap items-center gap-2 border-b border-border-strong p-4">
                         <div className="relative min-w-56 flex-1">
-                            <Search className="absolute top-2.5 left-2 size-4 text-muted-foreground" />
+                            <Search className="pointer-events-none absolute top-2.5 left-2.5 size-4 text-muted-foreground" />
                             <Input
                                 value={searchDraft}
                                 onChange={(event) =>
@@ -528,38 +543,35 @@ export default function UsersIndex({
                                 className="border-border-strong bg-background pr-3 pl-9"
                             />
                         </div>
-                        <div className="flex gap-1">
+                        <ActionIconButton
+                            icon={<ListFilter />}
+                            label="Filters"
+                            color="teal"
+                            onClick={() =>
+                                isFiltersOpen
+                                    ? setOverlayParam('filters', null, {
+                                          replace: true,
+                                      })
+                                    : setOverlayParam('filters', '1')
+                            }
+                        />
+                        {canImport && (
                             <ActionIconButton
-                                icon={<ListFilter />}
-                                label="Filters"
+                                icon={<Upload />}
+                                label="Import from CSV"
                                 color="teal"
-                                onClick={() =>
-                                    setOverlayParam('filters', '1')
-                                }
+                                onClick={() => setOverlayParam('import', '1')}
                             />
-                            {canImport && (
-                                <ActionIconButton
-                                    icon={<Upload />}
-                                    label="Import from CSV"
-                                    color="teal"
-                                    onClick={() =>
-                                        setOverlayParam('import', '1')
-                                    }
-                                />
-                            )}
-                            {canExport && (
-                                <ActionIconButton
-                                    icon={<Download />}
-                                    label="Export"
-                                    color="teal"
-                                    onClick={() =>
-                                        setOverlayParam('export', '1')
-                                    }
-                                />
-                            )}
-                        </div>
+                        )}
+                        {canExport && (
+                            <ActionIconButton
+                                icon={<Download />}
+                                label="Export"
+                                color="teal"
+                                onClick={() => setOverlayParam('export', '1')}
+                            />
+                        )}
                     </div>
-
                     <DataTable
                         columns={columns}
                         data={users.data}
@@ -1149,7 +1161,7 @@ export default function UsersIndex({
                     method="post"
                     action={usersRoutes.importMethod()}
                     encType="multipart/form-data"
-                    onSuccess={(page) => {
+                    onSuccess={(page: unknown) => {
                         // Flash rides on the page object itself, not `props`.
                         // A partial failure must leave the sheet open so the
                         // per-row report stays readable.
