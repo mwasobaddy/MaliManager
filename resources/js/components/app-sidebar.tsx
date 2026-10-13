@@ -36,12 +36,13 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard as centralDashboard } from '@/routes';
-import { index as organizationsIndex } from '@/routes/organizations';
 import { index as platformAuditIndex } from '@/routes/platform/audit';
 import { index as platformExpensesIndex } from '@/routes/platform/expenses';
+import { index as organizationsIndex } from '@/routes/platform/organizations';
 import { index as plansIndex } from '@/routes/platform/plans';
 import { index as rolesIndex } from '@/routes/platform/roles';
 import { index as subscriptionPaymentsIndex } from '@/routes/platform/subscription-payments';
+import { index as usersIndex } from '@/routes/platform/users';
 import { rentals as searcherRentals } from '@/routes/searcher';
 import { index as maintenanceRoute } from '@/routes/searcher/maintenance';
 import { overview as overviewIndex } from '@/routes/tenant';
@@ -66,7 +67,6 @@ import {
 } from '@/routes/tenant/properties';
 import { index as reportsNavIndex } from '@/routes/tenant/reports';
 import { index as staffIndex } from '@/routes/tenant/staff';
-import { index as usersIndex } from '@/routes/users';
 import type { NavItem } from '@/types';
 
 const footerNavItems: NavItem[] = [

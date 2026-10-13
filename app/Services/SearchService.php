@@ -195,12 +195,12 @@ class SearchService
 
             $domain = $this->domainForOrganization((int) $orgId);
 
-            return $domain ? 'https://'.$domain.route($name, $params, false) : route('organizations.index');
+            return $domain ? 'https://'.$domain.route($name, $params, false) : route('platform.organizations.index');
         };
 
         return match ($key) {
-            'users' => route('users.edit', $model),
-            'organizations' => route('organizations.edit', $model),
+            'users' => route('platform.users.edit', $model),
+            'organizations' => route('platform.organizations.edit', $model),
             'properties' => $tenant('tenant.properties.dashboard', ['property' => $model->slug]),
             'land_parcels' => $tenant('tenant.land-parcels.show', ['property' => $model->property?->slug, 'land_parcel' => $model->slug]),
             'units' => $tenant('tenant.properties.dashboard', ['property' => $model->property?->slug]),

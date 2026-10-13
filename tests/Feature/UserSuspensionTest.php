@@ -32,7 +32,7 @@ test('suspended user is forced to the suspended page on next request', function 
     $victim = User::factory()->create(['status' => 'active']);
 
     $this->actingAs($admin)
-        ->patch(route('users.status', $victim), ['status' => 'suspended'])
+        ->patch(route('platform.users.status', $victim), ['status' => 'suspended'])
         ->assertRedirect();
 
     $victim->refresh();
@@ -47,7 +47,7 @@ test('inactive user is also forced to the suspended page', function () {
     $victim = User::factory()->create(['status' => 'active']);
 
     $this->actingAs($admin)
-        ->patch(route('users.status', $victim), ['status' => 'inactive'])
+        ->patch(route('platform.users.status', $victim), ['status' => 'inactive'])
         ->assertRedirect();
 
     $victim->refresh();
@@ -62,7 +62,7 @@ test('suspended user receives a 403 on json requests', function () {
     $victim = User::factory()->create(['status' => 'active']);
 
     $this->actingAs($admin)
-        ->patch(route('users.status', $victim), ['status' => 'suspended'])
+        ->patch(route('platform.users.status', $victim), ['status' => 'suspended'])
         ->assertRedirect();
 
     $victim->refresh();
@@ -77,7 +77,7 @@ test('an admin cannot suspend their own account', function () {
     $admin->assignRole('admin');
 
     $this->actingAs($admin)
-        ->patch(route('users.status', $admin), ['status' => 'suspended'])
+        ->patch(route('platform.users.status', $admin), ['status' => 'suspended'])
         ->assertRedirect();
 
     expect($admin->fresh()->status)->toBe('active');
@@ -98,7 +98,7 @@ test('suspending a user revokes their active sessions', function () {
     expect(DB::table('sessions')->where('user_id', $victim->id)->count())->toBe(1);
 
     $this->actingAs($admin)
-        ->patch(route('users.status', $victim), ['status' => 'suspended'])
+        ->patch(route('platform.users.status', $victim), ['status' => 'suspended'])
         ->assertRedirect();
 
     expect(DB::table('sessions')->where('user_id', $victim->id)->count())->toBe(0);

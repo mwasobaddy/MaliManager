@@ -18,7 +18,7 @@ beforeEach(function () {
 test('guests cannot impersonate an organization owner', function () {
     $organization = Organization::factory()->create();
 
-    $this->post(route('organizations.impersonate', $organization))
+    $this->post(route('platform.organizations.impersonate', $organization))
         ->assertRedirect(route('login'));
 });
 
@@ -29,7 +29,7 @@ test('plain users are blocked from impersonating an organization owner', functio
     $organization->users()->attach($user->id, ['is_owner' => true, 'status' => 'active']);
 
     $this->actingAs($user)
-        ->post(route('organizations.impersonate', $organization))
+        ->post(route('platform.organizations.impersonate', $organization))
         ->assertRedirect();
     assertErrorToast();
 });
@@ -51,7 +51,7 @@ test('the impersonate permission is enforced and not just the admin role', funct
     $organization->users()->attach($owner->id, ['is_owner' => true, 'status' => 'active']);
 
     $this->actingAs($admin)
-        ->post(route('organizations.impersonate', $organization))
+        ->post(route('platform.organizations.impersonate', $organization))
         ->assertRedirect();
 
     // The important part: no impersonation may have been started.
@@ -70,7 +70,7 @@ test('admins can impersonate the organization owner without knowing the member i
     $organization->users()->attach($staff->id, ['is_owner' => false, 'status' => 'active']);
 
     $response = $this->actingAs($admin)
-        ->post(route('organizations.impersonate', $organization));
+        ->post(route('platform.organizations.impersonate', $organization));
 
     $token = app(ImpersonationToken::class)->latest('created_at')->firstOrFail();
 
@@ -88,7 +88,7 @@ test('admins cannot impersonate an organization that has no owner', function () 
     $organization->users()->attach($staff->id, ['is_owner' => false, 'status' => 'active']);
 
     $this->actingAs($admin)
-        ->post(route('organizations.impersonate', $organization))
+        ->post(route('platform.organizations.impersonate', $organization))
         ->assertRedirect();
     assertErrorToast();
 });
@@ -102,7 +102,7 @@ test('admins cannot impersonate an organization without a configured domain', fu
     $organization->users()->attach($owner->id, ['is_owner' => true, 'status' => 'active']);
 
     $this->actingAs($admin)
-        ->post(route('organizations.impersonate', $organization))
+        ->post(route('platform.organizations.impersonate', $organization))
         ->assertRedirect();
     assertErrorToast();
 });
@@ -112,10 +112,10 @@ test('the organizations page shares the impersonate permission to the frontend',
     $admin->assignRole('admin');
 
     $this->actingAs($admin)
-        ->get(route('organizations.index'))
+        ->get(route('platform.organizations.index'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('organizations/index')
+            ->component('platform/organizations/index')
             ->where('auth.permissions', fn (Collection $permissions) => $permissions->contains('organization.impersonate')));
 });
 
@@ -136,7 +136,7 @@ test('starting an impersonation records the admin in the session', function () {
     $owner = User::factory()->create(['onboarded_at' => now()]);
     $organization->users()->attach($owner->id, ['is_owner' => true, 'status' => 'active']);
 
-    $this->actingAs($admin)->post(route('organizations.impersonate', $organization));
+    $this->actingAs($admin)->post(route('platform.organizations.impersonate', $organization));
 
     $recorded = session('impersonated_by');
 
@@ -158,7 +158,7 @@ test('the impersonation flag is shared to the frontend so the banner can render'
     $organization->users()->attach($owner->id, ['is_owner' => true, 'status' => 'active']);
 
     $this->actingAs($admin)
-        ->post(route('organizations.impersonate', $organization));
+        ->post(route('platform.organizations.impersonate', $organization));
 
     // Every page gets the flag, on either domain — the session cookie spans both.
     $this->actingAs($owner)
@@ -188,7 +188,7 @@ test('an admin can hand the session back and gets their own account again', func
     $owner = User::factory()->create(['onboarded_at' => now()]);
     $organization->users()->attach($owner->id, ['is_owner' => true, 'status' => 'active']);
 
-    $this->actingAs($admin)->post(route('organizations.impersonate', $organization));
+    $this->actingAs($admin)->post(route('platform.organizations.impersonate', $organization));
 
     $response = $this->actingAs($owner)
         ->post(route('impersonation.stop'));
@@ -208,7 +208,7 @@ test('ending an impersonation is audited so the trail has an end', function () {
     $owner = User::factory()->create(['onboarded_at' => now()]);
     $organization->users()->attach($owner->id, ['is_owner' => true, 'status' => 'active']);
 
-    $this->actingAs($admin)->post(route('organizations.impersonate', $organization));
+    $this->actingAs($admin)->post(route('platform.organizations.impersonate', $organization));
     $this->actingAs($owner)->post(route('impersonation.stop'));
 
     $audit = Audit::where('event', 'impersonation.stopped')->latest()->first();
@@ -230,7 +230,7 @@ test('the stop route does not require the admin role, because the owner is not o
     $owner = User::factory()->create(['onboarded_at' => now()]);
     $organization->users()->attach($owner->id, ['is_owner' => true, 'status' => 'active']);
 
-    $this->actingAs($admin)->post(route('organizations.impersonate', $organization));
+    $this->actingAs($admin)->post(route('platform.organizations.impersonate', $organization));
 
     $this->actingAs($owner)
         ->post(route('impersonation.stop'))
@@ -251,7 +251,7 @@ test('stopping signs out rather than restoring a demoted admin', function () {
     $owner = User::factory()->create(['onboarded_at' => now()]);
     $organization->users()->attach($owner->id, ['is_owner' => true, 'status' => 'active']);
 
-    $this->actingAs($admin)->post(route('organizations.impersonate', $organization));
+    $this->actingAs($admin)->post(route('platform.organizations.impersonate', $organization));
 
     $admin->roles()->detach();
     app(PermissionRegistrar::class)->forgetCachedPermissions();
@@ -294,7 +294,7 @@ test('the row tells the frontend when impersonation is blocked, and why', functi
     $adminOwned->users()->attach($admin->id, ['is_owner' => true, 'status' => 'active']);
 
     $this->actingAs($admin)
-        ->get(route('organizations.index'))
+        ->get(route('platform.organizations.index'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('organizations.data', function (Collection $rows) {
@@ -321,7 +321,7 @@ test('a row with no owner or no domain reports that instead', function () {
     $noOwner->tenant->domains()->create(['domain' => 'no-owner.malimanager.test']);
 
     $this->actingAs($admin)
-        ->get(route('organizations.index'))
+        ->get(route('platform.organizations.index'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('organizations.data', function (Collection $rows) {
@@ -344,13 +344,13 @@ test('a 403 during an impersonation explains the session rather than the permiss
     $owner = User::factory()->create(['onboarded_at' => now()]);
     $organization->users()->attach($owner->id, ['is_owner' => true, 'status' => 'active']);
 
-    $this->actingAs($admin)->post(route('organizations.impersonate', $organization));
+    $this->actingAs($admin)->post(route('platform.organizations.impersonate', $organization));
 
     // The owner hits a central admin page they have no permission for. The
     // generic "you do not have permission" copy sends them hunting for a
     // permission they never had; the real answer is the borrowed session.
     $response = $this->actingAs($owner)
-        ->get(route('organizations.index'));
+        ->get(route('platform.organizations.index'));
 
     $response->assertRedirect(route('dashboard'));
 
