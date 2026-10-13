@@ -2,9 +2,9 @@
 
 > Living notes from rebuilding the **Organizations** table (`resources/js/pages/organizations/index.tsx`).
 > This page is the reference implementation. **Users** (`pages/users/index.tsx`) and
-> **Plans** (`pages/platform/plans/index.tsx`) and **Subscription payments**
-> (`pages/platform/subscription-payments/index.tsx`) have been migrated to it;
-> Expenses and the tenant tables have not.
+> Every platform table has been migrated to it — **Plans**,
+> **Subscription payments**, **Expenses** and **Audit** — as has **Users**. Only
+> the tenant tables (properties, staff, occupants, land-parcels, drafting) have not.
 > Visual language is defined in `ui-design-system.md` — this file covers *structure*.
 
 ---
@@ -505,6 +505,8 @@ reachable", which was inaccurate.
 | Users | `pages/users/index.tsx` | same as organizations | Radio filters for status + role |
 | Plans | `pages/platform/plans/index.tsx` | view / edit / delete / confirm-delete / create / filters | No import/export; status is a boolean |
 | Subscription payments | `pages/platform/subscription-payments/index.tsx` | view / edit / delete / confirm-delete / create / filters | No status; optional org/plan lists; date-range filter |
+| Expenses | `pages/platform/expenses/index.tsx` | view / edit / delete / confirm-delete / create / filters | No status; category is a closed set, so a radio filter |
+| Audit | `pages/platform/audit/index.tsx` | view / filters / export | Read-only: no create, edit or actions column at all |
 
 ---
 
@@ -671,3 +673,48 @@ and tooltip stay the same, only the colour semantics change.
     assertion on a plain request proves nothing about partial reloads; testing the
     optional prop needs `X-Inertia-Partial-Data`, or the test passes while the
     feature is broken.
+
+## 11. Read-only tables
+
+`platform/audit/index.tsx` is the one table here with no create, no edit, no
+delete and **no Actions column at all**. The pattern still applies:
+
+- Rows open a detail sheet on `onRowClick` — an audit entry's description is
+  truncated in the row and belongs in full somewhere.
+- The header band holds search, Filters and Export, all teal. There is no
+  page-level CTA because there is nothing to create.
+- The filter vocabulary splits by whether the option set is *closed*:
+  `event` and `subject_type` grow with whatever code writes to the log, so they
+  stay `Select`s; `organization` is one row per org, so it is `optional()` and
+  loaded when the overlay opens.
+
+`AuditService` is shared with the tenant audit view, so the sort allowlist lives
+in the service and `query()` takes an optional sort argument that defaults to
+the `latest('created_at')` every existing caller relied on. A shared service is
+the usual reason a parameter has to be additive rather than required.
+
+---
+
+## 12. Traps from the last two migrations
+
+31. **`Request::string()` returns a Stringable, and an object is always truthy.**
+    `->when($request->string('search')->trim(), fn () => ...)` therefore ran the
+    filter *even with no search term*. On most tables the damage was invisible —
+    the clause it added was `like '%%'`, which matches everything — so the tests
+    passed and the query merely carried a useless condition. On expenses it also
+    bound `category = ''`, which matches nothing: the index returned **zero rows
+    for every unfiltered request**. `->trim()->toString()` gives a real string.
+    Fixing it touched five controllers at once, because the same line had been
+    copied between them.
+32. **A guarded `created_at` silently makes ordering assertions meaningless.**
+    `Audit::create(['created_at' => ...])` drops the timestamp — it is not
+    fillable — so the row lands at `now()` and every entry in the test appears
+    to have the same time. The default-order test then asserted "newest first"
+    against rows that were all identical, and passed or failed depending on
+    insertion order. Backdated rows need `forceFill(['created_at' => ...])`
+    after the insert.
+33. **A radio group in a dense row is worse than a Select, even for a closed
+    set.** Expenses has six fixed categories, and a radio group is right in the
+    filters overlay where all six are visible at once. In the two-column form a
+    Select reads better, so the same closed set is a dropdown there. The rule is
+    about room to show the options, not about the size of the set alone.
