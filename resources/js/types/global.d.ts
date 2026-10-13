@@ -20,6 +20,18 @@ declare module '@inertiajs/core' {
             sidebarOpen: boolean;
             centralUrl?: string;
             autoOpenPropertyPicker?: boolean;
+            /**
+             * Set while a platform admin is browsing as an organization owner.
+             * `can_return` is false when the admin is gone or no longer an
+             * admin, so the banner can hide the button rather than offering one
+             * that would fail.
+             */
+            impersonation: {
+                admin: { name: string; email: string };
+                organization: string;
+                started_at: string | null;
+                can_return: boolean;
+            } | null;
             [key: string]: unknown;
         };
     }

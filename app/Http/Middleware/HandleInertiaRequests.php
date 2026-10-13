@@ -7,6 +7,7 @@ use App\Enums\PlatformPermissionKey;
 use App\Enums\SubPermissionKey;
 use App\Models\Lease;
 use App\Models\Property;
+use App\Models\User;
 use App\Services\PropertyAccessService;
 use App\Support\Ai\AiGateway;
 use App\Support\TenancyContext;
@@ -76,8 +77,46 @@ class HandleInertiaRequests extends Middleware
                     : null,
                 'permissions' => $this->permissions($user, $organization),
             ],
+            'impersonation' => $this->impersonation($request),
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'assistant' => $this->assistant($user, $organization),
+        ];
+    }
+
+    /**
+     * The impersonation session currently in progress, if any.
+     *
+     * Stancl's `UserImpersonation` overwrites the session user and keeps no
+     * record of the previous one, so `PlatformController` writes the admin's
+     * identity into `impersonated_by` first. This turns that flag into
+     * something the UI can render on either domain, which matters because the
+     * impersonated session can end up on the central one with no other signal
+     * that the person is not who they appear to be.
+     *
+     * `can_return` is deliberately false when the admin is gone or no longer an
+     * admin: offering a button that would log them into a session the `admin`
+     * middleware then refuses is worse than offering nothing.
+     *
+     * @return array{admin: array{name: string, email: string}, organization: string, started_at: string, can_return: bool}|null
+     */
+    private function impersonation(Request $request): ?array
+    {
+        $impersonatedBy = $request->session()->get('impersonated_by');
+
+        if (! is_array($impersonatedBy) || ! isset($impersonatedBy['user_id'])) {
+            return null;
+        }
+
+        $admin = User::find($impersonatedBy['user_id']);
+
+        return [
+            'admin' => [
+                'name' => $impersonatedBy['name'] ?? 'the previous user',
+                'email' => $impersonatedBy['email'] ?? '',
+            ],
+            'organization' => $impersonatedBy['organization'] ?? 'this organization',
+            'started_at' => $impersonatedBy['started_at'] ?? null,
+            'can_return' => $admin !== null && $admin->hasRole('admin'),
         ];
     }
 
