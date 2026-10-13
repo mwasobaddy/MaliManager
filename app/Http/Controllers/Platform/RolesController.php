@@ -5,9 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Platform;
 
 use App\Enums\PlatformPermissionKey;
-use App\Enums\PlatformRole;
 use App\Http\Controllers\Controller;
-use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -20,71 +18,63 @@ use Spatie\Permission\PermissionRegistrar;
 class RolesController extends Controller
 {
     /**
-     * Display all platform roles with their central permissions and
-     * a few assignable users.
+     * The platform roles and the central permissions each one carries.
+     *
+     * Role assignment does *not* live here. It used to — this page also
+     * rendered a table of users with a per-row role picker — but the users
+     * index already does it properly, through `PATCH /users/{user}`, with the
+     * role list coming from the `PlatformRole` enum. The copy here hardcoded
+     * the same four names in TypeScript and called `syncRoles()`, which
+     * *replaces* the set: a user with two roles silently lost one while a
+     * success toast said otherwise. One place to change a role, and it is the
+     * one that validates against the enum.
+     *
+     * Each row carries its own assigned-permission keys so the edit sheet
+     * renders from the URL alone, with no second round trip to resolve it.
      */
-    public function index(Request $request): Response
+    public function index(): Response
     {
         $roles = Role::with('permissions')
             ->orderBy('name')
             ->get()
-            ->map(function (Role $role) {
-                return [
-                    'id' => $role->id,
-                    'name' => $role->name,
-                    'permissions' => $role->permissions
-                        ->map(fn ($permission) => $permission->name)
-                        ->all(),
-                ];
-            });
-
-        $permissionCatalog = collect(PlatformPermissionKey::cases())
-            ->map(fn (PlatformPermissionKey $key) => ['value' => $key->value, 'label' => $key->label()])
-            ->values()
-            ->all();
-
-        $users = User::query()
-            ->with('roles')
-            ->orderBy('name')
-            ->limit(200)
-            ->get(['id', 'name', 'email'])
-            ->map(fn (User $user) => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'roles' => $user->roles->pluck('name')->all(),
+            ->map(fn (Role $role): array => [
+                'id' => $role->id,
+                'name' => $role->name,
+                'permissions' => $role->permissions
+                    ->map(fn (Permission $permission): array => [
+                        'value' => $permission->name,
+                        'label' => $this->permissionLabel($permission->name),
+                    ])
+                    ->values()
+                    ->all(),
             ]);
 
         return Inertia::render('platform/roles/index', [
             'roles' => $roles,
-            'permissions' => $permissionCatalog,
-            'users' => $users,
-            'isAdmin' => $request->user()?->hasPermissionTo(PlatformPermissionKey::ManageRoles->value),
+            'permissionCatalog' => collect(PlatformPermissionKey::cases())
+                ->map(fn (PlatformPermissionKey $key): array => [
+                    'value' => $key->value,
+                    'label' => $key->label(),
+                ])
+                ->values()
+                ->all(),
+            'canEdit' => request()->user()?->hasPermissionTo(PlatformPermissionKey::ManageRoles->value) ?? false,
         ]);
     }
 
     /**
-     * Show the central permissions assigned to a role.
+     * The human label for a permission key, falling back to the raw key for
+     * anything a role holds that the enum no longer declares.
      */
-    public function edit(Request $request, Role $role): Response
+    private function permissionLabel(string $value): string
     {
-        $permissionCatalog = collect(PlatformPermissionKey::cases())
-            ->map(fn (PlatformPermissionKey $key) => [
-                'value' => $key->value,
-                'label' => $key->label(),
-                'assigned' => $role->hasPermissionTo($key->value),
-            ])
-            ->values()
-            ->all();
+        foreach (PlatformPermissionKey::cases() as $key) {
+            if ($key->value === $value) {
+                return $key->label();
+            }
+        }
 
-        return Inertia::render('platform/roles/edit', [
-            'role' => [
-                'id' => $role->id,
-                'name' => $role->name,
-            ],
-            'permissions' => $permissionCatalog,
-            'isAdmin' => true,
-        ]);
+        return $value;
     }
 
     /**
@@ -104,25 +94,6 @@ class RolesController extends Controller
 
         Inertia::flash('toast', ['type' => 'success', 'message' => "Permissions for {$role->name} updated."]);
 
-        return to_route('platform.roles.edit', $role);
-    }
-
-    /**
-     * Replace a user's platform role (password-protected).
-     */
-    public function assignRole(Request $request, User $user): RedirectResponse
-    {
-        $validated = $request->validate([
-            'role' => ['required', Rule::in(collect(PlatformRole::cases())->map->value->all())],
-        ]);
-
-        $user->syncRoles([$validated['role']]);
-
-        Inertia::flash('toast', [
-            'type' => 'success',
-            'message' => "{$user->name} is now {$validated['role']}.",
-        ]);
-
-        return back();
+        return to_route('platform.roles.index');
     }
 }
