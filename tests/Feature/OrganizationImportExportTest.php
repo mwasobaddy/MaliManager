@@ -241,9 +241,9 @@ test('an off-page organization id in the url resolves the row for the overlay', 
     $plan = Plan::where('slug', 'free')->firstOrFail();
     $owners = User::factory()->count(20)->create();
 
+    $created = [];
     $target = null;
 
-    // Push the row we want onto a later page than page 1.
     foreach ($owners as $index => $owner) {
         $org = app(TenantService::class)->createOrganization(
             owner: $owner,
@@ -251,9 +251,22 @@ test('an off-page organization id in the url resolves the row for the overlay', 
             plan: $plan,
         );
 
+        $created[] = $org;
+
         if ($index === 19) {
             $target = $org;
         }
+    }
+
+    // The default order is `created_at DESC, id ASC`. Twenty organizations
+    // created in a tight loop can straddle a second boundary, which leaves a
+    // tie on `created_at` and lets the target drift onto page 1 — the test then
+    // fails not because the fallback is broken but because the row was never
+    // off-page to begin with. Pin the timestamps so the ordering is certain:
+    // index 0 is the newest, so the target (index 19) is the oldest and lands
+    // on page 2.
+    foreach ($created as $index => $org) {
+        $org->forceFill(['created_at' => now()->subMinutes($index)])->saveQuietly();
     }
 
     $this->actingAs($admin)
