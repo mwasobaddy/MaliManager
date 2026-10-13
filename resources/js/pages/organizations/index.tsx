@@ -95,8 +95,7 @@ export default function OrganizationsIndex({
     >([]);
     const [isTableLoading, setIsTableLoading] = useState(false);
     const page = usePage();
-    const permissions =
-        ((page.props.auth?.permissions ?? []) as string[]) ?? [];
+    const permissions = (page.props.auth?.permissions ?? []) as string[];
     const canCreate = permissions.includes('organization.create');
     const canEdit = permissions.includes('organization.edit');
     const canDelete = permissions.includes('organization.delete');
@@ -1256,7 +1255,7 @@ export default function OrganizationsIndex({
                     method="post"
                     action={orgRoutes.importMethod()}
                     encType="multipart/form-data"
-                    onSuccess={(page) => {
+                    onSuccess={(page: unknown) => {
                         // Flash rides on the page object itself, not `props`.
                         // A partial failure must leave the sheet open so the
                         // per-row report stays readable; only a clean run closes.
