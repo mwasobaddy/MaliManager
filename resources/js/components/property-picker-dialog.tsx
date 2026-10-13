@@ -241,9 +241,25 @@ export function PropertyPickerProvider({
             <Dialog
                 open={isOpen}
                 onOpenChange={(next) => {
-                    if (!mustChoose || next) {
-                        setIsOpen(next);
+                    if (next) {
+                        setIsOpen(true);
+
+                        return;
                     }
+
+                    // A user who must pick an asset has no way out, and that is
+                    // deliberate: every exit they do have calls `acknowledge()`.
+                    if (mustChoose) {
+                        return;
+                    }
+
+                    // X, Escape and click-outside all land here. They used to
+                    // call `setIsOpen(false)` on their own, which left the
+                    // session flag unset — so the picker came straight back on
+                    // the next dashboard load or refresh, and dismissing it felt
+                    // like it did nothing. Acknowledging on every close makes
+                    // *any* way out stick.
+                    acknowledge();
                 }}
             >
                 <DialogContent
