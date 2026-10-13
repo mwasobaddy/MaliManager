@@ -5,9 +5,11 @@ use App\Models\Organization;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Route;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
 use Stancl\Tenancy\Database\Models\ImpersonationToken;
+use Stancl\Tenancy\Middleware\PreventAccessFromCentralDomains;
 
 beforeEach(function () {
     (new RolesAndPermissionsSeeder)->run();
@@ -357,4 +359,24 @@ test('a 403 during an impersonation explains the session rather than the permiss
     expect($toast['type'] ?? null)->toBe('warning')
         ->and($toast['message'] ?? '')->toContain('Acme Estates')
         ->and($toast['message'] ?? '')->toContain('Return to admin');
+});
+
+test('the stop route is registered exactly once', function () {
+    // Defining `POST /impersonation/stop` in both routes/platform.php and
+    // routes/tenant.php collides *silently*: Laravel's route collection keeps
+    // one entry per method+URI, and `route:list` still shows a single tidy row.
+    // The tenant copy wins because tenant.php is loaded later, and it carries
+    // PreventAccessFromCentralDomains — which makes the central stop
+    // unreachable, so an admin has no way out of an impersonation at all.
+    $matches = collect(Route::getRoutes()->getRoutes())
+        ->filter(fn (Illuminate\Routing\Route $route) => $route->uri() === 'impersonation/stop'
+            && in_array('POST', (array) $route->methods(), true));
+
+    expect($matches)->toHaveCount(1)
+        ->and($matches->first()->gatherMiddleware())
+        ->not->toContain(PreventAccessFromCentralDomains::class);
+
+    // And it must not be behind `admin`: during an impersonation the current
+    // user is the owner, who would be refused by that middleware.
+    expect($matches->first()->gatherMiddleware())->not->toContain('admin');
 });
