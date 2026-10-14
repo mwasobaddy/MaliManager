@@ -1,18 +1,5 @@
 import { Head, router, usePage } from '@inertiajs/react';
-import {
-    Activity,
-    Archive,
-    Building2,
-    CreditCard,
-    FileText,
-    Home,
-    KeyRound,
-    TriangleAlert,
-    TrendingUp,
-    Users,
-    Wallet,
-    Wrench,
-} from 'lucide-react';
+import { TriangleAlert } from 'lucide-react';
 import { useState } from 'react';
 import {
     Pie,
@@ -313,29 +300,29 @@ function AdminTab({ stats }: { stats: AdminStats }) {
                 label="Platform overview"
                 items={[
                     {
-                        label: 'Organizations',
+                        label: 'Total Organizations',
                         value: stats.organizations_count,
-                                                icon: <Building2 />,
+                        variant: 'success',
                     },
                     {
-                        label: 'Subscribers',
+                        label: 'Active Subscribers',
                         value: stats.subscribers_count,
-                                                icon: <Users />,
+                        variant: 'accent',
                     },
                     {
-                        label: 'Plans',
+                        label: 'Total Plans',
                         value: stats.plans_count,
-                                                icon: <CreditCard />,
+                        variant: 'info',
                     },
                     {
-                        label: 'Income',
+                        label: 'Total Income',
                         value: `$${Number(stats.income_total).toLocaleString()}`,
-                                                icon: <TrendingUp />,
+                        variant: 'primary',
                     },
                     {
-                        label: 'Expenses',
+                        label: 'Total Expenses',
                         value: `$${Number(stats.expenses_total).toLocaleString()}`,
-                                                icon: <Wallet />,
+                        variant: 'warning',
                     },
                 ]}
             />
@@ -405,29 +392,29 @@ function OrganizationTab({ stats }: { stats: OrgStats }) {
                 label="Organization overview"
                 items={[
                     {
-                        label: 'Properties',
+                        label: 'Total Properties',
                         value: stats.properties_count,
-                                                icon: <Building2 />,
+                        variant: 'success',
                     },
                     {
-                        label: 'Units',
+                        label: 'Total Units',
                         value: stats.units_count,
-                                                icon: <Home />,
+                        variant: 'success',
                     },
                     {
-                        label: 'Active leases',
+                        label: 'Active Leases',
                         value: stats.active_leases,
-                                                icon: <KeyRound />,
+                        variant: 'accent',
                     },
                     {
-                        label: 'Open maintenance',
+                        label: 'Open Maintenance',
                         value: stats.maintenance_open,
-                                                icon: <Wrench />,
+                        variant: 'warning',
                     },
                     {
                         label: 'Expenses YTD',
                         value: `$${Number(stats.expenses_ytd).toLocaleString()}`,
-                                                icon: <Wallet />,
+                        variant: 'warning',
                     },
                 ]}
             />
@@ -527,30 +514,31 @@ function PersonTab({
                 label={label}
                 items={[
                     {
-                        label: label,
-                        value: stats.leases_count,                                                icon: <FileText />,
+                        label: 'Total Leases',
+                        value: stats.leases_count,
+                        variant: 'success',
                     },
                     {
-                        label: 'Active',
+                        label: 'Active Leases',
                         value: stats.active_leases,
-                                                icon: <Activity />,
+                        variant: 'accent',
                     },
                     {
-                        label: 'Ended',
+                        label: 'Ended Leases',
                         value: stats.ended_leases,
-                                                icon: <Archive />,
+                        variant: 'default',
                     },
                     {
-                        label: 'Total rent',
+                        label: 'Total Rent',
                         value: `$${Number(stats.total_rent).toLocaleString()}`,
-                                                icon: <Wallet />,
+                        variant: 'primary',
                     },
                     ...(stats.maintenance_open !== undefined
                         ? [
                               {
-                                  label: 'Open maintenance',
+                                  label: 'Open Maintenance',
                                   value: stats.maintenance_open,
-                                                                    icon: <Wrench />,
+                                  variant: 'warning',
                               },
                           ]
                         : []),

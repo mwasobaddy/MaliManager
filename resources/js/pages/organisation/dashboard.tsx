@@ -1,15 +1,5 @@
 import { Head, Link, router } from '@inertiajs/react';
-import {
-    Banknote,
-    Building2,
-    CalendarClock,
-    CheckCircle2,
-    CircleDashed,
-    DoorOpen,
-    KeyRound,
-    TriangleAlert,
-    Wrench,
-} from 'lucide-react';
+import { CalendarClock, TriangleAlert, Wrench } from 'lucide-react';
 import { useState } from 'react';
 import type { ComboPoint } from '@/components/dashboard/combo-chart';
 import { ComboChart } from '@/components/dashboard/combo-chart';
@@ -107,6 +97,7 @@ export default function OrganizationDashboard({
     properties,
     properties_count,
     total_units,
+    in_maintenance,
     active_leases,
     rent_potential,
     occupancy_rate,
@@ -204,40 +195,34 @@ export default function OrganizationDashboard({
                     summary={`${occupancy_rate}% occupied`}
                     items={[
                         {
-                            label: 'Properties',
+                            label: 'Total Properties',
                             value: properties_count,
-                            // description: 'Active assets',
-                            icon: <Building2 />,
+                            variant: 'success',
                         },
                         {
-                            label: 'Total units',
+                            label: 'Total Units',
                             value: total_units,
-                            // description: `${occupied} occupied`,
-                            icon: <DoorOpen />,
+                            variant: 'success',
                         },
                         {
-                            label: 'Occupancy rate',
+                            label: 'Occupancy Rate',
                             value: `${occupancy_rate}%`,
-                            // description: `${vacant} vacant`,
-                            icon: <CheckCircle2 />,
+                            variant: 'info',
                         },
                         {
-                            label: 'In maintenance',
+                            label: 'In Maintenance',
                             value: in_maintenance,
-                            // description: `${open_maintenance} open requests`,
-                            icon: <CircleDashed />,
+                            variant: 'warning',
                         },
                         {
-                            label: 'Active leases',
+                            label: 'Active Leases',
                             value: active_leases,
-                            // description: 'Across all properties',
-                            icon: <KeyRound />,
+                            variant: 'accent',
                         },
                         {
-                            label: 'Monthly rent potential',
+                            label: 'Monthly Rent Potential',
                             value: ccy(rent_potential),
-                            // description: 'If fully occupied',
-                            icon: <Banknote />,
+                            variant: 'primary',
                         },
                     ]}
                 />
