@@ -5,11 +5,11 @@ namespace App\Http\Controllers\Platform;
 use App\Enums\OrganizationStatus;
 use App\Enums\PlatformRole;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Organizations\DestroyOrganizationRequest;
-use App\Http\Requests\Organizations\ImportOrganizationsRequest;
-use App\Http\Requests\Organizations\StoreOrganizationRequest;
-use App\Http\Requests\Organizations\UpdateOrganizationRequest;
-use App\Http\Requests\Organizations\UpdateOrganizationStatusRequest;
+use App\Http\Requests\Platform\DestroyOrganizationRequest;
+use App\Http\Requests\Platform\ImportOrganizationRequest;
+use App\Http\Requests\Platform\StoreOrganizationRequest;
+use App\Http\Requests\Platform\UpdateOrganizationRequest;
+use App\Http\Requests\Platform\UpdateOrganizationStatusRequest;
 use App\Models\Organization;
 use App\Models\Plan;
 use App\Models\User;
@@ -330,7 +330,7 @@ class OrganizationController extends Controller
      * Redirects back keeping the `import` flag when some rows failed, so the
      * import sheet stays open and can render the per-row report.
      */
-    public function import(ImportOrganizationsRequest $request): RedirectResponse
+    public function import(ImportOrganizationRequest $request): RedirectResponse
     {
         $result = $this->service->import(
             $request->file('file'),

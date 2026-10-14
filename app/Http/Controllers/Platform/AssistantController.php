@@ -6,6 +6,7 @@ use App\Concerns\HandlesConversationHistory;
 use App\Enums\AiFeature;
 use App\Exceptions\AssistantUnavailableException;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Platform\AskAssistantRequest;
 use App\Models\AiConversation;
 use App\Models\AiMessage;
 use App\Models\Organization;
@@ -49,14 +50,9 @@ class AssistantController extends Controller
         ]);
     }
 
-    public function ask(Request $request): JsonResponse
+    public function ask(AskAssistantRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'question' => ['required', 'string', 'max:1000'],
-            'conversation_id' => ['nullable', 'integer'],
-            'new_conversation' => ['nullable', 'boolean'],
-            'title' => ['nullable', 'string', 'max:255'],
-        ]);
+        $validated = $request->validated();
 
         $user = $request->user();
         $scope = $this->scopeFor($user);

@@ -4,10 +4,11 @@ namespace App\Http\Controllers\Platform;
 
 use App\Enums\PlatformRole;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Users\DestroyUserRequest;
-use App\Http\Requests\Users\ImportUsersRequest;
-use App\Http\Requests\Users\StoreUserRequest;
-use App\Http\Requests\Users\UpdateUserRequest;
+use App\Http\Requests\Platform\DestroyUserRequest;
+use App\Http\Requests\Platform\ImportUserRequest;
+use App\Http\Requests\Platform\StoreUserRequest;
+use App\Http\Requests\Platform\UpdateUserRequest;
+use App\Http\Requests\Platform\UpdateUserStatusRequest;
 use App\Models\User;
 use App\Services\UserService;
 use App\Support\Search;
@@ -148,11 +149,9 @@ class UserController extends Controller
         return redirect()->route('platform.users.index');
     }
 
-    public function setStatus(Request $request, User $user): RedirectResponse
+    public function setStatus(UpdateUserStatusRequest $request, User $user): RedirectResponse
     {
-        $validated = $request->validate([
-            'status' => ['required', 'string', 'in:active,inactive,suspended'],
-        ]);
+        $validated = $request->validated();
 
         if ($user->id === $request->user()->id && $validated['status'] !== 'active') {
             Inertia::flash('toast', ['type' => 'error', 'message' => 'You cannot suspend your own account.']);
@@ -182,7 +181,7 @@ class UserController extends Controller
      * Redirects back keeping the `import` flag when some rows failed, so the
      * import sheet stays open and can render the per-row report.
      */
-    public function import(ImportUsersRequest $request): RedirectResponse
+    public function import(ImportUserRequest $request): RedirectResponse
     {
         $result = $this->service->import(
             $request->file('file'),

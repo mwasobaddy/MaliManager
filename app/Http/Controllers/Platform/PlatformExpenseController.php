@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Platform;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Admin\DestroyPlatformExpenseRequest;
-use App\Http\Requests\Admin\ImportPlatformExpenseRequest;
-use App\Http\Requests\Admin\StorePlatformExpenseRequest;
-use App\Http\Requests\Admin\UpdatePlatformExpenseRequest;
+use App\Http\Requests\Platform\DestroyPlatformExpenseRequest;
+use App\Http\Requests\Platform\ImportPlatformExpenseRequest;
+use App\Http\Requests\Platform\StorePlatformExpenseRequest;
+use App\Http\Requests\Platform\UpdatePlatformExpenseRequest;
 use App\Models\PlatformExpense;
 use App\Support\CsvReader;
 use Illuminate\Database\Eloquent\Builder;

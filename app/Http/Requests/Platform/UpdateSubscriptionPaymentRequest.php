@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Http\Requests\Admin;
+namespace App\Http\Requests\Platform;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-class StoreSubscriptionPaymentRequest extends FormRequest
+class UpdateSubscriptionPaymentRequest extends FormRequest
 {
     public function authorize(): bool
     {

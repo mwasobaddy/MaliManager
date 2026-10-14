@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Requests\Organizations;
+namespace App\Http\Requests\Platform;
 
 use App\Enums\OrganizationStatus;
 use Illuminate\Foundation\Http\FormRequest;

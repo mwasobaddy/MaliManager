@@ -6,9 +6,8 @@ namespace App\Http\Controllers\Platform;
 
 use App\Enums\PlatformPermissionKey;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Platform\UpdateRolePermissionsRequest;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 use Spatie\Permission\Models\Permission;
@@ -80,14 +79,9 @@ class RolesController extends Controller
     /**
      * Sync the central permissions for a role (password-protected).
      */
-    public function update(Request $request, Role $role): RedirectResponse
+    public function update(UpdateRolePermissionsRequest $request, Role $role): RedirectResponse
     {
-        $validated = $request->validate([
-            'permissions' => ['array'],
-            'permissions.*' => ['string', Rule::in(collect(PlatformPermissionKey::cases())->map->value->all())],
-        ]);
-
-        $permissions = Permission::whereIn('name', $validated['permissions'] ?? [])->get()->all();
+        $permissions = Permission::whereIn('name', $request->validated('permissions', []))->get()->all();
 
         $role->syncPermissions($permissions);
         app(PermissionRegistrar::class)->forgetCachedPermissions();

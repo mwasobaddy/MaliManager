@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Platform;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Admin\DestroySubscriptionPaymentRequest;
-use App\Http\Requests\Admin\ImportSubscriptionPaymentRequest;
-use App\Http\Requests\Admin\StoreSubscriptionPaymentRequest;
-use App\Http\Requests\Admin\UpdateSubscriptionPaymentRequest;
+use App\Http\Requests\Platform\DestroySubscriptionPaymentRequest;
+use App\Http\Requests\Platform\ImportSubscriptionPaymentRequest;
+use App\Http\Requests\Platform\StoreSubscriptionPaymentRequest;
+use App\Http\Requests\Platform\UpdateSubscriptionPaymentRequest;
 use App\Models\Organization;
 use App\Models\Plan;
 use App\Models\SubscriptionPayment;

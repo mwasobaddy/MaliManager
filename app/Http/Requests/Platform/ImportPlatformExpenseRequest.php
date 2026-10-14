@@ -1,13 +1,13 @@
 <?php
 
-namespace App\Http\Requests\Admin;
+namespace App\Http\Requests\Platform;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class ImportSubscriptionPaymentRequest extends FormRequest
+class ImportPlatformExpenseRequest extends FormRequest
 {
     /**
-     * Authorization is handled by the `can:importSubscriptionPayments` route middleware.
+     * Authorization is handled by the `can:importPlatformExpenses` route middleware.
      */
     public function authorize(): bool
     {
