@@ -3,7 +3,6 @@
 namespace App\Http\Requests\Tenant;
 
 use App\Models\Unit;
-use App\Support\TenancyContext;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -27,11 +26,9 @@ class StorePropertyRequest extends FormRequest
             'property_type_id' => [
                 'nullable',
                 'integer',
-                // Scoped to the tenant's own catalog — an id from another
-                // organization must not be accepted.
-                Rule::exists('property_types', 'id')
-                    ->where('organization_id', TenancyContext::organization()?->id)
-                    ->whereNull('deleted_at'),
+                // The catalog is platform-wide, so the scope is existence plus
+                // "not retired" rather than an organization match.
+                Rule::exists('property_types', 'id')->whereNull('deleted_at'),
             ],
             'units' => ['nullable', 'array', 'max:100'],
             'units.*.name' => ['required', 'string', 'max:255'],

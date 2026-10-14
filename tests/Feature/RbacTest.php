@@ -30,17 +30,15 @@ test('sub-permission catalog is seeded', function () {
 test('default sub-roles bundle their expected permissions', function () {
     $caretaker = $this->organization->subRoles()->where('slug', 'caretaker')->first();
 
-    expect($caretaker->subPermissions()->count())->toBe(19)
+    expect($caretaker->subPermissions()->count())->toBe(18)
         // Gates only GET /properties (the picker), which is where the staff
         // landing flow sends a caretaker. Without it they are redirected away.
         ->and($caretaker->hasSubPermissionFor(SubPermissionKey::PropertyManage))->toBeTrue()
-        // The property-type catalog, read-only: enough to load the picker on
-        // the property form, not enough to change the catalog itself.
-        ->and($caretaker->hasSubPermissionFor(SubPermissionKey::PropertyTypeManage))->toBeTrue()
-        ->and($caretaker->hasSubPermissionFor(SubPermissionKey::PropertyTypeCreate))->toBeFalse()
-        ->and($caretaker->hasSubPermissionFor(SubPermissionKey::PropertyTypeEdit))->toBeFalse()
-        ->and($caretaker->hasSubPermissionFor(SubPermissionKey::PropertyTypeDelete))->toBeFalse()
-        // Still no property write access: create/edit/delete stay off.
+        // Property types are not a sub-permission at all any more — the
+        // catalog is central configuration under `property-type.*`
+        // PlatformPermissionKeys, so a caretaker neither reads nor writes it
+        // through the org role system.
+        ->and($caretaker->hasSubPermissionFor(SubPermissionKey::PropertyCreate))->toBeFalse()
         ->and($caretaker->hasSubPermissionFor(SubPermissionKey::PropertyCreate))->toBeFalse()
         ->and($caretaker->hasSubPermissionFor(SubPermissionKey::PropertyEdit))->toBeFalse()
         ->and($caretaker->hasSubPermissionFor(SubPermissionKey::PropertyDelete))->toBeFalse()

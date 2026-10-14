@@ -100,11 +100,6 @@ class DefaultSubRoles
                     // access: create is property.create and create/store are
                     // additionally owner-only in PropertyController.
                     SubPermissionKey::PropertyManage,
-                    // Read-only gate for the property-type catalog, same shape as
-                    // property.manage above: enough to load the picker on the
-                    // property form, not enough to change the catalog. Owners
-                    // (Landlord) hold every key including create/edit/delete.
-                    SubPermissionKey::PropertyTypeManage,
                     SubPermissionKey::OccupantManage,
                     SubPermissionKey::OccupantCreate,
                     SubPermissionKey::OccupantEdit,
@@ -130,7 +125,6 @@ class DefaultSubRoles
                 'permissions' => [
                     SubPermissionKey::PropertyManage,
                     SubPermissionKey::PropertyEdit,
-                    SubPermissionKey::PropertyTypeManage,
                     SubPermissionKey::UnitManage,
                     SubPermissionKey::UnitEdit,
                     SubPermissionKey::OccupantManage,

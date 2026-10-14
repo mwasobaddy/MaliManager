@@ -2,31 +2,30 @@
 
 namespace App\Support;
 
-use App\Models\Organization;
+use App\Models\PropertyType;
 use Illuminate\Support\Str;
-use Spatie\Activitylog\Facades\Activity;
 
 /**
- * The property-type catalog every organization starts with.
+ * The platform-wide property-type catalog.
  *
- * Organization-scoped: each org gets its own copy and may then rename, add or
- * remove entries without touching anyone else's. The constants below are the
- * *starting* set, not a ceiling — `syncFor()` only ever adds what is missing,
- * so an owner who deletes a type does not get it resurrected by the next seed.
+ * One catalogue for every tenant, curated by platform admins. It was
+ * originally seeded per organization, which meant 52 rows written once per
+ * tenant and the possibility of one owner's copy diverging from another's — and
+ * it made "which types exist?" a question with 12 possible answers.
  *
- * Slugs are generated from the name rather than hand-written, which means a type
- * added here gets a usable path/import key for free and cannot collide with a
- * hand-typed one. `Str::slug` folds "4+ Bedroom Apartment" to
- * "4-bedroom-apartment" and "Bed & Breakfast (BnB)" to "bed-breakfast-bnb".
+ * `seed()` is idempotent and additive: it inserts what is missing and never
+ * renames, edits or deletes an existing row. An admin who renamed "Villa" or
+ * deleted a type keeps their version across re-seeds, exactly as
+ * `DefaultSubRoles::syncBundlesFor()` behaves for sub-permissions.
  */
-class DefaultPropertyTypes
+class PropertyTypeCatalog
 {
     public const RESIDENTIAL = 'residential';
 
     public const COMMERCIAL = 'commercial';
 
     /**
-     * The seeded catalog, in display order.
+     * The starting catalog, in display order.
      *
      * @return list<array{category: string, names: list<string>}>
      */
@@ -99,61 +98,22 @@ class DefaultPropertyTypes
     }
 
     /**
-     * Create the catalog for a newly created organization.
-     */
-    public static function createFor(Organization $organization, ?int $createdBy = null): void
-    {
-        // Seeded rows are not user actions. Logging them would write 52 entries
-        // per new organization, which drowns the audit log — the thing anyone
-        // actually reads when they need to know who changed what. An owner
-        // adding a type by hand still logs normally.
-        Activity::withoutLogging(function () use ($organization, $createdBy): void {
-            $order = 0;
-
-            foreach (self::catalog() as $group) {
-                foreach ($group['names'] as $name) {
-                    $organization->propertyTypes()->create([
-                        'name' => $name,
-                        'slug' => self::slugFor($name),
-                        'category' => $group['category'],
-                        'sort_order' => $order++,
-                        'status' => 'active',
-                        'created_by' => $createdBy,
-                    ]);
-                }
-            }
-        });
-    }
-
-    /**
-     * Add catalog types an existing organization's set is missing.
+     * Insert any catalog entries that do not exist yet.
      *
-     * `createFor` only runs at organization creation, so a type added to the
-     * catalog later would never reach organizations that already exist. Additive
-     * by design: nothing is ever removed or renamed here, so an owner who
-     * deleted a type keeps it deleted.
+     * Additive by design: nothing already present is touched. That is what
+     * makes this safe to call from a seeder that also runs against databases
+     * where an admin has customised the catalog.
      *
      * @return int Number of types added.
      */
-    public static function syncFor(Organization $organization): int
+    public static function seed(): int
     {
-        return (int) Activity::withoutLogging(
-            fn (): int => self::syncTypes($organization)
-        );
-    }
+        $existing = PropertyType::withTrashed()->pluck('slug')->all();
 
-    private static function syncTypes(Organization $organization): int
-    {
-        $existing = $organization->propertyTypes()
-            ->withTrashed()
-            ->pluck('slug')
-            ->all();
-
+        // Start after whatever is already used, so a newly added default lands
+        // at the end of the list instead of jumping to the top.
+        $order = (int) PropertyType::withTrashed()->max('sort_order') + 1;
         $added = 0;
-
-        // Start after whatever the organization already uses, so a newly added
-        // default lands at the end of their list instead of jumping to the top.
-        $order = (int) $organization->propertyTypes()->withTrashed()->max('sort_order') + 1;
 
         foreach (self::catalog() as $group) {
             foreach ($group['names'] as $name) {
@@ -163,7 +123,7 @@ class DefaultPropertyTypes
                     continue;
                 }
 
-                $organization->propertyTypes()->create([
+                PropertyType::create([
                     'name' => $name,
                     'slug' => $slug,
                     'category' => $group['category'],
@@ -181,11 +141,14 @@ class DefaultPropertyTypes
 
     /**
      * Deterministic slug for a type name.
+     *
+     * Generated rather than hand-written so an entry added here gets a usable
+     * import key for free. `Str::slug` folds "4+ Bedroom Apartment" to
+     * "4-bedroom-apartment" and "Bed & Breakfast (BnB)" to
+     * "bed-breakfast-bnb".
      */
     public static function slugFor(string $name): string
     {
-        return str(Str::slug($name))
-            ->limit(120, '')
-            ->toString();
+        return Str::limit(Str::slug($name), 120, '');
     }
 }

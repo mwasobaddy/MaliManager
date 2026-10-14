@@ -19,7 +19,6 @@ use App\Http\Controllers\Tenant\OccupantController;
 use App\Http\Controllers\Tenant\OrganizationDashboardController;
 use App\Http\Controllers\Tenant\PaymentController;
 use App\Http\Controllers\Tenant\PropertyController;
-use App\Http\Controllers\Tenant\PropertyTypeController;
 use App\Http\Controllers\Tenant\ReportController;
 use App\Http\Controllers\Tenant\StaffController;
 use App\Http\Controllers\Tenant\UnitController;
@@ -79,6 +78,17 @@ Route::middleware([
             ->name('tenant.properties.dashboard');
         Route::post('/{property:slug}/units', [UnitController::class, 'store'])
             ->name('tenant.properties.units.store');
+
+        // Units are browsable across the whole organization, not only from
+        // inside a property — photos are stored per unit and until now there
+        // was nowhere to actually see them. Kept inside `has-property`, because
+        // a unit only exists under a property.
+        Route::middleware('sub-permission:unit.manage')->group(function () {
+            Route::get('/units', [UnitController::class, 'index'])
+                ->name('tenant.units.index');
+            Route::get('/units/{unit}', [UnitController::class, 'show'])
+                ->name('tenant.units.show');
+        });
 
         Route::middleware('sub-permission:occupant.manage')->group(function () {
             Route::get('/{property:slug}/occupants', [OccupantController::class, 'index'])
@@ -250,41 +260,6 @@ Route::middleware([
     });
 
     Route::middleware(['auth', 'organization.active'])->group(function () {
-        // The property-type catalog.
-        //
-        // Deliberately NOT inside the `has-property` group above: the catalog is
-        // configuration, not something that depends on owning a building, and an
-        // owner should be able to curate it before they have any properties.
-        // Read-gated for staff who need the picker; writes are owner-only by
-        // default, since Landlord is the only bundle holding every key.
-        // Units are browsable across the whole organization, not only from
-        // inside a property — photos are stored per unit and until now there
-        // was nowhere to actually see them.
-        Route::middleware('sub-permission:unit.manage')->group(function () {
-            Route::get('/units', [UnitController::class, 'index'])
-                ->name('tenant.units.index');
-            Route::get('/units/{unit}', [UnitController::class, 'show'])
-                ->name('tenant.units.show');
-        });
-
-        Route::get('/property-types', [PropertyTypeController::class, 'index'])
-            ->middleware('sub-permission:property_type.manage')
-            ->name('tenant.property-types.index');
-        Route::post('/property-types', [PropertyTypeController::class, 'store'])
-            ->middleware('sub-permission:property_type.create')
-            ->name('tenant.property-types.store');
-        Route::patch('/property-types/{propertyType}', [PropertyTypeController::class, 'update'])
-            ->middleware('sub-permission:property_type.edit')
-            ->name('tenant.property-types.update');
-        // Export sits under the read gate rather than a write one: it discloses
-        // nothing the catalog page does not already show.
-        Route::get('/property-types/export', [PropertyTypeController::class, 'export'])
-            ->middleware('sub-permission:property_type.manage')
-            ->name('tenant.property-types.export');
-        Route::delete('/property-types/{propertyType}', [PropertyTypeController::class, 'destroy'])
-            ->middleware('sub-permission:property_type.delete')
-            ->name('tenant.property-types.destroy');
-
         Route::middleware('sub-permission:land_parcel.manage')->group(function () {
             Route::get('/land-parcels', [LandParcelController::class, 'index'])
                 ->name('tenant.land-parcels.index');

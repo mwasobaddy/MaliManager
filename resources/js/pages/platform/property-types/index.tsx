@@ -9,10 +9,11 @@ import {
     Search,
     Tag,
     Trash2,
+    Upload,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActionIconButton } from '@/components/action-icon-button';
-import { downloadCsv } from '@/components/csv-actions';
+import { CsvImportSheet, downloadCsv } from '@/components/csv-actions';
 import { CsvExportSheet } from '@/components/csv-export-sheet';
 import { DataTable } from '@/components/data-table';
 import Heading from '@/components/heading';
@@ -25,7 +26,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import * as typeRoutes from '@/routes/tenant/property-types';
+import * as typeRoutes from '@/routes/platform/property-types';
 
 type PropertyTypeRow = {
     id: number;
@@ -50,6 +51,8 @@ type Props = {
     canCreate: boolean;
     canEdit: boolean;
     canDelete: boolean;
+    canImport: boolean;
+    canExport: boolean;
 };
 
 /** Debounce so a fast typist issues one request, not one per keystroke. */
@@ -80,6 +83,8 @@ export default function PropertyTypesIndex({
     canCreate,
     canEdit,
     canDelete,
+    canImport,
+    canExport,
 }: Props) {
     const page = usePage();
     const query = useQuery();
@@ -101,6 +106,7 @@ export default function PropertyTypesIndex({
     const isCreateOpen = query.get('create') === '1';
     const isFiltersOpen =
         query.get('filters') !== null && query.get('filters') !== '';
+    const isImportOpen = query.get('import') === '1';
     const isExportOpen = query.get('export') === '1';
 
     const [isTableLoading, setIsTableLoading] = useState(false);
@@ -120,6 +126,8 @@ export default function PropertyTypesIndex({
         'canCreate',
         'canEdit',
         'canDelete',
+        'canImport',
+        'canExport',
     ];
 
     /** Changes only the URL, never the result set. */
@@ -408,10 +416,24 @@ export default function PropertyTypesIndex({
                                     : setOverlayParam('filters', '1')
                             }
                         />
-                        <CsvExportTrigger
-                            open={isExportOpen}
-                            setOverlayParam={setOverlayParam}
-                        />
+                        {canImport && (
+                            <ActionIconButton
+                                icon={<Upload />}
+                                label="Import from CSV"
+                                color="teal"
+                                onClick={() => setOverlayParam('import', '1')}
+                            />
+                        )}
+                        {canExport && (
+                            <ActionIconButton
+                                icon={<Download />}
+                                label="Export"
+                                color="teal"
+                                onClick={() =>
+                                    setOverlayParam('export', '1')
+                                }
+                            />
+                        )}
                     </div>
 
                     <DataTable
@@ -710,12 +732,25 @@ export default function PropertyTypesIndex({
             <CsvExportSheet
                 open={isExportOpen}
                 onClose={() => setOverlayParam('export', null, { replace: true })}
-                canExport
+                canExport={canExport}
                 total={propertyTypes.total}
                 pageCount={propertyTypes.data.length}
                 currentPage={propertyTypes.current_page}
                 activeFilters={activeFilterSummary}
                 onExport={runExport}
+            />
+
+            <CsvImportSheet
+                open={isImportOpen}
+                onClose={() => setOverlayParam('import', null, { replace: true })}
+                route={typeRoutes.importMethod}
+                idPrefix="property-types"
+                title="Import property types"
+                description="Upload a CSV to add types to the platform catalog."
+                required={['Name']}
+                optional={['Category', 'Status']}
+                canImport={canImport}
+                buttonLabel="Import types"
             />
         </>
     );
@@ -727,33 +762,6 @@ function Pill({ label, value }: { label: string; value: number }) {
             <span className="text-muted-foreground">{label}</span>
             <span className="font-medium tabular-nums">{value}</span>
         </span>
-    );
-}
-
-/**
- * The export button. Always rendered — the export endpoint is gated only by
- * tenancy, not by a sub-permission, so there is nothing to hide it behind.
- */
-function CsvExportTrigger({
-    open,
-    setOverlayParam,
-}: {
-    open: boolean;
-    setOverlayParam: (
-        key: string,
-        value: string | null,
-        options?: { replace?: boolean },
-    ) => void;
-}) {
-    return (
-        <ActionIconButton
-            icon={<Download />}
-            label="Export"
-            color="teal"
-            onClick={() =>
-                setOverlayParam('export', open ? null : '1', { replace: true })
-            }
-        />
     );
 }
 
@@ -857,5 +865,5 @@ function PropertyTypeFields({
 }
 
 PropertyTypesIndex.layout = {
-    breadcrumbs: [{ title: 'Properties' }, { title: 'Property types' }],
+    breadcrumbs: [{ title: 'Settings' }, { title: 'Property types' }],
 };

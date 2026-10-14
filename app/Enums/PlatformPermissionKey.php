@@ -18,6 +18,13 @@ enum PlatformPermissionKey: string
     case RoleImport = 'role.import';
     case RoleExport = 'role.export';
     case RoleDelete = 'role.delete';
+
+    case PropertyTypeManage = 'property-type.manage';
+    case PropertyTypeCreate = 'property-type.create';
+    case PropertyTypeEdit = 'property-type.edit';
+    case PropertyTypeDelete = 'property-type.delete';
+    case PropertyTypeImport = 'property-type.import';
+    case PropertyTypeExport = 'property-type.export';
     case AccessAdminDashboard = 'access admin dashboard';
     case ViewAdvancedMetrics = 'view advanced metrics';
     case ViewOrgMetrics = 'view organization metrics';
@@ -72,6 +79,12 @@ enum PlatformPermissionKey: string
             self::RoleImport => 'Import roles',
             self::RoleExport => 'Export roles',
             self::RoleDelete => 'Delete roles',
+            self::PropertyTypeManage => 'Manage property types',
+            self::PropertyTypeCreate => 'Create property types',
+            self::PropertyTypeEdit => 'Edit property types',
+            self::PropertyTypeDelete => 'Delete property types',
+            self::PropertyTypeImport => 'Import property types',
+            self::PropertyTypeExport => 'Export property types',
             self::AccessAdminDashboard => 'Access admin dashboard',
             self::ViewAdvancedMetrics => 'View advanced metrics',
             self::ViewOrgMetrics => 'View organization metrics',
@@ -122,6 +135,12 @@ enum PlatformPermissionKey: string
             self::RoleImport => 'importRoles',
             self::RoleExport => 'exportRoles',
             self::RoleDelete => 'deleteRoles',
+            self::PropertyTypeManage => 'managePropertyTypes',
+            self::PropertyTypeCreate => 'createPropertyTypes',
+            self::PropertyTypeEdit => 'editPropertyTypes',
+            self::PropertyTypeDelete => 'deletePropertyTypes',
+            self::PropertyTypeImport => 'importPropertyTypes',
+            self::PropertyTypeExport => 'exportPropertyTypes',
             self::AccessAdminDashboard => 'accessAdminDashboard',
             self::ViewAdvancedMetrics => 'viewAdvancedMetrics',
             self::ViewOrgMetrics => 'viewOrgMetrics',
