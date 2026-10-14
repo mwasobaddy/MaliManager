@@ -14,6 +14,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * The organization's property-type catalog.
@@ -72,12 +73,13 @@ class PropertyTypeController extends Controller
     {
         $organization = TenancyContext::organization();
 
-        $validated = $request->validated();
-
+        // `validated()` only returns declared rules, and `slug` is derived in
+        // the request's passedValidation() rather than being a rule — so it has
+        // to be read from the merged input, not from validated().
         $organization->propertyTypes()->create([
-            ...$validated,
-            'slug' => $request->validated('slug'),
-            'sort_order' => $validated['sort_order'] ?? $this->nextSortOrder(),
+            ...$request->validated(),
+            'slug' => $request->string('slug')->toString(),
+            'sort_order' => $request->integer('sort_order') ?: $this->nextSortOrder(),
             'status' => 'active',
             'created_by' => $request->user()?->id,
         ]);
@@ -120,6 +122,46 @@ class PropertyTypeController extends Controller
         ]);
 
         return back();
+    }
+
+    /**
+     * CSV export of the catalog, honouring the table's own filters.
+     *
+     * Export rather than import: the catalog is seeded per organization and an
+     * owner adds a type by hand in seconds, so a bulk-load path would be a way
+     * to get the catalog *wrong* in bulk. Export is the useful direction — the
+     * 52 seeded rows are worth having in a spreadsheet.
+     */
+    public function export(Request $request): StreamedResponse
+    {
+        $scope = $request->string('scope')->toString() === 'page' ? 'page' : 'all';
+
+        $query = $this->filtered($request)
+            ->withCount('properties')
+            ->orderBy('sort_order')
+            ->orderBy('name');
+
+        if ($scope === 'page') {
+            $query->forPage((int) $request->integer('page', 1), 20);
+        }
+
+        $csv = fopen('php://temp', 'r+');
+        fputcsv($csv, ['Name', 'Category', 'Properties in use', 'Description']);
+
+        foreach ($query->get() as $type) {
+            fputcsv($csv, [
+                $type->name,
+                $type->category->value,
+                $type->properties_count,
+                $type->description ?? '',
+            ]);
+        }
+
+        rewind($csv);
+
+        return response()->streamDownload(fn () => fpassthru($csv), 'property-types.csv', [
+            'Content-Type' => 'text/csv',
+        ]);
     }
 
     /**

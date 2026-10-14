@@ -104,7 +104,10 @@ class Unit extends Model implements HasMedia
         // Only disambiguate once the property is actually known; a unit created
         // without one (rare, but possible in a factory) just takes the base.
         while ($this->property_id !== null
-            && $this->property()->where('slug', $slug)->exists()) {
+            && static::query()
+                ->where('property_id', $this->property_id)
+                ->where('slug', $slug)
+                ->exists()) {
             $slug = Str::limit($base, 100 - strlen((string) $suffix), '').'-'.$suffix;
             $suffix++;
         }
@@ -146,11 +149,14 @@ class Unit extends Model implements HasMedia
     /**
      * The unit's photos as plain arrays for Inertia.
      *
-     * Media models carry a lot of machinery that the table does not need, and
-     * shipping the model would pull conversions and custom properties into the
-     * page payload.
+     * Media models carry a lot of machinery that the page does not need, and
+     * shipping them would pull conversions and custom properties into the
+     * payload. Only url and file_name, matching what inspections and
+     * maintenance already send — `getSize()` would stat the file on disk for
+     * every photo on the page, and the browser reports a size anyway when the
+     * image fails to load.
      *
-     * @return list<array{id: int, url: string, name: string, size: int}>
+     * @return list<array{id: int, url: string, name: string}>
      */
     public function photoPayload(): array
     {
@@ -158,8 +164,7 @@ class Unit extends Model implements HasMedia
             ->map(fn ($media): array => [
                 'id' => $media->getKey(),
                 'url' => $media->getUrl(),
-                'name' => $media->getFriendlyFileName(),
-                'size' => (int) $media->getSize(),
+                'name' => $media->file_name,
             ])
             ->values()
             ->all();

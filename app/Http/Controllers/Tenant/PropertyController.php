@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Tenant\StorePropertyRequest;
 use App\Models\Organization;
 use App\Models\Property;
+use App\Models\PropertyType;
 use App\Services\DashboardService;
 use App\Services\PropertyService;
 use App\Services\StaffService;
@@ -61,6 +62,20 @@ class PropertyController extends Controller
                 'properties_limit' => $organization->plan?->properties_limit,
                 'units_limit' => $organization->plan?->units_limit,
             ],
+            // The catalog the property can be typed against. Only active types
+            // are offered: a deactivated type is not something a new property
+            // should be labelled with, and the select is the only gate here.
+            'propertyTypes' => $organization->propertyTypes()
+                ->where('status', 'active')
+                ->orderBy('sort_order')
+                ->orderBy('name')
+                ->get(['id', 'name', 'category', 'sort_order'])
+                ->map(fn (PropertyType $type): array => [
+                    'id' => $type->id,
+                    'name' => $type->name,
+                    'category' => $type->category->value,
+                ])
+                ->all(),
             'canCreateProperty' => ($request->user()->isOwnerOf($organization)
                 || $request->user()->hasSubPermission($organization, SubPermissionKey::PropertyCreate))
                 && $this->canCreateProperty($organization),

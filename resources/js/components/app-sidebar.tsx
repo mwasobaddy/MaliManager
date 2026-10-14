@@ -4,6 +4,7 @@ import {
     BookOpen,
     Building2,
     CreditCard,
+    DoorOpen,
     FileText,
     FolderGit2,
     History,
@@ -14,6 +15,7 @@ import {
     ReceiptText,
     ScrollText,
     Sparkles,
+    Tags,
     Users,
     UserRound,
     Wand2,
@@ -65,8 +67,10 @@ import {
     dashboard as propertyDashboard,
     index as propertiesIndex,
 } from '@/routes/tenant/properties';
+import { index as propertyTypesIndex } from '@/routes/tenant/property-types';
 import { index as reportsNavIndex } from '@/routes/tenant/reports';
 import { index as staffIndex } from '@/routes/tenant/staff';
+import { index as unitsIndex } from '@/routes/tenant/units';
 import type { NavItem } from '@/types';
 
 const footerNavItems: NavItem[] = [
@@ -96,6 +100,10 @@ export function AppSidebar() {
         context?.permissions?.includes('land_parcel.create') ?? false;
     const canManageProperties =
         context?.permissions?.includes('property.manage') ?? false;
+    const canManagePropertyTypes =
+        context?.permissions?.includes('property_type.manage') ?? false;
+    const canManageUnits =
+        context?.permissions?.includes('unit.manage') ?? false;
     const canManageInspections =
         context?.permissions?.includes('inspection.manage') ?? false;
     const canViewLeases =
@@ -296,6 +304,18 @@ export function AppSidebar() {
                                   'Manage properties',
                                   propertiesIndex(),
                                   ArrowLeftRight,
+                              ),
+                          ]
+                        : []),
+                    ...(canManageUnits
+                        ? [item('Units', unitsIndex(), DoorOpen)]
+                        : []),
+                    ...(canManagePropertyTypes
+                        ? [
+                              item(
+                                  'Property types',
+                                  propertyTypesIndex(),
+                                  Tags,
                               ),
                           ]
                         : []),
