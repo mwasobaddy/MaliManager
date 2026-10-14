@@ -208,39 +208,39 @@ export default function OrganizationDashboard({
                     summary={`${occupancy_rate}% occupied`}
                     items={[
                         {
-                            title: 'Properties',
+                            label: 'Properties',
                             value: properties_count,
-                            description: 'Active assets',
+                            // description: 'Active assets',
                             icon: <Building2 />,
                         },
                         {
-                            title: 'Total units',
+                            label: 'Total units',
                             value: total_units,
-                            description: `${occupied} occupied`,
+                            // description: `${occupied} occupied`,
                             icon: <DoorOpen />,
                         },
                         {
-                            title: 'Occupancy rate',
+                            label: 'Occupancy rate',
                             value: `${occupancy_rate}%`,
-                            description: `${vacant} vacant`,
+                            // description: `${vacant} vacant`,
                             icon: <CheckCircle2 />,
                         },
                         {
-                            title: 'In maintenance',
+                            label: 'In maintenance',
                             value: in_maintenance,
-                            description: `${open_maintenance} open requests`,
+                            // description: `${open_maintenance} open requests`,
                             icon: <CircleDashed />,
                         },
                         {
-                            title: 'Active leases',
+                            label: 'Active leases',
                             value: active_leases,
-                            description: 'Across all properties',
+                            // description: 'Across all properties',
                             icon: <KeyRound />,
                         },
                         {
-                            title: 'Monthly rent potential',
+                            label: 'Monthly rent potential',
                             value: ccy(rent_potential),
-                            description: 'If fully occupied',
+                            // description: 'If fully occupied',
                             icon: <Banknote />,
                         },
                     ]}
@@ -459,11 +459,11 @@ export default function OrganizationDashboard({
 OrganizationDashboard.layout = {
     breadcrumbs: [
         {
-            title: 'Properties',
+            label: 'Properties',
             href: index(),
         },
         {
-            title: 'Overview',
+            label: 'Overview',
         },
     ],
 };
