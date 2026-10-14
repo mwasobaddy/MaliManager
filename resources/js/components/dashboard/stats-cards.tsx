@@ -1,5 +1,3 @@
-import { ChevronDown, ChevronUp } from 'lucide-react';
-import type { ReactNode } from 'react';
 import {
     Collapsible,
     CollapsibleContent,
@@ -10,7 +8,6 @@ type StatItem = {
     /** Full label including qualifier, e.g. "Total Organisations" not just "Organisations" */
     label: string;
     value: number | string;
-    icon: ReactNode;
     /** Optional brand color variant for the stat */
     variant?: 'primary' | 'accent' | 'success' | 'warning' | 'info' | 'default';
 };
@@ -23,7 +20,7 @@ type StatsCardsProps = {
 
 /**
  * Renders stats as compact inline pills with brand color variants.
- * Layout: [icon] Label: value  —  horizontal, compact.
+ * Layout: Label: value  —  horizontal, compact, no icons.
  * Each stat can carry a variant for a subtle brand-color background.
  */
 export function StatsCards({ label, summary, items }: StatsCardsProps) {
@@ -37,8 +34,6 @@ export function StatsCards({ label, summary, items }: StatsCardsProps) {
                             {summary}
                         </span>
                     )}
-                    <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:hidden" />
-                    <ChevronUp className="h-4 w-4 transition-transform duration-200 group-data-[state=closed]/collapsible:hidden" />
                 </button>
             </CollapsibleTrigger>
             <CollapsibleContent>
@@ -53,6 +48,8 @@ export function StatsCards({ label, summary, items }: StatsCardsProps) {
 }
 
 function StatPill({ item }: { item: StatItem }) {
+
+
     const baseStyles =
         'inline-flex items-center gap-2 rounded-lg border border-border-strong px-3 py-2 text-sm font-medium transition-colors hover:border-brand-primary/30';
 
@@ -69,9 +66,6 @@ function StatPill({ item }: { item: StatItem }) {
 
     return (
         <span className={`${baseStyles} ${variantClass}`}>
-            <span className="inline-flex items-center gap-1.5 text-muted-foreground">
-                {item.icon}
-            </span>
             <span className="font-medium text-foreground">
                 {item.label}
             </span>
