@@ -651,142 +651,15 @@ export default function UsersIndex({
                             onSuccess={() => closeRowSheet()}
                             className="grid gap-3 py-2"
                         >
-                            {(['first_name', 'last_name', 'email', 'phone', 'national_id'] as const).map(
-                                (field) => (
-                                    <div key={field} className="grid gap-2">
-                                        <Label htmlFor={`edit-${field}`}>
-                                            {FIELD_LABELS[field]}
-                                        </Label>
-                                        <Input
-                                            id={`edit-${field}`}
-                                            name={field}
-                                            defaultValue={
-                                                (viewedUser.person?.[
-                                                    field as keyof PersonRow
-                                                ] as string | null) ??
-                                                (field === 'email'
-                                                    ? viewedUser.email
-                                                    : null) ??
-                                                ''
-                                            }
-                                            required={field === 'first_name' || field === 'email'}
-                                        />
-                                        {errors[field] && (
-                                            <p className="text-xs text-destructive">
-                                                {errors[field]}
-                                            </p>
-                                        )}
-                                    </div>
-                                ),
-                            )}
-
-                            <div className="grid gap-2">
-                                <Label htmlFor="edit-status">Status</Label>
-                                <Select
-                                    name="status"
-                                    defaultValue={viewedUser.status}
-                                >
-                                    <SelectTrigger id="edit-status">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="active">
-                                            Active
-                                        </SelectItem>
-                                        <SelectItem value="inactive">
-                                            Inactive
-                                        </SelectItem>
-                                        <SelectItem value="suspended">
-                                            Suspended
-                                        </SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-
-                            <div className="grid gap-2">
-                                <Label>Platform roles</Label>
-                                <RadioGroup
-                                    name="roles"
-                                    defaultValue={viewedUser.roles
-                                        .map((r) => r.name)
-                                        .join(',')}
-                                    className="grid gap-2"
-                                >
-                                    {platformRoles.map((role) => (
-                                        <div
-                                            key={role.value}
-                                            className="flex items-center gap-2"
-                                        >
-                                            <RadioGroupItem
-                                                id={`edit-role-${role.value}`}
-                                                value={role.value}
-                                            />
-                                            <Label
-                                                htmlFor={`edit-role-${role.value}`}
-                                                className="cursor-pointer"
-                                            >
-                                                {role.label}
-                                            </Label>
-                                        </div>
-                                    ))}
-                                </RadioGroup>
-                                <input
-                                    type="hidden"
-                                    name="roles[]"
-                                    value={viewedUser.roles.map((r) => r.name).join(',')}
-                                />
-                                {errors.roles && (
-                                    <p className="text-xs text-destructive">
-                                        {errors.roles}
-                                    </p>
-                                )}
-                            </div>
+                            <UserFormFields
+                                idPrefix="edit"
+                                user={viewedUser}
+                                platformRoles={platformRoles}
+                                errors={errors}
+                            />
                         </Form>
                     ) : (
-                        <dl className="grid gap-3 py-2 text-sm">
-                            {[
-                                ['Email', viewedUser.email],
-                                ['Phone', viewedUser.phone ?? '—'],
-                                ['Status', viewedUser.status],
-                                [
-                                    'Roles',
-                                    viewedUser.roles.length > 0
-                                        ? viewedUser.roles
-                                              .map((role) => role.name)
-                                              .join(', ')
-                                        : '—',
-                                ],
-                                [
-                                    'Person',
-                                    viewedUser.person
-                                        ? [
-                                              viewedUser.person
-                                                  .first_name,
-                                              viewedUser.person.last_name,
-                                          ]
-                                              .filter(Boolean)
-                                              .join(' ') || '—'
-                                        : '—',
-                                ],
-                                [
-                                    'National ID',
-                                    viewedUser.person?.national_id ?? '—',
-                                ],
-                                ['Created', viewedUser.created_at ?? '—'],
-                            ].map(([label, value]) => (
-                                <div
-                                    key={label}
-                                    className="grid grid-cols-[7rem_1fr] gap-2"
-                                >
-                                    <dt className="text-muted-foreground">
-                                        {label}
-                                    </dt>
-                                    <dd className="min-w-0 break-words">
-                                        {value}
-                                    </dd>
-                                </div>
-                            ))}
-                        </dl>
+                        <UserDetail user={viewedUser} />
                     ))}
             </ResponsiveOverlay>
 
@@ -1009,72 +882,11 @@ export default function UsersIndex({
                     }
                     className="grid gap-3 py-2"
                 >
-                    {(['first_name', 'last_name', 'email', 'phone', 'national_id'] as const).map(
-                        (field) => (
-                            <div key={field} className="grid gap-2">
-                                <Label htmlFor={`create-${field}`}>
-                                    {FIELD_LABELS[field]}
-                                </Label>
-                                <Input
-                                    id={`create-${field}`}
-                                    name={field}
-                                    required={field === 'first_name' || field === 'email'}
-                                />
-                                {errors[field] && (
-                                    <p className="text-xs text-destructive">
-                                        {errors[field]}
-                                    </p>
-                                )}
-                            </div>
-                        ),
-                    )}
-
-                    <div className="grid gap-2">
-                        <Label htmlFor="create-status">Status</Label>
-                        <Select name="status" defaultValue="active">
-                            <SelectTrigger id="create-status">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="active">Active</SelectItem>
-                                <SelectItem value="inactive">
-                                    Inactive
-                                </SelectItem>
-                                <SelectItem value="suspended">
-                                    Suspended
-                                </SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-
-                    <div className="grid gap-2">
-                        <Label>Platform roles</Label>
-                        <RadioGroup name="roles" defaultValue="" className="grid gap-2">
-                            {platformRoles.map((role) => (
-                                <div
-                                    key={role.value}
-                                    className="flex items-center gap-2"
-                                >
-                                    <RadioGroupItem
-                                        id={`create-role-${role.value}`}
-                                        value={role.value}
-                                    />
-                                    <Label
-                                        htmlFor={`create-role-${role.value}`}
-                                        className="cursor-pointer"
-                                    >
-                                        {role.label}
-                                    </Label>
-                                </div>
-                            ))}
-                        </RadioGroup>
-                        <input type="hidden" name="roles[]" value="" readOnly />
-                        {errors.roles && (
-                            <p className="text-xs text-destructive">
-                                {errors.roles}
-                            </p>
-                        )}
-                    </div>
+                    <UserFormFields
+                        idPrefix="create"
+                        platformRoles={platformRoles}
+                        errors={errors}
+                    />
                 </Form>
             </ResponsiveOverlay>
 
@@ -1144,3 +956,168 @@ UsersIndex.layout = {
         { title: 'Users', href: '/users' },
     ],
 };
+function FieldError({ message }: { message?: string }) {
+    if (!message) {
+        return null;
+    }
+
+    return <p className="text-xs text-destructive">{message}</p>;
+}
+
+/**
+ * Read-only summary, for the row sheet's default mode.
+ */
+function UserDetail({ user }: { user: UserRow }) {
+    const rows: [string, string][] = [
+        ['Email', user.email],
+        ['Phone', user.phone ?? '—'],
+        ['Status', user.status],
+        [
+            'Roles',
+            user.roles.length > 0
+                ? user.roles.map((role) => role.name).join(', ')
+                : '—',
+        ],
+        [
+            'Person',
+            user.person
+                ? [user.person.first_name, user.person.last_name]
+                      .filter(Boolean)
+                      .join(' ') || '—'
+                : '—',
+        ],
+        ['National ID', user.person?.national_id ?? '—'],
+        ['Created', user.created_at ?? '—'],
+    ];
+
+    return (
+        <dl className="grid gap-3 py-2 text-sm">
+            {rows.map(([label, value]) => (
+                <div key={label} className="grid grid-cols-[7rem_1fr] gap-2">
+                    <dt className="text-muted-foreground">{label}</dt>
+                    <dd className="min-w-0 break-words">{value}</dd>
+                </div>
+            ))}
+        </dl>
+    );
+}
+
+/**
+ * The person, account and role fields the create and edit sheets share.
+ *
+ * `idPrefix` keeps the ids distinct because both sheets can be mounted at once;
+ * two elements sharing `id="email"` would break the `<label htmlFor>` pairing
+ * and let a click focus the wrong input.
+ */
+function UserFormFields({
+    idPrefix,
+    user,
+    platformRoles,
+    errors,
+}: {
+    idPrefix: string;
+    /** Absent on create, which has nothing to prefill from. */
+    user?: UserRow;
+    platformRoles: { value: string; label: string }[];
+    errors: Record<string, string>;
+}) {
+    const personFields = [
+        'first_name',
+        'last_name',
+        'email',
+        'phone',
+        'national_id',
+    ] as const;
+
+    // On edit, email lives on the user row and the rest on the person; create
+    // has neither, so fall back to an empty input.
+    const existing = (field: (typeof personFields)[number]): string => {
+        const fromPerson = user?.person?.[
+            field as keyof NonNullable<UserRow['person']>
+        ] as string | null | undefined;
+
+        return (
+            fromPerson ??
+            (field === 'email' ? user?.email : null) ??
+            ''
+        );
+    };
+
+    return (
+        <>
+            {personFields.map((field) => (
+                <div key={field} className="grid gap-2">
+                    <Label htmlFor={`${idPrefix}-${field}`}>
+                        {FIELD_LABELS[field]}
+                    </Label>
+                    <Input
+                        id={`${idPrefix}-${field}`}
+                        name={field}
+                        defaultValue={existing(field)}
+                        required={field === 'first_name' || field === 'email'}
+                    />
+                    <FieldError message={errors[field]} />
+                </div>
+            ))}
+
+            <div className="grid gap-2">
+                <Label htmlFor={`${idPrefix}-status`}>Status</Label>
+                <Select
+                    name="status"
+                    defaultValue={user?.status ?? 'active'}
+                >
+                    <SelectTrigger id={`${idPrefix}-status`}>
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="inactive">Inactive</SelectItem>
+                        <SelectItem value="suspended">Suspended</SelectItem>
+                    </SelectContent>
+                </Select>
+                <FieldError message={errors.status} />
+            </div>
+
+            <div className="grid gap-2">
+                <Label>Platform roles</Label>
+                <RadioGroup
+                    name="roles"
+                    defaultValue={user?.roles.map((r) => r.name).join(',') ?? ''}
+                    className="grid gap-2"
+                >
+                    {platformRoles.map((role) => (
+                        <div key={role.value} className="flex items-center gap-2">
+                            <RadioGroupItem
+                                id={`${idPrefix}-role-${role.value}`}
+                                value={role.value}
+                            />
+                            <Label
+                                htmlFor={`${idPrefix}-role-${role.value}`}
+                                className="cursor-pointer"
+                            >
+                                {role.label}
+                            </Label>
+                        </div>
+                    ))}
+                </RadioGroup>
+                {/*
+                  The radio group posts one selected value; the server expects an
+                  array. A hidden input carries the selection alongside it, and
+                  carries the empty string when nothing is picked so the server
+                  sees "no roles" rather than a missing field.
+                */}
+                <input
+                    type="hidden"
+                    name="roles[]"
+                    value={
+                        user
+                            ? user.roles.map((r) => r.name).join(',')
+                            : ''
+                    }
+                    readOnly
+                />
+                <FieldError message={errors.roles} />
+            </div>
+        </>
+    );
+}

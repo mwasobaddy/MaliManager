@@ -770,47 +770,7 @@ export default function OrganizationsIndex({
                 }
             >
                 {viewedOrganization && rowMode === 'view' && (
-                    <dl className="grid grid-cols-3 gap-x-4 gap-y-3 text-sm">
-                        <dt className="text-muted-foreground">Slug</dt>
-                        <dd className="col-span-2 font-medium">
-                            {viewedOrganization.slug}
-                        </dd>
-
-                        <dt className="text-muted-foreground">Email</dt>
-                        <dd className="col-span-2 font-medium">
-                            {viewedOrganization.email ?? '—'}
-                        </dd>
-
-                        <dt className="text-muted-foreground">Phone</dt>
-                        <dd className="col-span-2 font-medium">
-                            {viewedOrganization.phone ?? '—'}
-                        </dd>
-
-                        <dt className="text-muted-foreground">Status</dt>
-                        <dd className="col-span-2 font-medium">
-                            {viewedOrganization.status_label}
-                        </dd>
-
-                        <dt className="text-muted-foreground">Plan</dt>
-                        <dd className="col-span-2 font-medium">
-                            {viewedOrganization.plan ?? '—'}
-                        </dd>
-
-                        <dt className="text-muted-foreground">Domain</dt>
-                        <dd className="col-span-2 font-medium">
-                            {viewedOrganization.domain ?? '—'}
-                        </dd>
-
-                        <dt className="text-muted-foreground">Members</dt>
-                        <dd className="col-span-2 font-medium">
-                            {viewedOrganization.users_count}
-                        </dd>
-
-                        <dt className="text-muted-foreground">Created</dt>
-                        <dd className="col-span-2 font-medium">
-                            {viewedOrganization.created_at ?? '—'}
-                        </dd>
-                    </dl>
+                    <OrganizationDetail organization={viewedOrganization} />
                 )}
 
                 {viewedOrganization && rowMode === 'edit' && (
@@ -821,100 +781,13 @@ export default function OrganizationsIndex({
                         onSuccess={() => closeRowSheet()}
                         className="grid gap-3"
                     >
-                        <div className="grid gap-2">
-                            <Label htmlFor="edit-name">Name</Label>
-                            <Input
-                                id="edit-name"
-                                name="name"
-                                defaultValue={viewedOrganization.name}
-                                required
-                            />
-                            {errors.name && (
-                                <p className="text-xs text-destructive">
-                                    {errors.name}
-                                </p>
-                            )}
-                        </div>
-
-                        <div className="grid gap-2">
-                            <Label htmlFor="edit-email">Email</Label>
-                            <Input
-                                id="edit-email"
-                                name="email"
-                                type="email"
-                                defaultValue={viewedOrganization.email ?? ''}
-                            />
-                            {errors.email && (
-                                <p className="text-xs text-destructive">
-                                    {errors.email}
-                                </p>
-                            )}
-                        </div>
-
-                        <div className="grid gap-2">
-                            <Label htmlFor="edit-phone">Phone</Label>
-                            <Input
-                                id="edit-phone"
-                                name="phone"
-                                defaultValue={viewedOrganization.phone ?? ''}
-                            />
-                            {errors.phone && (
-                                <p className="text-xs text-destructive">
-                                    {errors.phone}
-                                </p>
-                            )}
-                        </div>
-
-                        <div className="grid gap-2">
-                            <Label htmlFor="edit-plan">Plan</Label>
-                            <Select
-                                name="plan_id"
-                                defaultValue={String(
-                                    viewedOrganization.plan_id ?? '',
-                                )}
-                            >
-                                <SelectTrigger id="edit-plan">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {plans.map((plan) => (
-                                        <SelectItem value={String(plan.id)}>
-                                            {plan.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            {errors.plan_id && (
-                                <p className="text-xs text-destructive">
-                                    {errors.plan_id}
-                                </p>
-                            )}
-                        </div>
-
-                        <div className="grid gap-2">
-                            <Label htmlFor="edit-status">Status</Label>
-                            <Select
-                                name="status"
-                                defaultValue={viewedOrganization.status}
-                            >
-                                <SelectTrigger id="edit-status">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value={'active'}>
-                                        Active
-                                    </SelectItem>
-                                    <SelectItem value={'suspended'}>
-                                        Suspended
-                                    </SelectItem>
-                                </SelectContent>
-                            </Select>
-                            {errors.status && (
-                                <p className="text-xs text-destructive">
-                                    {errors.status}
-                                </p>
-                            )}
-                        </div>
+                        <OrganizationFormFields
+                            idPrefix="edit"
+                            organization={viewedOrganization}
+                            plans={plans}
+                            errors={errors}
+                            showStatus
+                        />
                     </Form>
                 )}
 
@@ -989,62 +862,11 @@ export default function OrganizationsIndex({
                     }
                     className="grid gap-3"
                 >
-                    <div className="grid gap-2">
-                        <Label htmlFor="create-name">Name</Label>
-                        <Input id="create-name" name="name" required />
-                        {errors.name && (
-                            <p className="text-xs text-destructive">
-                                {errors.name}
-                            </p>
-                        )}
-                    </div>
-
-                    <div className="grid gap-2">
-                        <Label htmlFor="create-email">Email</Label>
-                        <Input id="create-email" name="email" type="email" />
-                        {errors.email && (
-                            <p className="text-xs text-destructive">
-                                {errors.email}
-                            </p>
-                        )}
-                    </div>
-
-                    <div className="grid gap-2">
-                        <Label htmlFor="create-phone">Phone</Label>
-                        <Input id="create-phone" name="phone" />
-                        {errors.phone && (
-                            <p className="text-xs text-destructive">
-                                {errors.phone}
-                            </p>
-                        )}
-                    </div>
-
-                    <div className="grid gap-2">
-                        <Label htmlFor="create-plan">Plan</Label>
-                        <Select
-                            name="plan_id"
-                            defaultValue={String(plans[0]?.id ?? '')}
-                        >
-                            <SelectTrigger id="create-plan">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {plans.map((plan) => (
-                                    <SelectItem
-                                        key={plan.id}
-                                        value={String(plan.id)}
-                                    >
-                                        {plan.name}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        {errors.plan_id && (
-                            <p className="text-xs text-destructive">
-                                {errors.plan_id}
-                            </p>
-                        )}
-                    </div>
+                    <OrganizationFormFields
+                        idPrefix="create"
+                        plans={plans}
+                        errors={errors}
+                    />
 
                     <div className="grid gap-2">
                         <Label>Owner</Label>
@@ -1292,3 +1114,146 @@ OrganizationsIndex.layout = {
         { title: 'Organizations', href: '/organizations' },
     ],
 };
+
+function FieldError({ message }: { message?: string }) {
+    if (!message) {
+        return null;
+    }
+
+    return <p className="text-xs text-destructive">{message}</p>;
+}
+
+/**
+ * Read-only summary, for the row sheet's default mode.
+ */
+function OrganizationDetail({
+    organization,
+}: {
+    organization: OrganizationRow;
+}) {
+    const rows: [string, string | number | null][] = [
+        ['Slug', organization.slug],
+        ['Email', organization.email],
+        ['Phone', organization.phone],
+        ['Status', organization.status_label],
+        ['Plan', organization.plan],
+        ['Domain', organization.domain],
+        ['Members', organization.users_count],
+        ['Created', organization.created_at],
+    ];
+
+    return (
+        <dl className="grid grid-cols-3 gap-x-4 gap-y-3 text-sm">
+            {rows.map(([label, value]) => (
+                <div key={label} className="contents">
+                    <dt className="text-muted-foreground">{label}</dt>
+                    <dd className="col-span-2 font-medium">
+                        {value === null || value === '' ? '—' : value}
+                    </dd>
+                </div>
+            ))}
+        </dl>
+    );
+}
+
+/**
+ * Name, email, phone and plan — the fields the create and edit sheets share.
+ *
+ * `idPrefix` keeps the ids distinct because both sheets are mounted at once:
+ * two elements with `id="name"` would break the `<label htmlFor>` pairing and
+ * let a click focus the wrong input.
+ *
+ * Status is edit-only. Creating an organization always yields an active one,
+ * and `StoreOrganizationRequest` has no `status` rule, so rendering the select
+ * on create would post a field nothing reads.
+ */
+function OrganizationFormFields({
+    idPrefix,
+    organization,
+    plans,
+    errors,
+    showStatus = false,
+}: {
+    idPrefix: string;
+    organization?: OrganizationRow;
+    plans: { id: number; name: string; slug: string }[];
+    errors: Record<string, string>;
+    showStatus?: boolean;
+}) {
+    return (
+        <>
+            <div className="grid gap-2">
+                <Label htmlFor={`${idPrefix}-name`}>Name</Label>
+                <Input
+                    id={`${idPrefix}-name`}
+                    name="name"
+                    defaultValue={organization?.name ?? ''}
+                    required
+                />
+                <FieldError message={errors.name} />
+            </div>
+
+            <div className="grid gap-2">
+                <Label htmlFor={`${idPrefix}-email`}>Email</Label>
+                <Input
+                    id={`${idPrefix}-email`}
+                    name="email"
+                    type="email"
+                    defaultValue={organization?.email ?? ''}
+                />
+                <FieldError message={errors.email} />
+            </div>
+
+            <div className="grid gap-2">
+                <Label htmlFor={`${idPrefix}-phone`}>Phone</Label>
+                <Input
+                    id={`${idPrefix}-phone`}
+                    name="phone"
+                    defaultValue={organization?.phone ?? ''}
+                />
+                <FieldError message={errors.phone} />
+            </div>
+
+            <div className="grid gap-2">
+                <Label htmlFor={`${idPrefix}-plan`}>Plan</Label>
+                <Select
+                    name="plan_id"
+                    defaultValue={String(organization?.plan_id ?? plans[0]?.id ?? '')}
+                >
+                    <SelectTrigger id={`${idPrefix}-plan`}>
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {plans.map((plan) => (
+                            <SelectItem key={plan.id} value={String(plan.id)}>
+                                {plan.name}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+                <FieldError message={errors.plan_id} />
+            </div>
+
+            {showStatus && (
+                <div className="grid gap-2">
+                    <Label htmlFor={`${idPrefix}-status`}>Status</Label>
+                    <Select
+                        name="status"
+                        defaultValue={organization?.status ?? 'active'}
+                    >
+                        <SelectTrigger id={`${idPrefix}-status`}>
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="active">Active</SelectItem>
+                            <SelectItem value="suspended">
+                                Suspended
+                            </SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <FieldError message={errors.status} />
+                </div>
+            )}
+        </>
+    );
+}
