@@ -293,11 +293,11 @@ export default function Dashboard(props: Props) {
                         {activeTab === 'searcher' && props.searcher && (
                             <PersonTab
                                 stats={props.searcher}
-                                title="My rental history"
+                                label="My rental history"
                             />
                         )}
                         {activeTab === 'occupant' && props.occupant && (
-                            <PersonTab stats={props.occupant} title="My home" />
+                            <PersonTab stats={props.occupant} label="My home" />
                         )}
                     </>
                 )}
@@ -313,34 +313,29 @@ function AdminTab({ stats }: { stats: AdminStats }) {
                 label="Platform overview"
                 items={[
                     {
-                        title: 'Organizations',
+                        label: 'Organizations',
                         value: stats.organizations_count,
-                        description: 'Total organizations',
-                        icon: <Building2 />,
+                                                icon: <Building2 />,
                     },
                     {
-                        title: 'Subscribers',
+                        label: 'Subscribers',
                         value: stats.subscribers_count,
-                        description: 'Organizations on a plan',
-                        icon: <Users />,
+                                                icon: <Users />,
                     },
                     {
-                        title: 'Plans',
+                        label: 'Plans',
                         value: stats.plans_count,
-                        description: 'Available plans',
-                        icon: <CreditCard />,
+                                                icon: <CreditCard />,
                     },
                     {
-                        title: 'Income',
+                        label: 'Income',
                         value: `$${Number(stats.income_total).toLocaleString()}`,
-                        description: 'Subscription payments received',
-                        icon: <TrendingUp />,
+                                                icon: <TrendingUp />,
                     },
                     {
-                        title: 'Expenses',
+                        label: 'Expenses',
                         value: `$${Number(stats.expenses_total).toLocaleString()}`,
-                        description: 'Platform operating costs',
-                        icon: <Wallet />,
+                                                icon: <Wallet />,
                     },
                 ]}
             />
@@ -410,34 +405,29 @@ function OrganizationTab({ stats }: { stats: OrgStats }) {
                 label="Organization overview"
                 items={[
                     {
-                        title: 'Properties',
+                        label: 'Properties',
                         value: stats.properties_count,
-                        description: 'Total properties',
-                        icon: <Building2 />,
+                                                icon: <Building2 />,
                     },
                     {
-                        title: 'Units',
+                        label: 'Units',
                         value: stats.units_count,
-                        description: 'Total units',
-                        icon: <Home />,
+                                                icon: <Home />,
                     },
                     {
-                        title: 'Active leases',
+                        label: 'Active leases',
                         value: stats.active_leases,
-                        description: 'Currently active',
-                        icon: <KeyRound />,
+                                                icon: <KeyRound />,
                     },
                     {
-                        title: 'Open maintenance',
+                        label: 'Open maintenance',
                         value: stats.maintenance_open,
-                        description: 'Currently open',
-                        icon: <Wrench />,
+                                                icon: <Wrench />,
                     },
                     {
-                        title: 'Expenses YTD',
+                        label: 'Expenses YTD',
                         value: `$${Number(stats.expenses_ytd).toLocaleString()}`,
-                        description: 'Across managed assets',
-                        icon: <Wallet />,
+                                                icon: <Wallet />,
                     },
                 ]}
             />
@@ -526,47 +516,41 @@ function OrganizationTab({ stats }: { stats: OrgStats }) {
 
 function PersonTab({
     stats,
-    title,
+    label,
 }: {
     stats: PersonLeaseStats;
-    title: string;
+    label: string;
 }) {
     return (
         <div className="flex flex-col gap-4">
             <StatsCards
-                label={title}
+                label={label}
                 items={[
                     {
-                        title: title,
-                        value: stats.leases_count,
-                        description: 'Total leases',
-                        icon: <FileText />,
+                        label: label,
+                        value: stats.leases_count,                                                icon: <FileText />,
                     },
                     {
-                        title: 'Active',
+                        label: 'Active',
                         value: stats.active_leases,
-                        description: 'Currently active',
-                        icon: <Activity />,
+                                                icon: <Activity />,
                     },
                     {
-                        title: 'Ended',
+                        label: 'Ended',
                         value: stats.ended_leases,
-                        description: 'Completed',
-                        icon: <Archive />,
+                                                icon: <Archive />,
                     },
                     {
-                        title: 'Total rent',
+                        label: 'Total rent',
                         value: `$${Number(stats.total_rent).toLocaleString()}`,
-                        description: 'Lifetime rent',
-                        icon: <Wallet />,
+                                                icon: <Wallet />,
                     },
                     ...(stats.maintenance_open !== undefined
                         ? [
                               {
-                                  title: 'Open maintenance',
+                                  label: 'Open maintenance',
                                   value: stats.maintenance_open,
-                                  description: 'Requests on your unit',
-                                  icon: <Wrench />,
+                                                                    icon: <Wrench />,
                               },
                           ]
                         : []),
@@ -599,7 +583,7 @@ function PersonTab({
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0">
                     <CardTitle className="text-base font-medium">
-                        Recent {title.toLowerCase()}
+                        Recent {label.toLowerCase()}
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -662,7 +646,7 @@ function PersonTab({
 Dashboard.layout = {
     breadcrumbs: [
         {
-            title: 'Dashboard',
+            label: 'Dashboard',
             href: dashboard(),
         },
     ],
