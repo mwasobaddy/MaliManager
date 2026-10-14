@@ -1,15 +1,5 @@
 import { Form, Head, Link, router } from '@inertiajs/react';
-import {
-    AlertTriangle,
-    Banknote,
-    Building2,
-    CheckCircle2,
-    CircleDashed,
-    DoorOpen,
-    KeyRound,
-    Plus,
-    Wrench,
-} from 'lucide-react';
+import { Building2, DoorOpen, Plus } from 'lucide-react';
 import { useState } from 'react';
 import {
     Cell,
@@ -224,42 +214,39 @@ export default function PropertiesDashboard({
                     summary={`${stats.total_units} units`}
                     items={[
                         {
-                            title: 'Total units',
+                            label: 'Total Units',
                             value: stats.total_units,
-                            description: `${stats.occupied} occupied`,
-                            icon: <Building2 />,
+                            variant: 'success',
                         },
                         {
-                            title: 'Occupied',
+                            label: 'Occupied Units',
                             value: stats.occupied,
-                            description: `${stats.occupancy_rate}% occupancy`,
-                            icon: <CheckCircle2 />,
+                            variant: 'success',
                         },
                         {
-                            title: 'Vacant',
+                            label: 'Vacant Units',
                             value: stats.vacant,
-                            icon: <CircleDashed />,
+                            variant: 'default',
                         },
                         {
-                            title: 'In maintenance',
+                            label: 'In Maintenance',
                             value: stats.in_maintenance,
-                            icon: <Wrench />,
+                            variant: 'warning',
                         },
                         {
-                            title: 'Monthly rent',
+                            label: 'Monthly Rent Potential',
                             value: ccy(stats.rent_potential),
-                            description: 'potential',
-                            icon: <Banknote />,
+                            variant: 'primary',
                         },
                         {
-                            title: 'Open maintenance',
+                            label: 'Open Maintenance',
                             value: stats.open_maintenance,
-                            icon: <AlertTriangle />,
+                            variant: 'warning',
                         },
                         {
-                            title: 'Active leases',
+                            label: 'Active Leases',
                             value: stats.active_leases,
-                            icon: <KeyRound />,
+                            variant: 'accent',
                         },
                     ]}
                 />

@@ -9,7 +9,7 @@ type StatItem = {
     label: string;
     value: number | string;
     /** Optional brand color variant for the stat */
-    variant?: 'primary' | 'accent' | 'success' | 'warning' | 'info' | 'default';
+    variant?: string;
 };
 
 type StatsCardsProps = {
@@ -54,15 +54,15 @@ function StatPill({ item }: { item: StatItem }) {
         'inline-flex items-center gap-2 rounded-lg border border-border-strong px-3 py-2 text-sm font-medium transition-colors hover:border-brand-primary/30';
 
     const variantStyles = {
-        primary: 'bg-brand-primary/20 text-brand-primary-600 border-brand-primary/30 dark:bg-brand-primary-100/30 dark:text-brand-primary dark:border-brand-primary/40',
-        accent: 'bg-brand-accent-100/30 text-brand-accent border-brand-accent/30 dark:bg-brand-accent-100/40 dark:text-brand-accent-foreground',
-        success: 'bg-status-success/20 text-status-success border-status-success/30 dark:bg-status-success/20 dark:text-status-success',
-        warning: 'bg-status-warning/20 text-status-warning border-status-warning/30 dark:bg-status-warning/20 dark:text-status-warning',
-        info: 'bg-status-info/20 text-status-info border-status-info/30 dark:bg-status-info/20 dark:text-status-info',
+        primary: 'bg-brand-primary/10 text-brand-primary-600 border-brand-primary/20 dark:bg-brand-primary-100/20 dark:text-brand-primary dark:border-brand-primary/30',
+        accent: 'bg-brand-accent-100/50 text-brand-accent border-brand-accent/20 dark:bg-brand-accent-100/20 dark:text-brand-accent',
+        success: 'bg-status-success/10 text-status-success border-status-success/20 dark:bg-status-success/20 dark:text-status-success',
+        warning: 'bg-status-warning/10 text-status-warning border-status-warning/20 dark:bg-status-warning/20 dark:text-status-warning',
+        info: 'bg-status-info/10 text-status-info border-status-info/20 dark:bg-status-info/20 dark:text-status-info',
         default: 'bg-card text-foreground border-border-strong',
     };
 
-    const variantClass = variantStyles[item.variant ?? 'default'] || variantStyles.default;
+    const variantClass = variantStyles[item.variant as keyof typeof variantStyles] ?? variantStyles.default;
 
     return (
         <span className={`${baseStyles} ${variantClass}`}>
