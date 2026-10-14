@@ -14,6 +14,10 @@ enum PlatformPermissionKey: string
     case ViewAudit = 'view audit';
     case ExportAudit = 'export audit';
     case ManageRoles = 'manage roles';
+    case RoleCreate = 'role.create';
+    case RoleImport = 'role.import';
+    case RoleExport = 'role.export';
+    case RoleDelete = 'role.delete';
     case AccessAdminDashboard = 'access admin dashboard';
     case ViewAdvancedMetrics = 'view advanced metrics';
     case ViewOrgMetrics = 'view organization metrics';
@@ -64,6 +68,10 @@ enum PlatformPermissionKey: string
             self::ViewAudit => 'View audit log',
             self::ExportAudit => 'Export audit log',
             self::ManageRoles => 'Manage roles',
+            self::RoleCreate => 'Create roles',
+            self::RoleImport => 'Import roles',
+            self::RoleExport => 'Export roles',
+            self::RoleDelete => 'Delete roles',
             self::AccessAdminDashboard => 'Access admin dashboard',
             self::ViewAdvancedMetrics => 'View advanced metrics',
             self::ViewOrgMetrics => 'View organization metrics',
@@ -110,6 +118,10 @@ enum PlatformPermissionKey: string
             self::ViewAudit => 'viewAnyAudit',
             self::ExportAudit => 'exportAudit',
             self::ManageRoles => 'manageRoles',
+            self::RoleCreate => 'createRoles',
+            self::RoleImport => 'importRoles',
+            self::RoleExport => 'exportRoles',
+            self::RoleDelete => 'deleteRoles',
             self::AccessAdminDashboard => 'accessAdminDashboard',
             self::ViewAdvancedMetrics => 'viewAdvancedMetrics',
             self::ViewOrgMetrics => 'viewOrgMetrics',

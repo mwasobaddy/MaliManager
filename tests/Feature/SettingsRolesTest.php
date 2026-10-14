@@ -40,7 +40,13 @@ test('admin can view the roles settings page', function () {
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('platform/roles/index')
-            ->where('roles', fn ($roles) => count($roles) === count(PlatformRole::cases()))
+            // Roles are rows now, so the table is paginated like every other
+            // platform table. The four built-ins seed it; custom ones are added
+            // on top.
+            ->has('roles.data')
+            ->where('roles.data', fn ($rows) => collect($rows)->count() === count(PlatformRole::cases()))
+            ->where('roles.data', fn ($rows) => collect($rows)->pluck('name')->all()
+                === collect(PlatformRole::cases())->map->value->sort()->values()->all())
             ->where('permissionCatalog', fn ($catalog) => count($catalog) === count(PlatformPermissionKey::cases()))
             // Role assignment moved to the users index, so this page no longer
             // loads or ships a user list.
