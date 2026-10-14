@@ -101,7 +101,6 @@ export default function PropertyTypesIndex({
     const isCreateOpen = query.get('create') === '1';
     const isFiltersOpen =
         query.get('filters') !== null && query.get('filters') !== '';
-    const isImportOpen = query.get('import') === '1';
     const isExportOpen = query.get('export') === '1';
 
     const [isTableLoading, setIsTableLoading] = useState(false);
