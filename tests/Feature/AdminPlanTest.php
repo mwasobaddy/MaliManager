@@ -4,6 +4,7 @@ use App\Models\Organization;
 use App\Models\Plan;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
+use Illuminate\Http\UploadedFile;
 
 beforeEach(function () {
     (new RolesAndPermissionsSeeder)->run();
@@ -253,4 +254,74 @@ test('user without plan permission is forbidden', function () {
             'price' => 0,
         ])
         ->assertRedirect(route('dashboard'));
+});
+
+test('platform admin can import plans from a csv', function () {
+    $csv = "Name,Slug,Description,Price,Features,Active\n"
+        ."Pro,pro,For power users,2500,Billing|Support,1\n"
+        ."Starter,starter,,0,,1\n";
+
+    $this->actingAs($this->admin)
+        ->post(route('platform.plans.import'), [
+            'file' => UploadedFile::fake()->createWithContent('plans.csv', $csv),
+        ])
+        ->assertRedirect(route('platform.plans.index'));
+
+    $this->assertDatabaseHas('plans', [
+        'slug' => 'pro',
+        'name' => 'Pro',
+        'price' => 2500,
+    ]);
+
+    expect(Plan::where('slug', 'pro')->first()->features)->toBe(['Billing', 'Support']);
+});
+
+test('plan import reports per-row errors and keeps the good rows', function () {
+    $csv = "Name,Slug,Price\n"
+        ."Pro,pro,2500\n"
+        .",starter,500\n"
+        ."Dupe,pro,500\n"
+        ."Bad,bad,not-a-number\n";
+
+    $response = $this->actingAs($this->admin)
+        ->post(route('platform.plans.import'), [
+            'file' => UploadedFile::fake()->createWithContent('plans.csv', $csv),
+        ]);
+
+    $response->assertRedirect();
+    // Row 1 imported; the three bad rows were skipped with a line number.
+    $this->assertDatabaseHas('plans', ['slug' => 'pro']);
+    $this->assertDatabaseMissing('plans', ['slug' => 'starter']);
+    $this->assertDatabaseMissing('plans', ['slug' => 'bad']);
+
+    $errors = collect(session('inertia.flash_data')['importErrors'] ?? [])->all();
+    expect($errors)->toHaveCount(3)
+        ->and(collect($errors)->pluck('row')->all())->toBe([3, 4, 5]);
+});
+
+test('plan export honours the table filters', function () {
+    Plan::factory()->create(['name' => 'Gold', 'slug' => 'gold', 'is_active' => true]);
+    Plan::factory()->create(['name' => 'Retired', 'slug' => 'retired', 'is_active' => false]);
+
+    $response = $this->actingAs($this->admin)
+        ->get(route('platform.plans.export', ['status' => 'active']));
+
+    $response->assertOk();
+    $response->assertHeader('content-type', 'text/csv; charset=UTF-8');
+
+    $body = $response->streamedContent();
+
+    expect($body)->toContain('Gold')
+        ->and($body)->not->toContain('Retired');
+});
+
+test('plan export can be limited to the current page', function () {
+    Plan::factory()->count(20)->create();
+
+    $body = $this->actingAs($this->admin)
+        ->get(route('platform.plans.export', ['scope' => 'page', 'page' => 1]))
+        ->streamedContent();
+
+    // 15 per page, plus the header line.
+    expect(substr_count(trim($body), "\n"))->toBe(15);
 });

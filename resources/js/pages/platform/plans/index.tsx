@@ -1,9 +1,11 @@
 import { Head, router } from '@inertiajs/react';
 import { Form, usePage } from '@inertiajs/react';
 import type { ColumnDef, SortingState } from '@tanstack/react-table';
-import { Layers, ListFilter, Pencil, Plus, Search, Trash2 } from 'lucide-react';
+import { Download, Layers, ListFilter, Pencil, Plus, Search, Trash2, Upload } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActionIconButton } from '@/components/action-icon-button';
+import { CsvImportSheet, downloadCsv } from '@/components/csv-actions';
+import { CsvExportSheet } from '@/components/csv-export-sheet';
 import { DataTable } from '@/components/data-table';
 import Heading from '@/components/heading';
 import { LabelledIconButton } from '@/components/labelled-icon-button';
@@ -75,6 +77,8 @@ export default function PlansIndex({
     const canCreate = permissions.includes('plan.create');
     const canEdit = permissions.includes('plan.edit');
     const canDelete = permissions.includes('plan.delete');
+    const canImport = permissions.includes('plan.import');
+    const canExport = permissions.includes('plan.export');
 
     const errors = (page.props.errors ?? {}) as Record<string, string>;
 
@@ -108,6 +112,8 @@ export default function PlansIndex({
     type RowMode = 'view' | 'edit' | 'delete' | 'confirm-delete';
     const rowMode = (query.get('mode') as RowMode | null) ?? 'view';
     const isCreateOpen = query.get('create') === '1';
+    const isImportOpen = query.get('import') === '1';
+    const isExportOpen = query.get('export') === '1';
 
     // `query.has()` is true even for an empty value, and closing navigates to
     // `filters=` — so comparing against '' is what actually closes the sheet.
@@ -287,6 +293,12 @@ export default function PlansIndex({
         setSearchDraft(filters.search);
     }
 
+    /** Spoken description of the active filters, for the export sheet. */
+    const activeFilterSummary =
+        [filters.search ? 'the search' : '', filters.status ? 'the status filter' : '']
+            .filter(Boolean)
+            .join(' and ') || null;
+
     const columns = useMemo<ColumnDef<PlanRow, unknown>[]>(() => {
         const cells: ColumnDef<PlanRow, unknown>[] = [
             {
@@ -457,6 +469,25 @@ export default function PlansIndex({
         [sort.column, sort.direction],
     );
 
+    /** Current filters as export query params, shared by both scopes. */
+    function exportParams(scope: 'all' | 'page') {
+        return {
+            search: filters.search,
+            status: filters.status,
+            sort: sort.column ?? '',
+            direction: sort.direction,
+            scope,
+            ...(scope === 'page'
+                ? { page: plans.current_page }
+                : {}),
+        };
+    }
+
+    function runExport(scope: 'all' | 'page') {
+        downloadCsv(planRoutes.exportMethod().url, exportParams(scope));
+        setOverlayParam('export', null, { replace: true });
+    }
+
     return (
         <>
             <Head title="Plans" />
@@ -518,6 +549,24 @@ export default function PlansIndex({
                                     : setOverlayParam('filters', '1')
                             }
                         />
+                        {canImport && (
+                            <ActionIconButton
+                                icon={<Upload />}
+                                label="Import from CSV"
+                                color="teal"
+                                onClick={() =>
+                                    setOverlayParam('import', '1')
+                                }
+                            />
+                        )}
+                        {canExport && (
+                            <ActionIconButton
+                                icon={<Download />}
+                                label="Export"
+                                color="teal"
+                                onClick={() => setOverlayParam('export', '1')}
+                            />
+                        )}
                     </div>
                     <DataTable
                         columns={columns}
@@ -833,6 +882,30 @@ export default function PlansIndex({
                     </div>
                 </div>
             </ResponsiveOverlay>
+
+            <CsvExportSheet
+                open={isExportOpen}
+                onClose={() => setOverlayParam('export', null, { replace: true })}
+                canExport={canExport}
+                total={plans.total}
+                pageCount={plans.data.length}
+                currentPage={plans.current_page}
+                activeFilters={activeFilterSummary}
+                onExport={runExport}
+            />
+
+            <CsvImportSheet
+                open={isImportOpen}
+                onClose={() => setOverlayParam('import', null, { replace: true })}
+                route={planRoutes.importMethod}
+                idPrefix="plans"
+                title="Import plans"
+                description="Upload a CSV to create plan records."
+                required={["Name", "Slug", "Price"]}
+                optional={["Description", "Currency", "Properties Limit", "Units Limit", "Features (pipe-separated)", "Sort Order", "Active"]}
+                canImport={canImport}
+                buttonLabel="Import plans"
+            />
         </>
     );
 }

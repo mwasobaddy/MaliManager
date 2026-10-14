@@ -39,6 +39,8 @@ enum PlatformPermissionKey: string
     case PlanCreate = 'plan.create';
     case PlanEdit = 'plan.edit';
     case PlanDelete = 'plan.delete';
+    case PlanImport = 'plan.import';
+    case PlanExport = 'plan.export';
 
     case AiUse = 'ai.use';
 
@@ -46,11 +48,15 @@ enum PlatformPermissionKey: string
     case SubscriptionCreate = 'subscription.create';
     case SubscriptionEdit = 'subscription.edit';
     case SubscriptionDelete = 'subscription.delete';
+    case SubscriptionImport = 'subscription.import';
+    case SubscriptionExport = 'subscription.export';
 
     case PlatformExpenseManage = 'platform-expense.manage';
     case PlatformExpenseCreate = 'platform-expense.create';
     case PlatformExpenseEdit = 'platform-expense.edit';
     case PlatformExpenseDelete = 'platform-expense.delete';
+    case PlatformExpenseImport = 'platform-expense.import';
+    case PlatformExpenseExport = 'platform-expense.export';
 
     public function label(): string
     {
@@ -80,15 +86,21 @@ enum PlatformPermissionKey: string
             self::PlanCreate => 'Create plans',
             self::PlanEdit => 'Edit plans',
             self::PlanDelete => 'Delete plans',
+            self::PlanImport => 'Import plans',
+            self::PlanExport => 'Export plans',
             self::AiUse => 'Use the AI assistant',
             self::SubscriptionManage => 'Manage subscription payments',
             self::SubscriptionCreate => 'Create subscription payments',
             self::SubscriptionEdit => 'Edit subscription payments',
             self::SubscriptionDelete => 'Delete subscription payments',
+            self::SubscriptionImport => 'Import subscription payments',
+            self::SubscriptionExport => 'Export subscription payments',
             self::PlatformExpenseManage => 'Manage platform expenses',
             self::PlatformExpenseCreate => 'Create platform expenses',
             self::PlatformExpenseEdit => 'Edit platform expenses',
             self::PlatformExpenseDelete => 'Delete platform expenses',
+            self::PlatformExpenseImport => 'Import platform expenses',
+            self::PlatformExpenseExport => 'Export platform expenses',
         };
     }
 
@@ -120,15 +132,21 @@ enum PlatformPermissionKey: string
             self::PlanCreate => 'createPlans',
             self::PlanEdit => 'editPlans',
             self::PlanDelete => 'deletePlans',
+            self::PlanImport => 'importPlans',
+            self::PlanExport => 'exportPlans',
             self::AiUse => 'aiUse',
             self::SubscriptionManage => 'manageSubscriptionPayments',
             self::SubscriptionCreate => 'createSubscriptionPayments',
             self::SubscriptionEdit => 'editSubscriptionPayments',
             self::SubscriptionDelete => 'deleteSubscriptionPayments',
+            self::SubscriptionImport => 'importSubscriptionPayments',
+            self::SubscriptionExport => 'exportSubscriptionPayments',
             self::PlatformExpenseManage => 'managePlatformExpenses',
             self::PlatformExpenseCreate => 'createPlatformExpenses',
             self::PlatformExpenseEdit => 'editPlatformExpenses',
             self::PlatformExpenseDelete => 'deletePlatformExpenses',
+            self::PlatformExpenseImport => 'importPlatformExpenses',
+            self::PlatformExpenseExport => 'exportPlatformExpenses',
         };
     }
 }

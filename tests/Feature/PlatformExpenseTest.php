@@ -4,6 +4,7 @@ use App\Models\Audit;
 use App\Models\PlatformExpense;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
+use Illuminate\Http\UploadedFile;
 
 beforeEach(function () {
     (new RolesAndPermissionsSeeder)->run();
@@ -337,4 +338,68 @@ test('admin can filter expenses by category', function () {
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('filters.category', 'hosting'));
+});
+
+test('platform admin can import expenses from a csv', function () {
+    $admin = User::factory()->create(['email_verified_at' => now()]);
+    $admin->assignRole('admin');
+
+    $csv = "Category,Amount,Currency,Spent On,Vendor Name,Notes\n"
+        ."hosting,1200,KES,2026-01-31,Vercel,Monthly fee\n"
+        ."tooling,45000,KES,2026-02-14,Repair Co,Generator\n";
+
+    $this->actingAs($admin)
+        ->post(route('platform.expenses.import'), [
+            'file' => UploadedFile::fake()->createWithContent('expenses.csv', $csv),
+        ])
+        ->assertRedirect(route('platform.expenses.index'));
+
+    $this->assertDatabaseHas('platform_expenses', [
+        'category' => 'hosting',
+        'amount' => 1200,
+        'vendor_name' => 'Vercel',
+    ]);
+
+    $this->assertDatabaseHas('platform_expenses', [
+        'category' => 'tooling',
+        'amount' => 45000,
+    ]);
+});
+
+test('expense import rejects an unknown category and reports the row', function () {
+    $admin = User::factory()->create(['email_verified_at' => now()]);
+    $admin->assignRole('admin');
+
+    $csv = "Category,Amount,Spent On\n"
+        ."hosting,1200,2026-01-31\n"
+        ."not-a-category,900,2026-02-01\n"
+        ."tooling,free,2026-02-02\n";
+
+    $this->actingAs($admin)
+        ->post(route('platform.expenses.import'), [
+            'file' => UploadedFile::fake()->createWithContent('expenses.csv', $csv),
+        ])
+        ->assertRedirect();
+
+    $errors = collect(session('inertia.flash_data')['importErrors'] ?? [])->all();
+
+    expect($errors)->toHaveCount(2)
+        ->and(collect($errors)->pluck('row')->all())->toBe([3, 4]);
+
+    $this->assertDatabaseCount('platform_expenses', 1);
+});
+
+test('expense export honours the table filters', function () {
+    $admin = User::factory()->create(['email_verified_at' => now()]);
+    $admin->assignRole('admin');
+
+    PlatformExpense::factory()->create(['category' => 'hosting', 'spent_on' => '2026-01-31']);
+    PlatformExpense::factory()->create(['category' => 'tooling', 'spent_on' => '2026-06-01']);
+
+    $body = $this->actingAs($admin)
+        ->get(route('platform.expenses.export', ['category' => 'tooling']))
+        ->streamedContent();
+
+    expect($body)->toContain('tooling')
+        ->and($body)->not->toContain('hosting');
 });
