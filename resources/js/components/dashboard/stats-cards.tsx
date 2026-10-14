@@ -7,9 +7,9 @@ import {
 } from '@/components/ui/collapsible';
 
 type StatItem = {
-    title: string;
+    /** Full label including qualifier, e.g. "Total Organisations" not just "Organisations" */
+    label: string;
     value: number | string;
-    description?: string;
     icon: ReactNode;
     /** Optional brand color variant for the stat */
     variant?: 'primary' | 'accent' | 'success' | 'warning' | 'info' | 'default';
@@ -22,9 +22,9 @@ type StatsCardsProps = {
 };
 
 /**
- * Renders stats as branded "pill" cards with colored backgrounds.
- * Each stat can have a variant that applies a brand color background.
- * Retains the collapsible/expandable behavior of the original StatsCards.
+ * Renders stats as compact inline pills with brand color variants.
+ * Layout: [icon] Label: value  —  horizontal, compact.
+ * Each stat can carry a variant for a subtle brand-color background.
  */
 export function StatsCards({ label, summary, items }: StatsCardsProps) {
     return (
@@ -42,9 +42,9 @@ export function StatsCards({ label, summary, items }: StatsCardsProps) {
                 </button>
             </CollapsibleTrigger>
             <CollapsibleContent>
-                <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
+                <div className="mt-3 flex flex-wrap gap-2">
                     {items.map((item) => (
-                        <StatPill key={item.title} item={item} />
+                        <StatPill key={item.label} item={item} />
                     ))}
                 </div>
             </CollapsibleContent>
@@ -53,10 +53,8 @@ export function StatsCards({ label, summary, items }: StatsCardsProps) {
 }
 
 function StatPill({ item }: { item: StatItem }) {
-    const variant = item.variant ?? 'default';
-
     const baseStyles =
-        'flex flex-col gap-1.5 rounded-xl border border-border-strong p-4 transition-colors hover:border-brand-primary/30';
+        'inline-flex items-center gap-2 rounded-lg border border-border-strong px-3 py-2 text-sm font-medium transition-colors hover:border-brand-primary/30';
 
     const variantStyles = {
         primary: 'bg-brand-primary/10 text-brand-primary-600 border-brand-primary/20 dark:bg-brand-primary-100/20 dark:text-brand-primary dark:border-brand-primary/30',
@@ -67,28 +65,19 @@ function StatPill({ item }: { item: StatItem }) {
         default: 'bg-card text-foreground border-border-strong',
     };
 
-    const variantClass = variantStyles[variant] || variantStyles.default;
+    const variantClass = variantStyles[item.variant ?? 'default'] || variantStyles.default;
 
     return (
-        <div className={`${baseStyles} ${variantClass}`}>
-            <div className="flex items-start justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium text-muted-foreground truncate">
-                        {item.title}
-                    </p>
-                    <p className="text-xl font-bold lg:text-2xl tabular-nums">
-                        {item.value}
-                    </p>
-                    {item.description && (
-                        <p className="text-xs text-muted-foreground mt-1 line-clamp-1">
-                            {item.description}
-                        </p>
-                    )}
-                </div>
-                <div className="flex-shrink-0 rounded-full bg-muted/50 p-2 [&_svg]:h-5 [&_svg]:w-5 text-muted-foreground/80">
-                    {item.icon}
-                </div>
-            </div>
-        </div>
+        <span className={`${baseStyles} ${variantClass}`}>
+            <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+                {item.icon}
+            </span>
+            <span className="font-medium text-foreground">
+                {item.label}
+            </span>
+            <span className="font-semibold tabular-nums text-foreground">
+                {item.value}
+            </span>
+        </span>
     );
 }
