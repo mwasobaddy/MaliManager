@@ -145,8 +145,7 @@ const MONTHS = [
 
 export default function Dashboard(props: Props) {
     const page = usePage();
-    const permissions =
-        ((page.props.auth?.permissions ?? []) as string[]) ?? [];
+    const permissions = (page.props.auth?.permissions ?? []) as string[];
     const availableYears = props.available_years ?? [];
 
     const visibleTabs = TABS.filter((tab) =>
