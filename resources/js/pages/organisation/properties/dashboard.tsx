@@ -216,22 +216,22 @@ export default function PropertiesDashboard({
                         {
                             label: 'Total Units',
                             value: stats.total_units,
-                            variant: 'success',
+                            variant: 'accent',
                         },
                         {
                             label: 'Occupied Units',
                             value: stats.occupied,
-                            variant: 'success',
+                            variant: 'accent',
                         },
                         {
                             label: 'Vacant Units',
                             value: stats.vacant,
-                            variant: 'default',
+                            variant: 'accent',
                         },
                         {
                             label: 'In Maintenance',
                             value: stats.in_maintenance,
-                            variant: 'warning',
+                            variant: 'primary',
                         },
                         {
                             label: 'Monthly Rent Potential',
@@ -241,7 +241,7 @@ export default function PropertiesDashboard({
                         {
                             label: 'Open Maintenance',
                             value: stats.open_maintenance,
-                            variant: 'warning',
+                            variant: 'primary',
                         },
                         {
                             label: 'Active Leases',
