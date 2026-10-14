@@ -2,13 +2,13 @@
 
 namespace App\Http\Controllers\Platform;
 
-use App\Enums\PlatformRole;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Platform\DestroyUserRequest;
 use App\Http\Requests\Platform\ImportUserRequest;
 use App\Http\Requests\Platform\StoreUserRequest;
 use App\Http\Requests\Platform\UpdateUserRequest;
 use App\Http\Requests\Platform\UpdateUserStatusRequest;
+use App\Models\Role;
 use App\Models\User;
 use App\Services\UserService;
 use App\Support\Search;
@@ -255,13 +255,25 @@ class UserController extends Controller
     }
 
     /**
+     * The roles a user can be given: the built-in four plus any active custom
+     * role.
+     *
+     * From the table, not the enum, so a role created on the roles page is
+     * assignable without a deploy. Inactive roles are excluded because
+     * deactivating one has already moved its holders to `searcher`.
+     *
      * @return array<int, array{value: string, label: string}>
      */
     private function platformRoles(): array
     {
-        return array_map(
-            fn (PlatformRole $role): array => ['value' => $role->value, 'label' => str($role->value)->replace('-', ' ')->title()],
-            PlatformRole::cases(),
-        );
+        return Role::query()
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get()
+            ->map(fn (Role $role): array => [
+                'value' => $role->name,
+                'label' => str($role->name)->replace('-', ' ')->title()->toString(),
+            ])
+            ->all();
     }
 }

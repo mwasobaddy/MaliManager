@@ -230,4 +230,23 @@ Route::middleware(['auth', 'verified', 'can:manageRoles'])->group(function () {
     Route::patch('platform/roles/{role}', [RolesController::class, 'update'])
         ->middleware(RequirePassword::class)
         ->name('platform.roles.update');
+
+    // Custom roles only. The built-in four are excluded by `Role::isProtected()`
+    // in the service, which returns a 422 rather than letting the UI be the only
+    // thing standing between a caller and the removal of `admin`.
+    Route::post('platform/roles', [RolesController::class, 'store'])
+        ->middleware('can:createRoles')
+        ->name('platform.roles.store');
+    Route::patch('platform/roles/{role}/status', [RolesController::class, 'setStatus'])
+        ->middleware('can:manageRoles')
+        ->name('platform.roles.status');
+    Route::delete('platform/roles/{role}', [RolesController::class, 'destroy'])
+        ->middleware('can:deleteRoles')
+        ->name('platform.roles.destroy');
+    Route::post('platform/roles/import', [RolesController::class, 'import'])
+        ->middleware('can:importRoles')
+        ->name('platform.roles.import');
+    Route::get('platform/roles/export', [RolesController::class, 'export'])
+        ->middleware('can:exportRoles')
+        ->name('platform.roles.export');
 });

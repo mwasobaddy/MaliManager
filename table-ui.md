@@ -507,7 +507,7 @@ reachable", which was inaccurate.
 | Subscription payments | `pages/platform/subscription-payments/index.tsx` | view / edit / delete / confirm-delete / create / filters / import / export | No status; optional org/plan lists; date-range filter. Import matches org/plan by name, case-insensitively
 | Expenses | `pages/platform/expenses/index.tsx` | view / edit / delete / confirm-delete / create / filters / import / export | No status; category is a closed set, so a radio filter **and** the import rejects unknown categories |
 | Audit | `pages/platform/audit/index.tsx` | view / filters / export | Read-only: no create, edit or actions column at all |
-| Roles | `pages/platform/roles/index.tsx` | edit only | Four fixed rows, so **no** toolbar — see below. Import/export/create are deliberately absent: the rows come from the `PlatformRole` enum and cannot be created or deleted |
+| Roles | `pages/platform/roles/index.tsx` | view / edit permissions / deactivate / delete / create / filters / import / export | No longer enum-fixed: rows are real and custom ones are fully manageable. Built-ins are protected — see below |
 
 ---
 
@@ -533,6 +533,7 @@ Import and export are **separate permissions** from `*.manage`:
 
 | Table | Import | Export |
 |---|---|---|
+| Roles | `role.import` / `importRoles` | `role.export` / `exportRoles` |
 | Plans | `plan.import` / `importPlans` | `plan.export` / `exportPlans` |
 | Subscription payments | `subscription.import` / `importSubscriptionPayments` | `subscription.export` / `exportSubscriptionPayments` |
 | Expenses | `platform-expense.import` / `importPlatformExpenses` | `platform-expense.export` / `exportPlatformExpenses` |
@@ -560,6 +561,37 @@ line 1 is the header, so the first data row is line 2.
 An unknown organization or plan name in a payment import leaves the payment
 unlinked rather than failing the row. The money still arrived, and that is more
 important than the link.
+
+---
+
+## 9y. Roles — rows, not enum cases
+
+Roles used to be four `PlatformRole` enum cases with edit-only permissions. They
+are now table rows, because a fixed set is not a role *system*:
+
+- `is_active` (new column) is what "deactivate" sets.
+- Protection is **derived**, not stored: `Role::isProtected()` is
+  `PlatformRole::tryFrom($name) !== null`. There is deliberately no `is_system`
+  column — a second source of truth would drift from the enum.
+- `StoreUserRequest` / `UpdateUserRequest` now validate roles against
+  `roles.name` scoped to `is_active = true`, not against the enum. Without this
+  a role created in the UI would exist but be unassignable without a deploy.
+
+Deleting **or** deactivating a role moves everyone holding it to `searcher`.
+Deactivation does this too, not just deletion: an inactive role still reads as
+"assigned" to `hasRole()`, so leaving someone on one means they look like they
+have a role while having none of its permissions. `searcher` is the fallback
+because it is the least-privileged built-in — a mistake reduces access rather
+than widening it.
+
+`RoleManagementService::reassignHolders()` removes the doomed role and *then*
+adds the fallback. `syncRoles()` replaces the whole set, so the order matters:
+doing it the other way round would quietly drop every other role the user held.
+There is a test for exactly that.
+
+CSV columns are `Name, Permissions, Status, Users, Protected`, with permissions
+pipe-separated — the same format the import reads, so an export can be edited by
+hand and imported back.
 
 ---
 

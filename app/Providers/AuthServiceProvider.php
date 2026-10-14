@@ -40,6 +40,10 @@ class AuthServiceProvider extends ServiceProvider
                 && $user->hasSubPermission($organization, SubPermissionKey::AuditView);
         });
 
+        Gate::define('createRoles', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::RoleCreate->value));
+        Gate::define('importRoles', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::RoleImport->value));
+        Gate::define('exportRoles', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::RoleExport->value));
+        Gate::define('deleteRoles', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::RoleDelete->value));
         Gate::define('manageRoles', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::ManageRoles->value));
         Gate::define('accessAdminDashboard', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::AccessAdminDashboard->value));
 
