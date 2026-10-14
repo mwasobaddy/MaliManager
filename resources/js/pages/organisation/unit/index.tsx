@@ -61,7 +61,6 @@ function useQuery(): URLSearchParams {
 }
 
 export default function UnitsIndex({ units, properties }: Props) {
-    const page = usePage();
     const query = useQuery();
 
     const filters = {
