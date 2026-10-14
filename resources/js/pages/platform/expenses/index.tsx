@@ -77,9 +77,9 @@ export default function PlatformExpensesIndex({
 }: Props) {
     const page = usePage();
     const permissions = (page.props.auth?.permissions ?? []) as string[];
-    const canCreate = permissions.includes('expense.create');
-    const canEdit = permissions.includes('expense.edit');
-    const canDelete = permissions.includes('expense.delete');
+    const canCreate = permissions.includes('platform-expense.create');
+    const canEdit = permissions.includes('platform-expense.edit');
+    const canDelete = permissions.includes('platform-expense.delete');
 
     const errors = (page.props.errors ?? {}) as Record<string, string>;
 
