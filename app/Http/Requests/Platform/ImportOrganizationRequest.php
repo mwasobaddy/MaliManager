@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Http\Requests\Organizations;
+namespace App\Http\Requests\Platform;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-class ImportOrganizationsRequest extends FormRequest
+class ImportOrganizationRequest extends FormRequest
 {
     /**
      * Authorization is handled by the `can:importOrganizations` route middleware.

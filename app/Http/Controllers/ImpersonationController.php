@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Platform\StopImpersonationRequest;
 use App\Models\Organization;
 use App\Models\User;
 use App\Support\InertiaRedirect;
@@ -28,7 +29,7 @@ class ImpersonationController extends Controller
      * The counterpart to `PlatformController::startImpersonating()`, which
      * records who is being impersonated *before* swapping the session user over.
      */
-    public function stop(Request $request): RedirectResponse|Response
+    public function stop(StopImpersonationRequest $request): RedirectResponse|Response
     {
         $impersonatedBy = $request->session()->get('impersonated_by');
 

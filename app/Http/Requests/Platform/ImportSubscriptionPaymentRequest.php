@@ -1,13 +1,13 @@
 <?php
 
-namespace App\Http\Requests\Users;
+namespace App\Http\Requests\Platform;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class ImportUsersRequest extends FormRequest
+class ImportSubscriptionPaymentRequest extends FormRequest
 {
     /**
-     * Authorization is handled by the `can:importUsers` route middleware.
+     * Authorization is handled by the `can:importSubscriptionPayments` route middleware.
      */
     public function authorize(): bool
     {
@@ -20,9 +20,7 @@ class ImportUsersRequest extends FormRequest
     public function rules(): array
     {
         return [
-            // `text/plain` covers .csv on most uploads. The cap is smaller than
-            // the organizations import: each row creates or updates a person
-            // *and* a user account, with role sync.
+            // `text/plain` covers .csv on most uploads.
             'file' => ['required', 'file', 'mimes:csv,txt', 'max:2048'],
         ];
     }

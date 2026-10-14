@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Platform;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Admin\DestroyPlanRequest;
-use App\Http\Requests\Admin\ImportPlanRequest;
-use App\Http\Requests\Admin\StorePlanRequest;
-use App\Http\Requests\Admin\UpdatePlanRequest;
-use App\Http\Requests\Admin\UpdatePlanStatusRequest;
+use App\Http\Requests\Platform\DestroyPlanRequest;
+use App\Http\Requests\Platform\ImportPlanRequest;
+use App\Http\Requests\Platform\StorePlanRequest;
+use App\Http\Requests\Platform\UpdatePlanRequest;
+use App\Http\Requests\Platform\UpdatePlanStatusRequest;
 use App\Models\Plan;
 use App\Support\CsvReader;
 use Illuminate\Database\Eloquent\Builder;

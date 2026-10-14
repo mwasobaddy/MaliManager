@@ -18,7 +18,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/Http/Middleware/** | .ai/rules/middleware.md |
 | database/migrations/**, database/migrations/0001_01_01_000000_create_users_table.php | .ai/rules/migrations.md |
 | app/Models/** | .ai/rules/models.md |
-| resources/js/pages/organizations/index.tsx | .ai/rules/organizations.md |
+| resources/js/pages/platform/organizations/index.tsx | .ai/rules/organizations.md |
 | resources/js/pages/welcome.tsx, resources/js/pages/**/*.tsx | .ai/rules/pages.md |
 | app/Support/**, app/Http/Requests/** | .ai/rules/requests.md |
 | resources/css/editor.css, resources/css/app.css | .ai/rules/resources-css.md |

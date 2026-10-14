@@ -4,7 +4,8 @@ namespace App\Http\Controllers\Platform;
 
 use App\Enums\OrganizationStatus;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Organizations\ImpersonateOrganizationRequest;
+use App\Http\Requests\Platform\ImpersonateOrganizationRequest;
+use App\Http\Requests\Platform\ImpersonateUserRequest;
 use App\Models\Organization;
 use App\Models\User;
 use App\Support\InertiaRedirect;
@@ -45,7 +46,7 @@ class PlatformController extends Controller
         ]);
     }
 
-    public function impersonate(Request $request, Organization $organization, User $user): RedirectResponse|\Illuminate\Http\Response
+    public function impersonate(ImpersonateUserRequest $request, Organization $organization, User $user): RedirectResponse|\Illuminate\Http\Response
     {
         if (! $organization->users()->whereKey($user->id)->exists()) {
             abort(403, 'User is not a member of this organization.');

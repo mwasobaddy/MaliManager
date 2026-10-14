@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Requests\Users;
+namespace App\Http\Requests\Platform;
 
 use App\Enums\PlatformRole;
 use Illuminate\Foundation\Http\FormRequest;

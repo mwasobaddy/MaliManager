@@ -1,12 +1,12 @@
 <?php
 
-namespace App\Http\Requests\Organizations;
+namespace App\Http\Requests\Platform;
 
 use App\Concerns\PasswordValidationRules;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
-class DestroyOrganizationRequest extends FormRequest
+class DestroyUserRequest extends FormRequest
 {
     use PasswordValidationRules;
 
