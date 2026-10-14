@@ -85,8 +85,16 @@ class PropertyType extends Model
         return Str::slug($name);
     }
 
+    /**
+     * Bound by id, not slug.
+     *
+     * Properties point at a type with `property_type_id`, so id is the key the
+     * rest of the app already speaks. The slug is a lookup key for storage
+     * paths and CSV imports, not a URL identifier — binding on it would mean a
+     * rename 404s every link already shared.
+     */
     public function getRouteKeyName(): string
     {
-        return 'slug';
+        return 'id';
     }
 }

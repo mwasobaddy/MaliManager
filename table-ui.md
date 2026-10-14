@@ -564,6 +564,44 @@ important than the link.
 
 ---
 
+## 9x. Organisation pages
+
+Every tenant-facing page lives under `resources/js/pages/organisation/`.
+`Inertia` resolves pages by convention, so a move is a matter of changing the
+`Inertia::render()` target and the test assertions that pin it — there is no
+import graph to chase.
+
+| Page | Route prefix | Notes |
+|---|---|---|
+| `organisation/properties/` | `/properties` | Create form takes `location_url` and a `property_type_id` |
+| `organisation/property-types/` | `/property-types` | Per-org catalog, gated on `property_type.*` |
+| `organisation/unit/` | `/units` | `index` lists across properties, `show` renders the photos |
+| `organisation/expenses/`, `organisation/maintenance/` | — | Moved in from sibling folders |
+
+`/property-types` is deliberately **outside** the `has-property` middleware
+group: the catalog is configuration, and an owner should be able to curate it
+before they own any buildings. `/units` stays inside it — a unit belongs to a
+property.
+
+### Unit photos
+
+Stored at `{org}/{property-slug}/{unit-slug}/photos`, via
+`StorageLayout::unitPhotosPath()` and a `TenantPathGenerator` branch, exactly
+like inspection and maintenance photos.
+
+The property slug is in the path even though a unit slug alone would be unique
+per organization, because unit *names* repeat across every building in a
+portfolio — without it two "A1"s share a folder. The slug is derived in a
+`Unit::booted()` hook rather than in the service layer: the column is NOT NULL
+and several writers create units, so one guarantee in the model beats the same
+four lines at each call site.
+
+Two schema facts worth remembering: `(property_id, name)` is unique, so a
+repeated unit name cannot happen; but two *different* names can slugify
+identically ("Bar / Pub" vs "Bar-Pub"), which is what the `-2` suffix is for.
+
+---
+
 ## 9y. Roles — rows, not enum cases
 
 Roles used to be four `PlatformRole` enum cases with edit-only permissions. They

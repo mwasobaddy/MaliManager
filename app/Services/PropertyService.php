@@ -6,6 +6,8 @@ use App\Models\Organization;
 use App\Models\Property;
 use App\Models\Unit;
 use App\Models\User;
+use App\Support\StorageLayout;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
 
 /**
@@ -29,9 +31,13 @@ class PropertyService extends Service
                 'slug' => Property::uniqueSlug($organization->id, $data['name']),
                 'address' => $data['address'] ?? null,
                 'city' => $data['city'] ?? null,
+                'location_url' => $data['location_url'] ?? null,
+                'property_type_id' => $data['property_type_id'] ?? null,
                 'status' => 'active',
                 'created_by' => $user->id,
             ]));
+
+            StorageLayout::bootstrapProperty($property);
 
             foreach ($data['units'] ?? [] as $unit) {
                 $this->addUnit($property, $user, $unit);
@@ -50,7 +56,7 @@ class PropertyService extends Service
         );
 
         return $this->transaction(function () use ($property, $user, $data) {
-            return $this->save(new Unit([
+            $unit = $this->save(new Unit([
                 'property_id' => $property->id,
                 'name' => $data['name'],
                 'type' => $data['type'] ?? null,
@@ -58,7 +64,27 @@ class PropertyService extends Service
                 'status' => 'vacant',
                 'created_by' => $user->id,
             ]));
+
+            $this->attachUnitPhotos($unit, $data['photos'] ?? []);
+
+            return $unit;
         });
+    }
+
+    /**
+     * Attach photos uploaded alongside the unit.
+     *
+     * Inside the same transaction as the unit insert, so a failed upload cannot
+     * leave a unit whose photo set half-wrote. Medialibrary records its own
+     * rows; `$unit` is saved above so it has an id for them to point at.
+     *
+     * @param  iterable<UploadedFile>  $photos
+     */
+    private function attachUnitPhotos(Unit $unit, iterable $photos): void
+    {
+        foreach ($photos as $photo) {
+            $unit->addMedia($photo)->toMediaCollection('photos');
+        }
     }
 
     private function assertWithinLimit(?int $limit, int $current, string $resource): void
