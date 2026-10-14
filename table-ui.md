@@ -501,8 +501,8 @@ reachable", which was inaccurate.
 
 | Table | Page | Overlays | Notes |
 |---|---|---|---|
-| Organizations | `pages/organizations/index.tsx` | view / edit / delete / create / filters / import / export | The reference |
-| Users | `pages/users/index.tsx` | same as organizations | Radio filters for status + role |
+| Organizations | `pages/platform/organizations/index.tsx` | view / edit / delete / create / filters / import / export | The reference |
+| Users | `pages/platform/users/index.tsx` | same as organizations | Radio filters for status + role |
 | Plans | `pages/platform/plans/index.tsx` | view / edit / delete / confirm-delete / create / filters / import / export | Status is a boolean |
 | Subscription payments | `pages/platform/subscription-payments/index.tsx` | view / edit / delete / confirm-delete / create / filters / import / export | No status; optional org/plan lists; date-range filter. Import matches org/plan by name, case-insensitively
 | Expenses | `pages/platform/expenses/index.tsx` | view / edit / delete / confirm-delete / create / filters / import / export | No status; category is a closed set, so a radio filter **and** the import rejects unknown categories |
@@ -520,7 +520,10 @@ They share two components rather than three copies of the same sheet:
   report) and `downloadCsv()`.
 - `components/csv-export-sheet.tsx` — `CsvExportSheet` (the all-vs-page chooser).
 
-`CsvReader` (`app/Support/`) is the matching backend half. It normalises header
+`CsvReader` (`app/Support/`) is the matching backend half. Organizations and
+users now use these same components instead of their own inline copies — the
+pair was written for them first, so keeping both would have meant three
+implementations of the same sheet. It normalises header
 names by stripping spaces, underscores and punctuation and lower-casing, so
 `"First Name"`, `first_name` and `FIRSTNAME` all resolve to `firstname`. A file
 with no header row, or one `fopen` cannot read, comes back as `ok: false` with a

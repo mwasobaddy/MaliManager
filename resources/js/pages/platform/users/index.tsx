@@ -11,6 +11,8 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActionIconButton } from '@/components/action-icon-button';
+import { CsvImportSheet, downloadCsv } from '@/components/csv-actions';
+import { CsvExportSheet } from '@/components/csv-export-sheet';
 import { DataTable } from '@/components/data-table';
 import Heading from '@/components/heading';
 import { LabelledIconButton } from '@/components/labelled-icon-button';
@@ -133,6 +135,16 @@ export default function UsersIndex({
         (query.get('mode') as RowMode | null) ?? 'view';
     const isCreateOpen = query.get('create') === '1';
     const isImportOpen = query.get('import') === '1';
+    /** Spoken description of the active filters, for the export sheet. */
+    const activeFilterSummary =
+        [
+            filters.search ? 'the search' : '',
+            filters.status ? 'the status filter' : '',
+            filters.role ? 'the role filter' : '',
+        ]
+            .filter(Boolean)
+            .join(' and ') || null;
+
     const isExportOpen = query.get('export') === '1';
 
     // `query.has()` is true even for an empty value, and closing navigates to
@@ -140,9 +152,6 @@ export default function UsersIndex({
     const isFiltersOpen =
         query.get('filters') !== null && query.get('filters') !== '';
 
-    const [importErrors, setImportErrors] = useState<
-        { row: number; message: string }[]
-    >([]);
     const [deleteTarget, setDeleteTarget] = useState<UserRow | null>(null);
     const [suspending, setSuspending] = useState(false);
     const [suspendTarget, setSuspendTarget] = useState<UserRow | null>(null);
@@ -219,66 +228,24 @@ export default function UsersIndex({
 
     // A plain <a download> would not carry the session cookie and fetch()
     // would force us to hand-save a blob, so export is a hidden form GET.
-    function downloadExportUrl(scope: 'all' | 'page') {
-        const url = new URL(
-            usersRoutes.exportMethod().url,
-            window.location.origin,
-        );
-
-        if (filters.search) {
-            url.searchParams.set('search', filters.search);
-        }
-
-        if (filters.status) {
-            url.searchParams.set('status', filters.status);
-        }
-
-        if (filters.role) {
-            url.searchParams.set('role', filters.role);
-        }
-
-        url.searchParams.set('scope', scope);
-
-        if (sort.column) {
-            url.searchParams.set('sort', sort.column);
-        }
-
-        if (sort.direction) {
-            url.searchParams.set('direction', sort.direction);
-        }
-
-        if (scope === 'page') {
-            url.searchParams.set('page', String(users.current_page));
-        }
-
-        const form = document.createElement('form');
-        form.method = 'GET';
-        form.action = url.toString();
-        form.hidden = true;
-
-        const fields: Record<string, string> = {
+    /**
+     * The filters the export has to carry. Reusing them is the point: "Export
+     * all" must mean "everything the table is showing", not "everything".
+     */
+    function exportParams(scope: 'all' | 'page') {
+        return {
             search: filters.search,
             status: filters.status,
             role: filters.role,
-            scope,
             sort: sort.column ?? '',
             direction: sort.direction,
+            scope,
+            ...(scope === 'page' ? { page: users.current_page } : {}),
         };
+    }
 
-        for (const [name, value] of Object.entries(fields)) {
-            if (value !== '') {
-                const input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = name;
-                input.value = value;
-                form.appendChild(input);
-            }
-        }
-
-        document.body.appendChild(form);
-        form.submit();
-        form.remove();
-
+    function runExport(scope: 'all' | 'page') {
+        downloadCsv(usersRoutes.exportMethod().url, exportParams(scope));
         setOverlayParam('export', null, { replace: true });
     }
 
@@ -976,65 +943,38 @@ export default function UsersIndex({
                 </div>
             </ResponsiveOverlay>
 
-            <ResponsiveOverlay
-                open={isExportOpen}
-                onOpenChange={(open) => {
-                    if (!open) {
-                        setOverlayParam('export', null, { replace: true });
-                    }
-                }}
-                title="Export users"
-                description="Choose how many rows to include in the CSV."
-                footer={
-                    <OverlayFooter
-                        onCancel={() =>
-                            setOverlayParam('export', null, { replace: true })
-                        }
-                        actions={[
-                            {
-                                label: 'Current page',
-                                tone: 'secondary',
-                                onClick: () => downloadExportUrl('page'),
-                            },
-                            {
-                                label: 'Export all',
-                                icon: <Download className="size-4" />,
-                                onClick: () => downloadExportUrl('all'),
-                            },
-                        ]}
-                    />
-                }
-            >
-                <div className="space-y-3 text-sm">
-                    <div className="rounded-lg border border-border-strong bg-background p-3">
-                        <div className="font-medium">All matching</div>
-                        <div className="mt-1 text-xs text-muted-foreground">
-                            Every user matching
-                            {filters.search || filters.status || filters.role ? (
-                                <>
-                                    {' '}
-                                    the active search
-                                    {filters.status ? ' and status' : ''}
-                                    {filters.role ? ' and role' : ''} filter
-                                </>
-                            ) : (
-                                <> (no filters are active)</>
-                            )}
-                            . Ignores pagination — {users.total} row
-                            {users.total === 1 ? '' : 's'} in total.
-                        </div>
-                    </div>
 
-                    <div className="rounded-lg border border-border-strong bg-background p-3">
-                        <div className="font-medium">Current page</div>
-                        <div className="mt-1 text-xs text-muted-foreground">
-                            Only the {users.data.length} row
-                            {users.data.length === 1 ? '' : 's'} visible on page{' '}
-                            {users.current_page}.
-                        </div>
-                    </div>
-                </div>
-            </ResponsiveOverlay>
+            <CsvExportSheet
+                open={isExportOpen}
+                onClose={() => setOverlayParam('export', null, { replace: true })}
+                canExport={canExport}
+                total={users.total}
+                pageCount={users.data.length}
+                currentPage={users.current_page}
+                activeFilters={activeFilterSummary}
+                onExport={runExport}
+            />
+
+            <CsvImportSheet
+                open={isImportOpen}
+                onClose={() => setOverlayParam('import', null, { replace: true })}
+                route={usersRoutes.importMethod}
+                idPrefix="users"
+                title="Import users"
+                description="Upload a CSV to create users."
+                required={['First Name', 'Email']}
+                optional={[
+                    'Last Name',
+                    'Phone',
+                    'National ID',
+                    'Gender',
+                    'Status',
+                    'Roles (pipe-separated)',
+                ]}
+                canImport={canImport}
+                buttonLabel="Import"
+            />
+
 
             <ResponsiveOverlay
                 open={isCreateOpen}
@@ -1138,107 +1078,7 @@ export default function UsersIndex({
                 </Form>
             </ResponsiveOverlay>
 
-            <ResponsiveOverlay
-                open={isImportOpen}
-                onOpenChange={(open) => {
-                    if (!open) {
-                        setImportErrors([]);
-                        setOverlayParam('import', null, { replace: true });
-                    }
-                }}
-                title="Import users"
-                description="Upload a CSV to create users."
-                footer={
-                    <OverlayFooter
-                        onCancel={() =>
-                            setOverlayParam('import', null, { replace: true })
-                        }
-                        cancelLabel="Close"
-                    />
-                }
-            >
-                <Form
-                    method="post"
-                    action={usersRoutes.importMethod()}
-                    encType="multipart/form-data"
-                    onSuccess={(page: unknown) => {
-                        // Flash rides on the page object itself, not `props`.
-                        // A partial failure must leave the sheet open so the
-                        // per-row report stays readable.
-                        const reported =
-                            (
-                                page as unknown as {
-                                    flash?: {
-                                        importErrors?: {
-                                            row: number;
-                                            message: string;
-                                        }[];
-                                    };
-                                }
-                            ).flash?.importErrors ?? [];
 
-                        setImportErrors(reported);
-
-                        if (reported.length === 0) {
-                            setOverlayParam('import', null, { replace: true });
-                        }
-                    }}
-                    className="space-y-3 py-2"
-                >
-                    <div className="border-border-strong bg-background space-y-1 rounded-lg border p-3 text-xs">
-                        <div className="font-medium">Required columns</div>
-                        <div className="text-muted-foreground mt-1">
-                            First Name, Email
-                        </div>
-                        <div className="font-medium mt-3">Optional</div>
-                        <div className="text-muted-foreground">
-                            Last Name, Phone, National ID, Gender, Status, Roles
-                            (pipe-separated)
-                        </div>
-                    </div>
-
-                    <Input
-                        id="users-import-file"
-                        name="file"
-                        type="file"
-                        accept=".csv,text/csv,text/plain"
-                        aria-label="CSV file"
-                    />
-
-                    {errors.file && (
-                        <p className="text-xs text-destructive">
-                            {errors.file}
-                        </p>
-                    )}
-
-                    {importErrors.length > 0 && (
-                        <div
-                            role="status"
-                            className="border-destructive/40 bg-destructive/5 space-y-1 rounded-lg border p-3"
-                        >
-                            <div className="text-destructive text-xs font-medium">
-                                {importErrors.length}{' '}
-                                {importErrors.length === 1
-                                    ? 'row was'
-                                    : 'rows were'}{' '}
-                                skipped
-                            </div>
-                            <ul className="text-muted-foreground space-y-1 text-xs">
-                                {importErrors.map((problem, index) => (
-                                    <li key={`${problem.row}-${index}`}>
-                                        {problem.message}
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-                    )}
-
-                    <Button type="submit" className="w-full">
-                        <Upload className="mr-2 size-4" />
-                        Import
-                    </Button>
-                </Form>
-            </ResponsiveOverlay>
 
             <PasswordConfirmDialog
                 open={deleteTarget !== null}
