@@ -22,6 +22,8 @@ use Illuminate\Support\Str;
  * @property string $slug
  * @property string|null $address
  * @property string|null $city
+ * @property string|null $location_url
+ * @property int|null $property_type_id
  * @property string $status
  * @property array|null $settings
  * @property int|null $created_by
@@ -36,6 +38,8 @@ class Property extends Model
         'slug',
         'address',
         'city',
+        'location_url',
+        'property_type_id',
         'status',
         'settings',
         'created_by',
@@ -76,6 +80,16 @@ class Property extends Model
     public function units(): HasMany
     {
         return $this->hasMany(Unit::class);
+    }
+
+    /**
+     * The residential/commercial classification. Nullable so a property created
+     * before the catalog existed keeps working, and so an owner can leave it
+     * unset rather than being forced to pick.
+     */
+    public function propertyType(): BelongsTo
+    {
+        return $this->belongsTo(PropertyType::class);
     }
 
     public function getRouteKeyName(): string

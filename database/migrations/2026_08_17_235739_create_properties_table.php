@@ -19,6 +19,14 @@ return new class extends Migration
             $table->string('slug');
             $table->string('address')->nullable();
             $table->string('city')->nullable();
+            // A pasted map link (Google Maps, Plus Code, OpenStreetMap). Kept
+            // separate from `address`: one is prose a human reads, the other is
+            // something a button can open, and conflating them loses both.
+            $table->string('location_url')->nullable();
+            $table->foreignId('property_type_id')
+                ->nullable()
+                ->constrained('property_types')
+                ->nullOnDelete();
             $table->string('status')->default('active');
             $table->json('settings')->nullable();
 

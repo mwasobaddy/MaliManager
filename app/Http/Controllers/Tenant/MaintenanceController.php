@@ -48,7 +48,7 @@ class MaintenanceController extends Controller
                 'allowed_transitions' => array_values($service->transitionsFrom($item->status)),
             ]);
 
-        return Inertia::render('maintenance/index', [
+        return Inertia::render('organisation/maintenance/index', [
             'requests' => $requests,
             'filters' => [
                 'status' => $status,

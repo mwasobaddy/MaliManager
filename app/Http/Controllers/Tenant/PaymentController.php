@@ -42,7 +42,7 @@ class PaymentController extends Controller
                 'reference' => $payment->reference,
             ]);
 
-        return Inertia::render('tenant/payments/index', [
+        return Inertia::render('organisation/payments/index', [
             'payments' => $payments,
             'statuses' => Payment::STATUSES,
         ]);
@@ -50,7 +50,7 @@ class PaymentController extends Controller
 
     public function create(): Response
     {
-        return Inertia::render('tenant/payments/form', [
+        return Inertia::render('organisation/payments/form', [
             'payment' => null,
             'leases' => $this->leases(),
         ]);
@@ -73,7 +73,7 @@ class PaymentController extends Controller
     {
         abort_if($payment->organization_id !== TenancyContext::organization()?->id, 403);
 
-        return Inertia::render('tenant/payments/form', [
+        return Inertia::render('organisation/payments/form', [
             'payment' => [
                 'id' => $payment->id,
                 'lease_id' => $payment->lease_id,
@@ -117,7 +117,7 @@ class PaymentController extends Controller
     {
         abort_if($payment->organization_id !== TenancyContext::organization()?->id, 403);
 
-        return Inertia::render('tenant/payments/receipt', [
+        return Inertia::render('organisation/payments/receipt', [
             'tenantName' => $payment->lease?->occupant?->name ?? '—',
             'propertyName' => $payment->lease?->property?->name,
             'unitName' => $payment->lease?->unit?->name,

@@ -59,7 +59,7 @@ test('the organization overview renders portfolio stats for an owner', function 
         ->get(tenantOverviewUrl($organization, '/overview'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('tenant/dashboard')
+            ->component('organisation/dashboard')
             ->where('organization.name', 'Acme Estates')
             ->where('properties_count', 1)
             ->where('total_units', 3)
@@ -91,7 +91,7 @@ test('the organization overview compares every accessible property for an owner'
         ->get(tenantOverviewUrl($organization, '/overview'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('tenant/dashboard')
+            ->component('organisation/dashboard')
             ->where('properties_count', 2)
             ->where('total_units', 3)
             ->where('occupied', 2)
@@ -132,7 +132,7 @@ test('the organization overview only shows properties delegated to staff', funct
         ->get(tenantOverviewUrl($organization, '/overview'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('tenant/dashboard')
+            ->component('organisation/dashboard')
             ->where('properties_count', 1)
             ->where('total_units', 1)
             ->where('occupied', 1)
@@ -148,7 +148,7 @@ test('the organization overview switches to a daily axis when a month is selecte
         ->get(tenantOverviewUrl($organization, '/overview?year=2026&month=2'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('tenant/dashboard')
+            ->component('organisation/dashboard')
             ->where('operations_monthly', fn ($rows) => count($rows) === 28)
             ->where('operations_monthly.0.label', '1')
             ->where('operations_monthly.27.label', '28'));

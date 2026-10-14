@@ -208,7 +208,7 @@ test('property-scoped templates are separate from organization-wide ones', funct
         ->get("{$domain}/sunset-heights/agreement-templates/manage")
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('tenant/agreement-templates/index')
+            ->component('organisation/agreement-templates/index')
             ->where('scope', 'property')
             ->where('templates', fn ($rows) => count($rows) === 1));
 });

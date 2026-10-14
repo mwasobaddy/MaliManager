@@ -7,6 +7,7 @@ use App\Enums\PlatformRole;
 use App\Enums\SubPermissionKey;
 use App\Models\Organization;
 use App\Models\SubPermission;
+use App\Support\DefaultPropertyTypes;
 use App\Support\DefaultSubRoles;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Permission;
@@ -72,6 +73,7 @@ class RolesAndPermissionsSeeder extends Seeder
         // missing keys. Additive only — owner customisations are preserved.
         foreach (Organization::all() as $organization) {
             DefaultSubRoles::syncBundlesFor($organization);
+            DefaultPropertyTypes::syncFor($organization);
         }
     }
 

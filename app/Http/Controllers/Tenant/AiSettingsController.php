@@ -41,7 +41,7 @@ class AiSettingsController extends Controller
                 ->where('organization_user.status', 'active'))
             ->get(['id', 'name', 'email']);
 
-        return Inertia::render('tenant/ai-settings/index', [
+        return Inertia::render('organisation/ai-settings/index', [
             'setting' => [
                 'provider' => $setting?->provider,
                 'model' => $setting?->model,

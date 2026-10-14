@@ -19,6 +19,7 @@ use App\Http\Controllers\Tenant\OccupantController;
 use App\Http\Controllers\Tenant\OrganizationDashboardController;
 use App\Http\Controllers\Tenant\PaymentController;
 use App\Http\Controllers\Tenant\PropertyController;
+use App\Http\Controllers\Tenant\PropertyTypeController;
 use App\Http\Controllers\Tenant\ReportController;
 use App\Http\Controllers\Tenant\StaffController;
 use App\Http\Controllers\Tenant\UnitController;
@@ -78,6 +79,21 @@ Route::middleware([
             ->name('tenant.properties.dashboard');
         Route::post('/{property:slug}/units', [UnitController::class, 'store'])
             ->name('tenant.properties.units.store');
+
+        // The property-type catalog. Read-gated for staff who need the picker;
+        // every write is owner-only by default (Landlord holds every key).
+        Route::get('/property-types', [PropertyTypeController::class, 'index'])
+            ->middleware('sub-permission:property_type.manage')
+            ->name('tenant.property-types.index');
+        Route::post('/property-types', [PropertyTypeController::class, 'store'])
+            ->middleware('sub-permission:property_type.create')
+            ->name('tenant.property-types.store');
+        Route::patch('/property-types/{propertyType}', [PropertyTypeController::class, 'update'])
+            ->middleware('sub-permission:property_type.edit')
+            ->name('tenant.property-types.update');
+        Route::delete('/property-types/{propertyType}', [PropertyTypeController::class, 'destroy'])
+            ->middleware('sub-permission:property_type.delete')
+            ->name('tenant.property-types.destroy');
 
         Route::middleware('sub-permission:occupant.manage')->group(function () {
             Route::get('/{property:slug}/occupants', [OccupantController::class, 'index'])

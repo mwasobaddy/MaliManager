@@ -73,7 +73,7 @@ test('staff with the staff.manage sub-permission can view the index', function (
         ->get(staffTenantUrl($organization, '/staff'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('tenant/staff/index')
+            ->component('organisation/staff/index')
             ->has('staff', 2)
             ->where('staff.1.name', 'Sam Staff'));
 });
@@ -85,7 +85,7 @@ test('owners bypass sub-permission checks on the staff index', function () {
     $this->actingAs($owner)
         ->get(staffTenantUrl($organization, '/staff'))
         ->assertOk()
-        ->assertInertia(fn ($page) => $page->component('tenant/staff/index'));
+        ->assertInertia(fn ($page) => $page->component('organisation/staff/index'));
 });
 
 test('creating staff requires the staff.create sub-permission', function () {
@@ -342,7 +342,7 @@ test('staff property picker only lists their assigned properties', function () {
         ->get(staffTenantUrl($organization, '/properties'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('tenant/properties/index')
+            ->component('organisation/properties/index')
             ->has('properties', 1)
             ->where('properties.0.slug', 'assigned-heights'));
 });

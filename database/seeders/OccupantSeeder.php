@@ -44,6 +44,7 @@ class OccupantSeeder extends Seeder
             foreach (['A1', 'A2', 'A3', 'A4'] as $unitName) {
                 $units[$unitName] = $property->units()->firstOrCreate(
                     ['name' => $unitName],
+                    ['slug' => Str::slug($unitName.'-'.$organization->slug)] +
                     [
                         'status' => 'occupied',
                         'type' => '1 Bedroom',

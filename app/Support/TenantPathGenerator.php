@@ -8,6 +8,7 @@ use App\Models\Expense;
 use App\Models\Inspection;
 use App\Models\Lease;
 use App\Models\MaintenanceRequest;
+use App\Models\Unit;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Spatie\MediaLibrary\Support\PathGenerator\PathGenerator;
 
@@ -57,6 +58,10 @@ class TenantPathGenerator implements PathGenerator
 
         if ($model instanceof Expense && $media->collection_name === 'receipt') {
             return StorageLayout::expenseReceiptsPath($model);
+        }
+
+        if ($model instanceof Unit && $media->collection_name === 'photos') {
+            return StorageLayout::unitPhotosPath($model);
         }
 
         if ($model instanceof Inspection && $media->collection_name === 'photos') {

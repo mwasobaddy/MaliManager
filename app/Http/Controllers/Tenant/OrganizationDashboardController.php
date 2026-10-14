@@ -24,7 +24,7 @@ class OrganizationDashboardController extends Controller
         $year = $request->integer('year') ?: null;
         $month = $request->integer('month') ?: null;
 
-        return Inertia::render('tenant/dashboard', app(OrganizationDashboardService::class)->payload(
+        return Inertia::render('organisation/dashboard', app(OrganizationDashboardService::class)->payload(
             $request->user(),
             $organization,
             $year,

@@ -49,7 +49,7 @@ class ExpenseController extends Controller
                 'receipt_url' => $expense->getFirstMedia('receipt')?->getUrl(),
             ]);
 
-        return Inertia::render('expenses/index', [
+        return Inertia::render('organisation/expenses/index', [
             'expenses' => $expenses,
             'filters' => [
                 'category' => $category,
@@ -60,7 +60,7 @@ class ExpenseController extends Controller
 
     public function create(Request $request): Response
     {
-        return Inertia::render('expenses/form', [
+        return Inertia::render('organisation/expenses/form', [
             'expense' => null,
             'targets' => $this->targets(),
         ]);
@@ -87,7 +87,7 @@ class ExpenseController extends Controller
 
         $receipt = $expense->getFirstMedia('receipt');
 
-        return Inertia::render('expenses/form', [
+        return Inertia::render('organisation/expenses/form', [
             'expense' => [
                 'id' => $expense->id,
                 'expenseable_type' => str_contains($expense->expenseable_type, 'LandParcel') ? 'land_parcel' : 'property',

@@ -47,7 +47,7 @@ test('organization owner can view the audit log', function () {
         ->get(auditTenantUrl($organization, '/audit'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('tenant/audit/index')
+            ->component('organisation/audit/index')
             ->where('audits.total', 1)
             ->where('audits.data.0.description', 'Created Sunset Heights'));
 });
@@ -120,7 +120,7 @@ test('member with audit.view permission can view the audit log', function () {
     $this->actingAs($member)
         ->get(auditTenantUrl($organization, '/audit'))
         ->assertOk()
-        ->assertInertia(fn ($page) => $page->component('tenant/audit/index')->where('audits.total', 1));
+        ->assertInertia(fn ($page) => $page->component('organisation/audit/index')->where('audits.total', 1));
 });
 
 test('audit log can be exported as csv', function () {

@@ -34,7 +34,7 @@ class OccupantController extends Controller
             ->get()
             ->map(fn (Occupant $occupant) => $this->present($occupant, $property));
 
-        return Inertia::render('tenant/occupants/index', [
+        return Inertia::render('organisation/occupants/index', [
             'organization' => TenancyContext::organization()->only('id', 'name', 'slug'),
             'property' => $this->property($property),
             'occupants' => $occupants,
@@ -45,7 +45,7 @@ class OccupantController extends Controller
     {
         $this->authorizePropertyAccess($request, $property);
 
-        return Inertia::render('tenant/occupants/create', [
+        return Inertia::render('organisation/occupants/create', [
             'organization' => TenancyContext::organization()->only('id', 'name', 'slug'),
             'property' => $this->property($property),
             'units' => $this->units($property),
@@ -78,7 +78,7 @@ class OccupantController extends Controller
 
         abort_if($occupant->organization_id !== $property->organization_id, 403);
 
-        return Inertia::render('tenant/occupants/edit', [
+        return Inertia::render('organisation/occupants/edit', [
             'organization' => TenancyContext::organization()->only('id', 'name', 'slug'),
             'property' => $this->property($property),
             'occupant' => [
@@ -191,7 +191,7 @@ class OccupantController extends Controller
 
         abort_if(! $lease, 404);
 
-        return Inertia::render('tenant/occupants/agreement', [
+        return Inertia::render('organisation/occupants/agreement', [
             'agreementHtml' => LeaseAgreementTemplate::render((string) $lease->agreement_text, $lease),
             'documentUrl' => $lease->getFirstMedia('agreement')?->getUrl(),
             'occupantName' => trim(($occupant->person->first_name ?? '').' '.($occupant->person->last_name ?? '')),

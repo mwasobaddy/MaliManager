@@ -9,6 +9,7 @@ use App\Models\Lease;
 use App\Models\MaintenanceRequest;
 use App\Models\Organization;
 use App\Models\Property;
+use App\Models\Unit;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -118,6 +119,30 @@ class StorageLayout
     }
 
     /**
+     * Folder for photos attached to a unit:
+     *   {org}/{property-slug}/{unit-slug}/photos
+     *
+     * The property slug is included even though the unit slug alone would be
+     * unique per organization, because unit names repeat across properties and
+     * the path is read by humans navigating object storage. Both segments are
+     * fixed at creation and never move on rename, so existing files stay put.
+     *
+     * Example: acme-estates/sunset-heights/a1/photos
+     */
+    public static function unitPhotosPath(Unit $unit): ?string
+    {
+        $property = $unit->property;
+
+        if ($property === null) {
+            return null;
+        }
+
+        $organizationSlug = $property->organization?->slug ?? $property->organization()->value('slug');
+
+        return $organizationSlug.'/'.$property->slug.'/'.$unit->slug.'/photos';
+    }
+
+    /**
      * Create the folder skeleton for a new organization. Object storage has
      * no real directories, so a marker file makes them visible in consoles.
      */
@@ -139,6 +164,22 @@ class StorageLayout
 
         Storage::disk(self::disk())->put(self::propertyLeasePath($property).'/.keep', '');
         Storage::disk(self::disk())->put($organizationSlug.'/'.$property->slug.'/inspections/.keep', '');
+
+        foreach ($property->units as $unit) {
+            self::bootstrapUnit($unit);
+        }
+    }
+
+    /**
+     * Create the folder skeleton for a new unit.
+     */
+    public static function bootstrapUnit(Unit $unit): void
+    {
+        $path = self::unitPhotosPath($unit);
+
+        if ($path !== null) {
+            Storage::disk(self::disk())->put($path.'/.keep', '');
+        }
     }
 
     /**

@@ -582,7 +582,7 @@ export default function OrganizationsIndex({
                     {canCreate && (
                         <LabelledIconButton
                             icon={<Plus />}
-                            label="Create"
+                            label="New Org"
                             tooltip="Create organisation"
                             color="primary"
                             onClick={() => openCreateSheet()}

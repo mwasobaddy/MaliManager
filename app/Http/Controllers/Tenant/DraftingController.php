@@ -27,7 +27,7 @@ class DraftingController extends Controller
 
     public function page(Request $request): Response
     {
-        return Inertia::render('tenant/drafting', [
+        return Inertia::render('organisation/drafting', [
             'enabled' => $this->resolve($request) !== null,
         ]);
     }
