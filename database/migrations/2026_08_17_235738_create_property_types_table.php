@@ -7,12 +7,18 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * A catalog of property types, scoped to one organization.
+     * A platform-wide catalog of property types.
      *
-     * Organization-scoped rather than global on purpose. A single global table
-     * would let any owner rename or delete a type that every other tenant's
-     * properties depend on. Each organization gets its own copy of the seeded
-     * defaults and can then edit, add or remove them freely.
+     * Global, with no organization_id: the catalogue is central
+     * configuration curated by platform admins, not something each tenant
+     * copies and edits. A per-org table was the earlier shape, but it meant the
+     * 52 seeded entries had to be written once per organization and a type
+     * renamed by one owner diverged from everyone else's.
+     *
+     * Every tenant's property form still reads this table, so removing a type
+     * affects everyone — which is why the delete confirmation reports how many
+     * properties reference it, and why deletion never cascades: properties are
+     * kept and simply become untyped.
      *
      * `category` splits the catalog into residential and commercial. It is a
      * column rather than a second table because the split is fixed, binary and
@@ -28,7 +34,6 @@ return new class extends Migration
         Schema::create('property_types', function (Blueprint $table) {
             $table->id();
 
-            $table->foreignId('organization_id')->constrained()->cascadeOnDelete();
             $table->string('name');
             $table->string('slug');
             $table->enum('category', ['residential', 'commercial'])->default('residential');
@@ -40,10 +45,11 @@ return new class extends Migration
             $table->timestamps();
             $table->softDeletes();
 
-            // Slugs are the stable key used for storage paths and CSV imports,
-            // so they must not repeat inside an organization.
-            $table->unique(['organization_id', 'slug']);
-            $table->index(['organization_id', 'category', 'sort_order']);
+            // One catalogue, so both name and slug are globally unique. The
+            // slug is the stable key used for CSV imports and storage paths.
+            $table->unique('slug');
+            $table->unique('name');
+            $table->index(['category', 'sort_order']);
         });
     }
 

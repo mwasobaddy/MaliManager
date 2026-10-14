@@ -62,10 +62,11 @@ class PropertyController extends Controller
                 'properties_limit' => $organization->plan?->properties_limit,
                 'units_limit' => $organization->plan?->units_limit,
             ],
-            // The catalog the property can be typed against. Only active types
-            // are offered: a deactivated type is not something a new property
-            // should be labelled with, and the select is the only gate here.
-            'propertyTypes' => $organization->propertyTypes()
+            // The platform-wide catalog, not an organization-scoped one: the
+            // catalog is central configuration. Only active types are offered —
+            // a deactivated one is not something a new property should be
+            // labelled with, and the select is the only gate here.
+            'propertyTypes' => PropertyType::query()
                 ->where('status', 'active')
                 ->orderBy('sort_order')
                 ->orderBy('name')

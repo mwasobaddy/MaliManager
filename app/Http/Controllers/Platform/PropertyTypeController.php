@@ -1,14 +1,16 @@
 <?php
 
-namespace App\Http\Controllers\Tenant;
+namespace App\Http\Controllers\Platform;
 
+use App\Enums\PlatformPermissionKey;
 use App\Enums\PropertyCategory;
-use App\Enums\SubPermissionKey;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Tenant\StorePropertyTypeRequest;
-use App\Http\Requests\Tenant\UpdatePropertyTypeRequest;
+use App\Http\Requests\Platform\ImportPropertyTypeRequest;
+use App\Http\Requests\Platform\StorePropertyTypeRequest;
+use App\Http\Requests\Platform\UpdatePropertyTypeRequest;
 use App\Models\PropertyType;
-use App\Support\TenancyContext;
+use App\Support\CsvReader;
+use App\Support\PropertyTypeCatalog;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -17,15 +19,17 @@ use Inertia\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
- * The organization's property-type catalog.
+ * The platform-wide property-type catalog.
  *
- * A catalog of labels for properties, classified residential or commercial.
- * It is not a property itself — nothing about a property depends on one beyond
- * an optional label — which is why deleting a type in use simply unlabels the
+ * A catalog of labels for properties, classified residential or commercial. It
+ * is not a property itself — nothing about a property depends on one beyond an
+ * optional label — which is why deleting a type in use simply unlabels the
  * properties that referenced it rather than cascading.
  *
- * Every query is scoped to the current organization. The catalog is per-org on
- * purpose, so one owner renaming "Villa" cannot reach another's properties.
+ * Central rather than per-organization: one catalogue for every tenant,
+ * curated here under `property-type.*` permissions. Tenant property forms read
+ * it, so a rename reaches everyone at once. That is the intent — the catalog is
+ * platform configuration, not something each landlord curates for themselves.
  */
 class PropertyTypeController extends Controller
 {
@@ -57,26 +61,26 @@ class PropertyTypeController extends Controller
             ->withQueryString()
             ->through(fn (PropertyType $type): array => $this->serialize($type));
 
-        return Inertia::render('organisation/property-types/index', [
+        return Inertia::render('platform/property-types/index', [
             'propertyTypes' => $types,
             'counts' => [
-                'residential' => $this->scoped()->where('category', PropertyCategory::Residential)->count(),
-                'commercial' => $this->scoped()->where('category', PropertyCategory::Commercial)->count(),
+                'residential' => $this->query()->where('category', PropertyCategory::Residential)->count(),
+                'commercial' => $this->query()->where('category', PropertyCategory::Commercial)->count(),
             ],
-            'canCreate' => $this->allowed(SubPermissionKey::PropertyTypeCreate),
-            'canEdit' => $this->allowed(SubPermissionKey::PropertyTypeEdit),
-            'canDelete' => $this->allowed(SubPermissionKey::PropertyTypeDelete),
+            'canCreate' => $this->allowed(PlatformPermissionKey::PropertyTypeCreate),
+            'canEdit' => $this->allowed(PlatformPermissionKey::PropertyTypeEdit),
+            'canDelete' => $this->allowed(PlatformPermissionKey::PropertyTypeDelete),
+            'canImport' => $this->allowed(PlatformPermissionKey::PropertyTypeImport),
+            'canExport' => $this->allowed(PlatformPermissionKey::PropertyTypeExport),
         ]);
     }
 
     public function store(StorePropertyTypeRequest $request): RedirectResponse
     {
-        $organization = TenancyContext::organization();
-
         // `validated()` only returns declared rules, and `slug` is derived in
         // the request's passedValidation() rather than being a rule — so it has
         // to be read from the merged input, not from validated().
-        $organization->propertyTypes()->create([
+        PropertyType::create([
             ...$request->validated(),
             'slug' => $request->string('slug')->toString(),
             'sort_order' => $request->integer('sort_order') ?: $this->nextSortOrder(),
@@ -86,7 +90,7 @@ class PropertyTypeController extends Controller
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Property type created.']);
 
-        return back();
+        return redirect()->route('platform.property-types.index');
     }
 
     public function update(UpdatePropertyTypeRequest $request, PropertyType $propertyType): RedirectResponse
@@ -95,7 +99,7 @@ class PropertyTypeController extends Controller
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Property type updated.']);
 
-        return back();
+        return redirect()->route('platform.property-types.index');
     }
 
     /**
@@ -121,7 +125,7 @@ class PropertyTypeController extends Controller
                 : "The type \"{$name}\" was deleted.",
         ]);
 
-        return back();
+        return redirect()->route('platform.property-types.index');
     }
 
     /**
@@ -167,21 +171,12 @@ class PropertyTypeController extends Controller
     /**
      * @return Builder<PropertyType>
      */
-    private function scoped(): Builder
-    {
-        return PropertyType::query()
-            ->where('organization_id', TenancyContext::organization()?->id);
-    }
-
-    /**
-     * @return Builder<PropertyType>
-     */
     private function filtered(Request $request): Builder
     {
         // `Request::string()` returns a Stringable and an object is always truthy,
         // so `->when($request->string('search')->trim(), ...)` would run the
         // filter with no term — binding `like '%%'` and matching everything.
-        return $this->scoped()
+        return $this->query()
             ->when(
                 $request->string('search')->trim()->toString(),
                 fn (Builder $query, string $search) => $query->where('name', 'like', "%{$search}%"),
@@ -194,7 +189,98 @@ class PropertyTypeController extends Controller
 
     private function nextSortOrder(): int
     {
-        return (int) $this->scoped()->max('sort_order') + 1;
+        return (int) $this->query()->max('sort_order') + 1;
+    }
+
+    /**
+     * The catalogue query. Global by definition — there is one set of types.
+     *
+     * @return Builder<PropertyType>
+     */
+    private function query(): Builder
+    {
+        return PropertyType::query();
+    }
+
+    /**
+     * Create property types from an uploaded CSV.
+     *
+     * Rows are independent: a bad row is recorded and skipped while the good
+     * rows still land.
+     *
+     * Recognised columns (matched case-insensitively, spaces or underscores):
+     * Name (required), Category, Status.
+     *
+     * Because the catalog is global, a duplicate name is the common failure —
+     * the file was probably exported from here and re-imported — so that row
+     * is reported rather than silently treated as an update. Nobody has asked
+     * for an upsert here and quietly rewriting an admin's curated category
+     * from a spreadsheet is worse than a clear error.
+     */
+    public function import(ImportPropertyTypeRequest $request, CsvReader $csv): RedirectResponse
+    {
+        $parsed = $csv->rows($request->file('file'));
+        $errors = [];
+        $imported = 0;
+
+        foreach ($parsed['rows'] as $row) {
+            $data = $row['data'];
+            $name = trim($data['name'] ?? '');
+
+            if ($name === '') {
+                $errors[] = ['row' => $row['row'], 'message' => "Row {$row['row']}: Name is required."];
+
+                continue;
+            }
+
+            if (PropertyType::withTrashed()->where('name', $name)->exists()) {
+                $errors[] = ['row' => $row['row'], 'message' => "Row {$row['row']}: \"{$name}\" already exists."];
+
+                continue;
+            }
+
+            $category = strtolower(trim($data['category'] ?? '')) ?: PropertyCategory::Residential->value;
+
+            if (! PropertyCategory::tryFrom($category)) {
+                $errors[] = ['row' => $row['row'], 'message' => "Row {$row['row']}: category must be residential or commercial."];
+
+                continue;
+            }
+
+            PropertyType::create([
+                'name' => $name,
+                'slug' => PropertyTypeCatalog::slugFor($name),
+                'category' => $category,
+                'sort_order' => $this->nextSortOrder(),
+                'status' => strtolower(trim($data['status'] ?? 'active')) === 'inactive' ? 'inactive' : 'active',
+            ]);
+
+            $imported++;
+        }
+
+        if (! $parsed['ok']) {
+            $errors = $parsed['rows'];
+        }
+
+        $failed = count($errors);
+
+        if ($failed === 0) {
+            Inertia::flash('toast', [
+                'type' => 'success',
+                'message' => $imported === 1 ? '1 property type imported.' : "{$imported} property types imported.",
+            ]);
+
+            return redirect()->route('platform.property-types.index');
+        }
+
+        Inertia::flash('toast', [
+            'type' => $imported > 0 ? 'warning' : 'error',
+            'message' => "{$imported} imported, {$failed} failed.",
+        ]);
+
+        Inertia::flash('importErrors', $errors);
+
+        return back();
     }
 
     /**
@@ -216,20 +302,13 @@ class PropertyTypeController extends Controller
     }
 
     /**
-     * Whether the current user holds a sub-permission.
+     * Whether the current user holds a platform permission.
      *
      * The route middleware is the real gate; these flags only decide which
      * buttons render.
      */
-    private function allowed(SubPermissionKey $key): bool
+    private function allowed(PlatformPermissionKey $key): bool
     {
-        $user = request()->user();
-        $organization = TenancyContext::organization();
-
-        if ($user === null || $organization === null) {
-            return false;
-        }
-
-        return $user->hasSubPermission($organization, $key);
+        return request()->user()?->hasPermissionTo($key->value) ?? false;
     }
 }

@@ -3,24 +3,21 @@
 namespace App\Models;
 
 use App\Enums\PropertyCategory;
-use App\Models\Concerns\LogsTenantActivity;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
 /**
- * A kind of property an organization can label its properties with, classified
- * as residential or commercial.
+ * A kind of property, classified as residential or commercial.
  *
- * Organization-scoped: `DefaultPropertyTypes` seeds a copy per organization and
- * `syncFor()` tops up existing ones additively, so one owner renaming a type
- * cannot reach another's properties.
+ * Platform-wide central configuration: one catalogue for every tenant, curated
+ * by platform admins under `property-type.*` permissions. It was originally
+ * seeded per organization, which meant 52 rows written once per tenant and the
+ * possibility of one owner's edits diverging from another's.
  *
  * @property int $id
- * @property int $organization_id
  * @property string $name
  * @property string $slug
  * @property PropertyCategory $category
@@ -29,10 +26,9 @@ use Illuminate\Support\Str;
  */
 class PropertyType extends Model
 {
-    use HasFactory, LogsTenantActivity, SoftDeletes;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'organization_id',
         'name',
         'slug',
         'category',
@@ -48,11 +44,6 @@ class PropertyType extends Model
             'category' => PropertyCategory::class,
             'sort_order' => 'integer',
         ];
-    }
-
-    public function organization(): BelongsTo
-    {
-        return $this->belongsTo(Organization::class);
     }
 
     public function creator(): BelongsTo

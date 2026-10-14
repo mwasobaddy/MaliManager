@@ -564,6 +564,43 @@ important than the link.
 
 ---
 
+## 9w. Property types are platform configuration, not a tenant setting
+
+The property-type catalog is **central**: one table, no `organization_id`,
+curated by platform admins under `property-type.*` **PlatformPermissionKeys**.
+
+| | |
+|---|---|
+| Enum | `PlatformPermissionKey::PropertyTypeManage` etc. (`property-type.manage`) |
+| Route | `/platform/property-types` in `routes/platform.php` |
+| Controller | `App\Http\Controllers\Platform\PropertyTypeController` |
+| Requests | `App\Http\Requests\Platform\{Store,Update,Import}*PropertyTypeRequest` |
+| Page | `resources/js/pages/platform/property-types/index.tsx` |
+| Seed | `App\Support\PropertyTypeCatalog::seed()` — once, globally |
+
+It was originally per-organization, seeded 52 rows at org creation and synced
+with a `DefaultPropertyTypes::syncFor()` in the style of `DefaultSubRoles`.
+That meant "which types exist?" had twelve possible answers, an admin's rename in
+one tenant diverged from everyone else's, and each new organization wrote 52 rows
+that were identical to everyone else's.
+
+**Tenant property forms still read it.** `PropertyController::create` loads the
+catalog with `PropertyType::query()->where('status','active')` — no org scope,
+because there is nothing to scope by. `StorePropertyRequest` validates
+`property_type_id` with `Rule::exists('property_types','id')->whereNull('deleted_at')`,
+which keeps a soft-deleted type from being selected from a stale form.
+
+Import is additive-only against existing rows: a duplicate name is **reported**,
+not silently upserted. Rewriting an admin's curated category from a spreadsheet
+is worse than a clear error, and the common import case is re-importing a file
+that was exported from here.
+
+`PropertyTypeCatalog::seed()` is idempotent and never renames or deletes, for the
+same reason `DefaultSubRoles::syncBundlesFor()` is additive: an admin who
+customised the catalog keeps their version across re-seeds.
+
+---
+
 ## 9x. Organisation pages
 
 Every tenant-facing page lives under `resources/js/pages/organisation/`.
@@ -574,7 +611,7 @@ import graph to chase.
 | Page | Route prefix | Notes |
 |---|---|---|
 | `organisation/properties/` | `/properties` | Create form takes `location_url` and a `property_type_id` |
-| `organisation/property-types/` | `/property-types` | Per-org catalog, gated on `property_type.*` |
+| _(none — moved to `platform/property-types/`)_ | `/property-types` | Was per-org; now central catalog, see 9w |
 | `organisation/unit/` | `/units` | `index` lists across properties, `show` renders the photos |
 | `organisation/expenses/`, `organisation/maintenance/` | — | Moved in from sibling folders |
 

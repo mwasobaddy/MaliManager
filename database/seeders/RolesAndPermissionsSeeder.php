@@ -7,8 +7,8 @@ use App\Enums\PlatformRole;
 use App\Enums\SubPermissionKey;
 use App\Models\Organization;
 use App\Models\SubPermission;
-use App\Support\DefaultPropertyTypes;
 use App\Support\DefaultSubRoles;
+use App\Support\PropertyTypeCatalog;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -73,8 +73,13 @@ class RolesAndPermissionsSeeder extends Seeder
         // missing keys. Additive only — owner customisations are preserved.
         foreach (Organization::all() as $organization) {
             DefaultSubRoles::syncBundlesFor($organization);
-            DefaultPropertyTypes::syncFor($organization);
         }
+
+        // The property-type catalog is central configuration with no
+        // organization dimension, so it is seeded once rather than per tenant.
+        // Additive for the same reason as above: an admin who renamed or
+        // deleted a type keeps their version.
+        PropertyTypeCatalog::seed();
     }
 
     /**

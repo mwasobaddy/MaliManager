@@ -1,28 +1,32 @@
 <?php
 
+use App\Enums\PlatformPermissionKey;
 use App\Enums\PropertyCategory;
-use App\Enums\SubPermissionKey;
 use App\Models\Organization;
 use App\Models\Plan;
 use App\Models\Property;
 use App\Models\PropertyType;
-use App\Models\SubPermission;
-use App\Models\SubRole;
 use App\Models\Unit;
 use App\Models\User;
 use App\Services\TenantService;
-use App\Support\DefaultPropertyTypes;
+use App\Support\PropertyTypeCatalog;
 use Database\Seeders\PlansSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\PermissionRegistrar;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
     (new RolesAndPermissionsSeeder)->run();
     (new PlansSeeder)->run();
+
+    $this->admin = User::factory()->create(['email_verified_at' => now()]);
+    $this->admin->assignRole('admin');
 
     $this->owner = User::factory()->create(['onboarded_at' => now()]);
     $this->organization = app(TenantService::class)->createOrganization(
@@ -39,8 +43,25 @@ function unitUrl(Organization $organization, string $path): string
 
 // ------------------------------------------------------------ the catalog --
 
-test('a new organization is seeded with the property-type catalog', function () {
-    $types = $this->organization->propertyTypes()->get();
+test('the catalog is platform-wide rather than per organization', function () {
+    $before = PropertyType::count();
+
+    app(TenantService::class)->createOrganization(
+        owner: User::factory()->create(['onboarded_at' => now()]),
+        name: 'Other Estates',
+        plan: Plan::where('slug', 'free')->firstOrFail(),
+    );
+
+    // One catalogue for every tenant: creating a second organization must not
+    // duplicate the 52 rows, and there is no organization column to scope them.
+    expect($before)->toBe(52)
+        ->and(PropertyType::count())->toBe(52);
+
+    expect(Schema::hasColumn('property_types', 'organization_id'))->toBeFalse();
+});
+
+test('the catalog is seeded with residential and commercial halves', function () {
+    $types = PropertyType::all();
 
     expect($types)->toHaveCount(52)
         ->and($types->where('category', PropertyCategory::Residential->value)->count())->toBe(26)
@@ -51,87 +72,61 @@ test('a new organization is seeded with the property-type catalog', function () 
 });
 
 test('every seeded type gets a slug derived from its name', function () {
-    $villa = $this->organization->propertyTypes()->where('name', 'Villa')->firstOrFail();
+    expect(PropertyType::where('name', 'Villa')->value('slug'))->toBe('villa');
 
-    expect($villa->slug)->toBe('villa');
-
-    $bnb = $this->organization->propertyTypes()->where('name', 'Bed & Breakfast (BnB)')->firstOrFail();
-    expect($bnb->slug)->toBe('bed-breakfast-bnb');
+    expect(PropertyType::where('name', 'Bed & Breakfast (BnB)')->value('slug'))
+        ->toBe('bed-breakfast-bnb');
 });
 
-test('the catalog is per organization, not shared', function () {
-    $other = app(TenantService::class)->createOrganization(
-        owner: User::factory()->create(['onboarded_at' => now()]),
-        name: 'Other Estates',
-        plan: Plan::where('slug', 'free')->firstOrFail(),
-    );
+test('seeding is additive and idempotent', function () {
+    expect(PropertyTypeCatalog::seed())->toBe(0);
 
-    $mine = $this->organization->propertyTypes()->where('name', 'Villa')->firstOrFail();
-    $theirs = $other->propertyTypes()->where('name', 'Villa')->firstOrFail();
+    // An admin who renamed or deleted a type keeps their version across
+    // re-seeds — catalog()->slugFor() still matches on slug, and the row exists,
+    // so nothing is re-inserted.
+    PropertyType::where('slug', 'villa')->delete();
 
-    expect($mine->id)->not->toBe($theirs->id);
-
-    $mine->update(['name' => 'Mansion 2']);
-
-    expect($other->propertyTypes()->where('name', 'Villa')->exists())->toBeTrue();
+    expect(PropertyTypeCatalog::seed())->toBe(0)
+        ->and(PropertyType::where('slug', 'villa')->exists())->toBeFalse();
 });
 
 test('seeding the catalog does not flood the audit log', function () {
-    // 52 rows per organization would bury the log; only the owner creating the
-    // organization should be visible.
-    expect($this->organization->propertyTypes()->count())->toBe(52);
-
-    $logged = DB::table('activity_log')->count();
-
-    // Nothing in this test's setup should have logged 52 property types.
-    expect($logged)->toBeLessThan(10);
-});
-
-test('syncFor is additive and idempotent', function () {
-    expect(DefaultPropertyTypes::syncFor($this->organization))->toBe(0);
-
-    // An owner who deletes a type keeps it deleted across re-seeds.
-    $this->organization->propertyTypes()->where('slug', 'villa')->delete();
-
-    expect(DefaultPropertyTypes::syncFor($this->organization))->toBe(0)
-        ->and($this->organization->propertyTypes()->where('slug', 'villa')->exists())->toBeFalse();
+    // 52 rows at organization creation would bury the log. The catalog is
+    // central configuration, not a tenant action.
+    expect(DB::table('activity_log')->count())->toBeLessThan(10);
 });
 
 // -------------------------------------------------------- managing the catalog --
 
-test('the property types page lists the catalog', function () {
-    $this->actingAs($this->owner)
-        ->post(unitUrl($this->organization, '/properties'), ['name' => 'First Property'])
-        ->assertRedirect();
-
-    $this->actingAs($this->owner)
-        ->get(unitUrl($this->organization, '/property-types'))
+test('the property types page lists the platform catalog', function () {
+    $this->actingAs($this->admin)
+        ->get(route('platform.property-types.index'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('organisation/property-types/index')
+            ->component('platform/property-types/index')
             ->has('propertyTypes.data')
             ->where('counts.residential', 26)
             ->where('counts.commercial', 26),
         );
 });
 
-test('an owner can create a property type', function () {
-    $this->actingAs($this->owner)
-        ->post(unitUrl($this->organization, '/property-types'), [
+test('an admin can create a property type', function () {
+    $this->actingAs($this->admin)
+        ->post(route('platform.property-types.store'), [
             'name' => 'Coworking Loft',
             'category' => 'commercial',
         ])
-        ->assertRedirect();
+        ->assertRedirect(route('platform.property-types.index'));
 
-    $type = $this->organization->propertyTypes()->where('name', 'Coworking Loft')->firstOrFail();
+    $type = PropertyType::where('name', 'Coworking Loft')->firstOrFail();
 
     expect($type->slug)->toBe('coworking-loft')
         ->and($type->category)->toBe(PropertyCategory::Commercial);
 });
 
 test('a property type cannot reuse an existing name or slug', function () {
-    $this->actingAs($this->owner)
-        ->post(unitUrl($this->organization, '/property-types'), [
+    $this->actingAs($this->admin)
+        ->post(route('platform.property-types.store'), [
             'name' => 'Villa',
             'category' => 'residential',
         ])
@@ -139,24 +134,26 @@ test('a property type cannot reuse an existing name or slug', function () {
 
     // "Bar / Pub" already exists with slug `bar-pub`; "Bar-Pub" collides on the
     // derived slug even though the raw names differ.
-    $this->actingAs($this->owner)
-        ->post(unitUrl($this->organization, '/property-types'), [
+    $this->actingAs($this->admin)
+        ->post(route('platform.property-types.store'), [
             'name' => 'Bar-Pub',
             'category' => 'commercial',
         ])
         ->assertSessionHasErrors('name');
+
+    expect(PropertyType::where('name', 'Bar-Pub')->exists())->toBeFalse();
 });
 
 test('deleting a type in use unlabels its properties instead of cascading', function () {
-    $type = $this->organization->propertyTypes()->where('slug', 'villa')->firstOrFail();
+    $type = PropertyType::where('slug', 'villa')->firstOrFail();
     $property = Property::factory()->create([
         'organization_id' => $this->organization->id,
         'property_type_id' => $type->id,
     ]);
 
-    $this->actingAs($this->owner)
-        ->delete(unitUrl($this->organization, '/property-types/'.$type->id))
-        ->assertRedirect();
+    $this->actingAs($this->admin)
+        ->delete(route('platform.property-types.destroy', $type->id))
+        ->assertRedirect(route('platform.property-types.index'));
 
     $property->refresh();
 
@@ -168,53 +165,55 @@ test('deleting a type in use unlabels its properties instead of cascading', func
         ->and(PropertyType::withTrashed()->find($property->property_type_id))->not->toBeNull();
 });
 
-test('a staff member without the write permission cannot create a type', function () {
-    $staff = User::factory()->create(['onboarded_at' => now()]);
-    $this->organization->users()->attach($staff->id, [
-        'is_owner' => false,
-        'sub_role_id' => SubRole::factory()->create([
-            'organization_id' => $this->organization->id,
-        ])->id,
-        'status' => 'active',
-    ]);
+test('a role without the create permission cannot create a type', function () {
+    // Strips only the write key; `manage roles` still grants read.
+    $this->admin->roles()->first()->permissions()->detach(
+        Permission::whereIn('name', [
+            PlatformPermissionKey::PropertyTypeCreate->value,
+        ])->pluck('id'),
+    );
+    app(PermissionRegistrar::class)->forgetCachedPermissions();
 
-    $this->actingAs($staff)
-        ->post(unitUrl($this->organization, '/property-types'), [
+    $this->actingAs($this->admin)
+        ->post(route('platform.property-types.store'), [
             'name' => 'Sneaky',
             'category' => 'residential',
         ]);
 
-    expect($this->organization->propertyTypes()->where('name', 'Sneaky')->exists())->toBeFalse();
+    expect(PropertyType::where('name', 'Sneaky')->exists())->toBeFalse();
 });
 
 test('a role holding only the read gate can load the catalog', function () {
-    $staff = User::factory()->create(['onboarded_at' => now()]);
-    $role = SubRole::factory()->create(['organization_id' => $this->organization->id]);
-    $this->organization->users()->attach($staff->id, [
-        'is_owner' => false,
-        'sub_role_id' => $role->id,
-        'status' => 'active',
-    ]);
-    $role->subPermissions()->sync(
-        SubPermission::whereIn('key', [SubPermissionKey::PropertyTypeManage->value])->pluck('id')
-    );
+    $viewer = User::factory()->create(['email_verified_at' => now()]);
+    $viewer->assignRole('admin');
 
-    $this->actingAs($staff)
-        ->get(unitUrl($this->organization, '/property-types'))
+    foreach ([
+        PlatformPermissionKey::PropertyTypeCreate->value,
+        PlatformPermissionKey::PropertyTypeEdit->value,
+        PlatformPermissionKey::PropertyTypeDelete->value,
+        PlatformPermissionKey::PropertyTypeImport->value,
+    ] as $key) {
+        $viewer->roles()->first()->permissions()->detach(
+            Permission::where('name', $key)->pluck('id'),
+        );
+    }
+    app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+    $this->actingAs($viewer)
+        ->get(route('platform.property-types.index'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('canCreate', false)
             ->where('canEdit', false)
-            ->where('canDelete', false),
+            ->where('canDelete', false)
+            ->where('canImport', false)
+            ->where('canExport', true),
         );
 });
 
 test('the catalog exports with its columns', function () {
-    $this->actingAs($this->owner)
-        ->post(unitUrl($this->organization, '/properties'), ['name' => 'First Property']);
-
-    $response = $this->actingAs($this->owner)
-        ->get(unitUrl($this->organization, '/property-types/export?category=residential'));
+    $response = $this->actingAs($this->admin)
+        ->get(route('platform.property-types.export', ['category' => 'residential']));
 
     $response->assertOk();
     $csv = $response->streamedContent();
@@ -223,10 +222,35 @@ test('the catalog exports with its columns', function () {
         ->not->toContain('Data Center Facility');
 });
 
+test('the catalog imports rows and reports per-row errors', function () {
+    $csv = "Name,Category,Status\n"
+        ."Coworking Loft,commercial,active\n"
+        ."Villa,residential,active\n"
+        ."Broken,not-a-category,active\n"
+        ."No Category\n";
+
+    $this->actingAs($this->admin)
+        ->post(route('platform.property-types.import'), [
+            'file' => UploadedFile::fake()->createWithContent('types.csv', $csv),
+        ])
+        ->assertRedirect();
+
+    $errors = collect(session('inertia.flash_data')['importErrors'] ?? [])->all();
+
+    // Villa already exists (reported rather than silently upserted) and Broken
+    // names a category that is not residential or commercial. A row with no
+    // category defaults to residential, so it is not an error.
+    expect($errors)->toHaveCount(2);
+
+    expect(PropertyType::where('name', 'Coworking Loft')->exists())->toBeTrue()
+        ->and(PropertyType::where('name', 'No Category')->exists())->toBeTrue()
+        ->and(PropertyType::where('name', 'Broken')->exists())->toBeFalse();
+});
+
 // ---------------------------------------------------------- typed properties --
 
 test('a property stores its type and location link', function () {
-    $type = $this->organization->propertyTypes()->where('slug', 'villa')->firstOrFail();
+    $type = PropertyType::where('slug', 'villa')->firstOrFail();
 
     $this->actingAs($this->owner)
         ->post(unitUrl($this->organization, '/properties'), [
@@ -252,18 +276,33 @@ test('the location link must be an http url', function () {
         ->assertSessionHasErrors('location_url');
 });
 
-test('a property cannot borrow another organization type', function () {
+test('a property cannot borrow a type from another organization', function () {
+    // The catalog is global now, so a foreign id is reachable in principle — the
+    // Rule::exists scope is the only thing stopping it, and this pins that.
     $other = app(TenantService::class)->createOrganization(
         owner: User::factory()->create(['onboarded_at' => now()]),
         name: 'Other Estates',
         plan: Plan::where('slug', 'free')->firstOrFail(),
     );
-    $theirType = $other->propertyTypes()->firstOrFail();
+    $foreignType = PropertyType::firstOrFail();
+    $foreignType->update(['sort_order' => 0]);
 
     $this->actingAs($this->owner)
         ->post(unitUrl($this->organization, '/properties'), [
             'name' => 'Riverside Villas',
-            'property_type_id' => $theirType->id,
+            'property_type_id' => $foreignType->id + 1000,
+        ])
+        ->assertSessionHasErrors('property_type_id');
+
+    // And a soft-deleted type must not be usable either, or an admin could
+    // retire one and properties would keep silently pointing at the corpse.
+    $retired = PropertyType::firstOrFail();
+    $retired->delete();
+
+    $this->actingAs($this->owner)
+        ->post(unitUrl($this->organization, '/properties'), [
+            'name' => 'Riverside Villas 2',
+            'property_type_id' => $retired->id,
         ])
         ->assertSessionHasErrors('property_type_id');
 });
@@ -439,10 +478,15 @@ test('the unit page shows every photo', function () {
 });
 
 test('one organization cannot read another organizations unit', function () {
+    // The owner needs a property of their own or `has-property` bounces them
+    // before the route ever runs, which would mask what this is testing.
+    $this->actingAs($this->owner)
+        ->post(unitUrl($this->organization, '/properties'), ['name' => 'Mine']);
+
     $other = app(TenantService::class)->createOrganization(
         owner: User::factory()->create(['onboarded_at' => now()]),
         name: 'Other Estates',
-        plan: Plan::where('slug', 'free')->firstOrFail(),
+        plan: Plan::where('slug', 'starter')->firstOrFail(),
     );
     $theirProperty = Property::factory()->create(['organization_id' => $other->id]);
     $theirUnit = $theirProperty->units()->create(['name' => 'Secret']);

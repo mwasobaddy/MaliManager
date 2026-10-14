@@ -44,6 +44,12 @@ class AuthServiceProvider extends ServiceProvider
         Gate::define('importRoles', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::RoleImport->value));
         Gate::define('exportRoles', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::RoleExport->value));
         Gate::define('deleteRoles', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::RoleDelete->value));
+        Gate::define('managePropertyTypes', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::PropertyTypeManage->value));
+        Gate::define('createPropertyTypes', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::PropertyTypeCreate->value));
+        Gate::define('editPropertyTypes', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::PropertyTypeEdit->value));
+        Gate::define('deletePropertyTypes', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::PropertyTypeDelete->value));
+        Gate::define('importPropertyTypes', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::PropertyTypeImport->value));
+        Gate::define('exportPropertyTypes', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::PropertyTypeExport->value));
         Gate::define('manageRoles', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::ManageRoles->value));
         Gate::define('accessAdminDashboard', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::AccessAdminDashboard->value));
 

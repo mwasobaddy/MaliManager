@@ -6,7 +6,6 @@ use App\Models\Organization;
 use App\Models\Plan;
 use App\Models\Tenant;
 use App\Models\User;
-use App\Support\DefaultPropertyTypes;
 use App\Support\DefaultSubRoles;
 use Illuminate\Support\Str;
 
@@ -43,7 +42,6 @@ class TenantService extends Service
             ]);
 
             DefaultSubRoles::createFor($organization, $owner->id);
-            DefaultPropertyTypes::createFor($organization, $owner->id);
 
             $organization->users()->attach($owner->id, [
                 'is_owner' => true,

@@ -14,11 +14,6 @@ enum SubPermissionKey: string
     case PropertyDelete = 'property.delete';
     case PropertyDelegate = 'property.delegate';
 
-    case PropertyTypeManage = 'property_type.manage';
-    case PropertyTypeCreate = 'property_type.create';
-    case PropertyTypeEdit = 'property_type.edit';
-    case PropertyTypeDelete = 'property_type.delete';
-
     case UnitManage = 'unit.manage';
     case UnitCreate = 'unit.create';
     case UnitEdit = 'unit.edit';
@@ -70,7 +65,6 @@ enum SubPermissionKey: string
     {
         return match ($this) {
             self::PropertyManage, self::PropertyCreate, self::PropertyEdit, self::PropertyDelete, self::PropertyDelegate => 'property',
-            self::PropertyTypeManage, self::PropertyTypeCreate, self::PropertyTypeEdit, self::PropertyTypeDelete => 'property_type',
             self::UnitManage, self::UnitCreate, self::UnitEdit, self::UnitDelete, self::UnitDelegate => 'unit',
             self::LandParcelManage, self::LandParcelCreate, self::LandParcelEdit, self::LandParcelDelete, self::LandParcelDelegate => 'land_parcel',
             self::OccupantManage, self::OccupantCreate, self::OccupantEdit, self::OccupantDelete => 'occupant',
@@ -96,10 +90,6 @@ enum SubPermissionKey: string
             self::PropertyEdit => 'Edit properties',
             self::PropertyDelete => 'Delete properties',
             self::PropertyDelegate => 'Delegate properties',
-            self::PropertyTypeManage => 'Manage property types',
-            self::PropertyTypeCreate => 'Create property types',
-            self::PropertyTypeEdit => 'Edit property types',
-            self::PropertyTypeDelete => 'Delete property types',
             self::UnitManage => 'Manage units',
             self::UnitCreate => 'Create units',
             self::UnitEdit => 'Edit units',

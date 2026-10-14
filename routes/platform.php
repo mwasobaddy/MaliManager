@@ -7,6 +7,7 @@ use App\Http\Controllers\Platform\OrganizationController;
 use App\Http\Controllers\Platform\PlanController;
 use App\Http\Controllers\Platform\PlatformController;
 use App\Http\Controllers\Platform\PlatformExpenseController;
+use App\Http\Controllers\Platform\PropertyTypeController;
 use App\Http\Controllers\Platform\RolesController;
 use App\Http\Controllers\Platform\SubscriptionPaymentController;
 use App\Http\Controllers\Platform\UserController;
@@ -223,6 +224,27 @@ Route::middleware(['auth', 'verified', 'can:managePlatformExpenses'])->group(fun
 // params, so the old page route redirects there rather than rendering a second
 // copy of the checkbox list.
 Route::middleware(['auth', 'verified', 'can:manageRoles'])->group(function () {
+    // Central property-type catalog. Tenant property forms read this table, so
+    // every write here is a platform-admin action rather than an org one.
+    Route::get('platform/property-types', [PropertyTypeController::class, 'index'])
+        ->middleware('can:managePropertyTypes')
+        ->name('platform.property-types.index');
+    Route::post('platform/property-types', [PropertyTypeController::class, 'store'])
+        ->middleware('can:createPropertyTypes')
+        ->name('platform.property-types.store');
+    Route::patch('platform/property-types/{propertyType}', [PropertyTypeController::class, 'update'])
+        ->middleware('can:editPropertyTypes')
+        ->name('platform.property-types.update');
+    Route::delete('platform/property-types/{propertyType}', [PropertyTypeController::class, 'destroy'])
+        ->middleware('can:deletePropertyTypes')
+        ->name('platform.property-types.destroy');
+    Route::post('platform/property-types/import', [PropertyTypeController::class, 'import'])
+        ->middleware('can:importPropertyTypes')
+        ->name('platform.property-types.import');
+    Route::get('platform/property-types/export', [PropertyTypeController::class, 'export'])
+        ->middleware('can:exportPropertyTypes')
+        ->name('platform.property-types.export');
+
     Route::get('platform/roles', [RolesController::class, 'index'])->name('platform.roles.index');
     Route::get('platform/roles/{role}/edit', fn (Role $role) => redirect()
         ->route('platform.roles.index', ['mode' => 'edit', 'role' => $role->id]))

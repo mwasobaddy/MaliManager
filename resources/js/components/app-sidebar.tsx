@@ -42,6 +42,7 @@ import { index as platformAuditIndex } from '@/routes/platform/audit';
 import { index as platformExpensesIndex } from '@/routes/platform/expenses';
 import { index as organizationsIndex } from '@/routes/platform/organizations';
 import { index as plansIndex } from '@/routes/platform/plans';
+import { index as propertyTypesIndex } from '@/routes/platform/property-types';
 import { index as rolesIndex } from '@/routes/platform/roles';
 import { index as subscriptionPaymentsIndex } from '@/routes/platform/subscription-payments';
 import { index as usersIndex } from '@/routes/platform/users';
@@ -67,7 +68,6 @@ import {
     dashboard as propertyDashboard,
     index as propertiesIndex,
 } from '@/routes/tenant/properties';
-import { index as propertyTypesIndex } from '@/routes/tenant/property-types';
 import { index as reportsNavIndex } from '@/routes/tenant/reports';
 import { index as staffIndex } from '@/routes/tenant/staff';
 import { index as unitsIndex } from '@/routes/tenant/units';
@@ -100,8 +100,7 @@ export function AppSidebar() {
         context?.permissions?.includes('land_parcel.create') ?? false;
     const canManageProperties =
         context?.permissions?.includes('property.manage') ?? false;
-    const canManagePropertyTypes =
-        context?.permissions?.includes('property_type.manage') ?? false;
+
     const canManageUnits =
         context?.permissions?.includes('unit.manage') ?? false;
     const canManageInspections =
@@ -130,6 +129,7 @@ export function AppSidebar() {
     const aiEnabled = usePage().props.auth?.ai_enabled ?? false;
     const authPermissions = usePage().props.auth?.permissions ?? [];
     const canManageRoles = authPermissions.includes('manage roles');
+    const canManagePropertyTypes = authPermissions.includes('property-type.manage');
     const canViewAnyAudit = authPermissions.includes('view audit');
     const canManageUsers = authPermissions.includes('user.manage');
     const canManageOrganizations = authPermissions.includes(
@@ -310,15 +310,6 @@ export function AppSidebar() {
                     ...(canManageUnits
                         ? [item('Units', unitsIndex(), DoorOpen)]
                         : []),
-                    ...(canManagePropertyTypes
-                        ? [
-                              item(
-                                  'Property types',
-                                  propertyTypesIndex(),
-                                  Tags,
-                              ),
-                          ]
-                        : []),
                     ...(canManageLandParcels
                         ? [
                               item('Land parcels', landParcelsIndex(), Map),
@@ -413,6 +404,9 @@ export function AppSidebar() {
                 ? [item('Platform expenses', platformExpensesIndex(), Wrench)]
                 : []),
             ...(canManageRoles ? [item('Roles', rolesIndex(), UserRound)] : []),
+            ...(canManagePropertyTypes
+                ? [item('Property types', propertyTypesIndex(), Tags)]
+                : []),
             ...(canViewAnyAudit
                 ? [item('Platform audit', platformAuditIndex(), History)]
                 : []),
