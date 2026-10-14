@@ -19,6 +19,7 @@ import { CsvImportSheet, downloadCsv } from '@/components/csv-actions';
 import { CsvExportSheet } from '@/components/csv-export-sheet';
 import { DataTable } from '@/components/data-table';
 import Heading from '@/components/heading';
+import { LabelledIconButton } from '@/components/labelled-icon-button';
 import { OverlayFooter } from '@/components/overlay-footer';
 import { ResponsiveOverlay } from '@/components/responsive-overlay';
 import { StatusIcon } from '@/components/status-cell';
@@ -466,12 +467,14 @@ export default function RolesIndex({
                         description="Platform-wide roles and the central permissions assigned to them."
                     />
                     {canCreate && (
-                        <Button
+                        <LabelledIconButton
+                            icon={<Plus />}
+                            label="New role"
+                            tooltip="Create role"
+                            color="primary"
                             onClick={() => setOverlayParam('create', '1')}
-                        >
-                            <Plus className="mr-2 size-4" />
-                            Create role
-                        </Button>
+                            className="max-w-20 sm:max-w-24"
+                        />
                     )}
                 </div>
 
