@@ -80,7 +80,7 @@ test('owner can view a land parcel', function () {
     $this->actingAs($owner)
         ->get(parcelTenantUrl($organization, "/land-parcels/{$parcel->slug}"))
         ->assertOk()
-        ->assertInertia(fn ($page) => $page->component('tenant/land-parcels/show'));
+        ->assertInertia(fn ($page) => $page->component('organisation/land-parcels/show'));
 });
 
 test('owner can update a land parcel', function () {

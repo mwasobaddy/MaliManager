@@ -28,7 +28,7 @@ class AgreementTemplateController extends Controller
 
     public function orgIndex(): Response
     {
-        return Inertia::render('tenant/agreement-templates/index', [
+        return Inertia::render('organisation/agreement-templates/index', [
             'scope' => 'organization',
             'templates' => $this->templates(TenancyContext::organization()?->id, null),
         ]);
@@ -36,7 +36,7 @@ class AgreementTemplateController extends Controller
 
     public function create(): Response
     {
-        return Inertia::render('tenant/agreement-templates/form', [
+        return Inertia::render('organisation/agreement-templates/form', [
             'scope' => 'organization',
             'template' => null,
             'availableTokens' => LeaseAgreementTemplate::availableTokens(),
@@ -70,7 +70,7 @@ class AgreementTemplateController extends Controller
 
         $document = $template->getFirstMedia('document');
 
-        return Inertia::render('tenant/agreement-templates/form', [
+        return Inertia::render('organisation/agreement-templates/form', [
             'scope' => 'organization',
             'template' => array_merge($template->only('id', 'name', 'body_html'), [
                 'document_name' => $document?->file_name,
@@ -115,7 +115,7 @@ class AgreementTemplateController extends Controller
 
     public function propertyIndex(Property $property): Response
     {
-        return Inertia::render('tenant/agreement-templates/index', [
+        return Inertia::render('organisation/agreement-templates/index', [
             'scope' => 'property',
             'propertySlug' => $property->slug,
             'templates' => $this->templates($property->organization_id, $property->id),
@@ -124,7 +124,7 @@ class AgreementTemplateController extends Controller
 
     public function createForProperty(Property $property): Response
     {
-        return Inertia::render('tenant/agreement-templates/form', [
+        return Inertia::render('organisation/agreement-templates/form', [
             'scope' => 'property',
             'propertySlug' => $property->slug,
             'template' => null,
@@ -158,7 +158,7 @@ class AgreementTemplateController extends Controller
 
         $document = $template->getFirstMedia('document');
 
-        return Inertia::render('tenant/agreement-templates/form', [
+        return Inertia::render('organisation/agreement-templates/form', [
             'scope' => 'property',
             'propertySlug' => $property->slug,
             'template' => array_merge($template->only('id', 'name', 'body_html'), [

@@ -40,7 +40,7 @@ class StaffController extends Controller
                     ->get(['id', 'name', 'slug']),
             ]);
 
-        return Inertia::render('tenant/staff/index', [
+        return Inertia::render('organisation/staff/index', [
             'organization' => $organization->only('id', 'name', 'slug'),
             'staff' => $staff,
         ]);
@@ -50,7 +50,7 @@ class StaffController extends Controller
     {
         $organization = TenancyContext::organization();
 
-        return Inertia::render('tenant/staff/create', [
+        return Inertia::render('organisation/staff/create', [
             'organization' => $organization->only('id', 'name', 'slug'),
             'sub_roles' => $this->subRoles(),
             'properties' => $this->properties(),
@@ -84,7 +84,7 @@ class StaffController extends Controller
             abort(403);
         }
 
-        return Inertia::render('tenant/staff/edit', [
+        return Inertia::render('organisation/staff/edit', [
             'organization' => $organization->only('id', 'name', 'slug'),
             'staff' => [
                 'id' => $staff->id,

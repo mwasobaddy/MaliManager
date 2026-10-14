@@ -91,6 +91,15 @@ class Organization extends Model
             ->withTimestamps();
     }
 
+    /**
+     * This organization's own copy of the property-type catalog. Scoped rather
+     * than global so one owner editing a type cannot reach another's.
+     */
+    public function propertyTypes(): HasMany
+    {
+        return $this->hasMany(PropertyType::class);
+    }
+
     public function subRoles(): HasMany
     {
         return $this->hasMany(SubRole::class);

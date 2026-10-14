@@ -80,7 +80,7 @@ test('owners see the property leases index with active and ended leases', functi
         ->get(leaseUrl($organization, '/sunset-heights/leases'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('tenant/leases/index')
+            ->component('organisation/leases/index')
             ->where('leases.data', fn ($rows) => count($rows) === 2));
 
     $this->actingAs($owner)

@@ -30,7 +30,7 @@ class AuditController extends Controller
 
         $audits->getCollection()->transform(fn (Audit $audit) => $this->service->transform($audit));
 
-        return Inertia::render('tenant/audit/index', [
+        return Inertia::render('organisation/audit/index', [
             'audits' => $audits,
             'filters' => $filters,
             'canExport' => true,
@@ -52,7 +52,7 @@ class AuditController extends Controller
             abort(404);
         }
 
-        return Inertia::render('tenant/audit/show', [
+        return Inertia::render('organisation/audit/show', [
             'audit' => $this->service->transform($activity) + [
                 'properties' => $activity->properties,
                 'subject_type' => $activity->subject_type,

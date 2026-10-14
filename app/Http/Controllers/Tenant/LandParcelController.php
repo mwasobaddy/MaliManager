@@ -33,7 +33,7 @@ class LandParcelController extends Controller
             ->get()
             ->map(fn (LandParcel $parcel) => $this->present($parcel));
 
-        return Inertia::render('tenant/land-parcels/index', [
+        return Inertia::render('organisation/land-parcels/index', [
             'organization' => $organization->only('id', 'name', 'slug'),
             'land_parcels' => $parcels,
             'canCreateLandParcel' => $user->isOwnerOf($organization)
@@ -46,7 +46,7 @@ class LandParcelController extends Controller
         $organization = TenancyContext::organization();
         $parcel = new LandParcel;
 
-        return Inertia::render('tenant/land-parcels/create', [
+        return Inertia::render('organisation/land-parcels/create', [
             'organization' => $organization->only('id', 'name', 'slug'),
             'managers' => $this->managers($organization),
             'parcel' => null,
@@ -75,7 +75,7 @@ class LandParcelController extends Controller
         $organization = TenancyContext::organization();
         $user = $request->user();
 
-        return Inertia::render('tenant/land-parcels/show', [
+        return Inertia::render('organisation/land-parcels/show', [
             'organization' => $organization->only('id', 'name', 'slug'),
             'parcel' => $this->present($landParcel, true),
             'managers' => $this->managerNames($landParcel),
@@ -96,7 +96,7 @@ class LandParcelController extends Controller
 
         $organization = TenancyContext::organization();
 
-        return Inertia::render('tenant/land-parcels/edit', [
+        return Inertia::render('organisation/land-parcels/edit', [
             'organization' => $organization->only('id', 'name', 'slug'),
             'parcel' => $this->present($landParcel, true),
             'managers' => $this->managers($organization),

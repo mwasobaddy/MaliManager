@@ -81,7 +81,7 @@ test('property index lists properties owned by the organization', function () {
         ->get(tenantUrl($organization, '/properties'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('tenant/properties/index')
+            ->component('organisation/properties/index')
             ->where('properties.0.name', 'Sunset Heights')
             ->where('properties.0.units_count', 1));
 });
@@ -127,7 +127,7 @@ test('property dashboard shows real stats and charts', function () {
         ->get(tenantUrl($organization, "/{$property->slug}/dashboard"))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('tenant/properties/dashboard')
+            ->component('organisation/properties/dashboard')
             ->where('stats.total_units', 3)
             ->where('stats.occupied', 1)
             ->where('stats.vacant', 1)
@@ -219,7 +219,7 @@ test('property dashboard shares the current property and organization to the sid
         ->get(tenantUrl($organization, '/sunset-heights/dashboard'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('tenant/properties/dashboard')
+            ->component('organisation/properties/dashboard')
             ->where('context.organization.slug', $organization->slug)
             ->where('context.property.slug', $property->slug)
             ->where('context.property.name', 'Sunset Heights'));

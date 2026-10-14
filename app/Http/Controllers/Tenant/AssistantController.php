@@ -36,7 +36,7 @@ class AssistantController extends Controller
         $organization = TenancyContext::organization();
         $enabled = $organization !== null && $this->gateway->canUse($request->user(), AiFeature::AskData, $organization);
 
-        return Inertia::render('tenant/assistant', [
+        return Inertia::render('organisation/assistant', [
             'enabled' => $enabled,
             'initial_messages' => $enabled ? $this->loadMessages($request->user(), Scope::org($organization->id)) : [],
             'quick_prompts' => [

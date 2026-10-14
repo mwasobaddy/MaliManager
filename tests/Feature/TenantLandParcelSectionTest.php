@@ -79,7 +79,7 @@ test('parcel show includes sections and permission flags', function () {
         ->get(parcelUrl($organization, "/land-parcels/{$parcel->slug}"))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('tenant/land-parcels/show')
+            ->component('organisation/land-parcels/show')
             ->where('sections.0.name', 'Block A')
             ->where('canManageSections', true)
             ->where('canLease', true));

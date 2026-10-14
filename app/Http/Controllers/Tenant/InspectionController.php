@@ -42,7 +42,7 @@ class InspectionController extends Controller
                 'has_report' => $inspection->ai_report !== null,
             ]);
 
-        return Inertia::render('tenant/inspections/index', [
+        return Inertia::render('organisation/inspections/index', [
             'propertySlug' => $property->slug,
             'inspections' => $inspections,
         ]);
@@ -52,7 +52,7 @@ class InspectionController extends Controller
     {
         $this->authorize($request, $property);
 
-        return Inertia::render('tenant/inspections/create', [
+        return Inertia::render('organisation/inspections/create', [
             'units' => $property->units()->get(['id', 'name']),
         ]);
     }
@@ -78,7 +78,7 @@ class InspectionController extends Controller
         $this->authorize($request, $property);
         abort_if($inspection->property_id !== $property->id, 403);
 
-        return Inertia::render('tenant/inspections/show', [
+        return Inertia::render('organisation/inspections/show', [
             'inspection' => [
                 'id' => $inspection->id,
                 'title' => $inspection->title,

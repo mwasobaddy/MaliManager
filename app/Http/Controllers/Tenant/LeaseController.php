@@ -58,7 +58,7 @@ class LeaseController extends Controller
                 'has_agreement_document' => $lease->getFirstMedia('agreement') !== null,
             ]);
 
-        return Inertia::render('tenant/leases/index', [
+        return Inertia::render('organisation/leases/index', [
             'leases' => $leases,
             'filters' => [
                 'status' => $status,

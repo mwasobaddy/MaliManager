@@ -40,7 +40,7 @@ class PropertyController extends Controller
                 'units_count' => $property->units_count,
             ]);
 
-        return Inertia::render('tenant/properties/index', [
+        return Inertia::render('organisation/properties/index', [
             'organization' => $organization->only('id', 'name', 'slug'),
             'properties' => $properties,
             'canCreateProperty' => ($user->isOwnerOf($organization)
@@ -55,7 +55,7 @@ class PropertyController extends Controller
 
         $this->authorizePropertyMutation($request, $organization);
 
-        return Inertia::render('tenant/properties/create', [
+        return Inertia::render('organisation/properties/create', [
             'organization' => $organization->only('id', 'name', 'slug'),
             'plan' => [
                 'properties_limit' => $organization->plan?->properties_limit,
@@ -110,7 +110,7 @@ class PropertyController extends Controller
         $year = $request->input('year') ? (int) $request->input('year') : null;
         $month = $request->input('month') ? (int) $request->input('month') : null;
 
-        return Inertia::render('tenant/properties/dashboard', [
+        return Inertia::render('organisation/properties/dashboard', [
             'organization' => TenancyContext::organization()->only('id', 'name', 'slug'),
             'property' => [
                 'id' => $property->id,

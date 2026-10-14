@@ -147,7 +147,7 @@ test('occupants index is scoped to the property and lists occupants with their u
         ->get(occupantTenantUrl($organization, '/sunset-heights/occupants'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('tenant/occupants/index')
+            ->component('organisation/occupants/index')
             ->has('occupants', 1)
             ->where('occupants.0.email', 'sam@acme.test')
             ->where('occupants.0.units.0.id', $unit->id));
@@ -162,7 +162,7 @@ test('owners bypass sub-permission checks on the occupants index', function () {
     $this->actingAs($owner)
         ->get(occupantTenantUrl($organization, '/sunset-heights/occupants'))
         ->assertOk()
-        ->assertInertia(fn ($page) => $page->component('tenant/occupants/index'));
+        ->assertInertia(fn ($page) => $page->component('organisation/occupants/index'));
 });
 
 test('staff without delegation cannot view occupants of a property', function () {
@@ -624,7 +624,7 @@ test('agreement placeholders are merged from lease data on the print page', func
         ->get(occupantTenantUrl($organization, "/sunset-heights/occupants/{$lease->occupant_id}/agreement"))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('tenant/occupants/agreement')
+            ->component('organisation/occupants/agreement')
             ->where('agreementHtml', fn (string $html) => str_contains($html, 'Jane Wanjiru')
                 && str_contains($html, 'Unit A1')
                 && str_contains($html, 'Sunset Heights')

@@ -32,7 +32,7 @@ class ReportController extends Controller
     {
         $this->authorize($request);
 
-        return Inertia::render('tenant/reports/index', [
+        return Inertia::render('organisation/reports/index', [
             'types' => ReportService::TYPES,
         ]);
     }
@@ -86,7 +86,7 @@ class ReportController extends Controller
         $report = app(ReportService::class, ['organizationId' => TenancyContext::organization()?->id])
             ->build($type, $from, $to);
 
-        return Inertia::render('tenant/reports/print', [
+        return Inertia::render('organisation/reports/print', [
             'report' => $report,
             'organizationName' => TenancyContext::organization()?->name,
             'rangeLabel' => trim(($from ?? 'Beginning').' → '.($to ?? now()->toDateString())),

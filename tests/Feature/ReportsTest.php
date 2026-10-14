@@ -209,7 +209,7 @@ test('leases index flags expiring leases and links to a pre-filled draft', funct
         ->get(reportUrl($organization, '/sunset-heights/leases'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('tenant/leases/index')
+            ->component('organisation/leases/index')
             ->where('leases.data.0.expiring_soon', true)
             ->where('leases.data.0.ends_at', fn ($v) => $v !== null));
 });
