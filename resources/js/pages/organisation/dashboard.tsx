@@ -82,6 +82,7 @@ type Props = {
     in_maintenance: number;
     open_maintenance: number;
     active_leases: number;
+    staff_count: number;
     rent_potential: number;
     occupancy_rate: number;
     operations_monthly: ComboPoint[];
@@ -97,8 +98,7 @@ export default function OrganizationDashboard({
     properties,
     properties_count,
     total_units,
-    in_maintenance,
-    active_leases,
+    staff_count,
     rent_potential,
     occupancy_rate,
     operations_monthly,
@@ -197,27 +197,17 @@ export default function OrganizationDashboard({
                         {
                             label: 'Total Properties',
                             value: properties_count,
-                            variant: 'success',
+                            variant: 'accent',
                         },
                         {
                             label: 'Total Units',
                             value: total_units,
-                            variant: 'success',
-                        },
-                        {
-                            label: 'Occupancy Rate',
-                            value: `${occupancy_rate}%`,
-                            variant: 'info',
-                        },
-                        {
-                            label: 'In Maintenance',
-                            value: in_maintenance,
-                            variant: 'warning',
-                        },
-                        {
-                            label: 'Active Leases',
-                            value: active_leases,
                             variant: 'accent',
+                        },
+                        {
+                            label: 'Total Staff',
+                            value: staff_count,
+                            variant: 'primary',
                         },
                         {
                             label: 'Monthly Rent Potential',

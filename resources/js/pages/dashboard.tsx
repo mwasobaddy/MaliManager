@@ -39,6 +39,7 @@ type OrgStats = {
     units_count: number;
     leases_count: number;
     active_leases: number;
+    staff_count: number;
     expenses_ytd: number;
     maintenance_open: number;
     operations_monthly: ComboPoint[];
@@ -302,17 +303,12 @@ function AdminTab({ stats }: { stats: AdminStats }) {
                     {
                         label: 'Total Organizations',
                         value: stats.organizations_count,
-                        variant: 'success',
+                        variant: 'accent',
                     },
                     {
                         label: 'Active Subscribers',
                         value: stats.subscribers_count,
-                        variant: 'accent',
-                    },
-                    {
-                        label: 'Total Plans',
-                        value: stats.plans_count,
-                        variant: 'info',
+                        variant: 'primary',
                     },
                     {
                         label: 'Total Income',
@@ -322,7 +318,7 @@ function AdminTab({ stats }: { stats: AdminStats }) {
                     {
                         label: 'Total Expenses',
                         value: `$${Number(stats.expenses_total).toLocaleString()}`,
-                        variant: 'warning',
+                        variant: 'accent',
                     },
                 ]}
             />
@@ -394,27 +390,22 @@ function OrganizationTab({ stats }: { stats: OrgStats }) {
                     {
                         label: 'Total Properties',
                         value: stats.properties_count,
-                        variant: 'success',
+                        variant: 'accent',
                     },
                     {
                         label: 'Total Units',
                         value: stats.units_count,
-                        variant: 'success',
-                    },
-                    {
-                        label: 'Active Leases',
-                        value: stats.active_leases,
                         variant: 'accent',
                     },
                     {
-                        label: 'Open Maintenance',
-                        value: stats.maintenance_open,
-                        variant: 'warning',
+                        label: 'Total Staff',
+                        value: stats.staff_count,
+                        variant: 'primary',
                     },
                     {
                         label: 'Expenses YTD',
                         value: `$${Number(stats.expenses_ytd).toLocaleString()}`,
-                        variant: 'warning',
+                        variant: 'primary',
                     },
                 ]}
             />
@@ -516,7 +507,7 @@ function PersonTab({
                     {
                         label: 'Total Leases',
                         value: stats.leases_count,
-                        variant: 'success',
+                        variant: 'accent',
                     },
                     {
                         label: 'Active Leases',
@@ -524,24 +515,15 @@ function PersonTab({
                         variant: 'accent',
                     },
                     {
-                        label: 'Ended Leases',
-                        value: stats.ended_leases,
-                        variant: 'default',
-                    },
-                    {
                         label: 'Total Rent',
                         value: `$${Number(stats.total_rent).toLocaleString()}`,
                         variant: 'primary',
                     },
-                    ...(stats.maintenance_open !== undefined
-                        ? [
-                              {
-                                  label: 'Open Maintenance',
-                                  value: stats.maintenance_open,
-                                  variant: 'warning',
-                              },
-                          ]
-                        : []),
+                    {
+                        label: 'Open Maintenance',
+                        value: stats.maintenance_open ?? 0,
+                        variant: 'primary',
+                    },
                 ]}
             />
 

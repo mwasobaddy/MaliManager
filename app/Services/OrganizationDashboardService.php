@@ -65,6 +65,12 @@ class OrganizationDashboardService extends Service
             'in_maintenance' => (int) array_sum(array_column($perProperty, 'in_maintenance')),
             'open_maintenance' => (int) array_sum(array_column($perProperty, 'open_maintenance')),
             'active_leases' => (int) array_sum(array_column($perProperty, 'active_leases')),
+            // Non-owner, active members: the people working the portfolio, as
+            // distinct from the occupants who live in it.
+            'staff_count' => (int) $organization->users()
+                ->wherePivot('is_owner', false)
+                ->wherePivot('status', 'active')
+                ->count(),
             'rent_potential' => round(array_sum(array_column($perProperty, 'rent_potential')), 2),
             'occupancy_rate' => $this->occupancyRate($perProperty),
             'operations_monthly' => $this->operationsMonthly($organization, $propertyIds, $year, $month),

@@ -9,7 +9,7 @@ type StatItem = {
     label: string;
     value: number | string;
     /** Optional brand color variant for the stat */
-    variant?: string;
+    variant?: 'primary' | 'accent';
 };
 
 type StatsCardsProps = {
@@ -53,23 +53,21 @@ function StatPill({ item }: { item: StatItem }) {
     const baseStyles =
         'inline-flex items-center gap-2 rounded-lg border border-border-strong px-3 py-2 text-sm font-medium transition-colors hover:border-brand-primary/30';
 
+    // Two brand colours at full opacity. A tint washed out on the card
+    // surface behind them, so the fill has to carry the colour on its own.
     const variantStyles = {
-        primary: 'bg-brand-primary/10 text-brand-primary-600 border-brand-primary/20 dark:bg-brand-primary-100/20 dark:text-brand-primary dark:border-brand-primary/30',
-        accent: 'bg-brand-accent-100/50 text-brand-accent border-brand-accent/20 dark:bg-brand-accent-100/20 dark:text-brand-accent',
-        success: 'bg-status-success/10 text-status-success border-status-success/20 dark:bg-status-success/20 dark:text-status-success',
-        warning: 'bg-status-warning/10 text-status-warning border-status-warning/20 dark:bg-status-warning/20 dark:text-status-warning',
-        info: 'bg-status-info/10 text-status-info border-status-info/20 dark:bg-status-info/20 dark:text-status-info',
-        default: 'bg-card text-foreground border-border-strong',
+        primary: 'bg-brand-primary text-primary-foreground border-brand-primary',
+        accent: 'bg-brand-accent text-brand-accent-foreground border-brand-accent',
     };
 
-    const variantClass = variantStyles[item.variant as keyof typeof variantStyles] ?? variantStyles.default;
+    const variantClass = variantStyles[item.variant ?? 'primary'];
 
     return (
         <span className={`${baseStyles} ${variantClass}`}>
-            <span className="font-medium text-foreground">
+            <span className="font-normal opacity-90">
                 {item.label}
             </span>
-            <span className="font-semibold tabular-nums text-foreground">
+            <span className="font-bold tabular-nums">
                 {item.value}
             </span>
         </span>
