@@ -503,11 +503,60 @@ reachable", which was inaccurate.
 |---|---|---|---|
 | Organizations | `pages/organizations/index.tsx` | view / edit / delete / create / filters / import / export | The reference |
 | Users | `pages/users/index.tsx` | same as organizations | Radio filters for status + role |
-| Plans | `pages/platform/plans/index.tsx` | view / edit / delete / confirm-delete / create / filters | No import/export; status is a boolean |
-| Subscription payments | `pages/platform/subscription-payments/index.tsx` | view / edit / delete / confirm-delete / create / filters | No status; optional org/plan lists; date-range filter |
-| Expenses | `pages/platform/expenses/index.tsx` | view / edit / delete / confirm-delete / create / filters | No status; category is a closed set, so a radio filter |
+| Plans | `pages/platform/plans/index.tsx` | view / edit / delete / confirm-delete / create / filters / import / export | Status is a boolean |
+| Subscription payments | `pages/platform/subscription-payments/index.tsx` | view / edit / delete / confirm-delete / create / filters / import / export | No status; optional org/plan lists; date-range filter. Import matches org/plan by name, case-insensitively
+| Expenses | `pages/platform/expenses/index.tsx` | view / edit / delete / confirm-delete / create / filters / import / export | No status; category is a closed set, so a radio filter **and** the import rejects unknown categories |
 | Audit | `pages/platform/audit/index.tsx` | view / filters / export | Read-only: no create, edit or actions column at all |
-| Roles | `pages/platform/roles/index.tsx` | edit only | Four fixed rows, so **no** toolbar — see below |
+| Roles | `pages/platform/roles/index.tsx` | edit only | Four fixed rows, so **no** toolbar — see below. Import/export/create are deliberately absent: the rows come from the `PlatformRole` enum and cannot be created or deleted |
+
+---
+
+## 9z. Import / export on the three transaction tables
+
+Plans, subscription payments and expenses each gained CSV import and export.
+They share two components rather than three copies of the same sheet:
+
+- `components/csv-actions.tsx` — `CsvImportSheet` (upload + per-row error
+  report) and `downloadCsv()`.
+- `components/csv-export-sheet.tsx` — `CsvExportSheet` (the all-vs-page chooser).
+
+`CsvReader` (`app/Support/`) is the matching backend half. It normalises header
+names by stripping spaces, underscores and punctuation and lower-casing, so
+`"First Name"`, `first_name` and `FIRSTNAME` all resolve to `firstname`. A file
+with no header row, or one `fopen` cannot read, comes back as `ok: false` with a
+single error row rather than an exception.
+
+Import and export are **separate permissions** from `*.manage`:
+
+| Table | Import | Export |
+|---|---|---|
+| Plans | `plan.import` / `importPlans` | `plan.export` / `exportPlans` |
+| Subscription payments | `subscription.import` / `importSubscriptionPayments` | `subscription.export` / `exportSubscriptionPayments` |
+| Expenses | `platform-expense.import` / `importPlatformExpenses` | `platform-expense.export` / `exportPlatformExpenses` |
+
+The split is the point: a role that can create one plan by hand should not be
+able to bulk-create by uploading a file. The frontend buttons read the same
+keys, so a role missing either key simply does not see the button.
+
+Two things that will bite if they are forgotten:
+
+1. **Permission names are `permissions.name`, not `key`.** Tests that revoke a
+   permission must `whereIn('name', ...)`, and must not delete the row outright —
+   Spatie throws `PermissionDoesNotExist` when a gate references a missing name,
+   turning a 403 into a 500 that tests nothing.
+2. **403s are not 403s here.** `bootstrap/app.php` renders every 403 as a toast
+   and redirects, so `assertForbidden()` fails on a correctly-gated route. Assert
+   the gate via `Gate::forUser()`, and assert HTTP behaviour as "redirected
+   somewhere other than the table index".
+
+Per-row failures are the norm, not the exception: a bad row is recorded with its
+line number and skipped, the good rows still land, and the import sheet stays
+open so the report can be read. Row numbers match what a spreadsheet shows —
+line 1 is the header, so the first data row is line 2.
+
+An unknown organization or plan name in a payment import leaves the payment
+unlinked rather than failing the row. The money still arrived, and that is more
+important than the link.
 
 ---
 

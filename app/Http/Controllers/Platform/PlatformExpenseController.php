@@ -6,14 +6,17 @@ namespace App\Http\Controllers\Platform;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\DestroyPlatformExpenseRequest;
+use App\Http\Requests\Admin\ImportPlatformExpenseRequest;
 use App\Http\Requests\Admin\StorePlatformExpenseRequest;
 use App\Http\Requests\Admin\UpdatePlatformExpenseRequest;
 use App\Models\PlatformExpense;
+use App\Support\CsvReader;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class PlatformExpenseController extends Controller
 {
@@ -130,6 +133,123 @@ class PlatformExpenseController extends Controller
             'vendor_name' => $expense->vendor_name,
             'notes' => $expense->notes,
         ];
+    }
+
+    /**
+     * CSV export of the expenses, honouring the table's own search, category and
+     * date range so "Export all" can never disagree with what the table shows.
+     */
+    public function export(Request $request): StreamedResponse
+    {
+        $scope = $request->string('scope')->toString() === 'page' ? 'page' : 'all';
+
+        $query = $this->filtered($request)->orderByDesc('spent_on')->orderBy('id');
+
+        if ($scope === 'page') {
+            $query->forPage((int) $request->integer('page', 1), 15);
+        }
+
+        $expenses = $query->get();
+
+        $csv = fopen('php://temp', 'r+');
+        fputcsv($csv, ['Spent on', 'Category', 'Amount', 'Currency', 'Vendor', 'Notes']);
+
+        foreach ($expenses as $expense) {
+            fputcsv($csv, [
+                $expense->spent_on?->format('Y-m-d') ?? '',
+                $expense->category,
+                // `amount` is cast to `decimal:2`, which stringifies; the raw
+                // attribute is already the string the CSV wants.
+                $expense->getRawOriginal('amount'),
+                $expense->currency,
+                $expense->vendor_name ?? '',
+                $expense->notes ?? '',
+            ]);
+        }
+
+        rewind($csv);
+
+        return response()->streamDownload(fn () => fpassthru($csv), 'platform-expenses.csv', [
+            'Content-Type' => 'text/csv',
+        ]);
+    }
+
+    /**
+     * Create expenses from an uploaded CSV.
+     *
+     * Rows are independent: a bad row is recorded and skipped rather than
+     * aborting the file.
+     *
+     * Recognised columns (matched case-insensitively, spaces or underscores):
+     * Category (required), Amount (required), Currency, Spent On (required),
+     * Vendor Name, Notes.
+     */
+    public function import(ImportPlatformExpenseRequest $request, CsvReader $csv): RedirectResponse
+    {
+        $parsed = $csv->rows($request->file('file'));
+        $errors = [];
+        $imported = 0;
+
+        foreach ($parsed['rows'] as $row) {
+            $data = $row['data'];
+            $category = $data['category'] ?? '';
+            $amount = $data['amount'] ?? '';
+            $spentOn = $data['spenton'] ?? '';
+
+            if (! in_array($category, PlatformExpense::CATEGORIES, true)) {
+                $errors[] = ['row' => $row['row'], 'message' => "Row {$row['row']}: unknown category \"{$category}\"."];
+
+                continue;
+            }
+
+            if ($amount === '' || ! is_numeric($amount) || (float) $amount < 0) {
+                $errors[] = ['row' => $row['row'], 'message' => "Row {$row['row']}: Amount must be a number of zero or more."];
+
+                continue;
+            }
+
+            if ($spentOn === '') {
+                $errors[] = ['row' => $row['row'], 'message' => "Row {$row['row']}: Spent On is required."];
+
+                continue;
+            }
+
+            PlatformExpense::create([
+                'category' => $category,
+                'amount' => $amount,
+                'currency' => strtoupper($data['currency'] ?? '') ?: 'KES',
+                'spent_on' => $spentOn,
+                'vendor_name' => ($data['vendorname'] ?? '') ?: null,
+                'notes' => ($data['notes'] ?? '') ?: null,
+                'created_by' => $request->user()?->id,
+            ]);
+
+            $imported++;
+        }
+
+        if (! $parsed['ok']) {
+            $errors = $parsed['rows'];
+        }
+
+        $failed = count($errors);
+
+        if ($failed === 0) {
+            Inertia::flash('toast', [
+                'type' => 'success',
+                'message' => $imported === 1 ? '1 expense imported.' : "{$imported} expenses imported.",
+            ]);
+
+            return redirect()->route('platform.expenses.index');
+        }
+
+        Inertia::flash('toast', [
+            'type' => $imported > 0 ? 'warning' : 'error',
+            'message' => "{$imported} imported, {$failed} failed.",
+        ]);
+
+        Inertia::flash('importErrors', $errors);
+
+        return back();
     }
 
     public function store(StorePlatformExpenseRequest $request): RedirectResponse

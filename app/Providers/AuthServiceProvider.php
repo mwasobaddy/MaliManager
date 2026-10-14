@@ -70,6 +70,8 @@ class AuthServiceProvider extends ServiceProvider
         Gate::define('createPlans', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::PlanCreate->value));
         Gate::define('editPlans', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::PlanEdit->value));
         Gate::define('deletePlans', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::PlanDelete->value));
+        Gate::define('importPlans', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::PlanImport->value));
+        Gate::define('exportPlans', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::PlanExport->value));
 
         Gate::define('aiUse', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::AiUse->value));
 
@@ -78,12 +80,16 @@ class AuthServiceProvider extends ServiceProvider
         Gate::define('createSubscriptionPayments', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::SubscriptionCreate->value));
         Gate::define('editSubscriptionPayments', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::SubscriptionEdit->value));
         Gate::define('deleteSubscriptionPayments', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::SubscriptionDelete->value));
+        Gate::define('importSubscriptionPayments', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::SubscriptionImport->value));
+        Gate::define('exportSubscriptionPayments', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::SubscriptionExport->value));
 
         // Central platform expense module.
         Gate::define('managePlatformExpenses', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::PlatformExpenseManage->value));
         Gate::define('createPlatformExpenses', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::PlatformExpenseCreate->value));
         Gate::define('editPlatformExpenses', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::PlatformExpenseEdit->value));
         Gate::define('deletePlatformExpenses', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::PlatformExpenseDelete->value));
+        Gate::define('importPlatformExpenses', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::PlatformExpenseImport->value));
+        Gate::define('exportPlatformExpenses', fn (?User $user) => $user?->hasPermissionTo(PlatformPermissionKey::PlatformExpenseExport->value));
 
         Gate::policy(Lease::class, LeasePolicy::class);
     }

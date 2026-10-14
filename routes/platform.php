@@ -172,6 +172,8 @@ Route::middleware(['auth', 'verified', 'can:managePlans'])->group(function () {
         ->middleware('can:editPlans');
     Route::patch('platform/plans/{plan}', [PlanController::class, 'update'])->name('platform.plans.update')->middleware('can:editPlans');
     Route::patch('platform/plans/{plan}/status', [PlanController::class, 'setStatus'])->name('platform.plans.status')->middleware('can:editPlans');
+    Route::post('platform/plans/import', [PlanController::class, 'import'])->name('platform.plans.import')->middleware('can:importPlans');
+    Route::get('platform/plans/export', [PlanController::class, 'export'])->name('platform.plans.export')->middleware('can:exportPlans');
     Route::delete('platform/plans/{plan}', [PlanController::class, 'destroy'])->name('platform.plans.destroy')->middleware('can:deletePlans');
 });
 
@@ -191,6 +193,8 @@ Route::middleware(['auth', 'verified', 'can:manageSubscriptionPayments'])->group
         ->middleware('can:editSubscriptionPayments');
     Route::patch('platform/subscription-payments/{subscriptionPayment}', [SubscriptionPaymentController::class, 'update'])->name('platform.subscription-payments.update')->middleware('can:editSubscriptionPayments');
     Route::delete('platform/subscription-payments/{subscriptionPayment}', [SubscriptionPaymentController::class, 'destroy'])->name('platform.subscription-payments.destroy')->middleware('can:deleteSubscriptionPayments');
+    Route::post('platform/subscription-payments/import', [SubscriptionPaymentController::class, 'import'])->name('platform.subscription-payments.import')->middleware('can:importSubscriptionPayments');
+    Route::get('platform/subscription-payments/export', [SubscriptionPaymentController::class, 'export'])->name('platform.subscription-payments.export')->middleware('can:exportSubscriptionPayments');
 });
 
 // Central platform-expense module, gated by central platform-expense.* permissions.
@@ -209,6 +213,8 @@ Route::middleware(['auth', 'verified', 'can:managePlatformExpenses'])->group(fun
         ->middleware('can:editPlatformExpenses');
     Route::patch('platform/expenses/{platformExpense}', [PlatformExpenseController::class, 'update'])->name('platform.expenses.update')->middleware('can:editPlatformExpenses');
     Route::delete('platform/expenses/{platformExpense}', [PlatformExpenseController::class, 'destroy'])->name('platform.expenses.destroy')->middleware('can:deletePlatformExpenses');
+    Route::post('platform/expenses/import', [PlatformExpenseController::class, 'import'])->name('platform.expenses.import')->middleware('can:importPlatformExpenses');
+    Route::get('platform/expenses/export', [PlatformExpenseController::class, 'export'])->name('platform.expenses.export')->middleware('can:exportPlatformExpenses');
 });
 
 // Platform role & central-permission management (admin via PlatformPermissionKey::ManageRoles).

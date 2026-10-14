@@ -7,6 +7,7 @@ use App\Models\SubscriptionPayment;
 use App\Models\User;
 use Database\Seeders\PlansSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
+use Illuminate\Http\UploadedFile;
 
 beforeEach(function () {
     (new RolesAndPermissionsSeeder)->run();
@@ -382,4 +383,79 @@ test('deleting a subscription payment is audited', function () {
 
     expect($audit)->not->toBeNull()
         ->and($audit->description)->toContain('Deleted');
+});
+
+test('platform admin can import subscription payments from a csv', function () {
+    $admin = User::factory()->create(['email_verified_at' => now()]);
+    $admin->assignRole('admin');
+
+    $organization = Organization::factory()->create(['name' => 'Acme Rentals']);
+    $plan = Plan::first();
+
+    $csv = "Amount,Received On,Currency,Organization,Plan,Method,Reference\n"
+        ."15000,2026-01-05,KES,Acme Rentals,{$plan->name},M-Pesa,MPESA-1\n"
+        ."2500,2026-02-05,KES,,,Bank,BNK-2\n";
+
+    $this->actingAs($admin)
+        ->post(route('platform.subscription-payments.import'), [
+            'file' => UploadedFile::fake()->createWithContent('payments.csv', $csv),
+        ])
+        ->assertRedirect(route('platform.subscription-payments.index'));
+
+    // Both rows land, and the first is linked by organization/plan name.
+    $this->assertDatabaseHas('subscription_payments', [
+        'amount' => 15000,
+        'organization_id' => $organization->id,
+        'plan_id' => $plan->id,
+        'method' => 'M-Pesa',
+    ]);
+
+    // The second has no org/plan, so it imports unlinked rather than failing.
+    $this->assertDatabaseHas('subscription_payments', [
+        'amount' => 2500,
+        'organization_id' => null,
+        'plan_id' => null,
+    ]);
+});
+
+test('payment import reports per-row errors', function () {
+    $admin = User::factory()->create(['email_verified_at' => now()]);
+    $admin->assignRole('admin');
+
+    $csv = "Amount,Received On\n"
+        ."15000,2026-01-05\n"
+        ."not-a-number,2026-01-06\n"
+        ."500,\n";
+
+    $this->actingAs($admin)
+        ->post(route('platform.subscription-payments.import'), [
+            'file' => UploadedFile::fake()->createWithContent('payments.csv', $csv),
+        ])
+        ->assertRedirect();
+
+    $errors = collect(session('inertia.flash_data')['importErrors'] ?? [])->all();
+
+    expect($errors)->toHaveCount(2)
+        ->and(collect($errors)->pluck('row')->all())->toBe([3, 4]);
+
+    $this->assertDatabaseHas('subscription_payments', ['amount' => 15000]);
+    $this->assertDatabaseCount('subscription_payments', 1);
+});
+
+test('payment export honours the table filters', function () {
+    $admin = User::factory()->create(['email_verified_at' => now()]);
+    $admin->assignRole('admin');
+
+    SubscriptionPayment::factory()->create(['amount' => 15000, 'received_on' => '2026-01-05']);
+    SubscriptionPayment::factory()->create(['amount' => 2500, 'received_on' => '2026-06-05']);
+
+    $body = $this->actingAs($admin)
+        ->get(route('platform.subscription-payments.export', [
+            'from' => '2026-06-01',
+            'to' => '2026-06-30',
+        ]))
+        ->streamedContent();
+
+    expect($body)->toContain('2500')
+        ->and($body)->not->toContain('15000');
 });

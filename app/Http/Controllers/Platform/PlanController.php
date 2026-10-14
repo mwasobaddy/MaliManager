@@ -6,15 +6,18 @@ namespace App\Http\Controllers\Platform;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\DestroyPlanRequest;
+use App\Http\Requests\Admin\ImportPlanRequest;
 use App\Http\Requests\Admin\StorePlanRequest;
 use App\Http\Requests\Admin\UpdatePlanRequest;
 use App\Http\Requests\Admin\UpdatePlanStatusRequest;
 use App\Models\Plan;
+use App\Support\CsvReader;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class PlanController extends Controller
 {
@@ -156,6 +159,139 @@ class PlanController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Plan updated.']);
 
         return redirect()->route('platform.plans.index');
+    }
+
+    /**
+     * CSV export of the plans, honouring the table's own search and sort so
+     * "Export all" can never disagree with what the table is showing.
+     */
+    public function export(Request $request): StreamedResponse
+    {
+        $scope = $request->string('scope')->toString() === 'page' ? 'page' : 'all';
+
+        $query = $this->filtered($request)
+            ->orderBy('sort_order')
+            ->orderBy('name');
+
+        if ($scope === 'page') {
+            $query->forPage((int) $request->integer('page', 1), 15);
+        }
+
+        $plans = $query->get();
+
+        $csv = fopen('php://temp', 'r+');
+        fputcsv($csv, ['Name', 'Slug', 'Description', 'Currency', 'Price', 'Properties limit', 'Units limit', 'Features', 'Sort order', 'Active']);
+
+        foreach ($plans as $plan) {
+            fputcsv($csv, [
+                $plan->name,
+                $plan->slug,
+                $plan->description ?? '',
+                $plan->currency,
+                $plan->price,
+                $plan->properties_limit ?? '',
+                $plan->units_limit ?? '',
+                // Pipe-separated so a features cell can never contain the
+                // delimiter and split the row.
+                implode('|', $plan->features ?? []),
+                $plan->sort_order,
+                $plan->is_active ? '1' : '0',
+            ]);
+        }
+
+        rewind($csv);
+
+        return response()->streamDownload(fn () => fpassthru($csv), 'plans.csv', [
+            'Content-Type' => 'text/csv',
+        ]);
+    }
+
+    /**
+     * Create plans from an uploaded CSV.
+     *
+     * Rows are independent: a bad row is recorded and skipped rather than
+     * aborting the file, because a 30-tier CSV with one typo should not force a
+     * hand-edit of the whole thing.
+     *
+     * Recognised columns (matched case-insensitively, spaces or underscores):
+     * Name (required), Slug (required), Description, Currency, Price (required),
+     * Properties Limit, Units Limit, Features (pipe-separated), Sort Order,
+     * Active.
+     *
+     * Redirects back keeping the `import` flag when rows failed, so the import
+     * sheet stays open and can render the per-row report.
+     */
+    public function import(ImportPlanRequest $request, CsvReader $csv): RedirectResponse
+    {
+        $parsed = $csv->rows($request->file('file'));
+        $errors = [];
+        $imported = 0;
+
+        foreach ($parsed['rows'] as $row) {
+            $data = $row['data'];
+
+            if (($data['name'] ?? '') === '' || ($data['slug'] ?? '') === '') {
+                $errors[] = ['row' => $row['row'], 'message' => "Row {$row['row']}: Name and Slug are required."];
+
+                continue;
+            }
+
+            if (Plan::withTrashed()->where('slug', $data['slug'])->exists()) {
+                $errors[] = ['row' => $row['row'], 'message' => "Row {$row['row']}: the slug \"{$data['slug']}\" is already taken."];
+
+                continue;
+            }
+
+            if (($data['price'] ?? '') !== '' && ! is_numeric($data['price'])) {
+                $errors[] = ['row' => $row['row'], 'message' => "Row {$row['row']}: Price must be a number."];
+
+                continue;
+            }
+
+            $features = array_values(array_filter(
+                array_map('trim', explode('|', $data['features'] ?? '')),
+            ));
+
+            Plan::create([
+                'name' => $data['name'],
+                'slug' => $data['slug'],
+                'description' => ($data['description'] ?? '') ?: null,
+                'currency' => strtoupper($data['currency'] ?? '') ?: 'KES',
+                'price' => (int) ($data['price'] ?? 0),
+                'properties_limit' => ($data['propertieslimit'] ?? '') === '' ? null : (int) $data['propertieslimit'],
+                'units_limit' => ($data['unitslimit'] ?? '') === '' ? null : (int) $data['unitslimit'],
+                'features' => $features,
+                'sort_order' => (int) ($data['sortorder'] ?? 0),
+                'is_active' => ! isset($data['active']) || $data['active'] === '' || in_array(strtolower($data['active']), ['1', 'true', 'yes', 'active'], true),
+                'created_by' => $request->user()?->id,
+            ]);
+
+            $imported++;
+        }
+
+        if (! $parsed['ok']) {
+            $errors = $parsed['rows'];
+        }
+
+        $failed = count($errors);
+
+        if ($failed === 0) {
+            Inertia::flash('toast', [
+                'type' => 'success',
+                'message' => $imported === 1 ? '1 plan imported.' : "{$imported} plans imported.",
+            ]);
+
+            return redirect()->route('platform.plans.index');
+        }
+
+        Inertia::flash('toast', [
+            'type' => $imported > 0 ? 'warning' : 'error',
+            'message' => "{$imported} imported, {$failed} failed.",
+        ]);
+
+        Inertia::flash('importErrors', $errors);
+
+        return back();
     }
 
     /**

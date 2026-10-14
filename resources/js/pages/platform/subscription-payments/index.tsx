@@ -3,15 +3,19 @@ import { Form, usePage } from '@inertiajs/react';
 import type { ColumnDef, SortingState } from '@tanstack/react-table';
 import {
     Building2,
+    Download,
     ListFilter,
     Pencil,
     Plus,
     Receipt,
     Search,
     Trash2,
+    Upload,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActionIconButton } from '@/components/action-icon-button';
+import { CsvImportSheet, downloadCsv } from '@/components/csv-actions';
+import { CsvExportSheet } from '@/components/csv-export-sheet';
 import { DataTable } from '@/components/data-table';
 import Heading from '@/components/heading';
 import { LabelledIconButton } from '@/components/labelled-icon-button';
@@ -85,6 +89,8 @@ export default function SubscriptionPaymentsIndex({
     const canCreate = permissions.includes('subscription.create');
     const canEdit = permissions.includes('subscription.edit');
     const canDelete = permissions.includes('subscription.delete');
+    const canImport = permissions.includes('subscription.import');
+    const canExport = permissions.includes('subscription.export');
 
     const errors = (page.props.errors ?? {}) as Record<string, string>;
 
@@ -119,6 +125,8 @@ export default function SubscriptionPaymentsIndex({
     type RowMode = 'view' | 'edit' | 'delete' | 'confirm-delete';
     const rowMode = (query.get('mode') as RowMode | null) ?? 'view';
     const isCreateOpen = query.get('create') === '1';
+    const isImportOpen = query.get('import') === '1';
+    const isExportOpen = query.get('export') === '1';
 
     // `query.has()` is true even for an empty value, and closing navigates to
     // `filters=` — so comparing against '' is what actually closes the sheet.
@@ -290,6 +298,15 @@ export default function SubscriptionPaymentsIndex({
         setSearchDraft(filters.search);
     }
 
+    /** Spoken description of the active filters, for the export sheet. */
+    const activeFilterSummary =
+        [
+            filters.search ? 'the search' : '',
+            filters.from || filters.to ? 'the date range' : '',
+        ]
+            .filter(Boolean)
+            .join(' and ') || null;
+
     const columns = useMemo<ColumnDef<PaymentRow, unknown>[]>(() => {
         const cells: ColumnDef<PaymentRow, unknown>[] = [
             {
@@ -445,6 +462,26 @@ export default function SubscriptionPaymentsIndex({
         [sort.column, sort.direction],
     );
 
+    /** Current filters as export query params, shared by both scopes. */
+    function exportParams(scope: 'all' | 'page') {
+        return {
+            search: filters.search,
+            from: filters.from,
+            to: filters.to,
+            sort: sort.column ?? '',
+            direction: sort.direction,
+            scope,
+            ...(scope === 'page'
+                ? { page: payments.current_page }
+                : {}),
+        };
+    }
+
+    function runExport(scope: 'all' | 'page') {
+        downloadCsv(subscriptionPaymentRoutes.exportMethod().url, exportParams(scope));
+        setOverlayParam('export', null, { replace: true });
+    }
+
     return (
         <>
             <Head title="Subscription payments" />
@@ -506,6 +543,24 @@ export default function SubscriptionPaymentsIndex({
                                     : setOverlayParam('filters', '1')
                             }
                         />
+                        {canImport && (
+                            <ActionIconButton
+                                icon={<Upload />}
+                                label="Import from CSV"
+                                color="teal"
+                                onClick={() =>
+                                    setOverlayParam('import', '1')
+                                }
+                            />
+                        )}
+                        {canExport && (
+                            <ActionIconButton
+                                icon={<Download />}
+                                label="Export"
+                                color="teal"
+                                onClick={() => setOverlayParam('export', '1')}
+                            />
+                        )}
                     </div>
                     <DataTable
                         columns={columns}
@@ -876,6 +931,30 @@ export default function SubscriptionPaymentsIndex({
                     </div>
                 </div>
             </ResponsiveOverlay>
+
+            <CsvExportSheet
+                open={isExportOpen}
+                onClose={() => setOverlayParam('export', null, { replace: true })}
+                canExport={canExport}
+                total={payments.total}
+                pageCount={payments.data.length}
+                currentPage={payments.current_page}
+                activeFilters={activeFilterSummary}
+                onExport={runExport}
+            />
+
+            <CsvImportSheet
+                open={isImportOpen}
+                onClose={() => setOverlayParam('import', null, { replace: true })}
+                route={subscriptionPaymentRoutes.importMethod}
+                idPrefix="subscription-payments"
+                title="Import subscription payments"
+                description="Upload a CSV to create payment records."
+                required={["Amount", "Received On"]}
+                optional={["Currency", "Organization", "Plan", "Method", "Reference", "Notes"]}
+                canImport={canImport}
+                buttonLabel="Import payments"
+            />
         </>
     );
 }
