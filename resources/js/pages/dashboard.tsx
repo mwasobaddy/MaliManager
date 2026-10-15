@@ -323,60 +323,64 @@ function AdminTab({ stats }: { stats: AdminStats }) {
                 ]}
             />
 
-            <ComboChart
-                title="Financials"
-                data={stats.financials_monthly}
-                series={[
-                    {
-                        key: 'income',
-                        label: 'Income',
-                        color: '#16a34a',
-                        type: 'area',
-                        axis: 'left',
-                    },
-                    {
-                        key: 'expenses',
-                        label: 'Expenses',
-                        color: '#db2777',
-                        type: 'area',
-                        axis: 'left',
-                    },
-                ]}
-            />
+            <div className="grid gap-4 lg:grid-cols-3">
+                <div className="lg:col-span-2">
+                    <ComboChart
+                        title="Financials"
+                        data={stats.financials_monthly}
+                        series={[
+                            {
+                                key: 'income',
+                                label: 'Income',
+                                color: '#16a34a',
+                                type: 'area',
+                                axis: 'left',
+                            },
+                            {
+                                key: 'expenses',
+                                label: 'Expenses',
+                                color: '#db2777',
+                                type: 'area',
+                                axis: 'left',
+                            },
+                        ]}
+                    />
+                </div>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle className="text-base font-medium">
-                        Subscribers by plan
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <ResponsiveContainer width="100%" height={260}>
-                        <PieChart>
-                            <Pie
-                                data={stats.plans_breakdown}
-                                dataKey="count"
-                                nameKey="plan"
-                                outerRadius={90}
-                                label
-                            >
-                                {stats.plans_breakdown.map((_, index) => (
-                                    <Cell
-                                        key={index}
-                                        fill={
-                                            PIE_COLORS[
-                                                index % PIE_COLORS.length
-                                            ]
-                                        }
-                                    />
-                                ))}
-                            </Pie>
-                            <Legend />
-                            <Tooltip />
-                        </PieChart>
-                    </ResponsiveContainer>
-                </CardContent>
-            </Card>
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-base font-medium">
+                            Subscribers by plan
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <ResponsiveContainer width="100%" height={260}>
+                            <PieChart>
+                                <Pie
+                                    data={stats.plans_breakdown}
+                                    dataKey="count"
+                                    nameKey="plan"
+                                    outerRadius={90}
+                                    label
+                                >
+                                    {stats.plans_breakdown.map((_, index) => (
+                                        <Cell
+                                            key={index}
+                                            fill={
+                                                PIE_COLORS[
+                                                    index % PIE_COLORS.length
+                                                ]
+                                            }
+                                        />
+                                    ))}
+                                </Pie>
+                                <Legend />
+                                <Tooltip />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    </CardContent>
+                </Card>
+            </div>
         </div>
     );
 }
