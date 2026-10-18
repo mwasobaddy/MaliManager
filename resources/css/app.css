@@ -378,6 +378,49 @@
     body {
         @apply bg-background text-foreground;
     }
+
+    /*
+     * Accent owns wayfinding (v2 §5). A link is something you can go to or
+     * explore, so it is teal — never terracotta, which is reserved for what
+     * you do or what you have selected.
+     *
+     * Set at the base layer on purpose. There are ~100 <Link> call sites and
+     * the rule is uniform; per-component classes would drift. Because this
+     * lives in `@layer base`, any explicit `text-*` utility still wins — so
+     * button-styled links keep their button colours and sidebar items keep
+     * their espresso palette, without either needing to opt out.
+     */
+    a {
+        color: var(--accent-text);
+        text-underline-offset: 4px;
+        text-decoration-color: transparent;
+        transition: color 150ms ease-out;
+    }
+
+    a:hover,
+    a:focus-visible {
+        color: var(--accent-text-hover);
+        text-decoration-line: underline;
+        text-decoration-color: currentColor;
+    }
+
+    /*
+     * Running prose underlines by default (§9.1). An un-underlined accent
+     * link sits near 2.2:1 against the body text it interrupts — it has to be
+     * marked as a link by something other than colour.
+     */
+    .prose a {
+        text-decoration-line: underline;
+        text-decoration-color: color-mix(
+            in oklab,
+            currentColor 35%,
+            transparent
+        );
+    }
+
+    .prose a:hover {
+        text-decoration-color: currentColor;
+    }
 }
 
 @layer utilities {

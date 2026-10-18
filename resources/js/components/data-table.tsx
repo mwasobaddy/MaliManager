@@ -171,9 +171,13 @@ export function DataTable<TData>({
                                                     header.getContext(),
                                                 )}
                                                 {sorted === 'asc' ? (
-                                                    <ArrowUp className="text-brand-primary size-3.5" />
+                                                    /* §5: the active sort is
+                                                       wayfinding, so accent —
+                                                       not the terracotta that
+                                                       means "you did this". */
+                                                    <ArrowUp className="text-accent-text size-3.5" />
                                                 ) : sorted === 'desc' ? (
-                                                    <ArrowDown className="text-brand-primary size-3.5" />
+                                                    <ArrowDown className="text-accent-text size-3.5" />
                                                 ) : (
                                                     <ChevronsUpDown className="size-3.5 opacity-40" />
                                                 )}
