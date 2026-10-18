@@ -62,7 +62,14 @@ function TabsTrigger({
     <TabsPrimitive.Trigger
       data-slot="tabs-trigger"
       className={cn(
-        "relative inline-flex items-center justify-center px-4 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none data-[state=active]:font-semibold data-[state=active]:text-primary disabled:pointer-events-none disabled:opacity-50",
+        /*
+         * §6.4: the active tab is `--text`, and only the underline is
+         * `--brand-primary`. Text was `text-primary`, which made the *label*
+         * terracotta — and terracotta means "what you did or picked", so the
+         * tab you are already on was claiming to be an action. The underline
+         * below is what carries the brand here.
+         */
+        "relative inline-flex items-center justify-center px-4 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none data-[state=active]:font-semibold data-[state=active]:text-foreground disabled:pointer-events-none disabled:opacity-50",
         className,
       )}
       {...props}
