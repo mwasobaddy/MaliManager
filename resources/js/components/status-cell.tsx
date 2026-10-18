@@ -22,8 +22,8 @@ const toneClasses: Record<StatusTone, string> = {
     success: 'text-status-success',
     warning: 'text-status-warning',
     danger: 'text-status-danger',
-    info: 'text-action-view',
-    muted: 'text-muted-foreground',
+    info: 'text-status-info',
+    muted: 'text-status-neutral',
 };
 
 /**
@@ -72,8 +72,9 @@ export function StatusIcon({
  * Written out rather than interpolated from the tone name on purpose: Tailwind
  * extracts class names by scanning source text, so `` `bg-status-${tone}/12` ``
  * never makes it into the build and the rule silently disappears. Only `info`
- * is excluded — its glyph colour is `--action-view`, which has no
- * `--status-info` token to tint against.
+ * is excluded — no toggle wears it, and `--status-info` is a link/action
+ * colour with no `--status-info-bg` to tint a chip against (see `StatusIcon`,
+ * which uses the flat token directly).
  */
 const TOGGLE_TONE_CLASSES = {
     success: 'bg-status-success/12 text-status-success hover:bg-status-success/20 focus-visible:ring-status-success/30',
