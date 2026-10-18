@@ -97,6 +97,51 @@
     --color-status-warning: var(--status-warning);
     --color-status-info: var(--status-info);
     --color-card-hi: var(--card-hi);
+
+    /* v2 brand (see ui-design-system2.md §2.1–2.3) */
+    --color-brand-primary-700: var(--brand-primary-700);
+    --color-primary-text: var(--primary-text);
+    --color-on-primary: var(--on-primary);
+    --color-focus-ring: var(--focus-ring);
+    --color-brand-secondary-700: var(--brand-secondary-700);
+    --color-on-secondary: var(--on-secondary);
+    --color-on-secondary-muted: var(--on-secondary-muted);
+    --color-accent-on-inverse: var(--accent-on-inverse);
+    --color-focus-ring-inverse: var(--focus-ring-inverse);
+    --color-on-accent: var(--on-accent);
+    --color-accent-text: var(--accent-text);
+    --color-accent-text-hover: var(--accent-text-hover);
+    --color-accent-on-tint: var(--accent-on-tint);
+
+    /* v2 neutrals (§2.4) */
+    --color-bg-base: var(--bg-base);
+    --color-bg-surface: var(--bg-surface);
+    --color-bg-surface-hi: var(--bg-surface-hi);
+    --color-bg-disabled: var(--bg-disabled);
+    --color-skeleton: var(--skeleton);
+    --color-border-input: var(--border-input);
+    --color-text: var(--text);
+    --color-text-muted: var(--text-muted);
+    --color-overlay: var(--overlay);
+
+    /* v2 status (§2.5) */
+    --color-status-neutral: var(--status-neutral);
+    --color-status-success-bg: var(--status-success-bg);
+    --color-status-success-fg: var(--status-success-fg);
+    --color-status-warning-bg: var(--status-warning-bg);
+    --color-status-warning-fg: var(--status-warning-fg);
+    --color-status-danger-bg: var(--status-danger-bg);
+    --color-status-danger-fg: var(--status-danger-fg);
+    --color-status-info-bg: var(--status-info-bg);
+    --color-status-info-fg: var(--status-info-fg);
+    --color-status-neutral-bg: var(--status-neutral-bg);
+    --color-status-neutral-fg: var(--status-neutral-fg);
+    --color-on-danger: var(--on-danger);
+
+    /* v2 charts + sidebar (§2.6, §6.7) */
+    --color-chart-other: var(--chart-other);
+    --color-sidebar-active-bg: var(--sidebar-active-bg);
+    --color-sidebar-active-indicator: var(--sidebar-active-indicator);
 }
 
 :root {
@@ -132,8 +177,11 @@
     /* Functional / semantic (protected, multi-tenant) */
     --destructive: #c53030;
     --destructive-foreground: #ffffff;
-    --action-view: #2b6cb0;
-    --action-edit: #276749;
+    /* v2 §2.5: view/edit are deprecated aliases kept only so existing call
+       sites keep compiling. Row actions are neutral at rest and tint on
+       hover, so these are text tokens, never fills. */
+    --action-view: var(--accent-text);
+    --action-edit: var(--primary-text);
     --action-danger: #c53030;
     --status-success: #276749;
     --status-danger: #c53030;
@@ -146,15 +194,58 @@
 
     --border: #e7e1d6;
     --border-strong: #d8cfbf;
-    --input: #e7e1d6;
-    --ring: #a85a36;
+    --border-input: #8f8576;
+    --input: var(--border-input);
+    --ring: var(--focus-ring);
+
+    /* v2 neutrals (§2.4) */
+    --bg-base: var(--background);
+    --bg-surface: var(--card);
+    --bg-surface-hi: var(--card-hi);
+    --bg-disabled: #f0ece4;
+    --skeleton: #ece6db;
+    --text: var(--foreground);
+    --text-muted: var(--muted-foreground);
+    --overlay: rgb(20 17 13 / 0.5);
+
+    /* v2 brand (§2.1–2.3) */
+    --brand-primary-700: #854628;
+    --primary-text: #854628;
+    --on-primary: #ffffff;
+    --focus-ring: #a85a36;
+
+    --brand-secondary-700: #3b2f2a;
+    --on-secondary: #eae6df;
+    --on-secondary-muted: #a39b90;
+    --accent-on-inverse: #2bb3ac;
+    --focus-ring-inverse: #e2956c;
+
+    --on-accent: #ffffff;
+    --accent-text: #0b6567;
+    --accent-text-hover: #08484a;
+    --accent-on-tint: #08484a;
+
+    /* v2 status (§2.5) */
+    --status-neutral: #6b635a;
+    --status-success-bg: #dcf3e4;
+    --status-success-fg: #14532d;
+    --status-warning-bg: #fcefce;
+    --status-warning-fg: #7c4a03;
+    --status-danger-bg: #fbe3e3;
+    --status-danger-fg: #7a1414;
+    --status-info-bg: #dcebf8;
+    --status-info-fg: #1a3e63;
+    --status-neutral-bg: #ede8de;
+    --status-neutral-fg: #4a443c;
+    --on-danger: #ffffff;
 
     /* Charts */
-    --chart-1: #c87a53;
-    --chart-2: #0e7c7e;
+    --chart-1: #0e7c7e;
+    --chart-2: #c87a53;
     --chart-3: #2b6cb0;
-    --chart-4: #276749;
-    --chart-5: #b7791f;
+    --chart-4: #7b5ea7;
+    --chart-5: #8b6f4e;
+    --chart-other: #6b635a;
 
     --radius: 0.625rem;
 
@@ -167,6 +258,8 @@
     --sidebar-accent-foreground: #ffffff;
     --sidebar-border: #3b2f2a;
     --sidebar-ring: #c87a53;
+    --sidebar-active-bg: #5e3220;
+    --sidebar-active-indicator: var(--brand-primary);
 }
 
 .dark {
@@ -199,8 +292,8 @@
 
     --destructive: #e57373;
     --destructive-foreground: #1a1917;
-    --action-view: #5b9bd5;
-    --action-edit: #4fa877;
+    --action-view: var(--accent-text);
+    --action-edit: var(--primary-text);
     --action-danger: #e57373;
     --status-success: #4fa877;
     --status-danger: #e57373;
@@ -213,14 +306,57 @@
 
     --border: #36322d;
     --border-strong: #4a443c;
-    --input: #36322d;
-    --ring: #c87a53;
+    --border-input: #80786e;
+    --input: var(--border-input);
+    --ring: var(--focus-ring);
 
-    --chart-1: #e2956c;
-    --chart-2: #2bb3ac;
+    /* v2 neutrals (§2.4) */
+    --bg-base: var(--background);
+    --bg-surface: var(--card);
+    --bg-surface-hi: var(--card-hi);
+    --bg-disabled: #2b2926;
+    --skeleton: #322f2b;
+    --text: var(--foreground);
+    --text-muted: var(--muted-foreground);
+    --overlay: rgb(0 0 0 / 0.6);
+
+    /* v2 brand (§2.1–2.3) */
+    --brand-primary-700: #e2956c;
+    --primary-text: #e2956c;
+    --on-primary: #1a1917;
+    --focus-ring: #e2956c;
+
+    --brand-secondary-700: #221c16;
+    --on-secondary: #eae6df;
+    --on-secondary-muted: #a39b90;
+    --accent-on-inverse: #2bb3ac;
+    --focus-ring-inverse: #e2956c;
+
+    --on-accent: #1a1917;
+    --accent-text: #2bb3ac;
+    --accent-text-hover: #5cd0ca;
+    --accent-on-tint: #9be0dc;
+
+    /* v2 status (§2.5) */
+    --status-neutral: #a39b90;
+    --status-success-bg: #13301f;
+    --status-success-fg: #bfe8cc;
+    --status-warning-bg: #3a2e12;
+    --status-warning-fg: #f6e2b8;
+    --status-danger-bg: #3a1717;
+    --status-danger-fg: #f4c4c4;
+    --status-info-bg: #16293d;
+    --status-info-fg: #c7def5;
+    --status-neutral-bg: #2e2b27;
+    --status-neutral-fg: #d1cac0;
+    --on-danger: #1a1917;
+
+    --chart-1: #2bb3ac;
+    --chart-2: #e2956c;
     --chart-3: #5b9bd5;
-    --chart-4: #4fa877;
-    --chart-5: #e0a458;
+    --chart-4: #b39ddb;
+    --chart-5: #b89a72;
+    --chart-other: #a39b90;
 
     --sidebar: #14110d;
     --sidebar-foreground: #eae6df;
@@ -230,6 +366,8 @@
     --sidebar-accent-foreground: #ffffff;
     --sidebar-border: #221c16;
     --sidebar-ring: #e2956c;
+    --sidebar-active-bg: #3a2a20;
+    --sidebar-active-indicator: var(--brand-primary);
 }
 
 @layer base {
