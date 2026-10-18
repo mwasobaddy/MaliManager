@@ -387,8 +387,8 @@
      * Set at the base layer on purpose. There are ~100 <Link> call sites and
      * the rule is uniform; per-component classes would drift. Because this
      * lives in `@layer base`, any explicit `text-*` utility still wins — so
-     * button-styled links keep their button colours and sidebar items keep
-     * their espresso palette, without either needing to opt out.
+     * button-styled links keep their button colours without needing to opt
+     * out.
      */
     a {
         color: var(--accent-text);
@@ -402,6 +402,32 @@
         color: var(--accent-text-hover);
         text-decoration-line: underline;
         text-decoration-color: currentColor;
+    }
+
+    /*
+     * The sidebar opts back out. It is an espresso surface (§6.7), where nav
+     * text is linen and only the utility links ("Help", "What's new") go
+     * `--accent-on-inverse`; a global teal turned some nav items teal while
+     * others kept their own colour, which is wrong in both directions.
+     *
+     * `color: inherit` restores the sidebar's own `--sidebar-foreground`, and
+     * the `[data-slot]` attribute selector outranks the bare `a` above on
+     * specificity alone.
+     *
+     * Written as a plain descendant selector rather than folding the
+     * exclusion into the rule above with `:not(:where(...))`. That construct
+     * measured as *matching* the sidebar links in Chrome 155 while
+     * `:not(:where(...))` on its own correctly did not — so the negation was
+     * not being honoured when a descendant combinator followed it. Far too
+     * subtle to ship as the guard for a whole navigation surface.
+     */
+    [data-slot='sidebar'] a {
+        color: inherit;
+    }
+
+    [data-slot='sidebar'] a:hover,
+    [data-slot='sidebar'] a:focus-visible {
+        color: var(--sidebar-accent-foreground);
     }
 
     /*

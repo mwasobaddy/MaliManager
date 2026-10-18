@@ -9,14 +9,19 @@ import {
 import { cn } from '@/lib/utils';
 
 /**
- * Colors for table row actions. Each maps to a design token that already has
- * separate light/dark values (`--action-view`, `--action-edit`,
- * `--action-danger`, `--brand-primary`, `--brand-accent` in resources/css/app.css),
- * so the swatch re-tints itself in dark mode without `dark:` variants here.
+ * Colors for table row actions.
  *
- * Backgrounds are deliberately translucent (`/12`) with a saturated icon and
- * matching border. A row of solid fills is too loud at table density; the tint
- * keeps the action identifiable while staying scannable.
+ * v2 §7.3 is **neutral at rest, tinted on hover**. v1 gave every row a filled
+ * View/Edit/Delete chip, so the same three colours repeated down every column
+ * and the table read as a wall of badges before you got to the data. The icons
+ * are identical on every row, so colour was never carrying unique information
+ * at rest — it was decoration. Hovering is where it earns its place: it says
+ * what the button does *before* you commit to it, which is the moment the
+ * distinction is actually useful.
+ *
+ * Each maps to a token that has its own light and dark values in
+ * resources/css/app.css, so a swatch re-tints itself with the theme and no
+ * `dark:` variants are needed here.
  */
 const actionColorVariants = cva('', {
     variants: {
@@ -24,23 +29,24 @@ const actionColorVariants = cva('', {
             default: 'bg-muted text-muted-foreground hover:bg-accent',
             primary:
                 'bg-primary text-primary-foreground hover:bg-primary/90',
-            view: 'bg-action-view/12 text-action-view hover:bg-action-view/20 focus-visible:ring-action-view/30',
-            edit: 'bg-action-edit/12 text-action-edit hover:bg-action-edit/20 focus-visible:ring-action-edit/30',
+            /* v2 §7.3 — neutral at rest, tinted on hover. See the block
+               comment above for why the v1 fills went away. */
+            view: 'bg-muted text-muted-foreground hover:bg-brand-accent-100 hover:text-accent-text focus-visible:ring-accent-text/30',
+            edit: 'bg-muted text-muted-foreground hover:bg-brand-primary-100 hover:text-primary-text focus-visible:ring-primary-text/30',
             danger:
-                'bg-action-danger/12 text-action-danger hover:bg-action-danger/20 focus-visible:ring-action-danger/30',
-            brand: 'bg-brand-primary/12 text-brand-primary hover:bg-brand-primary/20 focus-visible:ring-brand-primary/30',
+                'bg-muted text-muted-foreground hover:bg-status-danger-bg hover:text-status-danger focus-visible:ring-status-danger/30',
+            brand: 'bg-muted text-muted-foreground hover:bg-brand-primary-100 hover:text-primary-text focus-visible:ring-primary-text/30',
             accent:
                 'bg-brand-accent/12 text-brand-accent hover:bg-brand-accent/20 focus-visible:ring-brand-accent/30',
             /**
-             * Solid teal for the table's utility controls (filter, export,
-             * import). `accent` above is the *tint* used inside the action
-             * cell; this is the filled button, matching the weight of the
-             * brand-primary CTA but in the accent hue. The label uses
-             * `--brand-accent-foreground` rather than a literal `text-white`:
-             * the dark-mode accent is a light teal, so white would sit near
-             * 2.1:1. The token flips per theme, mirroring `--primary-foreground`.
+             * Solid teal for a table's utility controls (filter, export,
+             * import). Watch the §5 trap here: putting all three on solid teal
+             * at once breaks "never more than one solid teal element per
+             * view", because three in a row stop being an accent and become
+             * the interface. Prefer `variant="accent"` on the Button when the
+             * page already shows a solid teal somewhere else.
              */
-            teal: 'bg-brand-accent text-brand-accent-foreground hover:bg-brand-accent/90 focus-visible:ring-brand-accent/40',
+            teal: 'bg-brand-accent text-on-accent hover:bg-brand-accent/90 focus-visible:ring-brand-accent/40',
         },
     },
     defaultVariants: {
