@@ -43,7 +43,17 @@ function BreadcrumbLink({
   return (
     <Comp
       data-slot="breadcrumb-link"
-      className={cn("hover:text-foreground transition-colors", className)}
+      /*
+       * §6.4: ancestors are `--text-muted` and only turn accent on hover —
+       * the current page is the one you are on, so ancestors recede. The
+       * explicit `text-muted-foreground` is load-bearing: the base layer
+       * paints every anchor accent-text, and an inherited colour would lose
+       * to that direct rule.
+       */
+      className={cn(
+        "text-muted-foreground hover:text-accent-text rounded-sm transition-colors hover:underline hover:underline-offset-4",
+        className
+      )}
       {...props}
     />
   )
@@ -72,7 +82,7 @@ function BreadcrumbSeparator({
       data-slot="breadcrumb-separator"
       role="presentation"
       aria-hidden="true"
-      className={cn("[&>svg]:size-3.5", className)}
+      className={cn("[&>svg]:size-3.5 text-border-strong", className)}
       {...props}
     >
       {children ?? <ChevronRight />}
