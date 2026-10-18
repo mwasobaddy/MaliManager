@@ -86,13 +86,20 @@ type Props = {
     autoOpenPropertyPicker?: boolean;
 };
 
+/**
+ * Categorical pie slices, in spec order (§2.6). The old list was six literal
+ * hexes including green and pink — a red/green pair, which §7.5 forbids as
+ * categorical series because it is the one pairing a deuteranope cannot
+ * split. These are tokens, so the palette flips with the theme and stays
+ * ≥3:1 against the card in both modes.
+ */
 const PIE_COLORS = [
-    '#2563eb',
-    '#16a34a',
-    '#f59e0b',
-    '#db2777',
-    '#0891b2',
-    '#7c3aed',
+    'var(--chart-1)',
+    'var(--chart-2)',
+    'var(--chart-3)',
+    'var(--chart-4)',
+    'var(--chart-5)',
+    'var(--chart-other)',
 ];
 
 const TABS = [
@@ -332,14 +339,14 @@ function AdminTab({ stats }: { stats: AdminStats }) {
                             {
                                 key: 'income',
                                 label: 'Income',
-                                color: '#16a34a',
+                                color: 'var(--chart-1)',
                                 type: 'area',
                                 axis: 'left',
                             },
                             {
                                 key: 'expenses',
                                 label: 'Expenses',
-                                color: '#db2777',
+                                color: 'var(--chart-2)',
                                 type: 'area',
                                 axis: 'left',
                             },
@@ -421,14 +428,14 @@ function OrganizationTab({ stats }: { stats: OrgStats }) {
                     {
                         key: 'expenses',
                         label: 'Expenses',
-                        color: '#db2777',
+                        color: 'var(--chart-2)',
                         type: 'area',
                         axis: 'left',
                     },
                     {
                         key: 'maintenance',
                         label: 'Maintenance requests',
-                        color: '#f59e0b',
+                        color: 'var(--chart-3)',
                         type: 'bar',
                         axis: 'right',
                     },
@@ -539,14 +546,14 @@ function PersonTab({
                         {
                             key: 'rent',
                             label: 'Rent',
-                            color: '#0891b2',
+                            color: 'var(--chart-1)',
                             type: 'area',
                             axis: 'left',
                         },
                         {
                             key: 'maintenance',
                             label: 'Maintenance',
-                            color: '#f59e0b',
+                            color: 'var(--chart-3)',
                             type: 'bar',
                             axis: 'right',
                         },

@@ -71,15 +71,19 @@ export function StatusIcon({
  *
  * Written out rather than interpolated from the tone name on purpose: Tailwind
  * extracts class names by scanning source text, so `` `bg-status-${tone}/12` ``
- * never makes it into the build and the rule silently disappears. Only `info`
- * is excluded — no toggle wears it, and `--status-info` is a link/action
- * colour with no `--status-info-bg` to tint a chip against (see `StatusIcon`,
- * which uses the flat token directly).
+ * never makes it into the build and the rule silently disappears.
+ *
+ * Neutral at rest, tinted on hover, like every other row action (§7.3) — this
+ * lives in the action cell, not the status column, and a column of coloured
+ * chips repeated on every row reads as decoration rather than information.
+ *
+ * `info` is excluded because no toggle wears it, and `--status-info` has no
+ * `-bg` pair to tint a chip against; `StatusIcon` uses the flat token instead.
  */
 const TOGGLE_TONE_CLASSES = {
-    success: 'bg-status-success/12 text-status-success hover:bg-status-success/20 focus-visible:ring-status-success/30',
-    warning: 'bg-status-warning/12 text-status-warning hover:bg-status-warning/20 focus-visible:ring-status-warning/30',
-    danger: 'bg-status-danger/12 text-status-danger hover:bg-status-danger/20 focus-visible:ring-status-danger/30',
+    success: 'bg-muted text-muted-foreground hover:bg-status-success-bg hover:text-status-success focus-visible:ring-status-success/30',
+    warning: 'bg-muted text-muted-foreground hover:bg-status-warning-bg hover:text-status-warning focus-visible:ring-status-warning/30',
+    danger: 'bg-muted text-muted-foreground hover:bg-status-danger-bg hover:text-status-danger focus-visible:ring-status-danger/30',
 } satisfies Record<Exclude<StatusTone, 'info' | 'muted'>, string>;
 
 /**

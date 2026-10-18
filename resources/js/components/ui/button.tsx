@@ -19,11 +19,24 @@ const buttonVariants = cva(
          * `secondary`: same look today, different intent, so they can diverge.
          */
         shadcndefault:
-          "bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80",
+          "bg-background border-border-strong text-foreground shadow-xs hover:bg-muted",
         destructive:
-          "bg-destructive text-white shadow-xs hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40",
+          "bg-action-danger text-on-danger shadow-xs hover:brightness-95 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40",
+        /** §6.1 Danger ghost — opens a confirmation, does not destroy. */
+        "danger-ghost":
+          "text-status-danger hover:bg-status-danger-bg focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40",
         outline:
           "border border-input bg-background shadow-xs hover:bg-accent hover:text-accent-foreground",
+        /**
+         * §6.1 Accent outline — secondary-but-important actions that are not
+         * destructive: Export, Send reminder, Add note. Teal because they lead
+         * somewhere; terracotta `default` is reserved for what you do.
+         */
+        accent:
+          "border border-accent-text bg-transparent text-accent-text shadow-xs hover:bg-brand-accent-100 hover:text-accent-on-tint focus-visible:ring-accent-text/40",
+        /** §6.1 Accent solid — rare. Upgrade, "Try the new reports". */
+        "accent-solid":
+          "bg-brand-accent text-on-accent shadow-xs hover:bg-brand-accent/90 focus-visible:ring-brand-accent/40",
         secondary:
           "bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80",
         ghost: "hover:bg-accent hover:text-accent-foreground",
