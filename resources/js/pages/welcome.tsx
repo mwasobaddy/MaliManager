@@ -268,13 +268,16 @@ function FeatureIcon({ kind }: { kind: 0 | 1 | 2 }) {
     );
 }
 
-function BrandMark({ name }: { name: string }) {
+function BrandMark() {
     return (
         <span className="flex items-center gap-2.5">
-            <span className="flex aspect-square size-9 items-center justify-center rounded-full border-2 border-primary p-1 text-primary shadow-sm">
-                <AppLogoIcon className="size-7" />
+            <span className="flex size-9 items-center justify-center text-primary">
+                <AppLogoIcon />
             </span>
-            <span className="text-lg font-semibold tracking-tight text-foreground">{name}</span>
+            <span className="font-semibold tracking-tight">
+                <span className="text-2xl md:text-3xl font-semibold tracking-tight text-brand-primary-600">Mali</span>
+                <span className="text-2xl md:text-3xl font-semibold tracking-tight text-brand-accent">Manager</span>
+            </span>
         </span>
     );
 }
@@ -322,7 +325,7 @@ export default function Welcome() {
                             aria-label={`${name} home`}
                             className="shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                         >
-                            <BrandMark name={name} />
+                            <BrandMark />
                         </a>
 
                         <div className="hidden items-center gap-9 text-[15px] text-muted-foreground md:flex">
@@ -954,7 +957,7 @@ export default function Welcome() {
                         <div className="mb-12 grid gap-10 md:grid-cols-[1.2fr_1fr_1fr_1fr]">
                             <div>
                                 <div className="mb-4">
-                                    <BrandMark name={name} />
+                                    <BrandMark />
                                 </div>
                                 <p className="max-w-xs text-sm leading-relaxed text-muted-foreground">
                                     Property management built for Kenyan landlords, caretakers, and
