@@ -12,6 +12,16 @@ function Toaster({ ...props }: ToasterProps) {
             theme={appearance}
             className="toaster group"
             position="bottom-right"
+            /*
+             * §6.6: advisory toasts clear at 8s, errors persist. The per-type
+             * override lives in `useFlashToast`, which is where every toast in
+             * the app is raised; this is the fallback for anything raised
+             * outside that path. `closeButton` means a persistent toast can
+             * always be dismissed, and `richColors` is off because the palette
+             * below already carries the semantic background.
+             */
+            duration={8000}
+            closeButton
             style={
                 {
                     '--normal-bg': 'var(--popover)',
