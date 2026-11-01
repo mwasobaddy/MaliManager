@@ -236,7 +236,7 @@ export default function AuditIndex({
                                                 <td className="px-3 py-2">
                                                     {audit.causer ? (
                                                         <Link
-                                                            className="text-foreground hover:underline"
+                                                            className="text-foreground"
                                                             href={auditShow({
                                                                 activity:
                                                                     audit.id,

@@ -290,7 +290,7 @@ export default function OrganizationDashboard({
                                                     href={dashboard(
                                                         property.slug,
                                                     )}
-                                                    className="inline-flex items-center gap-1 font-medium text-foreground hover:underline"
+                                                    className="inline-flex items-center gap-1 font-medium text-foreground"
                                                 >
                                                     {property.name}
                                                     {property.city && (
@@ -303,7 +303,7 @@ export default function OrganizationDashboard({
                                             <td className="py-3 pr-4 tabular-nums">
                                                 {property.total_units}
                                             </td>
-                                            <td className="py-3 pr-4 tabular-nums text-emerald-600 dark:text-emerald-400">
+                                            <td className="py-3 pr-4 tabular-nums text-status-success">
                                                 {property.occupied}
                                                 {property.in_maintenance > 0 && (
                                                     <span className="text-muted-foreground">

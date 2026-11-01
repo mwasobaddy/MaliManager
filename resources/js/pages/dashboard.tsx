@@ -471,10 +471,13 @@ function OrganizationTab({ stats }: { stats: OrgStats }) {
             )}
 
             {stats.flags && stats.flags.length > 0 && (
-                <Card className="border-amber-300 dark:border-amber-800">
+                <Card className="border-status-warning/40">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2 text-base font-medium">
-                            <TriangleAlert className="size-4 text-amber-600 dark:text-amber-400" />
+                            <TriangleAlert
+                                className="text-status-warning size-4"
+                                aria-hidden
+                            />
                             Needs attention
                         </CardTitle>
                     </CardHeader>
@@ -488,8 +491,8 @@ function OrganizationTab({ stats }: { stats: OrgStats }) {
                                     <span
                                         className={`mt-1 inline-block size-2 shrink-0 rounded-full ${
                                             flag.severity === 'high'
-                                                ? 'bg-red-500'
-                                                : 'bg-amber-500'
+                                                ? 'bg-status-danger'
+                                                : 'bg-status-warning'
                                         }`}
                                     />
                                     {flag.message}

@@ -29,10 +29,10 @@ type Props = {
 
 const conditionStyles: Record<string, string> = {
     excellent:
-        'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400',
-    good: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
-    fair: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
-    poor: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
+        'bg-status-success-bg text-status-success-fg',
+    good: 'bg-status-info-bg text-status-info-fg',
+    fair: 'bg-status-warning-bg text-status-warning-fg',
+    poor: 'bg-status-danger-bg text-status-danger-fg',
 };
 
 export default function InspectionShow({ propertySlug, inspection }: Props) {
@@ -69,7 +69,7 @@ export default function InspectionShow({ propertySlug, inspection }: Props) {
                         </Button>
                         <Button
                             variant="ghost"
-                            className="text-red-600 print:hidden"
+                            className="text-status-danger print:hidden"
                             onClick={() =>
                                 confirm('Delete this inspection?') &&
                                 router.delete(

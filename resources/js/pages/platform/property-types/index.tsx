@@ -303,8 +303,8 @@ export default function PropertyTypesIndex({
                     <span
                         className={
                             row.original.category === 'commercial'
-                                ? 'text-xs font-medium text-blue-600 dark:text-blue-400'
-                                : 'text-xs font-medium text-emerald-600 dark:text-emerald-400'
+                                ? 'text-xs font-medium text-status-info'
+                                : 'text-xs font-medium text-status-success'
                         }
                     >
                         {row.original.category_label}

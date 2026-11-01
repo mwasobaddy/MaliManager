@@ -39,10 +39,10 @@ export default function PaymentReceipt({
         .join(' ');
 
     const statusColor = status === 'received'
-        ? 'bg-green-100 text-green-800'
+        ? 'bg-status-success-bg text-status-success-fg'
         : status === 'pending'
-            ? 'bg-yellow-100 text-yellow-800'
-            : 'bg-red-100 text-red-800';
+            ? 'bg-status-warning-bg text-status-warning-fg'
+            : 'bg-status-danger-bg text-status-danger-fg';
 
     return (
         <>

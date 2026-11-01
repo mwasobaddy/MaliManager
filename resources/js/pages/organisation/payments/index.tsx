@@ -158,10 +158,10 @@ export default function PaymentsIndex({
                                             <span
                                                 className={`inline-flex rounded-md px-2 py-1 text-xs font-medium ${
                                                     payment.status === 'received'
-                                                        ? 'bg-green-100 text-green-800'
+                                                        ? 'bg-status-success-bg text-status-success-fg'
                                                         : payment.status === 'pending'
-                                                            ? 'bg-yellow-100 text-yellow-800'
-                                                            : 'bg-red-100 text-red-800'
+                                                            ? 'bg-status-warning-bg text-status-warning-fg'
+                                                            : 'bg-status-danger-bg text-status-danger-fg'
                                                 }`}
                                             >
                                                 {payment.status}

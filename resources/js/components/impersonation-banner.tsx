@@ -38,7 +38,12 @@ export function ImpersonationBanner() {
         <div
             role="status"
             data-testid="impersonation-banner"
-            className="bg-status-warning/12 text-status-warning border-status-warning/30 flex flex-wrap items-center justify-between gap-3 border-b px-4 py-2 text-sm"
+            /*
+             * §2.5 — `--status-warning` is icon/border only, never text: at
+             * #B7791F on a tinted background it is a 3:1 colour, not the 4.5:1
+             * a sentence needs. The `-fg` token is the AA-safe pair.
+             */
+            className="bg-status-warning-bg text-status-warning-fg border-status-warning/40 flex flex-wrap items-center justify-between gap-3 border-b px-4 py-2 text-sm"
         >
             <div className="flex min-w-0 items-center gap-2">
                 <Eye className="size-4 shrink-0" aria-hidden />

@@ -68,11 +68,15 @@ const SEARCH_DEBOUNCE_MS = 350;
 /**
  * The event vocabulary is drawn from a seeded enum, so the glyphs are chosen
  * from a closed set and a `—` covers "no event was recorded".
+ *
+ * Soft `-bg` / `-fg` pairs, not the bare status colours (§2.5). "updated" is
+ * the one that matters: `--status-warning` as a *text* colour sits around
+ * 3:1, so the word "updated" was failing AA on its own tint.
  */
 const EVENT_TONES: Record<string, string> = {
-    created: 'bg-status-success/12 text-status-success',
-    updated: 'bg-status-warning/12 text-status-warning',
-    deleted: 'bg-status-danger/12 text-status-danger',
+    created: 'bg-status-success-bg text-status-success-fg',
+    updated: 'bg-status-warning-bg text-status-warning-fg',
+    deleted: 'bg-status-danger-bg text-status-danger-fg',
 };
 
 export default function AdminAuditIndex({

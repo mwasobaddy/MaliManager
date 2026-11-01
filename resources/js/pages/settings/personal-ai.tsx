@@ -122,7 +122,7 @@ export default function PersonalAi({
                                                 {modelGuidance[
                                                     provider
                                                 ]?.tested.includes(m) && (
-                                                    <span className="ml-2 text-emerald-600 dark:text-emerald-400">
+                                                    <span className="ml-2 text-status-success">
                                                         ✓ tested
                                                     </span>
                                                 )}
@@ -138,7 +138,7 @@ export default function PersonalAi({
                                 />
                             )}
                             {modelGuidance[provider]?.tested.length > 0 && (
-                                <p className="text-xs text-emerald-600 dark:text-emerald-400">
+                                <p className="text-xs text-status-success">
                                     ✓ Tested &amp; working with this assistant:{' '}
                                     {modelGuidance[provider].tested.join(', ')}
                                 </p>
@@ -190,7 +190,7 @@ export default function PersonalAi({
                                 <Button
                                     variant="ghost"
                                     size="sm"
-                                    className="w-fit text-red-600"
+                                    className="text-status-danger w-fit"
                                     onClick={() =>
                                         router.delete(destroyPersonalAi().url, {
                                             preserveScroll: true,

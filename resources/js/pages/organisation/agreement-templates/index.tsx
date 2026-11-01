@@ -124,7 +124,7 @@ export default function AgreementTemplatesIndex({
                                                 asChild
                                                 variant="ghost"
                                                 size="sm"
-                                                className="text-red-600"
+                                                className="text-status-danger"
                                             >
                                                 <Link
                                                     href={

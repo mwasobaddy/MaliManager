@@ -80,7 +80,7 @@ export default function Otp({ email, status }: Props) {
                 </Form>
 
                 {status && (
-                    <div className="text-center text-sm font-medium text-green-600">
+                    <div className="text-center text-status-success text-sm font-medium">
                         {status}
                     </div>
                 )}

@@ -59,8 +59,8 @@ type Props = {
 };
 
 const statusStyles: Record<string, string> = {
-    active: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400',
-    ended: 'bg-neutral-200 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-400',
+    active: 'bg-status-success-bg text-status-success-fg',
+    ended: 'bg-status-neutral-bg text-status-neutral-fg',
 };
 
 export default function LeasesIndex({ leases, filters }: Props) {
@@ -226,7 +226,7 @@ export default function LeasesIndex({ leases, filters }: Props) {
                                                 {lease.status}
                                             </span>
                                             {lease.expiring_soon && (
-                                                <Badge className="ml-1 bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+                                                <Badge className="ml-1 bg-status-warning-bg text-status-warning-fg">
                                                     Expiring soon
                                                 </Badge>
                                             )}
@@ -312,7 +312,7 @@ export default function LeasesIndex({ leases, filters }: Props) {
                                                         <Button
                                                             variant="ghost"
                                                             size="sm"
-                                                            className="text-red-600"
+                                                            className="text-status-danger"
                                                             onClick={() =>
                                                                 setEndTarget(
                                                                     lease,

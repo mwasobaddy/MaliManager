@@ -42,10 +42,10 @@ type Props = {
 };
 
 const priorityStyles: Record<string, string> = {
-    low: 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300',
-    medium: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
-    high: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300',
-    urgent: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
+    low: 'bg-status-neutral-bg text-status-neutral-fg',
+    medium: 'bg-status-info-bg text-status-info-fg',
+    high: 'bg-status-warning-bg text-status-warning-fg',
+    urgent: 'bg-status-danger-bg text-status-danger-fg',
 };
 
 export default function MaintenanceIndex({
@@ -302,7 +302,7 @@ export default function MaintenanceIndex({
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
-                                                className="text-red-600"
+                                                className="text-status-danger"
                                                 onClick={() =>
                                                     router.delete(
                                                         `/maintenance/${item.id}`,

@@ -1,6 +1,13 @@
 export function SampleBadge() {
+    /*
+     * Warning-soft rather than the raw Tailwind amber scale: "sample data" is
+     * a caveat, so it earns a status colour, but the literal `amber-100`/
+     * `amber-700` pair had two problems. It needed its own `dark:` overrides
+     * to stay legible, and it was the one chip on the page that ignored the
+     * theme tokens — so it drifted whenever the palette moved.
+     */
     return (
-        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+        <span className="bg-status-warning-bg text-status-warning-fg inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium">
             Sample data
         </span>
     );
