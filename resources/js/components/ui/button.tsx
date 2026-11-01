@@ -5,7 +5,7 @@ import * as React from "react"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-[color,box-shadow] disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-[color,box-shadow] disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
   {
     variants: {
       variant: {
@@ -21,10 +21,10 @@ const buttonVariants = cva(
         shadcndefault:
           "bg-background border-border-strong text-foreground shadow-xs hover:bg-muted",
         destructive:
-          "bg-action-danger text-on-danger shadow-xs hover:brightness-95 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40",
+          "bg-action-danger text-on-danger shadow-xs hover:brightness-95 ",
         /** §6.1 Danger ghost — opens a confirmation, does not destroy. */
         "danger-ghost":
-          "text-status-danger hover:bg-status-danger-bg focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40",
+          "text-status-danger hover:bg-status-danger-bg ",
         outline:
           "border border-input bg-background shadow-xs hover:bg-accent hover:text-accent-foreground",
         /**
@@ -33,21 +33,26 @@ const buttonVariants = cva(
          * somewhere; terracotta `default` is reserved for what you do.
          */
         accent:
-          "border border-accent-text bg-transparent text-accent-text shadow-xs hover:bg-brand-accent-100 hover:text-accent-on-tint focus-visible:ring-accent-text/40",
+          "border border-accent-text bg-transparent text-accent-text shadow-xs hover:bg-brand-accent-100 hover:text-accent-on-tint ",
         /** §6.1 Accent solid — rare. Upgrade, "Try the new reports". */
         "accent-solid":
-          "bg-brand-accent text-on-accent shadow-xs hover:bg-brand-accent/90 focus-visible:ring-brand-accent/40",
+          "bg-brand-accent text-on-accent shadow-xs hover:bg-brand-accent/90 ",
         secondary:
           "bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80",
         ghost: "hover:bg-accent hover:text-accent-foreground",
-        /** §6.1 Link — accent, underlined. Was `text-primary` (terracotta). */
-        link: "text-accent-text underline-offset-4 hover:text-accent-text-hover hover:underline",
+        /** §6.1 Link — accent, not underlined. Was `text-primary` (terracotta). */
+        link: "text-accent-text hover:text-accent-text-hover",
       },
+      /**
+       * §4.1 — every size grows to a 44px hit area on a coarse pointer. The
+       * visual height stays as designed for a mouse; only the touch target
+       * changes, so a tablet does not render a chunky desktop layout.
+       */
       size: {
-        default: "h-9 px-4 py-2 has-[>svg]:px-3",
-        sm: "h-8 rounded-md px-3 has-[>svg]:px-2.5",
-        lg: "h-10 rounded-md px-6 has-[>svg]:px-4",
-        icon: "size-9",
+        default: "h-9 px-4 py-2 has-[>svg]:px-3 coarse:h-11",
+        sm: "h-8 rounded-md px-3 has-[>svg]:px-2.5 coarse:h-11",
+        lg: "h-10 rounded-md px-6 has-[>svg]:px-4 coarse:h-11",
+        icon: "size-9 coarse:size-11",
       },
     },
     defaultVariants: {

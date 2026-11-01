@@ -9,6 +9,13 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * §4.1 — touch targets are 44px even where the desktop control is smaller.
+ * Keyed on pointer type rather than viewport: a 1280px tablet is still a
+ * finger, and a 900px desktop window is still a mouse.
+ */
+@custom-variant coarse (@media (pointer: coarse));
+
 @theme {
     --font-sans:
         'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif,
@@ -457,6 +464,42 @@
 
     .prose a:hover {
         text-decoration-color: currentColor;
+    }
+
+    /*
+     * §4.3 — a 2px outline at 2px offset on every interactive element.
+     *
+     * Outline rather than the `ring` box-shadow the components used before.
+     * Two reasons: the ring was drawn at `ring/50`, so the focus indicator was
+     * literally half strength, and an outline is what the spec asks for. The
+     * components now carry `focus-visible:outline-*` explicitly (utilities beat
+     * this base rule), and this catches anything without its own treatment —
+     * links, `tabindex` targets, raw buttons.
+     */
+    :focus-visible {
+        outline: 2px solid var(--focus-ring);
+        outline-offset: 2px;
+    }
+
+    /* On espresso the ring has to be lighter to clear 3:1 (§6.7). */
+    [data-slot='sidebar'] :focus-visible {
+        outline-color: var(--focus-ring-inverse);
+    }
+
+    /*
+     * §4.3 — honour reduced motion globally. Animations are decoration here;
+     * collapsing them to an effectively zero duration keeps every state change
+     * (dialogs opening, toasts appearing) without the movement.
+     */
+    @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+            scroll-behavior: auto !important;
+        }
     }
 }
 
