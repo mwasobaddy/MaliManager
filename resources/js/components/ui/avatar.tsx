@@ -40,7 +40,12 @@ function AvatarFallback({
     <AvatarPrimitive.Fallback
       data-slot="avatar-fallback"
       className={cn(
-        "bg-muted flex size-full items-center justify-center rounded-full",
+        /*
+         * §6.3 — initials sit on espresso with linen text, so an avatar reads
+         * as the same surface as the sidebar chrome. It was `bg-muted`, which
+         * made the initials a grey chip that disappeared into a card.
+         */
+        "bg-brand-secondary text-on-secondary flex size-full items-center justify-center rounded-full",
         className
       )}
       {...props}
