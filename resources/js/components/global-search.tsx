@@ -1,3 +1,4 @@
+import { router } from '@inertiajs/react';
 import {
     Building,
     Building2,
@@ -19,7 +20,9 @@ import {
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog';
+import { Empty } from '@/components/ui/empty';
 import { Input } from '@/components/ui/input';
+import { Kbd } from '@/components/ui/kbd';
 import { cn } from '@/lib/utils';
 import { search } from '@/routes';
 
@@ -100,6 +103,25 @@ export function GlobalSearch() {
         }
     }, [open]);
 
+    /*
+     * §6.4 puts a Command trigger in the top bar and legend it ⌘K. The
+     * listener is global because the point of the shortcut is to reach search
+     * from anywhere; it is a modifier combination, so it cannot collide with
+     * typing into a field.
+     */
+    React.useEffect(() => {
+        const onShortcut = (event: KeyboardEvent) => {
+            if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+                event.preventDefault();
+                setOpen(true);
+            }
+        };
+
+        window.addEventListener('keydown', onShortcut);
+
+        return () => window.removeEventListener('keydown', onShortcut);
+    }, []);
+
     React.useEffect(() => {
         const handle = setTimeout(() => {
             if (query.trim().length < 2) {
@@ -160,7 +182,9 @@ export function GlobalSearch() {
         (url: string) => {
             pushHistory(query);
             setOpen(false);
-            window.location.href = url;
+            /* Inertia visit, not `window.location` — a full reload would drop
+               the SPA state this app is built around. */
+            router.visit(url);
         },
         [query],
     );
@@ -200,11 +224,12 @@ export function GlobalSearch() {
             <DialogTrigger asChild>
                 <Button
                     variant="ghost"
-                    size="icon"
-                    className="group h-9 w-9 cursor-pointer"
-                    aria-label="Search"
+                    size="sm"
+                    className="group text-muted-foreground hover:text-foreground h-9 cursor-pointer gap-2 px-2"
+                    aria-label="Search (Command K)"
                 >
                     <Search className="!size-5 opacity-80 group-hover:opacity-100" />
+                    <Kbd className="hidden lg:inline-flex">⌘K</Kbd>
                 </Button>
             </DialogTrigger>
             <DialogContent
@@ -258,9 +283,12 @@ export function GlobalSearch() {
                     )}
 
                     {!showHistory && flattened.length === 0 && !loading && (
-                        <p className="px-2 py-6 text-center text-sm text-muted-foreground">
-                            No results found.
-                        </p>
+                        <Empty
+                            compact
+                            icon={<Search className="size-4" />}
+                            title="No results"
+                            description={`Nothing matched “${query.trim()}”. Try a unit, name or phone number.`}
+                        />
                     )}
 
                     {!showHistory &&
@@ -291,11 +319,11 @@ export function GlobalSearch() {
                                                 className={cn(
                                                     'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm',
                                                     isActive
-                                                        ? 'bg-accent'
-                                                        : 'hover:bg-accent/60',
+                                                        ? 'bg-brand-primary-100 text-primary-text'
+                                                        : 'hover:bg-muted',
                                                 )}
                                             >
-                                                <Icon className="size-4 shrink-0 opacity-70" />
+                                                <Icon className="text-accent-text size-4 shrink-0" />
                                                 <span className="flex-1 truncate">
                                                     {item.title}
                                                 </span>
