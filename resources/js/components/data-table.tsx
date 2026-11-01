@@ -11,6 +11,7 @@ import type {
 import { ArrowDown, ArrowUp, ChevronsUpDown } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useLayoutEffect, useRef, useState } from 'react';
+import { Empty } from '@/components/ui/empty';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
@@ -71,7 +72,7 @@ export function DataTable<TData>({
     sorting = [],
     onSortingChange,
     onRowClick,
-    empty = 'Nothing to show.',
+    empty = <Empty compact title="Nothing to show." />,
     loading = false,
     loadingRows,
     className,
@@ -115,13 +116,13 @@ export function DataTable<TData>({
     }, [loading, data, rowHeight]);
 
     return (
-        <div className="overflow-x-auto">
+        <div className="max-h-[70vh] overflow-auto">
             <table className={cn('w-full border-collapse', className)}>
                 <thead>
                     {table.getHeaderGroups().map((headerGroup) => (
                         <tr
                             key={headerGroup.id}
-                            className="bg-muted/40 border-b border-border"
+                            className="border-border-strong border-b"
                         >
                             {headerGroup.headers.map((header) => {
                                 const sortable =
@@ -156,7 +157,7 @@ export function DataTable<TData>({
                                                   : 'none'
                                         }
                                         className={cn(
-                                            'text-muted-foreground px-3 py-2 text-xs font-medium tracking-wide uppercase',
+                                            'text-muted-foreground bg-bg-base sticky top-0 z-10 px-3 py-2 text-xs font-medium tracking-wide uppercase',
                                             alignClass,
                                         )}
                                     >
@@ -258,7 +259,7 @@ export function DataTable<TData>({
                         <tr>
                             <td
                                 colSpan={columns.length}
-                                className="text-muted-foreground px-3 py-10 text-center text-sm"
+                                className="px-3"
                             >
                                 {empty}
                             </td>
@@ -273,9 +274,9 @@ export function DataTable<TData>({
                                         : undefined
                                 }
                                 className={cn(
-                                    'hover:bg-brand-primary-100/40 border-border/60 border-b transition-colors last:border-b-0',
+                                    'hover:bg-bg-base border-border/60 border-b transition-colors last:border-b-0',
                                     onRowClick &&
-                                        'cursor-pointer focus-visible:bg-brand-primary-100/40 focus-visible:ring-ring focus-visible:ring-[3px] focus-visible:outline-none',
+                                        'cursor-pointer focus-visible:bg-bg-base focus-visible:ring-ring focus-visible:ring-[3px] focus-visible:outline-none',
                                 )}
                             >
                                 {row.getVisibleCells().map((cell) => {
@@ -287,7 +288,7 @@ export function DataTable<TData>({
                                     <td
                                         key={cell.id}
                                         className={cn(
-                                            'px-3 py-2 text-sm',
+                                            'px-3 py-2 coarse:py-3 text-sm',
                                             cellAlign === 'right'
                                                 ? 'text-right'
                                                 : cellAlign === 'center'
