@@ -293,7 +293,7 @@ export default function PropertiesDashboard({
                         </CardHeader>
                         <CardContent>
                             <ResponsiveContainer width="100%" height={260}>
-                                <PieChart>
+                                <PieChart accessibilityLayer>
                                     <Pie
                                         data={stats.unit_status}
                                         dataKey="count"

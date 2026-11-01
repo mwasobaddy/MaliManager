@@ -362,7 +362,7 @@ function AdminTab({ stats }: { stats: AdminStats }) {
                     </CardHeader>
                     <CardContent>
                         <ResponsiveContainer width="100%" height={260}>
-                            <PieChart>
+                            <PieChart accessibilityLayer>
                                 <Pie
                                     data={stats.plans_breakdown}
                                     dataKey="count"

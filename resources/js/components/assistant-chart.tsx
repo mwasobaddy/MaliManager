@@ -121,7 +121,7 @@ export function AssistantChart({ artifact }: { artifact: AssistantArtifact }) {
 
         return (
             <ResponsiveContainer width="100%" height={260}>
-                <PieChart>
+                <PieChart accessibilityLayer>
                     <Pie
                         data={rows}
                         dataKey={dataKey}

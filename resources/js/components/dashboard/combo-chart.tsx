@@ -1,3 +1,5 @@
+import { BarChart3, Table2 } from 'lucide-react';
+import { useId, useState } from 'react';
 import {
     Area,
     Bar,
@@ -10,6 +12,7 @@ import {
     XAxis,
     YAxis,
 } from 'recharts';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { SampleBadge } from './sample-badge';
 
@@ -31,83 +34,196 @@ type Props = {
     height?: number;
 };
 
+/**
+ * Trend chart with a table fallback.
+ *
+ * §7.5 asks for two accessibility affordances that a chart library cannot give
+ * on its own:
+ *
+ * - `accessibilityLayer` makes the SVG focusable and keyboard-navigable, so
+ *   arrow keys walk the data points instead of the whole chart being one
+ *   opaque graphic.
+ * - "View as table" is the honest fallback. A screen-reader user can read a
+ *   table; a colour-blind user can read exact values instead of relying on
+ *   hue. It is the same data, not a summary of it.
+ */
 export function ComboChart({ title, data, series, height = 280 }: Props) {
     const hasRightAxis = series.some((s) => s.axis === 'right');
     const isSample = series.some((s) => s.sample);
+    const [view, setView] = useState<'chart' | 'table'>('chart');
+    const tableId = useId();
 
     return (
         <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-base font-medium">{title}</CardTitle>
-                {isSample && <SampleBadge />}
+                <div className="flex items-center gap-2">
+                    <CardTitle className="text-base font-medium">
+                        {title}
+                    </CardTitle>
+                    {isSample && <SampleBadge />}
+                </div>
+
+                <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-muted-foreground hover:text-foreground gap-1.5"
+                    onClick={() =>
+                        setView((current) =>
+                            current === 'chart' ? 'table' : 'chart',
+                        )
+                    }
+                    aria-pressed={view === 'table'}
+                    aria-controls={tableId}
+                >
+                    {view === 'chart' ? (
+                        <Table2 className="size-4" aria-hidden />
+                    ) : (
+                        <BarChart3 className="size-4" aria-hidden />
+                    )}
+                    {view === 'chart' ? 'View as table' : 'View as chart'}
+                </Button>
             </CardHeader>
+
             <CardContent>
-                <ResponsiveContainer width="100%" height={height}>
-                    <ComposedChart
-                        data={data}
-                        margin={{ left: -10, right: 10, top: 6 }}
-                    >
-                        <CartesianGrid
-                            strokeDasharray="3 3"
-                            className="stroke-muted"
-                        />
-                        <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                        <YAxis yAxisId="left" tick={{ fontSize: 11 }} />
-                        {hasRightAxis && (
-                            <YAxis
-                                yAxisId="right"
-                                orientation="right"
-                                tick={{ fontSize: 11 }}
+                {view === 'chart' ? (
+                    <ResponsiveContainer width="100%" height={height}>
+                        <ComposedChart
+                            data={data}
+                            margin={{ left: -10, right: 10, top: 6 }}
+                            accessibilityLayer
+                        >
+                            <CartesianGrid
+                                strokeDasharray="3 3"
+                                className="stroke-border"
                             />
-                        )}
-                        <Tooltip />
-                        <Legend />
-                        {series.map((s) => {
-                            const yAxisId = s.axis ?? 'left';
-
-                            if (s.type === 'area') {
-                                return (
-                                    <Area
-                                        key={s.key}
-                                        dataKey={s.key}
-                                        name={s.label}
-                                        stroke={s.color}
-                                        fill={s.color}
-                                        fillOpacity={0.2}
-                                        yAxisId={yAxisId}
-                                        type="monotone"
-                                    />
-                                );
-                            }
-
-                            if (s.type === 'line') {
-                                return (
-                                    <Line
-                                        key={s.key}
-                                        dataKey={s.key}
-                                        name={s.label}
-                                        stroke={s.color}
-                                        yAxisId={yAxisId}
-                                        type="monotone"
-                                        dot={false}
-                                    />
-                                );
-                            }
-
-                            return (
-                                <Bar
-                                    key={s.key}
-                                    dataKey={s.key}
-                                    name={s.label}
-                                    fill={s.color}
-                                    yAxisId={yAxisId}
-                                    radius={[4, 4, 0, 0]}
+                            <XAxis
+                                dataKey="label"
+                                tick={{ fontSize: 11 }}
+                                className="fill-muted-foreground"
+                            />
+                            <YAxis
+                                yAxisId="left"
+                                tick={{ fontSize: 11 }}
+                                className="fill-muted-foreground"
+                            />
+                            {hasRightAxis && (
+                                <YAxis
+                                    yAxisId="right"
+                                    orientation="right"
+                                    tick={{ fontSize: 11 }}
+                                    className="fill-muted-foreground"
                                 />
-                            );
-                        })}
-                    </ComposedChart>
-                </ResponsiveContainer>
+                            )}
+                            <Tooltip />
+                            <Legend />
+                            {series.map((s) => {
+                                const yAxisId = s.axis ?? 'left';
+
+                                if (s.type === 'area') {
+                                    return (
+                                        <Area
+                                            key={s.key}
+                                            dataKey={s.key}
+                                            name={s.label}
+                                            stroke={s.color}
+                                            fill={s.color}
+                                            fillOpacity={0.2}
+                                            yAxisId={yAxisId}
+                                            type="monotone"
+                                        />
+                                    );
+                                }
+
+                                if (s.type === 'line') {
+                                    return (
+                                        <Line
+                                            key={s.key}
+                                            dataKey={s.key}
+                                            name={s.label}
+                                            stroke={s.color}
+                                            yAxisId={yAxisId}
+                                            type="monotone"
+                                            dot={false}
+                                        />
+                                    );
+                                }
+
+                                return (
+                                    <Bar
+                                        key={s.key}
+                                        dataKey={s.key}
+                                        name={s.label}
+                                        fill={s.color}
+                                        yAxisId={yAxisId}
+                                        radius={[4, 4, 0, 0]}
+                                    />
+                                );
+                            })}
+                        </ComposedChart>
+                    </ResponsiveContainer>
+                ) : (
+                    <div
+                        id={tableId}
+                        className="max-h-[280px] overflow-auto rounded-md border"
+                    >
+                        <table className="w-full border-collapse text-sm">
+                            <caption className="sr-only">
+                                {title} — the same data as the chart, as a table
+                            </caption>
+                            <thead>
+                                <tr className="bg-bg-base border-border-strong sticky top-0 border-b">
+                                    {['Period', ...series.map((s) => s.label)].map(
+                                        (heading) => (
+                                            <th
+                                                key={heading}
+                                                scope="col"
+                                                className="text-muted-foreground px-3 py-2 text-right text-xs font-medium tracking-wide uppercase first:text-left"
+                                            >
+                                                {heading}
+                                            </th>
+                                        ),
+                                    )}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {data.map((point, index) => (
+                                    <tr
+                                        key={index}
+                                        className="border-border/60 border-b last:border-b-0"
+                                    >
+                                        <th
+                                            scope="row"
+                                            className="text-foreground px-3 py-1.5 text-left font-normal"
+                                        >
+                                            {point.label}
+                                        </th>
+                                        {series.map((s) => (
+                                            <td
+                                                key={s.key}
+                                                className="px-3 py-1.5 text-right tabular-nums"
+                                            >
+                                                {formatValue(point[s.key])}
+                                            </td>
+                                        ))}
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
             </CardContent>
         </Card>
     );
+}
+
+/** Numbers get thousands separators; anything else renders as-is. */
+function formatValue(value: string | number | undefined): string {
+    if (value === undefined || value === null) {
+        return '—';
+    }
+
+    return typeof value === 'number'
+        ? value.toLocaleString(undefined, { maximumFractionDigits: 2 })
+        : value;
 }
