@@ -37,6 +37,17 @@
     --radius-md: calc(var(--radius) - 2px);
     --radius-sm: calc(var(--radius) - 4px);
 
+    /*
+     * §4.2 calls for 16px on modals and sheets.
+     *
+     * It is a separate token rather than a `--radius-lg` override because
+     * Tailwind already owns `--radius-lg` for `rounded-lg`, which 47 call
+     * sites use on things that are not modals. Setting it to 16px would also
+     * invert the scale — `lg` would be rounder than `xl` (12px) — and quietly
+     * round every alert, nav pill and code block in the app.
+     */
+    --radius-modal: 1rem;
+
     --color-background: var(--background);
     --color-foreground: var(--foreground);
 
