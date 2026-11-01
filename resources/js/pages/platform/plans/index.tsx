@@ -13,11 +13,11 @@ import { OverlayFooter } from '@/components/overlay-footer';
 import { ResponsiveOverlay } from '@/components/responsive-overlay';
 import { StatusIcon, StatusPowerToggle } from '@/components/status-cell';
 import type { StatusTone } from '@/components/status-cell';
-import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Pagination } from '@/components/ui/pagination';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Textarea } from '@/components/ui/textarea';
 import * as planRoutes from '@/routes/platform/plans';
@@ -581,36 +581,13 @@ export default function PlansIndex({
                     />
                 </Card>
 
-                {plans.last_page > 1 && (
-                    <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">
-                            Page {plans.current_page} of {plans.last_page} (
-                            {plans.total} plans)
-                        </span>
-                        <div className="flex gap-2">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                disabled={plans.current_page <= 1}
-                                onClick={() =>
-                                    changePage(plans.current_page - 1)
-                                }
-                            >
-                                Previous
-                            </Button>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                disabled={plans.current_page >= plans.last_page}
-                                onClick={() =>
-                                    changePage(plans.current_page + 1)
-                                }
-                            >
-                                Next
-                            </Button>
-                        </div>
-                    </div>
-                )}
+                <Pagination
+                    currentPage={plans.current_page}
+                    lastPage={plans.last_page}
+                    total={plans.total}
+                    label="plans"
+                    onChange={changePage}
+                />
             </div>
 
             {/* The row sheet: view, edit and delete share one overlay. */}

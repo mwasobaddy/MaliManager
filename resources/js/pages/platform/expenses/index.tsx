@@ -11,10 +11,10 @@ import Heading from '@/components/heading';
 import { LabelledIconButton } from '@/components/labelled-icon-button';
 import { OverlayFooter } from '@/components/overlay-footer';
 import { ResponsiveOverlay } from '@/components/responsive-overlay';
-import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Pagination } from '@/components/ui/pagination';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
     Select,
@@ -521,38 +521,13 @@ export default function PlatformExpensesIndex({
                     />
                 </Card>
 
-                {expenses.last_page > 1 && (
-                    <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">
-                            Page {expenses.current_page} of {expenses.last_page} (
-                            {expenses.total} expenses)
-                        </span>
-                        <div className="flex gap-2">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                disabled={expenses.current_page <= 1}
-                                onClick={() =>
-                                    changePage(expenses.current_page - 1)
-                                }
-                            >
-                                Previous
-                            </Button>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                disabled={
-                                    expenses.current_page >= expenses.last_page
-                                }
-                                onClick={() =>
-                                    changePage(expenses.current_page + 1)
-                                }
-                            >
-                                Next
-                            </Button>
-                        </div>
-                    </div>
-                )}
+                <Pagination
+                    currentPage={expenses.current_page}
+                    lastPage={expenses.last_page}
+                    total={expenses.total}
+                    label="expenses"
+                    onChange={changePage}
+                />
             </div>
 
             {/* The row sheet: view, edit, delete and confirm share one overlay. */}

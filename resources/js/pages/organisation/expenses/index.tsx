@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Heading from '@/components/heading';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Pagination } from '@/components/ui/pagination';
 import {
     Select,
     SelectContent,
@@ -186,41 +187,23 @@ export default function ExpensesIndex({
                     </div>
                 )}
 
-                {expenses.last_page > 1 && (
-                    <div className="flex gap-1 text-sm">
-                        {Array.from(
-                            { length: expenses.last_page },
-                            (_, i) => i + 1,
-                        ).map((page) => (
-                            <Button
-                                key={page}
-                                variant={
-                                    page === expenses.current_page
-                                        ? 'default'
-                                        : 'outline'
-                                }
-                                size="sm"
-                                onClick={() =>
-                                    router.get(
-                                        expensesIndexRoute.url({
-                                            query: {
-                                                page,
-                                                category:
-                                                    category === 'all'
-                                                        ? ''
-                                                        : category,
-                                            },
-                                        }),
-                                        {},
-                                        { preserveScroll: true },
-                                    )
-                                }
-                            >
-                                {page}
-                            </Button>
-                        ))}
-                    </div>
-                )}
+                <Pagination
+            currentPage={expenses.current_page}
+            lastPage={expenses.last_page}
+            label="expenses"
+            onChange={(page) =>
+                router.get(
+                    expensesIndexRoute.url({
+                        query: {
+                            page,
+                            category: category === 'all' ? '' : category,
+                        },
+                    }),
+                    {},
+                    { preserveScroll: true },
+                )
+            }
+        />
             </div>
         </>
     );

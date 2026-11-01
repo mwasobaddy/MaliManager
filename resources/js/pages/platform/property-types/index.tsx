@@ -20,10 +20,10 @@ import Heading from '@/components/heading';
 import { LabelledIconButton } from '@/components/labelled-icon-button';
 import { OverlayFooter } from '@/components/overlay-footer';
 import { ResponsiveOverlay } from '@/components/responsive-overlay';
-import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Pagination } from '@/components/ui/pagination';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import * as typeRoutes from '@/routes/platform/property-types';
@@ -448,40 +448,13 @@ export default function PropertyTypesIndex({
                     />
                 </Card>
 
-                {propertyTypes.last_page > 1 && (
-                    <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">
-                            Page {propertyTypes.current_page} of{' '}
-                            {propertyTypes.last_page} ({propertyTypes.total}{' '}
-                            types)
-                        </span>
-                        <div className="flex gap-2">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                disabled={propertyTypes.current_page <= 1}
-                                onClick={() =>
-                                    changePage(propertyTypes.current_page - 1)
-                                }
-                            >
-                                Previous
-                            </Button>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                disabled={
-                                    propertyTypes.current_page >=
-                                    propertyTypes.last_page
-                                }
-                                onClick={() =>
-                                    changePage(propertyTypes.current_page + 1)
-                                }
-                            >
-                                Next
-                            </Button>
-                        </div>
-                    </div>
-                )}
+                <Pagination
+                    currentPage={propertyTypes.current_page}
+                    lastPage={propertyTypes.last_page}
+                    total={propertyTypes.total}
+                    label="types"
+                    onChange={changePage}
+                />
             </div>
 
             <ResponsiveOverlay

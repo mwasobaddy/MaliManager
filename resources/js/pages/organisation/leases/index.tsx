@@ -16,6 +16,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { Pagination } from '@/components/ui/pagination';
 import {
     Select,
     SelectContent,
@@ -331,40 +332,21 @@ export default function LeasesIndex({ leases, filters }: Props) {
                     </div>
                 )}
 
-                {leases.last_page > 1 && (
-                    <div className="flex gap-1 text-sm">
-                        {Array.from(
-                            { length: leases.last_page },
-                            (_, i) => i + 1,
-                        ).map((page) => (
-                            <Button
-                                key={page}
-                                variant={
-                                    page === leases.current_page
-                                        ? 'default'
-                                        : 'outline'
-                                }
-                                size="sm"
-                                onClick={() =>
-                                    router.get(
-                                        leasesIndex.url(
-                                            {
-                                                property:
-                                                    context?.property?.slug ??
-                                                    '',
-                                            },
-                                            { query: { status, page } },
-                                        ),
-                                        {},
-                                        { preserveScroll: true },
-                                    )
-                                }
-                            >
-                                {page}
-                            </Button>
-                        ))}
-                    </div>
-                )}
+                <Pagination
+            currentPage={leases.current_page}
+            lastPage={leases.last_page}
+            label="leases"
+            onChange={(page) =>
+                router.get(
+                    leasesIndex.url(
+                        { property: context?.property?.slug ?? '' },
+                        { query: { status, page } },
+                    ),
+                    {},
+                    { preserveScroll: true },
+                )
+            }
+        />
             </div>
 
             <Dialog

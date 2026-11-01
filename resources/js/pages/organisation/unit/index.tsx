@@ -8,10 +8,10 @@ import { DataTable } from '@/components/data-table';
 import Heading from '@/components/heading';
 import { OverlayFooter } from '@/components/overlay-footer';
 import { ResponsiveOverlay } from '@/components/responsive-overlay';
-import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Pagination } from '@/components/ui/pagination';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import * as unitRoutes from '@/routes/tenant/units';
 
@@ -322,36 +322,13 @@ export default function UnitsIndex({ units, properties }: Props) {
                     />
                 </Card>
 
-                {units.last_page > 1 && (
-                    <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">
-                            Page {units.current_page} of {units.last_page} (
-                            {units.total} units)
-                        </span>
-                        <div className="flex gap-2">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                disabled={units.current_page <= 1}
-                                onClick={() =>
-                                    changePage(units.current_page - 1)
-                                }
-                            >
-                                Previous
-                            </Button>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                disabled={units.current_page >= units.last_page}
-                                onClick={() =>
-                                    changePage(units.current_page + 1)
-                                }
-                            >
-                                Next
-                            </Button>
-                        </div>
-                    </div>
-                )}
+                <Pagination
+                    currentPage={units.current_page}
+                    lastPage={units.last_page}
+                    total={units.total}
+                    label="units"
+                    onChange={changePage}
+                />
             </div>
 
             <ResponsiveOverlay

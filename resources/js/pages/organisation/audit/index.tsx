@@ -3,6 +3,7 @@ import { Download, History } from 'lucide-react';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Pagination } from '@/components/ui/pagination';
 import {
     Select,
     SelectContent,
@@ -273,39 +274,12 @@ export default function AuditIndex({
                             </div>
                         )}
 
-                        {audits.last_page > 1 && (
-                            <div className="mt-4 flex items-center justify-between text-sm">
-                                <span className="text-muted-foreground">
-                                    Page {audits.current_page} of{' '}
-                                    {audits.last_page}
-                                </span>
-                                <div className="flex gap-2">
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        disabled={audits.current_page <= 1}
-                                        onClick={() =>
-                                            goToPage(audits.current_page - 1)
-                                        }
-                                    >
-                                        Previous
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        disabled={
-                                            audits.current_page >=
-                                            audits.last_page
-                                        }
-                                        onClick={() =>
-                                            goToPage(audits.current_page + 1)
-                                        }
-                                    >
-                                        Next
-                                    </Button>
-                                </div>
-                            </div>
-                        )}
+                        <Pagination
+                            className="mt-4"
+                            currentPage={audits.current_page}
+                            lastPage={audits.last_page}
+                            onChange={goToPage}
+                        />
                     </CardContent>
                 </Card>
             </div>

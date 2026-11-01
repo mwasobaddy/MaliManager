@@ -28,6 +28,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Pagination } from '@/components/ui/pagination';
 import {
     RadioGroup,
     RadioGroupItem,
@@ -663,40 +664,13 @@ export default function OrganizationsIndex({
                     />
                 </Card>
 
-                {organizations.last_page > 1 && (
-                    <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">
-                            Page {organizations.current_page} of{' '}
-                            {organizations.last_page} ({organizations.total}{' '}
-                            organizations)
-                        </span>
-                        <div className="flex gap-2">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                disabled={organizations.current_page <= 1}
-                                onClick={() =>
-                                    changePage(organizations.current_page - 1)
-                                }
-                            >
-                                Previous
-                            </Button>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                disabled={
-                                    organizations.current_page >=
-                                    organizations.last_page
-                                }
-                                onClick={() =>
-                                    changePage(organizations.current_page + 1)
-                                }
-                            >
-                                Next
-                            </Button>
-                        </div>
-                    </div>
-                )}
+                <Pagination
+                    currentPage={organizations.current_page}
+                    lastPage={organizations.last_page}
+                    total={organizations.total}
+                    label="organizations"
+                    onChange={changePage}
+                />
             </div>
 
             <ResponsiveOverlay

@@ -24,11 +24,11 @@ import { OverlayFooter } from '@/components/overlay-footer';
 import { ResponsiveOverlay } from '@/components/responsive-overlay';
 import { StatusIcon } from '@/components/status-cell';
 import type { StatusTone } from '@/components/status-cell';
-import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Pagination } from '@/components/ui/pagination';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import * as roleRoutes from '@/routes/platform/roles';
 import { index as usersIndex } from '@/routes/platform/users';
@@ -534,38 +534,13 @@ export default function RolesIndex({
                     />
                 </Card>
 
-                {roles.last_page > 1 && (
-                    <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">
-                            Page {roles.current_page} of {roles.last_page} (
-                            {roles.total} roles)
-                        </span>
-                        <div className="flex gap-2">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                disabled={roles.current_page <= 1}
-                                onClick={() =>
-                                    changePage(roles.current_page - 1)
-                                }
-                            >
-                                Previous
-                            </Button>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                disabled={
-                                    roles.current_page >= roles.last_page
-                                }
-                                onClick={() =>
-                                    changePage(roles.current_page + 1)
-                                }
-                            >
-                                Next
-                            </Button>
-                        </div>
-                    </div>
-                )}
+                <Pagination
+                    currentPage={roles.current_page}
+                    lastPage={roles.last_page}
+                    total={roles.total}
+                    label="roles"
+                    onChange={changePage}
+                />
 
                 <p className="text-muted-foreground flex items-center gap-2 text-xs">
                     <UsersRound className="size-4 shrink-0" />

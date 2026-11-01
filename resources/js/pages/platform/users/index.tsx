@@ -22,10 +22,10 @@ import { ResponsiveOverlay } from '@/components/responsive-overlay';
 import { StatusPowerToggle, StatusIcon } from '@/components/status-cell';
 import type { StatusTone } from '@/components/status-cell';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Pagination } from '@/components/ui/pagination';
 import {
     RadioGroup,
     RadioGroupItem,
@@ -551,36 +551,13 @@ export default function UsersIndex({
                     />
                 </Card>
 
-                {users.last_page > 1 && (
-                    <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">
-                            Page {users.current_page} of {users.last_page} (
-                            {users.total} users)
-                        </span>
-                        <div className="flex gap-2">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                disabled={users.current_page <= 1}
-                                onClick={() =>
-                                    changePage(users.current_page - 1)
-                                }
-                            >
-                                Previous
-                            </Button>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                disabled={users.current_page >= users.last_page}
-                                onClick={() =>
-                                    changePage(users.current_page + 1)
-                                }
-                            >
-                                Next
-                            </Button>
-                        </div>
-                    </div>
-                )}
+                <Pagination
+                    currentPage={users.current_page}
+                    lastPage={users.last_page}
+                    total={users.total}
+                    label="users"
+                    onChange={changePage}
+                />
             </div>
 
             <ResponsiveOverlay

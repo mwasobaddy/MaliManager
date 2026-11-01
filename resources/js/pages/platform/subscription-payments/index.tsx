@@ -21,10 +21,10 @@ import Heading from '@/components/heading';
 import { LabelledIconButton } from '@/components/labelled-icon-button';
 import { OverlayFooter } from '@/components/overlay-footer';
 import { ResponsiveOverlay } from '@/components/responsive-overlay';
-import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Pagination } from '@/components/ui/pagination';
 import {
     Select,
     SelectContent,
@@ -575,38 +575,13 @@ export default function SubscriptionPaymentsIndex({
                     />
                 </Card>
 
-                {payments.last_page > 1 && (
-                    <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">
-                            Page {payments.current_page} of {payments.last_page} (
-                            {payments.total} payments)
-                        </span>
-                        <div className="flex gap-2">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                disabled={payments.current_page <= 1}
-                                onClick={() =>
-                                    changePage(payments.current_page - 1)
-                                }
-                            >
-                                Previous
-                            </Button>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                disabled={
-                                    payments.current_page >= payments.last_page
-                                }
-                                onClick={() =>
-                                    changePage(payments.current_page + 1)
-                                }
-                            >
-                                Next
-                            </Button>
-                        </div>
-                    </div>
-                )}
+                <Pagination
+                    currentPage={payments.current_page}
+                    lastPage={payments.last_page}
+                    total={payments.total}
+                    label="payments"
+                    onChange={changePage}
+                />
             </div>
 
             {/* The row sheet: view, edit, delete and confirm share one overlay. */}

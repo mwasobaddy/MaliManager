@@ -3,6 +3,7 @@ import { Pencil, Plus, Printer } from 'lucide-react';
 import { useState } from 'react';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
+import { Pagination } from '@/components/ui/pagination';
 import {
     Select,
     SelectContent,
@@ -188,36 +189,21 @@ export default function PaymentsIndex({
                     </div>
                 )}
 
-                {payments.last_page > 1 && (
-                    <div className="flex gap-1 text-sm">
-                        {Array.from(
-                            { length: payments.last_page },
-                            (_, i) => i + 1,
-                        ).map((page) => (
-                            <Button
-                                key={page}
-                                variant={
-                                    page === payments.current_page
-                                        ? 'default'
-                                        : 'outline'
-                                }
-                                size="sm"
-                                onClick={() =>
-                                    router.get(
-                                        paymentsIndexRoute().url,
-                                        {
-                                            page,
-                                            status: status === '' ? undefined : status,
-                                        },
-                                        { preserveScroll: true },
-                                    )
-                                }
-                            >
-                                {page}
-                            </Button>
-                        ))}
-                    </div>
-                )}
+                <Pagination
+            currentPage={payments.current_page}
+            lastPage={payments.last_page}
+            label="payments"
+            onChange={(page) =>
+                router.get(
+                    paymentsIndexRoute().url,
+                    {
+                        page,
+                        status: status === '' ? undefined : status,
+                    },
+                    { preserveScroll: true },
+                )
+            }
+        />
             </div>
         </>
     );

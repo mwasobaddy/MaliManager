@@ -4,6 +4,7 @@ import { Wrench } from 'lucide-react';
 import Heading from '@/components/heading';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Pagination } from '@/components/ui/pagination';
 import {
     Select,
     SelectContent,
@@ -336,33 +337,18 @@ export default function MaintenanceIndex({
                     </div>
                 )}
 
-                {requests.last_page > 1 && (
-                    <div className="flex gap-1 text-sm">
-                        {Array.from(
-                            { length: requests.last_page },
-                            (_, i) => i + 1,
-                        ).map((page) => (
-                            <Button
-                                key={page}
-                                variant={
-                                    page === requests.current_page
-                                        ? 'default'
-                                        : 'outline'
-                                }
-                                size="sm"
-                                onClick={() =>
-                                    router.get(
-                                        routesIndexUrl(),
-                                        { page },
-                                        { preserveScroll: true },
-                                    )
-                                }
-                            >
-                                {page}
-                            </Button>
-                        ))}
-                    </div>
-                )}
+                <Pagination
+            currentPage={requests.current_page}
+            lastPage={requests.last_page}
+            label="requests"
+            onChange={(page) =>
+                router.get(
+                    routesIndexUrl(),
+                    { page },
+                    { preserveScroll: true },
+                )
+            }
+        />
             </div>
         </>
     );

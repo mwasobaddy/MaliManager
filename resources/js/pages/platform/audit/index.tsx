@@ -15,10 +15,10 @@ import { DataTable } from '@/components/data-table';
 import Heading from '@/components/heading';
 import { OverlayFooter } from '@/components/overlay-footer';
 import { ResponsiveOverlay } from '@/components/responsive-overlay';
-import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Pagination } from '@/components/ui/pagination';
 import {
     Select,
     SelectContent,
@@ -503,36 +503,13 @@ export default function AdminAuditIndex({
                     />
                 </Card>
 
-                {audits.last_page > 1 && (
-                    <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">
-                            Page {audits.current_page} of {audits.last_page} (
-                            {audits.total} entries)
-                        </span>
-                        <div className="flex gap-2">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                disabled={audits.current_page <= 1}
-                                onClick={() =>
-                                    changePage(audits.current_page - 1)
-                                }
-                            >
-                                Previous
-                            </Button>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                disabled={audits.current_page >= audits.last_page}
-                                onClick={() =>
-                                    changePage(audits.current_page + 1)
-                                }
-                            >
-                                Next
-                            </Button>
-                        </div>
-                    </div>
-                )}
+                <Pagination
+                    currentPage={audits.current_page}
+                    lastPage={audits.last_page}
+                    total={audits.total}
+                    label="entries"
+                    onChange={changePage}
+                />
             </div>
 
             <ResponsiveOverlay
