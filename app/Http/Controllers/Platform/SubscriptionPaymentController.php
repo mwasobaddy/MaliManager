@@ -4,8 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Platform;
 
+use App\Actions\SubscriptionPayments\ExportSubscriptionPayments;
+use App\Actions\SubscriptionPayments\ImportSubscriptionPayments;
+use App\Concerns\FlashesImportResult;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Platform\DestroySubscriptionPaymentRequest;
+use App\Http\Requests\Platform\ExportSubscriptionPaymentsRequest;
 use App\Http\Requests\Platform\ImportSubscriptionPaymentRequest;
 use App\Http\Requests\Platform\StoreSubscriptionPaymentRequest;
 use App\Http\Requests\Platform\SubscriptionPaymentIndexRequest;
@@ -13,18 +17,17 @@ use App\Http\Requests\Platform\UpdateSubscriptionPaymentRequest;
 use App\Models\Organization;
 use App\Models\Plan;
 use App\Models\SubscriptionPayment;
-use App\Support\CsvReader;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
-use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class SubscriptionPaymentController extends Controller
 {
+    use FlashesImportResult;
+
     /**
      * Allowlisted so a crafted `?sort=` can never reach the ORDER BY.
      *
@@ -54,26 +57,11 @@ class SubscriptionPaymentController extends Controller
      */
     private function filtered(Request $request): Builder
     {
-        return SubscriptionPayment::query()
-            ->with(['organization:id,name', 'plan:id,name'])
-            // `Request::string()` returns a Stringable and an object is always truthy,
-            // so `->when($request->string('search')->trim(), ...)` ran the filter even
-            // with no term — binding `like '%%'`, and for a category also `= ''`, which
-            // matched nothing and emptied the table. ->toString() gives a real string.
-            ->when($request->string('search')->trim()->toString(), fn ($query, string $search) => $query->where(function (Builder $q) use ($search) {
-                $q->where('reference', 'like', "%{$search}%")
-                    ->orWhere('method', 'like', "%{$search}%")
-                    ->orWhere('notes', 'like', "%{$search}%")
-                    ->orWhereHas('organization', fn (Builder $org) => $org->where('name', 'like', "%{$search}%"));
-            }))
-            ->when(
-                $request->string('from')->toString() !== '',
-                fn ($query) => $query->whereDate('received_on', '>=', $request->string('from')->toString()),
-            )
-            ->when(
-                $request->string('to')->toString() !== '',
-                fn ($query) => $query->whereDate('received_on', '<=', $request->string('to')->toString()),
-            );
+        return SubscriptionPayment::query()->filtered([
+            'search' => $request->string('search')->trim()->toString(),
+            'from' => $request->string('from')->toString(),
+            'to' => $request->string('to')->toString(),
+        ]);
     }
 
     public function index(SubscriptionPaymentIndexRequest $request): Response
@@ -167,39 +155,17 @@ class SubscriptionPaymentController extends Controller
      * CSV export of the payments, honouring the table's own search and date
      * range so "Export all" can never disagree with what the table is showing.
      */
-    public function export(Request $request): StreamedResponse
+    public function export(ExportSubscriptionPaymentsRequest $request, ExportSubscriptionPayments $export): StreamedResponse
     {
-        $scope = $request->string('scope')->toString() === 'page' ? 'page' : 'all';
+        $csv = $export->handle($request->toData());
 
-        $query = $this->filtered($request)->orderByDesc('received_on')->orderBy('id');
-
-        if ($scope === 'page') {
-            $query->forPage((int) $request->integer('page', 1), 15);
-        }
-
-        $payments = $query->get();
-
-        $csv = fopen('php://temp', 'r+');
-        fputcsv($csv, ['Received on', 'Organization', 'Plan', 'Amount', 'Currency', 'Method', 'Reference', 'Notes']);
-
-        foreach ($payments as $payment) {
-            fputcsv($csv, [
-                $payment->received_on?->format('Y-m-d') ?? '',
-                $payment->organization?->name ?? '',
-                $payment->plan?->name ?? '',
-                $payment->getRawOriginal('amount'),
-                $payment->currency,
-                $payment->method ?? '',
-                $payment->reference ?? '',
-                $payment->notes ?? '',
-            ]);
-        }
-
-        rewind($csv);
-
-        return response()->streamDownload(fn () => fpassthru($csv), 'subscription-payments.csv', [
-            'Content-Type' => 'text/csv',
-        ]);
+        return response()->streamDownload(
+            function () use ($csv): void {
+                echo $csv->content;
+            },
+            $csv->filename,
+            ['Content-Type' => 'text/csv'],
+        );
     }
 
     /**
@@ -218,108 +184,11 @@ class SubscriptionPaymentController extends Controller
      * plan name leaves the payment unlinked rather than failing the row — the
      * money still arrived and that is what matters most.
      */
-    public function import(ImportSubscriptionPaymentRequest $request, CsvReader $csv): RedirectResponse
+    public function import(ImportSubscriptionPaymentRequest $request, ImportSubscriptionPayments $import): RedirectResponse
     {
-        $parsed = $csv->rows($request->file('file'));
-        $errors = [];
-        $imported = 0;
+        $result = $import->handle($request->toData());
 
-        // Keyed by lower-cased name so a spreadsheet's stray capitalisation
-        // still matches. `pluck('id', 'name')` would be case-sensitive and
-        // `firstWhere()` passes (value, key), which is easy to get backwards.
-        $organizations = $this->nameLookup(Organization::query()->get(['id', 'name']));
-        $plans = $this->nameLookup(Plan::query()->get(['id', 'name']));
-
-        foreach ($parsed['rows'] as $row) {
-            $data = $row['data'];
-            $amount = $data['amount'] ?? '';
-            $receivedOn = $data['receivedon'] ?? '';
-
-            if ($amount === '' || ! is_numeric($amount) || (float) $amount < 0) {
-                $errors[] = ['row' => $row['row'], 'message' => "Row {$row['row']}: Amount must be a number of zero or more."];
-
-                continue;
-            }
-
-            if ($receivedOn === '') {
-                $errors[] = ['row' => $row['row'], 'message' => "Row {$row['row']}: Received On is required."];
-
-                continue;
-            }
-
-            SubscriptionPayment::create([
-                'organization_id' => $this->resolveByName($organizations, $data['organization'] ?? ''),
-                'plan_id' => $this->resolveByName($plans, $data['plan'] ?? ''),
-                'amount' => $amount,
-                'currency' => strtoupper($data['currency'] ?? '') ?: 'KES',
-                'received_on' => $receivedOn,
-                'method' => ($data['method'] ?? '') ?: null,
-                'reference' => ($data['reference'] ?? '') ?: null,
-                'notes' => ($data['notes'] ?? '') ?: null,
-                'created_by' => $request->user()?->id,
-            ]);
-
-            $imported++;
-        }
-
-        if (! $parsed['ok']) {
-            $errors = $parsed['rows'];
-        }
-
-        $failed = count($errors);
-
-        if ($failed === 0) {
-            Inertia::flash('toast', [
-                'type' => 'success',
-                'message' => $imported === 1 ? '1 payment imported.' : "{$imported} payments imported.",
-            ]);
-
-            return redirect()->route('platform.subscription-payments.index');
-        }
-
-        Inertia::flash('toast', [
-            'type' => $imported > 0 ? 'warning' : 'error',
-            'message' => "{$imported} imported, {$failed} failed.",
-        ]);
-
-        Inertia::flash('importErrors', $errors);
-
-        return back();
-    }
-
-    /**
-     * Index records by their lower-cased name, so a spreadsheet's stray
-     * capitalisation still matches. `pluck('id', 'name')` would be
-     * case-sensitive and `firstWhere()` passes (value, key), which is easy to
-     * get backwards.
-     *
-     * @param  Collection<int, Organization|Plan>  $models
-     * @return array<string, int>
-     */
-    private function nameLookup(Collection $models): array
-    {
-        $lookup = [];
-
-        foreach ($models as $model) {
-            $lookup[Str::lower(trim($model->name))] = $model->id;
-        }
-
-        return $lookup;
-    }
-
-    /**
-     * Match a CSV cell against a lower-cased `name => id` lookup.
-     * Returns null for a blank or unknown name.
-     *
-     * @param  array<string, int>  $lookup
-     */
-    private function resolveByName(array $lookup, string $name): ?int
-    {
-        if (trim($name) === '') {
-            return null;
-        }
-
-        return $lookup[Str::lower(trim($name))] ?? null;
+        return $this->respondToImport($result, 'payment', 'payments', 'platform.subscription-payments.index');
     }
 
     public function store(StoreSubscriptionPaymentRequest $request): RedirectResponse

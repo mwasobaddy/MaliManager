@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Models\Concerns\LogsPlatformActivity;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -78,5 +79,34 @@ class SubscriptionPayment extends Model
             ->all();
 
         return $years;
+    }
+
+    /**
+     * The admin list predicate: search across reference, method, notes and the
+     * organization name, plus an inclusive received-on range. Shared by the index
+     * and the CSV export.
+     *
+     * @param  array{search?: string, from?: string, to?: string}  $filters
+     */
+    public function scopeFiltered(Builder $query, array $filters): Builder
+    {
+        return $query
+            ->when(
+                ($filters['search'] ?? '') !== '',
+                fn (Builder $q) => $q->where(function (Builder $inner) use ($filters): void {
+                    $inner->where('reference', 'like', "%{$filters['search']}%")
+                        ->orWhere('method', 'like', "%{$filters['search']}%")
+                        ->orWhere('notes', 'like', "%{$filters['search']}%")
+                        ->orWhereHas('organization', fn (Builder $org) => $org->where('name', 'like', "%{$filters['search']}%"));
+                }),
+            )
+            ->when(
+                ($filters['from'] ?? '') !== '',
+                fn (Builder $q) => $q->whereDate('received_on', '>=', $filters['from']),
+            )
+            ->when(
+                ($filters['to'] ?? '') !== '',
+                fn (Builder $q) => $q->whereDate('received_on', '<=', $filters['to']),
+            );
     }
 }
