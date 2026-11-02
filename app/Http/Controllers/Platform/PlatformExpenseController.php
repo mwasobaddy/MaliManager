@@ -4,14 +4,17 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Platform;
 
+use App\Actions\PlatformExpenses\ExportPlatformExpenses;
+use App\Actions\PlatformExpenses\ImportPlatformExpenses;
+use App\Concerns\FlashesImportResult;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Platform\DestroyPlatformExpenseRequest;
+use App\Http\Requests\Platform\ExportPlatformExpensesRequest;
 use App\Http\Requests\Platform\ImportPlatformExpenseRequest;
 use App\Http\Requests\Platform\PlatformExpenseIndexRequest;
 use App\Http\Requests\Platform\StorePlatformExpenseRequest;
 use App\Http\Requests\Platform\UpdatePlatformExpenseRequest;
 use App\Models\PlatformExpense;
-use App\Support\CsvReader;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -21,6 +24,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class PlatformExpenseController extends Controller
 {
+    use FlashesImportResult;
+
     /**
      * Allowlisted so a crafted `?sort=` can never reach the ORDER BY.
      *
@@ -42,28 +47,12 @@ class PlatformExpenseController extends Controller
      */
     private function filtered(Request $request): Builder
     {
-        return PlatformExpense::query()
-            // `Request::string()` returns a Stringable and an object is always truthy,
-            // so `->when($request->string('search')->trim(), ...)` ran the filter even
-            // with no term — binding `like '%%'`, and for a category also `= ''`, which
-            // matched nothing and emptied the table. ->toString() gives a real string.
-            ->when($request->string('search')->trim()->toString(), fn ($query, string $search) => $query->where(function (Builder $q) use ($search) {
-                $q->where('category', 'like', "%{$search}%")
-                    ->orWhere('vendor_name', 'like', "%{$search}%")
-                    ->orWhere('notes', 'like', "%{$search}%");
-            }))
-            ->when(
-                $request->string('category')->trim()->toString(),
-                fn ($query) => $query->where('category', $request->string('category')->toString()),
-            )
-            ->when(
-                $request->string('from')->toString() !== '',
-                fn ($query) => $query->whereDate('spent_on', '>=', $request->string('from')->toString()),
-            )
-            ->when(
-                $request->string('to')->toString() !== '',
-                fn ($query) => $query->whereDate('spent_on', '<=', $request->string('to')->toString()),
-            );
+        return PlatformExpense::query()->filtered([
+            'search' => $request->string('search')->trim()->toString(),
+            'category' => $request->string('category')->trim()->toString(),
+            'from' => $request->string('from')->toString(),
+            'to' => $request->string('to')->toString(),
+        ]);
     }
 
     public function index(PlatformExpenseIndexRequest $request): Response
@@ -137,120 +126,31 @@ class PlatformExpenseController extends Controller
     }
 
     /**
-     * CSV export of the expenses, honouring the table's own search, category and
+     * CSV export of the expenses, honouring the table's search, category and
      * date range so "Export all" can never disagree with what the table shows.
      */
-    public function export(Request $request): StreamedResponse
+    public function export(ExportPlatformExpensesRequest $request, ExportPlatformExpenses $export): StreamedResponse
     {
-        $scope = $request->string('scope')->toString() === 'page' ? 'page' : 'all';
+        $csv = $export->handle($request->toData());
 
-        $query = $this->filtered($request)->orderByDesc('spent_on')->orderBy('id');
-
-        if ($scope === 'page') {
-            $query->forPage((int) $request->integer('page', 1), 15);
-        }
-
-        $expenses = $query->get();
-
-        $csv = fopen('php://temp', 'r+');
-        fputcsv($csv, ['Spent on', 'Category', 'Amount', 'Currency', 'Vendor', 'Notes']);
-
-        foreach ($expenses as $expense) {
-            fputcsv($csv, [
-                $expense->spent_on?->format('Y-m-d') ?? '',
-                $expense->category,
-                // `amount` is cast to `decimal:2`, which stringifies; the raw
-                // attribute is already the string the CSV wants.
-                $expense->getRawOriginal('amount'),
-                $expense->currency,
-                $expense->vendor_name ?? '',
-                $expense->notes ?? '',
-            ]);
-        }
-
-        rewind($csv);
-
-        return response()->streamDownload(fn () => fpassthru($csv), 'platform-expenses.csv', [
-            'Content-Type' => 'text/csv',
-        ]);
+        return response()->streamDownload(
+            function () use ($csv): void {
+                echo $csv->content;
+            },
+            $csv->filename,
+            ['Content-Type' => 'text/csv'],
+        );
     }
 
     /**
-     * Create expenses from an uploaded CSV.
-     *
-     * Rows are independent: a bad row is recorded and skipped rather than
-     * aborting the file.
-     *
-     * Recognised columns (matched case-insensitively, spaces or underscores):
-     * Category (required), Amount (required), Currency, Spent On (required),
-     * Vendor Name, Notes.
+     * Create expenses from an uploaded CSV. A bad row is recorded and skipped, so
+     * the sheet stays open with the per-row report.
      */
-    public function import(ImportPlatformExpenseRequest $request, CsvReader $csv): RedirectResponse
+    public function import(ImportPlatformExpenseRequest $request, ImportPlatformExpenses $import): RedirectResponse
     {
-        $parsed = $csv->rows($request->file('file'));
-        $errors = [];
-        $imported = 0;
+        $result = $import->handle($request->toData());
 
-        foreach ($parsed['rows'] as $row) {
-            $data = $row['data'];
-            $category = $data['category'] ?? '';
-            $amount = $data['amount'] ?? '';
-            $spentOn = $data['spenton'] ?? '';
-
-            if (! in_array($category, PlatformExpense::CATEGORIES, true)) {
-                $errors[] = ['row' => $row['row'], 'message' => "Row {$row['row']}: unknown category \"{$category}\"."];
-
-                continue;
-            }
-
-            if ($amount === '' || ! is_numeric($amount) || (float) $amount < 0) {
-                $errors[] = ['row' => $row['row'], 'message' => "Row {$row['row']}: Amount must be a number of zero or more."];
-
-                continue;
-            }
-
-            if ($spentOn === '') {
-                $errors[] = ['row' => $row['row'], 'message' => "Row {$row['row']}: Spent On is required."];
-
-                continue;
-            }
-
-            PlatformExpense::create([
-                'category' => $category,
-                'amount' => $amount,
-                'currency' => strtoupper($data['currency'] ?? '') ?: 'KES',
-                'spent_on' => $spentOn,
-                'vendor_name' => ($data['vendorname'] ?? '') ?: null,
-                'notes' => ($data['notes'] ?? '') ?: null,
-                'created_by' => $request->user()?->id,
-            ]);
-
-            $imported++;
-        }
-
-        if (! $parsed['ok']) {
-            $errors = $parsed['rows'];
-        }
-
-        $failed = count($errors);
-
-        if ($failed === 0) {
-            Inertia::flash('toast', [
-                'type' => 'success',
-                'message' => $imported === 1 ? '1 expense imported.' : "{$imported} expenses imported.",
-            ]);
-
-            return redirect()->route('platform.expenses.index');
-        }
-
-        Inertia::flash('toast', [
-            'type' => $imported > 0 ? 'warning' : 'error',
-            'message' => "{$imported} imported, {$failed} failed.",
-        ]);
-
-        Inertia::flash('importErrors', $errors);
-
-        return back();
+        return $this->respondToImport($result, 'expense', 'expenses', 'platform.expenses.index');
     }
 
     public function store(StorePlatformExpenseRequest $request): RedirectResponse

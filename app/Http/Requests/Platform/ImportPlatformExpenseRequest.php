@@ -2,16 +2,14 @@
 
 namespace App\Http\Requests\Platform;
 
+use App\Data\PlatformExpenses\ImportPlatformExpensesData;
 use Illuminate\Foundation\Http\FormRequest;
 
 class ImportPlatformExpenseRequest extends FormRequest
 {
-    /**
-     * Authorization is handled by the `can:importPlatformExpenses` route middleware.
-     */
     public function authorize(): bool
     {
-        return true;
+        return $this->user()?->can('importPlatformExpenses') ?? false;
     }
 
     /**
@@ -31,5 +29,13 @@ class ImportPlatformExpenseRequest extends FormRequest
             'file.mimes' => 'Upload a CSV file (a .txt file containing CSV also works).',
             'file.max' => 'The import file may not be larger than 2 MB.',
         ];
+    }
+
+    public function toData(): ImportPlatformExpensesData
+    {
+        return new ImportPlatformExpensesData(
+            file: $this->file('file'),
+            actor: $this->user(),
+        );
     }
 }
