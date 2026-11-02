@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Tenant;
 use App\Enums\AiFeature;
 use App\Exceptions\AssistantUnavailableException;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Tenant\DraftingPageRequest;
 use App\Http\Requests\Tenant\GenerateDraftRequest;
 use App\Services\DraftingService;
 use App\Support\Ai\AiGateway;
@@ -25,7 +26,7 @@ class DraftingController extends Controller
         private DraftingService $drafting,
     ) {}
 
-    public function page(Request $request): Response
+    public function page(DraftingPageRequest $request): Response
     {
         return Inertia::render('organisation/drafting', [
             'enabled' => $this->resolve($request) !== null,
