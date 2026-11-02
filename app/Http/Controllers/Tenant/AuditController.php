@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Tenant;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Tenant\AuditIndexRequest;
+use App\Http\Requests\Tenant\AuditShowRequest;
 use App\Models\Audit;
 use App\Models\User;
 use App\Services\AuditService;
@@ -17,7 +19,7 @@ class AuditController extends Controller
 {
     public function __construct(private AuditService $service) {}
 
-    public function index(Request $request): Response
+    public function index(AuditIndexRequest $request): Response
     {
         $tenantId = TenancyContext::tenantId();
         $organization = TenancyContext::organization();
@@ -46,7 +48,7 @@ class AuditController extends Controller
         ]);
     }
 
-    public function show(Request $request, Audit $activity): Response
+    public function show(AuditShowRequest $request, Audit $activity): Response
     {
         if ($activity->tenant_id !== TenancyContext::tenantId()) {
             abort(404);
