@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Platform\DestroySubscriptionPaymentRequest;
 use App\Http\Requests\Platform\ImportSubscriptionPaymentRequest;
 use App\Http\Requests\Platform\StoreSubscriptionPaymentRequest;
+use App\Http\Requests\Platform\SubscriptionPaymentIndexRequest;
 use App\Http\Requests\Platform\UpdateSubscriptionPaymentRequest;
 use App\Models\Organization;
 use App\Models\Plan;
@@ -75,7 +76,7 @@ class SubscriptionPaymentController extends Controller
             );
     }
 
-    public function index(Request $request): Response
+    public function index(SubscriptionPaymentIndexRequest $request): Response
     {
         $sort = $request->string('sort')->toString();
         $sortColumn = self::SORTABLE[$sort] ?? null;
