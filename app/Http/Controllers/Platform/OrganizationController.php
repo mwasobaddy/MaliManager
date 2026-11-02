@@ -2,10 +2,14 @@
 
 namespace App\Http\Controllers\Platform;
 
+use App\Actions\Organizations\ExportOrganizations;
+use App\Actions\Organizations\ImportOrganizations;
+use App\Concerns\FlashesImportResult;
 use App\Enums\OrganizationStatus;
 use App\Enums\PlatformRole;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Platform\DestroyOrganizationRequest;
+use App\Http\Requests\Platform\ExportOrganizationsRequest;
 use App\Http\Requests\Platform\ImportOrganizationRequest;
 use App\Http\Requests\Platform\OrganizationIndexRequest;
 use App\Http\Requests\Platform\StoreOrganizationRequest;
@@ -16,7 +20,6 @@ use App\Models\Plan;
 use App\Models\User;
 use App\Services\OrganizationManagementService;
 use App\Services\UserService;
-use App\Support\Search;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -25,6 +28,8 @@ use Inertia\Response;
 
 class OrganizationController extends Controller
 {
+    use FlashesImportResult;
+
     public function __construct(
         private OrganizationManagementService $service,
         private UserService $userService,
@@ -252,111 +257,39 @@ class OrganizationController extends Controller
      */
     private function filtered(Request $request): Builder
     {
-        return Organization::query()
-            ->leftJoin('plans', 'plans.id', '=', 'organizations.plan_id')
-            // `Request::string()` returns a Stringable and an object is always truthy,
-            // so `->when($request->string('search')->trim(), ...)` ran the filter even
-            // with no term — binding `like '%%'`, and for a category also `= ''`, which
-            // matched nothing and emptied the table. ->toString() gives a real string.
-            ->when($request->string('search')->trim()->toString(), function ($query, string $search) {
-                Search::apply($query, $search, ['organizations.name', 'organizations.slug', 'organizations.email']);
-            })
-            ->when(
-                $request->string('status')->toString() !== '',
-                fn ($query) => $query->where('organizations.status', $request->string('status'))
-            );
+        return Organization::query()->filtered([
+            'search' => $request->string('search')->trim()->toString(),
+            'status' => $request->string('status')->toString(),
+        ]);
     }
 
     /**
-     * CSV export.
-     *
-     * `scope` picks the row set:
-     *   - `all`  (default) — every organization matching the active search and
-     *     status filters, ignoring pagination;
-     *   - `page`          — only the rows on the current page, still filtered.
-     *
-     * Both share the index filters so the CSV always matches what the user is
-     * looking at.
+     * CSV export. `scope=page` exports the current page; anything else exports
+     * every row matching the active filters.
      */
-    public function export(Request $request): \Symfony\Component\HttpFoundation\Response
+    public function export(ExportOrganizationsRequest $request, ExportOrganizations $export): \Symfony\Component\HttpFoundation\Response
     {
-        $scope = $request->string('scope')->toString() === 'page' ? 'page' : 'all';
-        $perPage = 15;
-
-        $query = $this->filtered($request);
-
-        if ($scope === 'page') {
-            $query->forPage((int) $request->integer('page', 1), $perPage);
-        }
-
-        $rows = $query
-            ->with(['plan', 'tenant'])
-            ->withCount('users')
-            ->orderBy('id')
-            ->get()
-            ->map(fn (Organization $organization): array => [
-                $organization->id,
-                $organization->name,
-                $organization->slug,
-                $organization->email ?? '',
-                $organization->phone ?? '',
-                // `status` is cast to the OrganizationStatus enum, which fputcsv
-                // cannot stringify — use ->value.
-                $organization->status->value,
-                $organization->plan?->name ?? '',
-                $organization->tenant?->domains()->value('domain') ?? '',
-                $organization->users_count,
-                $organization->created_at?->toDateTimeString() ?? '',
-            ]);
-
-        $csv = fopen('php://temp', 'r+');
-        fputcsv($csv, ['ID', 'Name', 'Slug', 'Email', 'Phone', 'Status', 'Plan', 'Domain', 'Users', 'Created at']);
-        foreach ($rows as $row) {
-            fputcsv($csv, $row);
-        }
-        rewind($csv);
-
-        $suffix = $scope === 'page' ? '-page'.$request->integer('page', 1) : '-all';
+        $csv = $export->handle($request->toData());
 
         return response()->streamDownload(
-            fn () => fpassthru($csv),
-            'organizations'.$suffix.'.csv',
-            ['Content-Type' => 'text/csv']
+            function () use ($csv): void {
+                echo $csv->content;
+            },
+            $csv->filename,
+            ['Content-Type' => 'text/csv'],
         );
     }
 
     /**
      * Create organizations from an uploaded CSV.
      *
-     * Redirects back keeping the `import` flag when some rows failed, so the
-     * import sheet stays open and can render the per-row report.
+     * A failed row is recorded and skipped, so the file imports partially and
+     * the sheet stays open with the per-row report.
      */
-    public function import(ImportOrganizationRequest $request): RedirectResponse
+    public function import(ImportOrganizationRequest $request, ImportOrganizations $import): RedirectResponse
     {
-        $result = $this->service->import(
-            $request->file('file'),
-            $request->validated('plan_id'),
-            $request->user(),
-        );
+        $result = $import->handle($request->toData());
 
-        if ($result['failed'] === 0) {
-            Inertia::flash('toast', [
-                'type' => 'success',
-                'message' => $result['imported'] === 1
-                    ? '1 organization imported.'
-                    : $result['imported'].' organizations imported.',
-            ]);
-
-            return redirect()->route('platform.organizations.index');
-        }
-
-        Inertia::flash('toast', [
-            'type' => $result['imported'] > 0 ? 'warning' : 'error',
-            'message' => $result['imported'].' imported, '.$result['failed'].' failed.',
-        ]);
-
-        Inertia::flash('importErrors', $result['errors']);
-
-        return back();
+        return $this->respondToImport($result, 'organization', 'organizations', 'platform.organizations.index');
     }
 }

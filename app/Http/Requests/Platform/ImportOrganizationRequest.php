@@ -2,17 +2,15 @@
 
 namespace App\Http\Requests\Platform;
 
+use App\Data\Organizations\ImportOrganizationsData;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class ImportOrganizationRequest extends FormRequest
 {
-    /**
-     * Authorization is handled by the `can:importOrganizations` route middleware.
-     */
     public function authorize(): bool
     {
-        return true;
+        return $this->user()?->can('importOrganizations') ?? false;
     }
 
     /**
@@ -43,5 +41,14 @@ class ImportOrganizationRequest extends FormRequest
             'file.mimes' => 'Upload a CSV file (a .txt file containing CSV also works).',
             'file.max' => 'The import file may not be larger than 2 MB.',
         ];
+    }
+
+    public function toData(): ImportOrganizationsData
+    {
+        return new ImportOrganizationsData(
+            file: $this->file('file'),
+            planId: $this->filled('plan_id') ? $this->integer('plan_id') : null,
+            actor: $this->user(),
+        );
     }
 }

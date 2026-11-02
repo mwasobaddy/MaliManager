@@ -3,7 +3,9 @@
 namespace App\Models;
 
 use App\Enums\OrganizationStatus;
+use App\Support\Search;
 use App\Support\StorageLayout;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -109,5 +111,28 @@ class Organization extends Model
     public function occupants(): HasMany
     {
         return $this->hasMany(Occupant::class);
+    }
+
+    /**
+     * The admin list predicate: search across name, slug and email, plus an
+     * exact status match. Shared by the index and the CSV export so "export
+     * all" can never disagree with the table.
+     *
+     * @param  array{search?: string, status?: string}  $filters
+     */
+    public function scopeFiltered(Builder $query, array $filters): Builder
+    {
+        return $query
+            ->leftJoin('plans', 'plans.id', '=', 'organizations.plan_id')
+            ->when(
+                ($filters['search'] ?? '') !== '',
+                // `when()` hands the *condition* to the callback, not the term,
+                // so the term is closed over rather than taken as a parameter.
+                fn (Builder $q) => Search::apply($q, $filters['search'], ['organizations.name', 'organizations.slug', 'organizations.email']),
+            )
+            ->when(
+                ($filters['status'] ?? '') !== '',
+                fn (Builder $q) => $q->where('organizations.status', $filters['status']),
+            );
     }
 }
