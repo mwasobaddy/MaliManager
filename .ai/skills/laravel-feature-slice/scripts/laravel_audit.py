@@ -370,26 +370,32 @@ class LaravelAudit:
         roots = [os.path.join(self.root, "resources/js/pages"),
                  os.path.join(self.root, "resources/js/Pages")]
         exts = (".tsx", ".jsx", ".vue", ".svelte")
-        for path in php_files(self.root, "app"):
+
+        def page_exists(page):
+            for base in roots:
+                for cand in (page, page.lower(), page[0].lower() + page[1:]):
+                    # Inertia resolves `a/b` to either a/b.tsx or a/b/index.tsx
+                    if any(os.path.exists(os.path.join(base, cand + e)) for e in exts) or \
+                       any(os.path.exists(os.path.join(base, cand, "index" + e)) for e in exts):
+                        return True
+            return False
+
+        def report(page, path, call):
+            if not page_exists(page):
+                self.add(ERROR, "inertia-page-missing", rel(self.root, path),
+                         f"{call}('{page}') has no page component",
+                         f"Expected resources/js/pages/{page}.(tsx|jsx|vue|svelte).")
+
+        # Pages are rendered from controllers and also inline in route files (Route::inertia).
+        for path in php_files(self.root, "app") + php_files(self.root, "routes"):
             code = strip_comments(read(path))
             for m in re.finditer(r"Inertia::render\s*\(\s*['\"]([^'\"]+)['\"]", code):
-                page = m.group(1)
-                found = False
-                for base in roots:
-                    for cand in (page, page.lower(), page[0].lower() + page[1:]):
-                        # Inertia resolves `a/b` to either a/b.tsx or a/b/index.tsx
-                        if any(os.path.exists(os.path.join(base, cand + e)) for e in exts) or \
-                           any(os.path.exists(os.path.join(base, cand, "index" + e)) for e in exts):
-                            found = True
-                            break
-                    if found:
-                        break
-                if not found:
-                    self.add(ERROR, "inertia-page-missing", rel(self.root, path),
-                             f"Inertia::render('{page}') has no page component",
-                             f"Expected resources/js/pages/{page}.(tsx|jsx|vue|svelte).")
+                report(m.group(1), path, "Inertia::render")
+            for m in re.finditer(
+                    r"Route::inertia\s*\(\s*['\"][^'\"]*['\"]\s*,\s*['\"]([^'\"]+)['\"]", code):
+                report(m.group(1), path, "Route::inertia")
 
-    # ---- Livewire views
+    # ---- Livewire views and page components
     def livewire(self):
         for path in php_files(self.root, "app"):
             code = strip_comments(read(path))
@@ -400,6 +406,38 @@ class LaravelAudit:
                     self.add(ERROR, "livewire-view-missing", rel(self.root, path),
                              f"view('{view}') has no Blade file",
                              f"Expected resources/views/{view.replace('.', '/')}.blade.php.")
+
+        # Livewire 4 resolves page components from route names like `pages::settings.profile`.
+        # Single-file components never call view(), so route resolution is the only check that works.
+        for path in php_files(self.root, "routes"):
+            code = strip_comments(read(path))
+            for m in re.finditer(
+                    r"Route::livewire\s*\(\s*['\"][^'\"]*['\"]\s*,\s*['\"]([^'\"]+)['\"]", code):
+                component = m.group(1)
+                if "::" in component:
+                    namespace, name = component.split("::", 1)
+                    if namespace != "pages":
+                        continue  # custom namespaces come from config and cannot be resolved here
+                    name = name.replace(".", "/")
+                    view = os.path.join(self.root, "resources/views/pages", name + ".blade.php")
+                    expected = f"resources/views/pages/{name}.blade.php"
+                else:
+                    name = component.replace(".", "/")
+                    view = os.path.join(self.root, "resources/views/livewire", name + ".blade.php")
+                    expected = f"resources/views/livewire/{name}.blade.php"
+                folder, base = os.path.split(view)
+                stem = base[:-len(".blade.php")]
+                candidates = [
+                    view,
+                    os.path.join(folder, "⚡" + base),          # single-file with the emoji prefix
+                    os.path.join(folder, stem, base),           # multi-file component
+                    os.path.join(folder, "⚡" + stem, base),    # multi-file with the emoji prefix
+                ]
+                if any(os.path.exists(c) for c in candidates):
+                    continue
+                self.add(ERROR, "livewire-page-missing", rel(self.root, path),
+                         f"Route::livewire(..., '{component}') has no component view",
+                         f"Expected {expected} (or the ⚡-prefixed file name).")
 
     # ---- tests
     def tests(self):
@@ -423,6 +461,19 @@ class LaravelAudit:
                          f"no test references {stem}",
                          "Feature tests are the primary test type in Laravel; one per action is a "
                          "reasonable floor.")
+
+        # Livewire page components are entrypoints too; their tests use Livewire::test().
+        for path in php_files(self.root, "routes"):
+            code = strip_comments(read(path))
+            for m in re.finditer(
+                    r"Route::livewire\s*\(\s*['\"][^'\"]*['\"]\s*,\s*['\"]([^'\"]+)['\"]", code):
+                component = m.group(1)
+                name = component.split("::")[-1].split(".")[-1]
+                if name and name.lower() not in blob:
+                    self.add(INFO, "missing-feature-test", rel(self.root, path),
+                             f"no test references the {component} component",
+                             "Add Livewire::test() for each interaction, and an HTTP test for the "
+                             "page.")
 
     def run(self):
         if not os.path.isdir(self.root):
@@ -452,18 +503,23 @@ def report(findings, checked, out_json=None, baseline=None, fail_on_new=False):
 
     delta = None
     if baseline:
-        base = {(b["rule"], b["file"]): b["severity"]
-                for b in baseline.get("findings", [])}
-        now = {(f.rule, f.file): f.severity for f in findings}
-        new = {k: v for k, v in now.items() if k not in base}
-        fixed = {k: v for k, v in base.items() if k not in now}
-        new_err = sum(1 for v in new.values() if v == ERROR)
-        new_warn = sum(1 for v in new.values() if v == WARN)
-        fixed_err = sum(1 for v in fixed.values() if v == ERROR)
-        fixed_warn = sum(1 for v in fixed.values() if v == WARN)
+        # Compare multiplicitly, not as a set: one file can produce several findings for the
+        # same rule (four methods flagged raw-request-parameter), and a set collapse reports
+        # a 69-finding drop as 49 and hides a newly-added instance in an already-flagged file.
+        base = Counter((b["rule"], b["file"]) for b in baseline.get("findings", []))
+        now = Counter((f.rule, f.file) for f in findings)
+        introduced = {k: now[k] - base.get(k, 0) for k in now if now[k] > base.get(k, 0)}
+        resolved = {k: base[k] - now.get(k, 0) for k in base if base[k] > now.get(k, 0)}
+        sev = {(f.rule, f.file): f.severity for f in findings}
+        bsev = {(b["rule"], b["file"]): b["severity"] for b in baseline.get("findings", [])}
+        new_err = sum(v for k, v in introduced.items() if sev.get(k) == ERROR)
+        new_warn = sum(v for k, v in introduced.items() if sev.get(k) == WARN)
+        fixed_err = sum(v for k, v in resolved.items() if bsev.get(k) == ERROR)
+        fixed_warn = sum(v for k, v in resolved.items() if bsev.get(k) == WARN)
         delta = {"introduced_errors": new_err, "introduced_warnings": new_warn,
                  "resolved_errors": fixed_err, "resolved_warnings": fixed_warn,
-                 "introduced": [{"rule": r, "file": f} for (r, f) in sorted(new)]}
+                 "introduced": [{"rule": r, "file": f, "count": v}
+                                for (r, f), v in sorted(introduced.items())]}
         print(f"\nvs baseline   introduced: {new_err} errors, {new_warn} warnings"
               f"    resolved: {fixed_err} errors, {fixed_warn} warnings")
         print("  (score is absolute and floors on legacy debt; the delta is the progress signal)")
@@ -571,6 +627,8 @@ use App\\Http\\Controllers\\Auth\\RegisterController;
 
 Route::post('/register', [RegisterController::class, 'missingMethod']);
 Route::get('/ghost', [App\\Http\\Controllers\\GhostController::class, 'index']);
+Route::inertia('/ghost-page', 'Ghost/Page');
+Route::livewire('/ghost-live', 'pages::ghost.page');
 """
 
 # A read endpoint legitimately takes a raw Request (filters, pagination) and runs long.
@@ -645,7 +703,7 @@ def selftest():
         rules = {f.rule for f in findings}
         must_fire = {"inline-validation", "model-write-in-controller", "raw-request-parameter",
                      "debug-left-in", "env-outside-config", "inertia-page-missing",
-                     "route-target-missing", "formrequest-no-rules"}
+                     "livewire-page-missing", "route-target-missing", "formrequest-no-rules"}
         if must_fire - rules:
             print(f"FAIL: did not fire: {sorted(must_fire - rules)}")
             ok = False
@@ -673,9 +731,17 @@ def selftest():
         put2("app/Actions/Fortify/ResetUserPassword.php", FORTIFY_ACTION)
         put2("app/Services/BigService.php", BIG_SERVICE)
         put2("app/Http/Requests/Auth/StoreRegistrationRequest.php", GOOD_FORM_REQUEST)
+        put2("resources/js/pages/Dashboard.tsx", "export default () => null;\n")
+        put2("resources/views/pages/settings/profile.blade.php", "<div></div>\n")
+        put2("resources/views/pages/⚡onboarding.blade.php", "<div></div>\n")
+        put2("resources/views/pages/⚡wizard/wizard.blade.php", "<div></div>\n")
         put2("routes/web.php",
              "<?php\nuse App\\Http\\Controllers\\Auth\\RegisterController;\n"
-             "Route::post('/register', [RegisterController::class, 'store']);")
+             "Route::post('/register', [RegisterController::class, 'store']);\n"
+             "Route::inertia('/dashboard', 'Dashboard');\n"
+             "Route::livewire('/settings/profile', 'pages::settings.profile');\n"
+             "Route::livewire('/onboarding', 'pages::onboarding');\n"
+             "Route::livewire('/wizard', 'pages::wizard');")
         findings = LaravelAudit(root).run()
         clean = [f for f in findings if f.severity == ERROR]
         if clean:
