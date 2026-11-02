@@ -2,19 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\SearchRequest;
 use App\Services\SearchService;
-use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 
 class SearchController extends Controller
 {
     public function __construct(private SearchService $service) {}
 
-    public function index(Request $request)
+    public function index(SearchRequest $request): JsonResponse
     {
-        $request->validate([
-            'q' => ['required', 'string', 'min:2', 'max:100'],
-        ]);
-
         $results = $this->service->search($request, $request->string('q'));
 
         if ($request->wantsJson()) {
