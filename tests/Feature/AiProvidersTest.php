@@ -40,6 +40,9 @@ test('resolves all five supported providers with correct drivers and endpoints',
         // OpenAI Chat Completions API, so it routes through the Groq
         // OpenAI-compatible driver with the NIM endpoint override.
         'nvidia' => ['driver' => 'groq', 'url' => 'https://integrate.api.nvidia.com/v1', 'model' => 'openai/gpt-oss-120b'],
+        // OpenCode Console serves OpenAI-compatible Chat Completions, so it
+        // takes the same route as NVIDIA: Groq driver, Console endpoint.
+        'opencode' => ['driver' => 'groq', 'url' => 'https://opencode.ai/inference/openai/v1', 'model' => 'kimi-k3'],
     ];
 
     foreach ($cases as $provider => $expected) {
@@ -79,6 +82,7 @@ test('tested models list surfaces verified working models for each provider', fu
 test('default base urls expose the provider endpoints used for autofill', function () {
     expect(AiProvider::Nvidia->baseUrl())->toBe('https://integrate.api.nvidia.com/v1');
     expect(AiProvider::Gemini->baseUrl())->toBe('https://generativelanguage.googleapis.com/v1beta');
+    expect(AiProvider::OpenCode->baseUrl())->toBe('https://opencode.ai/inference/openai/v1');
     expect(AiProvider::OpenAi->baseUrl())->toBeNull();
 });
 

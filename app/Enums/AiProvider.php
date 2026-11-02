@@ -4,8 +4,9 @@ namespace App\Enums;
 
 /**
  * Every LLM provider supported by the installed Prism version. Each value
- * maps 1:1 to a native Prism driver, except Nvidia whose OpenAI-compatible
- * NIM endpoint routes through the OpenAI driver with a base-URL override.
+ * maps 1:1 to a native Prism driver, except NVIDIA and OpenCode, whose
+ * OpenAI-compatible endpoints route through the Groq driver with a base-URL
+ * override.
  */
 enum AiProvider: string
 {
@@ -23,6 +24,7 @@ enum AiProvider: string
     case Z = 'z';
     case ElevenLabs = 'elevenlabs';
     case VoyageAi = 'voyageai';
+    case OpenCode = 'opencode';
 
     public function label(): string
     {
@@ -41,6 +43,7 @@ enum AiProvider: string
             self::Z => 'Z.ai (GLM)',
             self::ElevenLabs => 'ElevenLabs',
             self::VoyageAi => 'Voyage AI',
+            self::OpenCode => 'OpenCode (Console)',
         };
     }
 
@@ -54,7 +57,13 @@ enum AiProvider: string
      */
     public function prismDriver(): string
     {
-        return $this === self::Nvidia ? 'groq' : $this->value;
+        return match ($this) {
+            // Both expose the OpenAI Chat Completions API only, which Prism's
+            // OpenAI driver does not target (it uses the Responses API), so
+            // they route through the OpenAI-compatible Groq driver.
+            self::Nvidia, self::OpenCode => 'groq',
+            default => $this->value,
+        };
     }
 
     /**
@@ -66,6 +75,9 @@ enum AiProvider: string
     {
         return match ($this) {
             self::Nvidia => 'https://integrate.api.nvidia.com/v1',
+            // Console serves OpenAI-, Anthropic- and Gemini-compatible APIs;
+            // the Chat Completions base is what the Groq driver appends to.
+            self::OpenCode => 'https://opencode.ai/inference/openai/v1',
             self::Gemini => 'https://generativelanguage.googleapis.com/v1beta',
             default => null,
         };
@@ -94,6 +106,8 @@ enum AiProvider: string
             // Audio/embedding-specialised providers.
             self::ElevenLabs => ['eleven_multilingual_v2_5'],
             self::VoyageAi => ['voyage-3-large', 'voyage-3-lite'],
+            // Models Console serves natively over Chat Completions.
+            self::OpenCode => ['kimi-k3', 'glm-5.3', 'deepseek-v4.1-flash', 'minimax-m3', 'qwen3.8-max'],
         };
     }
 
