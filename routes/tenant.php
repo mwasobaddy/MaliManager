@@ -6,6 +6,7 @@ use App\Http\Controllers\Tenant\AgreementTemplateController;
 use App\Http\Controllers\Tenant\AiSettingsController;
 use App\Http\Controllers\Tenant\AssistantController;
 use App\Http\Controllers\Tenant\AuditController;
+use App\Http\Controllers\Tenant\DepositRefundController;
 use App\Http\Controllers\Tenant\DraftingController;
 use App\Http\Controllers\Tenant\EditorImageController;
 use App\Http\Controllers\Tenant\ExpenseController;
@@ -15,6 +16,8 @@ use App\Http\Controllers\Tenant\LandParcelController;
 use App\Http\Controllers\Tenant\LandParcelSectionController;
 use App\Http\Controllers\Tenant\LeaseController;
 use App\Http\Controllers\Tenant\MaintenanceController;
+use App\Http\Controllers\Tenant\MaintenanceNoteController;
+use App\Http\Controllers\Tenant\MeterReadingController;
 use App\Http\Controllers\Tenant\OccupantController;
 use App\Http\Controllers\Tenant\OrganizationDashboardController;
 use App\Http\Controllers\Tenant\PaymentController;
@@ -65,6 +68,19 @@ Route::middleware([
     Route::middleware(['auth', 'organization.active', 'has-property'])->group(function () {
         Route::get('/overview', [OrganizationDashboardController::class, 'index'])
             ->name('tenant.overview');
+
+        // Organization-wide, because a refund is a decision about money held,
+        // not a property-level listing.
+        Route::middleware('sub-permission:lease.manage')->group(function () {
+            Route::get('/deposit-refunds', [DepositRefundController::class, 'index'])
+                ->name('tenant.deposit-refunds.index');
+            Route::post('/deposit-refunds', [DepositRefundController::class, 'store'])
+                ->name('tenant.deposit-refunds.store');
+        });
+
+        Route::patch('/deposit-refunds/{refund}', [DepositRefundController::class, 'update'])
+            ->middleware('sub-permission:lease.edit')
+            ->name('tenant.deposit-refunds.update');
         Route::get('/properties', [PropertyController::class, 'index'])
             ->middleware('sub-permission:property.manage')
             ->name('tenant.properties.index');
@@ -88,6 +104,13 @@ Route::middleware([
                 ->name('tenant.units.index');
             Route::get('/units/{unit}', [UnitController::class, 'show'])
                 ->name('tenant.units.show');
+
+            // Utility meters on a unit. Reads are org-wide because a
+            // caretaker walks a route across properties, not one unit at a time.
+            Route::get('/meter-readings', [MeterReadingController::class, 'index'])
+                ->name('tenant.meter-readings.index');
+            Route::post('/meter-readings', [MeterReadingController::class, 'store'])
+                ->name('tenant.meter-readings.store');
         });
 
         Route::middleware('sub-permission:occupant.manage')->group(function () {
@@ -205,6 +228,15 @@ Route::middleware([
             Route::delete('/maintenance/{record}', [MaintenanceController::class, 'destroy'])
                 ->middleware('sub-permission:maintenance.delete')
                 ->name('tenant.maintenance.destroy');
+
+            // Notes hang off one request. Reading them is part of working the
+            // request; writing one is an edit.
+            Route::get('/maintenance/{record}/notes', [MaintenanceNoteController::class, 'index'])
+                ->middleware('sub-permission:maintenance.manage')
+                ->name('tenant.maintenance.notes.index');
+            Route::post('/maintenance/{record}/notes', [MaintenanceNoteController::class, 'store'])
+                ->middleware('sub-permission:maintenance.edit')
+                ->name('tenant.maintenance.notes.store');
 
             // Organization-wide templates.
             Route::get('/agreement-templates', [AgreementTemplateController::class, 'orgIndex'])
