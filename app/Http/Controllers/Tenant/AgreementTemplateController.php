@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Tenant;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Tenant\SaveAgreementTemplateRequest;
 use App\Models\AgreementTemplate;
 use App\Models\Property;
 use App\Services\AgreementTemplateService;
@@ -12,7 +13,6 @@ use App\Support\TenancyContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -43,10 +43,10 @@ class AgreementTemplateController extends Controller
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(SaveAgreementTemplateRequest $request): RedirectResponse
     {
         $organizationId = TenancyContext::organization()?->id;
-        $validated = $this->validateTemplate($request, $organizationId, null);
+        $validated = $request->validated();
 
         $template = AgreementTemplate::create([
             'organization_id' => $organizationId,
@@ -80,12 +80,12 @@ class AgreementTemplateController extends Controller
         ]);
     }
 
-    public function update(Request $request, AgreementTemplate $template): RedirectResponse
+    public function update(SaveAgreementTemplateRequest $request, AgreementTemplate $template): RedirectResponse
     {
         abort_if($template->organization_id !== TenancyContext::organization()?->id, 403);
         abort_if($template->property_id !== null, 403);
 
-        $validated = $this->validateTemplate($request, $template->organization_id, $template->id);
+        $validated = $request->validated();
 
         $template->update([
             'name' => $validated['name'],
@@ -132,9 +132,9 @@ class AgreementTemplateController extends Controller
         ]);
     }
 
-    public function storeForProperty(Request $request, Property $property): RedirectResponse
+    public function storeForProperty(SaveAgreementTemplateRequest $request, Property $property): RedirectResponse
     {
-        $validated = $this->validateTemplate($request, $property->organization_id, null, $property->id);
+        $validated = $request->validated();
 
         $template = $this->templates->create(
             $request->user(),
@@ -169,12 +169,12 @@ class AgreementTemplateController extends Controller
         ]);
     }
 
-    public function updateForProperty(Request $request, Property $property, AgreementTemplate $template): RedirectResponse
+    public function updateForProperty(SaveAgreementTemplateRequest $request, Property $property, AgreementTemplate $template): RedirectResponse
     {
         abort_if($template->organization_id !== $property->organization_id, 403);
         abort_if($template->property_id !== $property->id, 403);
 
-        $validated = $this->validateTemplate($request, $property->organization_id, $template->id, $property->id);
+        $validated = $request->validated();
 
         $this->templates->update($template, $request->user(), $validated['name'], $validated['body_html']);
 
@@ -248,22 +248,6 @@ class AgreementTemplateController extends Controller
                 'body_html' => $template->body_html,
             ])
             ->all();
-    }
-
-    private function validateTemplate(Request $request, ?int $organizationId, ?int $ignoreId, ?int $propertyId = null): array
-    {
-        return $request->validate([
-            'name' => [
-                'required', 'string', 'max:255',
-                Rule::unique('agreement_templates', 'name')
-                    ->where('organization_id', $organizationId)
-                    ->where('property_id', $propertyId)
-                    ->ignore($ignoreId),
-            ],
-            'body_html' => ['required', 'string'],
-            'agreement_document' => ['nullable', 'file', 'mimes:pdf,doc,docx', 'max:10240'],
-            'remove_agreement_document' => ['nullable', 'boolean'],
-        ]);
     }
 
     /**
