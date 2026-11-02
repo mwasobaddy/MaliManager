@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Tenant;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Tenant\InspectionAccessRequest;
 use App\Http\Requests\Tenant\StoreInspectionRequest;
 use App\Models\Inspection;
 use App\Models\Property;
@@ -23,7 +24,7 @@ use Prism\Prism\Schema\StringSchema;
  */
 class InspectionController extends Controller
 {
-    public function index(Request $request, Property $property): Response
+    public function index(InspectionAccessRequest $request, Property $property): Response
     {
         $this->authorize($request, $property);
 
@@ -48,7 +49,7 @@ class InspectionController extends Controller
         ]);
     }
 
-    public function create(Request $request, Property $property): Response
+    public function create(InspectionAccessRequest $request, Property $property): Response
     {
         $this->authorize($request, $property);
 
@@ -73,7 +74,7 @@ class InspectionController extends Controller
         return redirect()->route('tenant.inspections.show', [$property, $inspection]);
     }
 
-    public function show(Request $request, Property $property, Inspection $inspection): Response
+    public function show(InspectionAccessRequest $request, Property $property, Inspection $inspection): Response
     {
         $this->authorize($request, $property);
         abort_if($inspection->property_id !== $property->id, 403);
@@ -99,7 +100,7 @@ class InspectionController extends Controller
      * Generate the AI condition report. Expected failures (no credential,
      * no photos, provider errors) degrade to a toast; unexpected ones bubble.
      */
-    public function generateReport(Request $request, Property $property, Inspection $inspection, InspectionService $service): RedirectResponse
+    public function generateReport(InspectionAccessRequest $request, Property $property, Inspection $inspection, InspectionService $service): RedirectResponse
     {
         $this->authorize($request, $property);
         abort_if($inspection->property_id !== $property->id, 403);
@@ -120,7 +121,7 @@ class InspectionController extends Controller
      * Soft-delete an inspection. The photo files stay on disk, so a mistaken
      * delete can be recovered; `InspectionService::softDelete` owns the write.
      */
-    public function destroy(Request $request, Property $property, Inspection $inspection, InspectionService $service): RedirectResponse
+    public function destroy(InspectionAccessRequest $request, Property $property, Inspection $inspection, InspectionService $service): RedirectResponse
     {
         $this->authorize($request, $property);
         abort_if($inspection->property_id !== $property->id, 403);
