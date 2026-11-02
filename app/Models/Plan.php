@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -67,5 +68,29 @@ class Plan extends Model
     public function organizations(): HasMany
     {
         return $this->hasMany(Organization::class);
+    }
+
+    /**
+     * The admin list predicate: search across name, slug and description, plus an
+     * exact active/inactive status. Shared by the index and the CSV export.
+     *
+     * @param  array{search?: string, status?: string}  $filters
+     */
+    public function scopeFiltered(Builder $query, array $filters): Builder
+    {
+        return $query
+            ->withCount('organizations')
+            ->when(
+                ($filters['search'] ?? '') !== '',
+                fn (Builder $q) => $q->where(function (Builder $inner) use ($filters): void {
+                    $inner->where('name', 'like', "%{$filters['search']}%")
+                        ->orWhere('slug', 'like', "%{$filters['search']}%")
+                        ->orWhere('description', 'like', "%{$filters['search']}%");
+                }),
+            )
+            ->when(
+                ($filters['status'] ?? '') !== '',
+                fn (Builder $q) => $q->where('is_active', $filters['status'] === 'active'),
+            );
     }
 }

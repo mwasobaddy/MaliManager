@@ -2,16 +2,14 @@
 
 namespace App\Http\Requests\Platform;
 
+use App\Data\Plans\ImportPlansData;
 use Illuminate\Foundation\Http\FormRequest;
 
 class ImportPlanRequest extends FormRequest
 {
-    /**
-     * Authorization is handled by the `can:importPlans` route middleware.
-     */
     public function authorize(): bool
     {
-        return true;
+        return $this->user()?->can('importPlans') ?? false;
     }
 
     /**
@@ -31,5 +29,13 @@ class ImportPlanRequest extends FormRequest
             'file.mimes' => 'Upload a CSV file (a .txt file containing CSV also works).',
             'file.max' => 'The import file may not be larger than 2 MB.',
         ];
+    }
+
+    public function toData(): ImportPlansData
+    {
+        return new ImportPlansData(
+            file: $this->file('file'),
+            actor: $this->user(),
+        );
     }
 }
