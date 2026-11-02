@@ -3,11 +3,11 @@
 namespace App\Http\Controllers\Tenant;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Tenant\ReportRequest;
 use App\Services\Reporting\ReportService;
 use App\Support\TenancyContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -37,7 +37,7 @@ class ReportController extends Controller
         ]);
     }
 
-    public function data(Request $request): JsonResponse
+    public function data(ReportRequest $request): JsonResponse
     {
         $this->authorize($request);
 
@@ -49,7 +49,7 @@ class ReportController extends Controller
         return response()->json(['type' => $type] + $report);
     }
 
-    public function csv(Request $request): StreamedResponse
+    public function csv(ReportRequest $request): StreamedResponse
     {
         $this->authorize($request);
 
@@ -77,7 +77,7 @@ class ReportController extends Controller
         }, $filename, ['Content-Type' => 'text/csv']);
     }
 
-    public function print(Request $request): Response
+    public function print(ReportRequest $request): Response
     {
         $this->authorize($request);
 
@@ -98,13 +98,9 @@ class ReportController extends Controller
     /**
      * @return array{0: string, 1: ?string, 2: ?string}
      */
-    private function validatedRange(Request $request): array
+    private function validatedRange(ReportRequest $request): array
     {
-        $validated = $request->validate([
-            'type' => ['required', Rule::in(ReportService::TYPES)],
-            'from' => ['nullable', 'date'],
-            'to' => ['nullable', 'date', 'after_or_equal:from'],
-        ]);
+        $validated = $request->validated();
 
         return [
             $validated['type'],
