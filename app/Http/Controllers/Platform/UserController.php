@@ -8,6 +8,7 @@ use App\Http\Requests\Platform\ImportUserRequest;
 use App\Http\Requests\Platform\StoreUserRequest;
 use App\Http\Requests\Platform\UpdateUserRequest;
 use App\Http\Requests\Platform\UpdateUserStatusRequest;
+use App\Http\Requests\Platform\UserIndexRequest;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\UserService;
@@ -44,7 +45,7 @@ class UserController extends Controller
             ->when($request->string('role')->toString() !== '', fn ($query) => $query->whereHas('roles', fn ($q) => $q->where('name', $request->string('role'))));
     }
 
-    public function index(Request $request): Response
+    public function index(UserIndexRequest $request): Response
     {
         // Allowlisted so a crafted `?sort=` can never reach the ORDER BY.
         // Roles are a relation and deliberately absent: sorting by them needs a
