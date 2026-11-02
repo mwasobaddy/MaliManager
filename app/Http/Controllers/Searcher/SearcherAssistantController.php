@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Searcher;
 
+use App\Actions\Assistant\AskAssistant;
 use App\Concerns\HandlesConversationHistory;
 use App\Enums\AiFeature;
 use App\Exceptions\AssistantUnavailableException;
@@ -50,50 +51,21 @@ class SearcherAssistantController extends Controller
         ]);
     }
 
-    public function ask(AskAssistantRequest $request): JsonResponse
+    public function ask(AskAssistantRequest $request, AskAssistant $action): JsonResponse
     {
-        $validated = $request->validated();
-
         $user = $request->user();
 
         if ($user->person_id === null) {
             return response()->json(['error' => 'AI is not configured for your account.'], 403);
         }
 
-        $scope = Scope::person($user->person_id, $user->id);
-        $conversation = AiConversation::resolve($user, $scope, $validated['conversation_id'] ?? null, (bool) ($validated['new_conversation'] ?? false));
-
-        // Set title on new conversations.
-        if ($conversation->wasRecentlyCreated && ! empty($validated['title'])) {
-            $conversation->update(['title' => $validated['title']]);
-        }
-
-        $history = $this->historyFor($conversation);
-
         try {
-            $result = $this->assistant->ask(
-                $user,
-                $scope,
-                $validated['question'],
-                $history,
-            );
+            $answer = $action->handle($user, Scope::person($user->person_id, $user->id), $request->toData());
         } catch (AssistantUnavailableException $e) {
             return response()->json(['error' => $e->getMessage()], 403);
         }
 
-        $conversation->messages()->create(['role' => 'user', 'content' => $validated['question']]);
-        $conversation->messages()->create([
-            'role' => 'assistant',
-            'content' => $result['answer'],
-            'artifacts' => $result['artifacts'] ?? [],
-        ]);
-        $conversation->touch('last_message_at');
-
-        return response()->json([
-            'answer' => $result['answer'],
-            'artifacts' => $result['artifacts'] ?? [],
-            'conversation_id' => $conversation->id,
-        ]);
+        return response()->json($answer->toArray());
     }
 
     /**
@@ -121,19 +93,6 @@ class SearcherAssistantController extends Controller
     /**
      * @return array<int, array{role: string, content: string}>
      */
-    private function historyFor(AiConversation $conversation): array
-    {
-        return $conversation->messages()
-            ->orderBy('id')
-            ->limit(6)
-            ->get(['role', 'content'])
-            ->map(fn (AiMessage $message) => [
-                'role' => $message->role === 'error' ? 'assistant' : $message->role,
-                'content' => $message->content,
-            ])
-            ->all();
-    }
-
     protected function scopeForHistory(Request $request): Scope
     {
         $user = $request->user();

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Tenant;
 
+use App\Actions\Assistant\AskAssistant;
 use App\Concerns\HandlesConversationHistory;
 use App\Enums\AiFeature;
 use App\Exceptions\AssistantUnavailableException;
@@ -52,50 +53,21 @@ class AssistantController extends Controller
         ]);
     }
 
-    public function ask(AskAssistantRequest $request): JsonResponse
+    public function ask(AskAssistantRequest $request, AskAssistant $action): JsonResponse
     {
-        $validated = $request->validated();
-
         $organization = TenancyContext::organization();
 
         if ($organization === null) {
             return response()->json(['error' => 'No organization context.'], 403);
         }
 
-        $scope = Scope::org($organization->id);
-        $conversation = AiConversation::resolve($request->user(), $scope, $validated['conversation_id'] ?? null, (bool) ($validated['new_conversation'] ?? false));
-
-        // Set title on new conversations.
-        if ($conversation->wasRecentlyCreated && ! empty($validated['title'])) {
-            $conversation->update(['title' => $validated['title']]);
-        }
-
-        $history = $this->historyFor($conversation);
-
         try {
-            $result = $this->assistant->ask(
-                $request->user(),
-                $scope,
-                $validated['question'],
-                $history,
-            );
+            $answer = $action->handle($request->user(), Scope::org($organization->id), $request->toData());
         } catch (AssistantUnavailableException $e) {
             return response()->json(['error' => $e->getMessage()], 403);
         }
 
-        $conversation->messages()->create(['role' => 'user', 'content' => $validated['question']]);
-        $conversation->messages()->create([
-            'role' => 'assistant',
-            'content' => $result['answer'],
-            'artifacts' => $result['artifacts'] ?? [],
-        ]);
-        $conversation->touch('last_message_at');
-
-        return response()->json([
-            'answer' => $result['answer'],
-            'artifacts' => $result['artifacts'] ?? [],
-            'conversation_id' => $conversation->id,
-        ]);
+        return response()->json($answer->toArray());
     }
 
     /**
@@ -123,19 +95,6 @@ class AssistantController extends Controller
     /**
      * @return array<int, array{role: string, content: string}>
      */
-    private function historyFor(AiConversation $conversation): array
-    {
-        return $conversation->messages()
-            ->orderBy('id')
-            ->limit(6)
-            ->get(['role', 'content'])
-            ->map(fn (AiMessage $message) => [
-                'role' => $message->role === 'error' ? 'assistant' : $message->role,
-                'content' => $message->content,
-            ])
-            ->all();
-    }
-
     protected function scopeForHistory(Request $request): Scope
     {
         $organization = TenancyContext::organization();

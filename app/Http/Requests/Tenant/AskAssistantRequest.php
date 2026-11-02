@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Tenant;
 
+use App\Data\Assistant\AskAssistantData;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -33,5 +34,10 @@ class AskAssistantRequest extends FormRequest
             'new_conversation' => ['nullable', 'boolean'],
             'title' => ['nullable', 'string', 'max:255'],
         ];
+    }
+
+    public function toData(): AskAssistantData
+    {
+        return AskAssistantData::fromValidated($this->validated());
     }
 }
