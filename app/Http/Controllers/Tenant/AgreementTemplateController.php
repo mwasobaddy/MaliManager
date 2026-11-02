@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Tenant;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Tenant\SaveAgreementTemplateRequest;
+use App\Http\Requests\Tenant\TemplatePickerRequest;
 use App\Models\AgreementTemplate;
 use App\Models\Property;
 use App\Services\AgreementTemplateService;
@@ -205,7 +206,7 @@ class AgreementTemplateController extends Controller
      *
      * @return array{property: array<int, array{id: int, name: string, body_html: string}>, organization: array<int, array{id: int, name: string, body_html: string}>}
      */
-    public function picker(Request $request, Property $property): JsonResponse
+    public function picker(TemplatePickerRequest $request, Property $property): JsonResponse
     {
         $this->authorizePropertyAccess($request, $property);
 
