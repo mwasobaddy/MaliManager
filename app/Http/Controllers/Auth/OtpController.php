@@ -3,13 +3,13 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Auth\OtpRequest;
 use App\Http\Requests\Auth\OtpVerifyRequest;
 use App\Models\User;
 use App\Support\AuthLanding;
 use App\Support\InertiaRedirect;
 use App\Support\OtpService;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
@@ -18,7 +18,7 @@ use Inertia\Response;
 
 class OtpController extends Controller
 {
-    public function show(Request $request): Response|RedirectResponse
+    public function show(OtpRequest $request): Response|RedirectResponse
     {
         $email = $request->session()->get('login.email');
 
@@ -72,7 +72,7 @@ class OtpController extends Controller
         return InertiaRedirect::to($intended ?? $landing, $request);
     }
 
-    public function resend(Request $request, OtpService $otpService): RedirectResponse
+    public function resend(OtpRequest $request, OtpService $otpService): RedirectResponse
     {
         $email = $request->session()->get('login.email');
 
