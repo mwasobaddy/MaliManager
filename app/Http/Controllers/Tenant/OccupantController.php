@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Tenant;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Tenant\DestroyOccupantRequest;
 use App\Http\Requests\Tenant\MoveOutOccupantRequest;
+use App\Http\Requests\Tenant\OccupantAccessRequest;
 use App\Http\Requests\Tenant\StoreOccupantRequest;
 use App\Http\Requests\Tenant\UpdateOccupantRequest;
 use App\Models\AgreementTemplate;
@@ -22,7 +23,7 @@ use Inertia\Response;
 
 class OccupantController extends Controller
 {
-    public function index(Request $request, Property $property): Response
+    public function index(OccupantAccessRequest $request, Property $property): Response
     {
         $this->authorizePropertyAccess($request, $property);
 
@@ -41,7 +42,7 @@ class OccupantController extends Controller
         ]);
     }
 
-    public function create(Request $request, Property $property): Response
+    public function create(OccupantAccessRequest $request, Property $property): Response
     {
         $this->authorizePropertyAccess($request, $property);
 
@@ -72,7 +73,7 @@ class OccupantController extends Controller
         return redirect()->route('tenant.occupants.index', $property);
     }
 
-    public function edit(Request $request, Property $property, Occupant $occupant, OccupantService $occupantService): Response
+    public function edit(OccupantAccessRequest $request, Property $property, Occupant $occupant, OccupantService $occupantService): Response
     {
         $this->authorizePropertyAccess($request, $property);
 
@@ -177,7 +178,7 @@ class OccupantController extends Controller
         ];
     }
 
-    public function agreement(Request $request, Property $property, Occupant $occupant): Response
+    public function agreement(OccupantAccessRequest $request, Property $property, Occupant $occupant): Response
     {
         $this->authorizePropertyAccess($request, $property);
 
