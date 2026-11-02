@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Platform;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Platform\DestroyPlatformExpenseRequest;
 use App\Http\Requests\Platform\ImportPlatformExpenseRequest;
+use App\Http\Requests\Platform\PlatformExpenseIndexRequest;
 use App\Http\Requests\Platform\StorePlatformExpenseRequest;
 use App\Http\Requests\Platform\UpdatePlatformExpenseRequest;
 use App\Models\PlatformExpense;
@@ -65,7 +66,7 @@ class PlatformExpenseController extends Controller
             );
     }
 
-    public function index(Request $request): Response
+    public function index(PlatformExpenseIndexRequest $request): Response
     {
         $sort = $request->string('sort')->toString();
         $sortColumn = self::SORTABLE[$sort] ?? null;
