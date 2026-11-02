@@ -3,11 +3,11 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Auth\SocialiteCallbackRequest;
 use App\Models\User;
 use App\Support\AuthLanding;
 use App\Support\InertiaRedirect;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -22,7 +22,7 @@ class SocialiteController extends Controller
         return Socialite::driver($provider)->redirect();
     }
 
-    public function callback(Request $request, string $provider): RedirectResponse|HttpResponse
+    public function callback(SocialiteCallbackRequest $request, string $provider): RedirectResponse|HttpResponse
     {
         try {
             $socialUser = Socialite::driver($provider)->user();
