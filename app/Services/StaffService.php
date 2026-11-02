@@ -2,7 +2,10 @@
 
 namespace App\Services;
 
-use App\Enums\PlatformPermissionKey;
+use App\Actions\Staff\Concerns\StaffHelpers;
+use App\Actions\Staff\CreateStaff;
+use App\Actions\Staff\DeleteStaff;
+use App\Actions\Staff\UpdateStaff;
 use App\Models\Delegation;
 use App\Models\LandParcel;
 use App\Models\Organization;
@@ -10,8 +13,6 @@ use App\Models\OrganizationUser;
 use App\Models\Property;
 use App\Models\User;
 use Illuminate\Support\Collection;
-use Spatie\Permission\Exceptions\PermissionDoesNotExist;
-use Spatie\Permission\PermissionRegistrar;
 
 /**
  * Manages staff members within an organization. A staff member is a
@@ -20,45 +21,14 @@ use Spatie\Permission\PermissionRegistrar;
  */
 class StaffService extends Service
 {
+    use StaffHelpers;
+
     /**
      * Create (or attach) a staff member and assign properties.
      */
     public function create(Organization $organization, User $actor, array $data): User
     {
-        return $this->transaction(function () use ($organization, $actor, $data) {
-            $user = $this->findOrCreateUser($data);
-
-            $membership = OrganizationUser::firstOrNew([
-                'organization_id' => $organization->id,
-                'user_id' => $user->id,
-            ]);
-
-            $membership->fill([
-                'sub_role_id' => $data['sub_role_id'],
-                'is_owner' => false,
-                'status' => 'active',
-                'created_by' => $actor->id,
-            ]);
-
-            $this->save($membership);
-
-            $this->syncPropertyDelegations($membership, $data['property_ids'] ?? [], $actor);
-
-            // Staff share the organization dashboard tab with owners. The
-            // permission record is seeded centrally; if the spatie cache is
-            // stale (e.g. during a fresh seed run) flush and retry once.
-            $permission = PlatformPermissionKey::ViewOrgMetrics->value;
-
-            try {
-                $user->givePermissionTo($permission);
-            } catch (PermissionDoesNotExist) {
-                app(PermissionRegistrar::class)->forgetCachedPermissions();
-
-                $user->givePermissionTo($permission);
-            }
-
-            return $user;
-        });
+        return app(CreateStaff::class)->handle($organization, $actor, $data);
     }
 
     /**
@@ -66,25 +36,7 @@ class StaffService extends Service
      */
     public function update(Organization $organization, User $staff, User $actor, array $data): User
     {
-        return $this->transaction(function () use ($organization, $staff, $actor, $data) {
-            $staff->fill([
-                'name' => $data['name'],
-                'phone' => $data['phone'] ?? null,
-            ])->save();
-
-            $membership = $this->membership($organization, $staff);
-
-            $membership->fill([
-                'sub_role_id' => $data['sub_role_id'],
-                'status' => 'active',
-            ]);
-
-            $this->save($membership);
-
-            $this->syncPropertyDelegations($membership, $data['property_ids'] ?? [], $actor);
-
-            return $staff;
-        });
+        return app(UpdateStaff::class)->handle($organization, $staff, $actor, $data);
     }
 
     /**
@@ -92,18 +44,7 @@ class StaffService extends Service
      */
     public function softDelete(Organization $organization, User $staff, User $actor): void
     {
-        $this->transaction(function () use ($organization, $staff) {
-            $membership = $this->membership($organization, $staff);
-
-            if ($membership) {
-                $this->delete($membership);
-                $this->deletePropertyDelegations($membership);
-            }
-
-            if ($staff->organizations()->count() <= 1) {
-                $this->delete($staff);
-            }
-        });
+        app(DeleteStaff::class)->handle($organization, $staff, $actor);
     }
 
     /**
@@ -132,56 +73,6 @@ class StaffService extends Service
         return Property::query()
             ->whereIn('id', $this->delegatedPropertyIds($membership))
             ->get();
-    }
-
-    private function findOrCreateUser(array $data): User
-    {
-        $user = User::where('email', $data['email'])->first();
-
-        if ($user) {
-            $user->fill([
-                'name' => $data['name'],
-                'phone' => $data['phone'] ?? null,
-                'onboarded_at' => $user->onboarded_at ?? now(),
-            ])->save();
-
-            return $user;
-        }
-
-        $user = new User([
-            'name' => $data['name'],
-            'email' => $data['email'],
-            'phone' => $data['phone'] ?? null,
-            'onboarded_at' => now(),
-            'status' => 'active',
-        ]);
-
-        return $this->save($user);
-    }
-
-    private function syncPropertyDelegations(OrganizationUser $membership, array $propertyIds, User $actor): void
-    {
-        $this->deletePropertyDelegations($membership);
-
-        foreach (array_unique($propertyIds) as $propertyId) {
-            $delegation = new Delegation([
-                'organization_id' => $membership->organization_id,
-                'organization_user_id' => $membership->id,
-                'delegatable_type' => Property::class,
-                'delegatable_id' => (int) $propertyId,
-                'created_by' => $actor->id,
-            ]);
-
-            $this->save($delegation);
-        }
-    }
-
-    private function deletePropertyDelegations(OrganizationUser $membership): void
-    {
-        Delegation::where('organization_user_id', $membership->id)
-            ->where('delegatable_type', Property::class)
-            ->get()
-            ->each(fn (Delegation $delegation) => $this->delete($delegation));
     }
 
     /**

@@ -2,11 +2,14 @@
 
 namespace App\Services;
 
+use App\Actions\Expenses\Concerns\ExpenseHelpers;
+use App\Actions\Expenses\CreateExpense;
+use App\Actions\Expenses\DeleteExpense;
+use App\Actions\Expenses\UpdateExpense;
 use App\Models\Expense;
 use App\Models\LandParcel;
 use App\Models\Property;
 use App\Models\User;
-use App\Support\TenancyContext;
 
 /**
  * Records money spent against an asset (Property or LandParcel).
@@ -15,6 +18,8 @@ use App\Support\TenancyContext;
  */
 class ExpenseService extends Service
 {
+    use ExpenseHelpers;
+
     /**
      * Validate that the target asset belongs to the organization and
      * normalize the expenseable target.
@@ -57,25 +62,7 @@ class ExpenseService extends Service
      */
     public function create(User $actor, int $organizationId, array $data): Expense
     {
-        return $this->transaction(function () use ($actor, $organizationId, $data) {
-            ['asset' => $asset, 'unitId' => $unitId] = $this->resolveTarget($actor, $data + ['organization_id' => $organizationId]);
-
-            $expense = new Expense([
-                'tenant_id' => $this->tenantId(),
-                'organization_id' => $organizationId,
-                'category' => $data['category'],
-                'amount' => $data['amount'],
-                'currency' => $data['currency'] ?? 'KES',
-                'spent_on' => $data['spent_on'],
-                'notes' => $data['notes'] ?? null,
-                'created_by' => $actor->id,
-            ]);
-
-            $expense->expenseable()->associate($asset);
-            $expense->unit_id = $unitId;
-
-            return $this->save($expense);
-        });
+        return app(CreateExpense::class)->handle($actor, $organizationId, $data);
     }
 
     /**
@@ -83,32 +70,11 @@ class ExpenseService extends Service
      */
     public function update(Expense $expense, User $actor, array $data): Expense
     {
-        return $this->transaction(function () use ($expense, $actor, $data) {
-            $resolved = $this->resolveTarget($actor, $data + ['organization_id' => $expense->organization_id]);
-
-            $expense->fill([
-                'category' => $data['category'],
-                'amount' => $data['amount'],
-                'currency' => $data['currency'] ?? $expense->currency,
-                'spent_on' => $data['spent_on'],
-                'notes' => $data['notes'] ?? null,
-                'unit_id' => $resolved['unitId'],
-            ]);
-            $expense->expenseable()->associate($resolved['asset']);
-
-            return $this->save($expense);
-        });
+        return app(UpdateExpense::class)->handle($expense, $actor, $data);
     }
 
     public function softDelete(Expense $expense): void
     {
-        $this->transaction(function () use ($expense) {
-            $this->delete($expense);
-        });
-    }
-
-    private function tenantId(): ?string
-    {
-        return TenancyContext::tenantId();
+        app(DeleteExpense::class)->handle($expense);
     }
 }

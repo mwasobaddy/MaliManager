@@ -2,6 +2,10 @@
 
 namespace App\Services;
 
+use App\Actions\LandParcels\Concerns\LandParcelHelpers;
+use App\Actions\LandParcels\CreateLandParcel;
+use App\Actions\LandParcels\DeleteLandParcel;
+use App\Actions\LandParcels\UpdateLandParcel;
 use App\Models\Delegation;
 use App\Models\LandParcel;
 use App\Models\Organization;
@@ -15,33 +19,14 @@ use App\Models\User;
  */
 class LandParcelService extends Service
 {
+    use LandParcelHelpers;
+
     /**
      * Create a land parcel and sync its manager delegations.
      */
     public function create(Organization $organization, User $actor, array $data): LandParcel
     {
-        return $this->transaction(function () use ($organization, $actor, $data) {
-            $parcel = $this->save(new LandParcel([
-                'organization_id' => $organization->id,
-                'name' => $data['name'],
-                'slug' => LandParcel::uniqueSlug($organization->id, $data['name']),
-                'title_deed_number' => $data['title_deed_number'] ?? null,
-                'acreage' => $data['acreage'] ?? null,
-                'zoning' => $data['zoning'] ?? 'residential',
-                'address' => $data['address'] ?? null,
-                'city' => $data['city'] ?? null,
-                'status' => $data['status'] ?? 'active',
-                'latitude' => $data['latitude'] ?? null,
-                'longitude' => $data['longitude'] ?? null,
-                'available_for_lease' => $data['available_for_lease'] ?? false,
-                'notes' => $data['notes'] ?? null,
-                'created_by' => $actor->id,
-            ]));
-
-            $this->syncDelegations($parcel, $data['manager_ids'] ?? [], $actor);
-
-            return $parcel;
-        });
+        return app(CreateLandParcel::class)->handle($organization, $actor, $data);
     }
 
     /**
@@ -49,25 +34,7 @@ class LandParcelService extends Service
      */
     public function update(LandParcel $parcel, User $actor, array $data): LandParcel
     {
-        return $this->transaction(function () use ($parcel, $actor, $data) {
-            $parcel->fill([
-                'name' => $data['name'],
-                'title_deed_number' => $data['title_deed_number'] ?? null,
-                'acreage' => $data['acreage'] ?? null,
-                'zoning' => $data['zoning'] ?? $parcel->zoning,
-                'address' => $data['address'] ?? null,
-                'city' => $data['city'] ?? null,
-                'status' => $data['status'] ?? $parcel->status,
-                'latitude' => $data['latitude'] ?? null,
-                'longitude' => $data['longitude'] ?? null,
-                'available_for_lease' => $data['available_for_lease'] ?? false,
-                'notes' => $data['notes'] ?? null,
-            ])->save();
-
-            $this->syncDelegations($parcel, $data['manager_ids'] ?? [], $actor);
-
-            return $parcel;
-        });
+        return app(UpdateLandParcel::class)->handle($parcel, $actor, $data);
     }
 
     /**
@@ -76,13 +43,7 @@ class LandParcelService extends Service
      */
     public function softDelete(LandParcel $parcel): void
     {
-        $this->transaction(function () use ($parcel) {
-            Delegation::where('delegatable_type', LandParcel::class)
-                ->where('delegatable_id', $parcel->id)
-                ->delete();
-
-            $this->delete($parcel);
-        });
+        app(DeleteLandParcel::class)->handle($parcel);
     }
 
     /**
@@ -121,40 +82,5 @@ class LandParcelService extends Service
             ->pluck('user_id')
             ->map(fn ($id) => (int) $id)
             ->all();
-    }
-
-    /**
-     * Sync a parcel's manager delegations by replacing them. The given
-     * ids are user ids from the form; they are resolved to the
-     * OrganizationUser membership ids required by the Delegation model.
-     *
-     * @param  array<int, int>  $userIds
-     */
-    private function syncDelegations(LandParcel $parcel, array $userIds, User $actor): void
-    {
-        Delegation::where('delegatable_type', LandParcel::class)
-            ->where('delegatable_id', $parcel->id)
-            ->delete();
-
-        $userIds = array_unique(array_filter($userIds, fn ($id) => $id !== null));
-
-        if ($userIds === []) {
-            return;
-        }
-
-        $membershipIds = OrganizationUser::where('organization_id', $parcel->organization_id)
-            ->whereIn('user_id', $userIds)
-            ->pluck('id')
-            ->all();
-
-        foreach ($membershipIds as $membershipId) {
-            $this->save(new Delegation([
-                'organization_id' => $parcel->organization_id,
-                'organization_user_id' => $membershipId,
-                'delegatable_type' => LandParcel::class,
-                'delegatable_id' => $parcel->id,
-                'created_by' => $actor->id,
-            ]));
-        }
     }
 }

@@ -2,12 +2,12 @@
 
 namespace App\Services;
 
-use App\Enums\PlatformRole;
+use App\Actions\Roles\Concerns\RoleHelpers;
+use App\Actions\Roles\CreateRole;
+use App\Actions\Roles\DeleteRole;
+use App\Actions\Roles\SetRoleActive;
 use App\Models\Role;
 use App\Models\User;
-use Illuminate\Support\Facades\DB;
-use Spatie\Permission\Models\Permission;
-use Spatie\Permission\PermissionRegistrar;
 
 /**
  * The lifecycle of a *custom* platform role.
@@ -23,6 +23,8 @@ use Spatie\Permission\PermissionRegistrar;
  */
 class RoleManagementService
 {
+    use RoleHelpers;
+
     /**
      * Users moved off a role, keyed by user id.
      *
@@ -42,17 +44,7 @@ class RoleManagementService
      */
     public function create(string $name, array $permissionNames, bool $isActive = true): Role
     {
-        $role = Role::create([
-            'name' => $name,
-            'guard_name' => 'web',
-            'is_active' => $isActive,
-        ]);
-
-        $role->syncPermissions($this->resolvePermissions($permissionNames));
-
-        $this->forgetPermissionCache();
-
-        return $role;
+        return app(CreateRole::class)->handle($name, $permissionNames, $isActive);
     }
 
     /**
@@ -66,17 +58,7 @@ class RoleManagementService
      */
     public function setActive(Role $role, bool $isActive): void
     {
-        if ($role->isProtected()) {
-            abort(422, 'Built-in roles cannot be deactivated.');
-        }
-
-        if (! $isActive) {
-            $this->reassignHolders($role);
-        }
-
-        $role->forceFill(['is_active' => $isActive])->save();
-
-        $this->forgetPermissionCache();
+        app(SetRoleActive::class)->handle($role, $isActive);
     }
 
     /**
@@ -88,20 +70,7 @@ class RoleManagementService
      */
     public function delete(Role $role): void
     {
-        if ($role->isProtected()) {
-            abort(422, 'Built-in roles cannot be deleted.');
-        }
-
-        DB::transaction(function () use ($role): void {
-            $this->reassignHolders($role);
-
-            $role->permissions()->detach();
-            $role->users()->detach();
-
-            $role->delete();
-        });
-
-        $this->forgetPermissionCache();
+        app(DeleteRole::class)->handle($role);
     }
 
     /**
@@ -112,50 +81,5 @@ class RoleManagementService
     public function reassignedUserIds(): array
     {
         return $this->reassigned;
-    }
-
-    /**
-     * Move every holder of a role to `searcher`.
-     */
-    private function reassignHolders(Role $role): void
-    {
-        $searcher = Role::where('name', PlatformRole::Searcher->value)->first();
-
-        if (! $searcher) {
-            abort(422, 'The searcher fallback role is missing.');
-        }
-
-        foreach ($role->users()->get() as $user) {
-            // syncRoles replaces the whole set. Removing the doomed role first
-            // and adding the fallback means a user holding several roles keeps
-            // the others rather than being reset to just `searcher`.
-            $user->removeRole($role);
-
-            if (! $user->hasRole($searcher)) {
-                $user->assignRole($searcher);
-            }
-
-            $this->reassigned[(int) $user->getKey()] = (int) $user->getKey();
-        }
-    }
-
-    /**
-     * Resolve permission names to models, skipping any that do not exist.
-     *
-     * @param  list<string>  $names
-     * @return list<Permission>
-     */
-    private function resolvePermissions(array $names): array
-    {
-        if ($names === []) {
-            return [];
-        }
-
-        return Permission::whereIn('name', $names)->get()->all();
-    }
-
-    private function forgetPermissionCache(): void
-    {
-        app(PermissionRegistrar::class)->forgetCachedPermissions();
     }
 }

@@ -2,15 +2,15 @@
 
 namespace App\Services;
 
+use App\Actions\Organizations\Concerns\OrganizationHelpers;
+use App\Actions\Organizations\DeleteOrganization;
+use App\Actions\Organizations\SetOrganizationStatus;
+use App\Actions\Organizations\UpdateOrganization;
 use App\Enums\OrganizationStatus;
-use App\Enums\PlatformRole;
 use App\Models\Organization;
 use App\Models\Plan;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 
 /**
  * Central organization management. Wraps {@see TenantService} so admins
@@ -19,6 +19,8 @@ use Illuminate\Support\Str;
  */
 class OrganizationManagementService extends Service
 {
+    use OrganizationHelpers;
+
     public function __construct(private TenantService $tenants) {}
 
     public function create(User $owner, string $name, Plan $plan, ?string $email = null, ?string $phone = null): Organization
@@ -31,19 +33,7 @@ class OrganizationManagementService extends Service
      */
     public function update(Organization $organization, array $data, User $actor): Organization
     {
-        return DB::transaction(function () use ($organization, $data, $actor): Organization {
-            $organization->fill([
-                'name' => $data['name'],
-                'email' => $data['email'] ?? null,
-                'phone' => $data['phone'] ?? null,
-                'status' => $data['status'],
-                'plan_id' => $data['plan_id'],
-            ])->save();
-
-            activity()->performedOn($organization)->causedBy($actor)->log('Updated organization '.$organization->name);
-
-            return $organization;
-        });
+        return app(UpdateOrganization::class)->handle($organization, $data, $actor);
     }
 
     /**
@@ -57,24 +47,7 @@ class OrganizationManagementService extends Service
      */
     public function setStatus(Organization $organization, OrganizationStatus $status, User $actor): Organization
     {
-        return DB::transaction(function () use ($organization, $status, $actor): Organization {
-            $organization->forceFill(['status' => $status])->save();
-
-            if ($status === OrganizationStatus::Suspended) {
-                $memberIds = $organization->users()->pluck('users.id');
-
-                DB::table('sessions')->whereIn('user_id', $memberIds)->delete();
-            }
-
-            activity()
-                ->performedOn($organization)
-                ->causedBy($actor)
-                ->log($status === OrganizationStatus::Suspended
-                    ? 'Suspended organization '.$organization->name
-                    : 'Reactivated organization '.$organization->name);
-
-            return $organization;
-        });
+        return app(SetOrganizationStatus::class)->handle($organization, $status, $actor);
     }
 
     /**
@@ -199,36 +172,8 @@ class OrganizationManagementService extends Service
         ];
     }
 
-    /**
-     * Find the owner account by email, or create a ready-to-use one. Onboards
-     * them immediately so they are not forced through onboarding before they
-     * can reach their new organization.
-     */
-    private function findOrCreateOwner(string $email): User
-    {
-        $owner = User::where('email', $email)->first();
-
-        if ($owner) {
-            return $owner;
-        }
-
-        $owner = new User(['email' => $email]);
-        $owner->password = Hash::make(Str::random(40));
-        $owner->name = Str::before($email, '@');
-        $owner->onboarded_at = now();
-        $owner->status = 'active';
-        $owner->email_verified_at = now();
-        $owner->save();
-
-        $owner->assignRole(PlatformRole::OrganizationOwner->value);
-
-        return $owner;
-    }
-
     public function deleteOrganization(Organization $organization, User $actor): void
     {
-        activity()->performedOn($organization)->causedBy($actor)->log('Deleted organization '.$organization->name);
-
-        $organization->delete();
+        app(DeleteOrganization::class)->handle($organization, $actor);
     }
 }

@@ -2,11 +2,13 @@
 
 namespace App\Services;
 
+use App\Actions\AgreementTemplates\CreateAgreementTemplate;
+use App\Actions\AgreementTemplates\DeleteAgreementTemplate;
+use App\Actions\AgreementTemplates\UpdateAgreementTemplate;
 use App\Models\AgreementTemplate;
 use App\Models\Organization;
 use App\Models\Property;
 use App\Models\User;
-use App\Support\LeaseAgreementTemplate;
 use Illuminate\Validation\Rule;
 
 /**
@@ -40,35 +42,16 @@ class AgreementTemplateService extends Service
 
     public function create(User $actor, int $organizationId, ?int $propertyId, string $name, string $bodyHtml): AgreementTemplate
     {
-        return $this->transaction(function () use ($actor, $organizationId, $propertyId, $name, $bodyHtml) {
-            $template = new AgreementTemplate([
-                'organization_id' => $organizationId,
-                'property_id' => $propertyId,
-                'name' => $name,
-                'body_html' => LeaseAgreementTemplate::sanitize($bodyHtml),
-                'created_by' => $actor->id,
-            ]);
-
-            return $this->save($template);
-        });
+        return app(CreateAgreementTemplate::class)->handle($actor, $organizationId, $propertyId, $name, $bodyHtml);
     }
 
     public function update(AgreementTemplate $template, User $actor, string $name, string $bodyHtml): AgreementTemplate
     {
-        return $this->transaction(function () use ($template, $name, $bodyHtml) {
-            $template->update([
-                'name' => $name,
-                'body_html' => LeaseAgreementTemplate::sanitize($bodyHtml),
-            ]);
-
-            return $template->refresh();
-        });
+        return app(UpdateAgreementTemplate::class)->handle($template, $actor, $name, $bodyHtml);
     }
 
     public function remove(AgreementTemplate $template): void
     {
-        $this->transaction(function () use ($template): void {
-            $this->delete($template);
-        });
+        app(DeleteAgreementTemplate::class)->handle($template);
     }
 }

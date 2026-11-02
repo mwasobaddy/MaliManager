@@ -2,12 +2,12 @@
 
 namespace App\Services;
 
+use App\Actions\Tenants\Concerns\OrganizationHelpers;
+use App\Actions\Tenants\CreateOrganization;
 use App\Models\Organization;
 use App\Models\Plan;
 use App\Models\Tenant;
 use App\Models\User;
-use App\Support\DefaultSubRoles;
-use Illuminate\Support\Str;
 
 /**
  * Creates and tears down an organization's tenancy in single-database mode.
@@ -16,6 +16,8 @@ use Illuminate\Support\Str;
  */
 class TenantService extends Service
 {
+    use OrganizationHelpers;
+
     public function createOrganization(
         User $owner,
         string $name,
@@ -23,47 +25,6 @@ class TenantService extends Service
         ?string $email = null,
         ?string $phone = null,
     ): Organization {
-        return $this->transaction(function () use ($owner, $name, $plan, $email, $phone) {
-            $tenant = $this->save(new Tenant(['id' => (string) Str::uuid()]));
-
-            $organization = $this->save(new Organization([
-                'tenant_id' => $tenant->getTenantKey(),
-                'name' => $name,
-                'slug' => $this->uniqueSlug($name),
-                'email' => $email,
-                'phone' => $phone,
-                'status' => 'active',
-                'plan_id' => $plan->id,
-                'created_by' => $owner->id,
-            ]));
-
-            $tenant->domains()->create([
-                'domain' => $organization->slug.'.'.config('tenancy.subdomain_base'),
-            ]);
-
-            DefaultSubRoles::createFor($organization, $owner->id);
-
-            $organization->users()->attach($owner->id, [
-                'is_owner' => true,
-                'status' => 'active',
-            ]);
-
-            $owner->assignRole('organization-owner');
-
-            return $organization;
-        });
-    }
-
-    private function uniqueSlug(string $name): string
-    {
-        $base = Str::slug($name);
-        $slug = $base;
-        $suffix = 1;
-
-        while (Organization::withTrashed()->where('slug', $slug)->exists()) {
-            $slug = $base.'-'.($suffix++);
-        }
-
-        return $slug;
+        return app(CreateOrganization::class)->handle($owner, $name, $plan, $email, $phone);
     }
 }
