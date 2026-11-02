@@ -4,14 +4,15 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Tenant;
 
+use App\Actions\Audit\ExportAuditLog;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Tenant\AuditIndexRequest;
 use App\Http\Requests\Tenant\AuditShowRequest;
+use App\Http\Requests\Tenant\ExportAuditRequest;
 use App\Models\Audit;
 use App\Models\User;
 use App\Services\AuditService;
 use App\Support\TenancyContext;
-use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -64,13 +65,16 @@ class AuditController extends Controller
         ]);
     }
 
-    public function export(Request $request)
+    public function export(ExportAuditRequest $request, ExportAuditLog $export): \Symfony\Component\HttpFoundation\Response
     {
-        $tenantId = TenancyContext::tenantId();
+        $csv = $export->handle($request->toData());
 
-        $audits = $this->service->query($this->service->filtersFromRequest($request), $tenantId)
-            ->get();
-
-        return $this->service->toCsv($audits, 'audit-log.csv');
+        return response()->streamDownload(
+            function () use ($csv): void {
+                echo $csv->content;
+            },
+            $csv->filename,
+            ['Content-Type' => 'text/csv'],
+        );
     }
 }

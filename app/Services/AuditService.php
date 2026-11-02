@@ -9,7 +9,6 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
-use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AuditService
 {
@@ -143,39 +142,6 @@ class AuditService
                 'id' => $audit->subject_id,
             ] : null,
         ];
-    }
-
-    /**
-     * @param  iterable<Audit>  $audits
-     */
-    public function toCsv(iterable $audits, string $filename = 'audit-log.csv'): StreamedResponse
-    {
-        $callback = function () use ($audits): void {
-            $handle = fopen('php://output', 'w');
-
-            fputcsv($handle, ['Time', 'Actor', 'Event', 'Category', 'Subject', 'Description', 'IP address']);
-
-            foreach ($audits as $audit) {
-                $row = $this->transform($audit);
-
-                fputcsv($handle, [
-                    $row['created_at'],
-                    $row['causer']['name'] ?? ($row['causer']['email'] ?? 'System'),
-                    $row['event'] ?? '',
-                    $row['log_name'] ?? '',
-                    $row['subject'] ? $row['subject']['type'].' #'.$row['subject']['id'] : '',
-                    $row['description'] ?? '',
-                    $row['ip_address'] ?? '',
-                ]);
-            }
-
-            fclose($handle);
-        };
-
-        return response()->stream($callback, 200, [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
-        ]);
     }
 
     public function distinctEvents(?string $tenantId): array
