@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Tenant;
 use App\Enums\AiFeature;
 use App\Enums\AiProvider;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Tenant\UpdateAiSettingsRequest;
 use App\Models\AiSetting;
 use App\Models\AiUsageLog;
 use App\Models\User;
@@ -12,7 +13,6 @@ use App\Support\Ai\AiGateway;
 use App\Support\TenancyContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -75,24 +75,13 @@ class AiSettingsController extends Controller
         ]);
     }
 
-    public function update(Request $request): RedirectResponse
+    public function update(UpdateAiSettingsRequest $request): RedirectResponse
     {
         $organization = TenancyContext::organization();
 
         abort_unless($request->user()->isOwnerOf($organization), 403);
 
-        $validated = $request->validate([
-            'provider' => ['required', Rule::in(array_column(AiProvider::cases(), 'value'))],
-            'model' => ['required', 'string', 'max:100'],
-            'base_url' => ['nullable', 'url', 'max:255'],
-            // Write-only: empty string means "keep existing key".
-            'api_key' => ['nullable', 'string', 'min:20'],
-            'features' => ['nullable', 'array'],
-            'features.*' => [Rule::in(array_column(AiFeature::cases(), 'value'))],
-            'allow_all_members' => ['nullable', 'boolean'],
-            'allowed_user_ids' => ['nullable', 'array'],
-            'allowed_user_ids.*' => ['integer'],
-        ]);
+        $validated = $request->validated();
 
         /** @var AiSetting|null $setting */
         $setting = AiSetting::query()
