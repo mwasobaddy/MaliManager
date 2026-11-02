@@ -1,5 +1,6 @@
 import { Head, Link, usePage } from '@inertiajs/react';
-import { Mail, Phone, Plus, UserCog } from 'lucide-react';
+import { Mail, Phone, Plus, Trash2, UserCog } from 'lucide-react';
+import ConfirmDeleteOverlay from '@/components/confirm-delete-overlay';
 import Heading from '@/components/heading';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -10,8 +11,10 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
+import { useOverlayParam } from '@/hooks/use-overlay-param';
 import {
     create as createStaff,
+    destroy as destroyStaff,
     edit as editStaff,
 } from '@/routes/tenant/staff';
 
@@ -54,6 +57,14 @@ export default function StaffIndex({ organization, staff }: Props) {
     const canCreate = permissions.includes('staff.create');
     const canEdit = permissions.includes('staff.edit');
     const canDelete = permissions.includes('staff.delete');
+
+    const { query, setOverlayParam } = useOverlayParam();
+
+    // The delete modal needs the row's identity to build its DELETE URL, so the
+    // id travels in the URL beside the mode instead of in component state.
+    const deleteTargetId = Number(query.get('staff'));
+    const deleteTarget = staff.find((member) => member.id === deleteTargetId);
+    const isDeleteOpen = query.get('mode') === 'delete' && !!deleteTarget;
 
     return (
         <>
@@ -178,6 +189,31 @@ export default function StaffIndex({ organization, staff }: Props) {
                                                     </Link>
                                                 </Button>
                                             )}
+                                            {canDelete && (
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="text-status-danger"
+                                                    onClick={() =>
+                                                        setOverlayParam(
+                                                            'mode',
+                                                            'delete',
+                                                            {
+                                                                only: ['staff'],
+                                                                keep: {
+                                                                    staff: String(
+                                                                        member.id,
+                                                                    ),
+                                                                },
+                                                            },
+                                                        )
+                                                    }
+                                                >
+                                                    <Trash2 className="size-4" />
+                                                    Delete
+                                                </Button>
+                                            )}
                                         </div>
                                     )}
                                 </CardContent>
@@ -186,6 +222,23 @@ export default function StaffIndex({ organization, staff }: Props) {
                     </div>
                 )}
             </div>
+
+            {canDelete && deleteTarget && (
+                <ConfirmDeleteOverlay
+                    open={isDeleteOpen}
+                    onOpenChange={(open) =>
+                        !open &&
+                        setOverlayParam('mode', null, {
+                            replace: true,
+                            only: ['staff'],
+                            keep: { staff: '' },
+                        })
+                    }
+                    action={destroyStaff(deleteTarget.id).url}
+                    title={`Remove ${deleteTarget.name}?`}
+                    description="They lose access to this organization and its properties immediately. Confirm with your password — this cannot be undone from the interface."
+                />
+            )}
         </>
     );
 }

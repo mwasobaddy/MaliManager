@@ -1,5 +1,6 @@
 import { Head, Link, usePage } from '@inertiajs/react';
-import { Mail, Phone, Plus, Users } from 'lucide-react';
+import { Mail, Phone, Plus, Trash2, Users } from 'lucide-react';
+import ConfirmDeleteOverlay from '@/components/confirm-delete-overlay';
 import Heading from '@/components/heading';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -10,8 +11,10 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
+import { useOverlayParam } from '@/hooks/use-overlay-param';
 import {
     create as createOccupant,
+    destroy as destroyOccupant,
     edit as editOccupant,
 } from '@/routes/tenant/occupants';
 
@@ -50,6 +53,16 @@ export default function OccupantsIndex({ property, occupants }: Props) {
     const canCreate = permissions.includes('occupant.create');
     const canEdit = permissions.includes('occupant.edit');
     const canDelete = permissions.includes('occupant.delete');
+
+    const { query, setOverlayParam } = useOverlayParam();
+
+    // The delete modal builds its DELETE URL from the row, so the id travels in
+    // the URL beside the mode rather than in component state.
+    const deleteTargetId = Number(query.get('occupant'));
+    const deleteTarget = occupants.find(
+        (occupant) => occupant.id === deleteTargetId,
+    );
+    const isDeleteOpen = query.get('mode') === 'delete' && !!deleteTarget;
 
     return (
         <>
@@ -177,6 +190,34 @@ export default function OccupantsIndex({ property, occupants }: Props) {
                                                     </Link>
                                                 </Button>
                                             )}
+                                            {canDelete && (
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="text-status-danger"
+                                                    onClick={() =>
+                                                        setOverlayParam(
+                                                            'mode',
+                                                            'delete',
+                                                            {
+                                                                only: [
+                                                                    'occupants',
+                                                                ],
+                                                                keep: {
+                                                                    occupant:
+                                                                        String(
+                                                                            occupant.id,
+                                                                        ),
+                                                                },
+                                                            },
+                                                        )
+                                                    }
+                                                >
+                                                    <Trash2 className="size-4" />
+                                                    Delete
+                                                </Button>
+                                            )}
                                         </div>
                                     )}
                                 </CardContent>
@@ -185,6 +226,28 @@ export default function OccupantsIndex({ property, occupants }: Props) {
                     </div>
                 )}
             </div>
+
+            {canDelete && deleteTarget && (
+                <ConfirmDeleteOverlay
+                    open={isDeleteOpen}
+                    onOpenChange={(open) =>
+                        !open &&
+                        setOverlayParam('mode', null, {
+                            replace: true,
+                            only: ['occupants'],
+                            keep: { occupant: '' },
+                        })
+                    }
+                    action={
+                        destroyOccupant({
+                            property: property.slug,
+                            occupant: deleteTarget.id,
+                        }).url
+                    }
+                    title={`Remove ${deleteTarget.first_name} ${deleteTarget.last_name ?? ''}`.trim()}
+                    description="Their units are released and the occupant record is removed. Confirm with your password — this cannot be undone from the interface."
+                />
+            )}
         </>
     );
 }

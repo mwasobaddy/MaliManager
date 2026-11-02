@@ -16,6 +16,7 @@ import { ActionIconButton } from '@/components/action-icon-button';
 import { CsvImportSheet, downloadCsv } from '@/components/csv-actions';
 import { CsvExportSheet } from '@/components/csv-export-sheet';
 import { DataTable } from '@/components/data-table';
+import { FormModal } from '@/components/form-modal';
 import Heading from '@/components/heading';
 import { LabelledIconButton } from '@/components/labelled-icon-button';
 import { OverlayFooter } from '@/components/overlay-footer';
@@ -457,7 +458,7 @@ export default function PropertyTypesIndex({
                 />
             </div>
 
-            <ResponsiveOverlay
+            <FormModal
                 open={isCreateOpen}
                 onOpenChange={(open) => {
                     if (!open) {
@@ -492,7 +493,7 @@ export default function PropertyTypesIndex({
                 >
                     <PropertyTypeFields idPrefix="create" errors={errors} />
                 </Form>
-            </ResponsiveOverlay>
+            </FormModal>
 
             <ResponsiveOverlay
                 open={isViewOpen && viewedType !== undefined}

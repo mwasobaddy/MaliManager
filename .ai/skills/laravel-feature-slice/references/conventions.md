@@ -11,50 +11,40 @@ A resource gets one lowercase-plural folder, and its list page is always `index`
 ```
 resources/js/pages/users/
 ├── index.tsx      # the list — always called index, never users-table.tsx / list.tsx / -page.tsx
-├── create.tsx     # only if create needs its own URL
-├── edit.tsx       # only if edit needs its own URL
-└── show.tsx       # only if the record needs its own URL
+├── chat.tsx       # another page under the same namespace
+└── chat/          # only once chat becomes several pages
+    ├── index.tsx
+    └── history.tsx
 ```
 
-- `index.tsx` is the default list name in every resource. Do not invent `users-table`, `users-list`, or
-  `users-index-page`.
-- `Inertia::render('users/index')` must match the folder and file exactly. A mismatch is a blank
-  screen, not an error — so get the name right the first time.
-- Sub-views that are only reachable from the list (a detail panel, a tab) live beside `index` with the
-  action name: `history.tsx`, `settings.tsx`.
+Rules that make this predictable:
 
-## Create, edit and view open in an overlay
+- **`index.tsx` inside a folder is the page for that folder's own path.** `pages/users/index.tsx` is the
+  page for `/users`; `pages/users/chat/index.tsx` is the page for `/users/chat`.
+- **A folder is a namespace for sibling pages, not a wrapper around one page.** `pages/users/` holds
+  `index.tsx` and its sibling pages; `pages/users/chat/` holds the chat pages.
+- **One page, one file.** A single page does not get its own folder. `users/chat.tsx` is correct;
+  `users/chat/index.tsx` with nothing else in it is a folder that earns nothing.
+- **Switch to a folder when the page gains a second page or co-located components.** The moment chat
+  grows `history` and `conversation`, move it to `chat/index.tsx` + `chat/history.tsx`. Moving is a
+  `git mv` and one `Inertia::render` string.
+- **Never `users/chat/chat.tsx`.** The folder is the namespace; the page inside it is `index.tsx`.
 
-Do not send the user to a separate page to create, edit or view a record that belongs to a list. Use a
-**responsive overlay**: a `Drawer` rising from the bottom on phones, a `Sheet` sliding from the right
-on `sm` and up.
+Inertia resolves `Inertia::render('users/chat')` to **either** `users/chat.tsx` **or**
+`users/chat/index.tsx`, so both work — which is exactly why you need one rule. Having both on disk is a
+silent duplicate: one of them is dead code and nothing warns you.
 
-The component is `ResponsiveOverlay` (`resources/js/components/responsive-overlay.tsx`). Copy it into a
-new project once, then use it everywhere:
+`Inertia::render('users/index')` must match the folder and file exactly. A mismatch is a blank screen,
+not an error.
 
-```tsx
-<ResponsiveOverlay
-    open={open}
-    onOpenChange={setOpen}
-    title="Edit user"
-    description="Changes apply immediately."
-    footer={<Button form="user-form" type="submit">Save</Button>}
->
-    <UserForm user={user} />
-</ResponsiveOverlay>
-```
+## Create, edit and view use a URL-based overlay
 
-It already handles the breakpoint with `useIsMobile()` — bottom `Drawer` under it, right `Sheet` with
-`sm:max-w-lg` above it. Do not build a second overlay or hand-roll the breakpoint.
+Which surface to use — modal, sheet, full page — is decided by the job, not by the CRUD verb. The
+matrix, the URL mechanics and the component contract all live in `references/overlays.md`.
 
-Why an overlay rather than a page:
-
-- the list stays in view, so the user keeps their place
-- no route change, so no back-button ambiguity and no lost filters
-- one component serves both breakpoints instead of two screens to maintain
-
-A **full page** is the right call when the view needs its own URL: shareable, deep-linkable, printable,
-or reached from a notification. Those are the exceptions, and they should be deliberate.
+The one thing to remember without opening it: **the overlay's open state comes from the URL, never
+from `useState`.** Local state means the sheet cannot be linked to, cannot be refreshed, and the back
+button leaves the page instead of closing it.
 
 ## Permission-first, never role-first
 
