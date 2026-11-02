@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers\Platform;
 
+use App\Actions\PropertyTypes\CreatePropertyType;
+use App\Actions\PropertyTypes\DeletePropertyType;
 use App\Actions\PropertyTypes\ExportPropertyTypes;
 use App\Actions\PropertyTypes\ImportPropertyTypes;
+use App\Actions\PropertyTypes\UpdatePropertyType;
 use App\Concerns\FlashesImportResult;
 use App\Enums\PlatformPermissionKey;
 use App\Enums\PropertyCategory;
@@ -81,27 +84,25 @@ class PropertyTypeController extends Controller
         ]);
     }
 
-    public function store(StorePropertyTypeRequest $request): RedirectResponse
+    public function store(StorePropertyTypeRequest $request, CreatePropertyType $action): RedirectResponse
     {
         // `validated()` only returns declared rules, and `slug` is derived in
         // the request's passedValidation() rather than being a rule — so it has
         // to be read from the merged input, not from validated().
-        PropertyType::create([
-            ...$request->validated(),
-            'slug' => $request->string('slug')->toString(),
-            'sort_order' => $request->integer('sort_order') ?: $this->nextSortOrder(),
-            'status' => 'active',
-            'created_by' => $request->user()?->id,
-        ]);
+        $action->handle(
+            [...$request->validated(), 'slug' => $request->string('slug')->toString()],
+            $request->integer('sort_order'),
+            $request->user(),
+        );
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Property type created.']);
 
         return redirect()->route('platform.property-types.index');
     }
 
-    public function update(UpdatePropertyTypeRequest $request, PropertyType $propertyType): RedirectResponse
+    public function update(UpdatePropertyTypeRequest $request, PropertyType $propertyType, UpdatePropertyType $action): RedirectResponse
     {
-        $propertyType->update($request->validated());
+        $action->handle($propertyType, $request->validated());
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Property type updated.']);
 
@@ -115,12 +116,12 @@ class PropertyTypeController extends Controller
      * mis-click cannot take a landlord's buildings with it. The confirmation
      * states the count for that reason.
      */
-    public function destroy(DestroyPropertyTypeRequest $request, PropertyType $propertyType): RedirectResponse
+    public function destroy(DestroyPropertyTypeRequest $request, PropertyType $propertyType, DeletePropertyType $action): RedirectResponse
     {
         $inUse = $propertyType->usageCount();
         $name = $propertyType->name;
 
-        $propertyType->delete();
+        $action->handle($propertyType);
 
         $suffix = $inUse === 1 ? '1 property is now untyped.' : "{$inUse} properties are now untyped.";
 
@@ -164,11 +165,6 @@ class PropertyTypeController extends Controller
             'search' => $request->string('search')->trim()->toString(),
             'category' => $request->string('category')->toString(),
         ]);
-    }
-
-    private function nextSortOrder(): int
-    {
-        return (int) $this->query()->max('sort_order') + 1;
     }
 
     /**

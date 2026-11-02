@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Platform;
 
+use App\Actions\SubscriptionPayments\CreateSubscriptionPayment;
+use App\Actions\SubscriptionPayments\DeleteSubscriptionPayment;
 use App\Actions\SubscriptionPayments\ExportSubscriptionPayments;
 use App\Actions\SubscriptionPayments\ImportSubscriptionPayments;
+use App\Actions\SubscriptionPayments\UpdateSubscriptionPayment;
 use App\Concerns\FlashesImportResult;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Platform\DestroySubscriptionPaymentRequest;
@@ -191,30 +194,27 @@ class SubscriptionPaymentController extends Controller
         return $this->respondToImport($result, 'payment', 'payments', 'platform.subscription-payments.index');
     }
 
-    public function store(StoreSubscriptionPaymentRequest $request): RedirectResponse
+    public function store(StoreSubscriptionPaymentRequest $request, CreateSubscriptionPayment $action): RedirectResponse
     {
-        SubscriptionPayment::create(array_merge(
-            $request->validated(),
-            ['created_by' => $request->user()?->id],
-        ));
+        $action->handle($request->validated(), $request->user());
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Subscription payment recorded.']);
 
         return redirect()->route('platform.subscription-payments.index');
     }
 
-    public function update(UpdateSubscriptionPaymentRequest $request, SubscriptionPayment $subscriptionPayment): RedirectResponse
+    public function update(UpdateSubscriptionPaymentRequest $request, SubscriptionPayment $subscriptionPayment, UpdateSubscriptionPayment $action): RedirectResponse
     {
-        $subscriptionPayment->update($request->validated());
+        $action->handle($subscriptionPayment, $request->validated());
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Subscription payment updated.']);
 
         return redirect()->route('platform.subscription-payments.index');
     }
 
-    public function destroy(DestroySubscriptionPaymentRequest $request, SubscriptionPayment $subscriptionPayment): RedirectResponse
+    public function destroy(DestroySubscriptionPaymentRequest $request, SubscriptionPayment $subscriptionPayment, DeleteSubscriptionPayment $action): RedirectResponse
     {
-        $subscriptionPayment->delete();
+        $action->handle($subscriptionPayment);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Subscription payment deleted.']);
 

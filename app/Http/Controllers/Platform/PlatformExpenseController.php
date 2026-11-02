@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Platform;
 
+use App\Actions\PlatformExpenses\CreatePlatformExpense;
+use App\Actions\PlatformExpenses\DeletePlatformExpense;
 use App\Actions\PlatformExpenses\ExportPlatformExpenses;
 use App\Actions\PlatformExpenses\ImportPlatformExpenses;
+use App\Actions\PlatformExpenses\UpdatePlatformExpense;
 use App\Concerns\FlashesImportResult;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Platform\DestroyPlatformExpenseRequest;
@@ -153,30 +156,27 @@ class PlatformExpenseController extends Controller
         return $this->respondToImport($result, 'expense', 'expenses', 'platform.expenses.index');
     }
 
-    public function store(StorePlatformExpenseRequest $request): RedirectResponse
+    public function store(StorePlatformExpenseRequest $request, CreatePlatformExpense $action): RedirectResponse
     {
-        PlatformExpense::create(array_merge(
-            $request->validated(),
-            ['created_by' => $request->user()?->id],
-        ));
+        $action->handle($request->validated(), $request->user());
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Platform expense recorded.']);
 
         return redirect()->route('platform.expenses.index');
     }
 
-    public function update(UpdatePlatformExpenseRequest $request, PlatformExpense $platformExpense): RedirectResponse
+    public function update(UpdatePlatformExpenseRequest $request, PlatformExpense $platformExpense, UpdatePlatformExpense $action): RedirectResponse
     {
-        $platformExpense->update($request->validated());
+        $action->handle($platformExpense, $request->validated());
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Platform expense updated.']);
 
         return redirect()->route('platform.expenses.index');
     }
 
-    public function destroy(DestroyPlatformExpenseRequest $request, PlatformExpense $platformExpense): RedirectResponse
+    public function destroy(DestroyPlatformExpenseRequest $request, PlatformExpense $platformExpense, DeletePlatformExpense $action): RedirectResponse
     {
-        $platformExpense->delete();
+        $action->handle($platformExpense);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Platform expense deleted.']);
 

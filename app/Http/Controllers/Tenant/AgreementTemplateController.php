@@ -46,16 +46,18 @@ class AgreementTemplateController extends Controller
 
     public function store(SaveAgreementTemplateRequest $request): RedirectResponse
     {
-        $organizationId = TenancyContext::organization()?->id;
+        $organization = TenancyContext::organization();
+        abort_if($organization === null, 403);
+
         $validated = $request->validated();
 
-        $template = AgreementTemplate::create([
-            'organization_id' => $organizationId,
-            'property_id' => null,
-            'name' => $validated['name'],
-            'body_html' => LeaseAgreementTemplate::sanitize($validated['body_html']),
-            'created_by' => $request->user()->id,
-        ]);
+        $template = $this->templates->create(
+            $request->user(),
+            $organization->id,
+            null,
+            $validated['name'],
+            $validated['body_html'],
+        );
 
         $this->syncDocument($request, $template);
 
@@ -88,10 +90,12 @@ class AgreementTemplateController extends Controller
 
         $validated = $request->validated();
 
-        $template->update([
-            'name' => $validated['name'],
-            'body_html' => LeaseAgreementTemplate::sanitize($validated['body_html']),
-        ]);
+        $this->templates->update(
+            $template,
+            $request->user(),
+            $validated['name'],
+            $validated['body_html'],
+        );
 
         $this->syncDocument($request, $template);
 
@@ -105,7 +109,7 @@ class AgreementTemplateController extends Controller
         abort_if($template->organization_id !== TenancyContext::organization()?->id, 403);
         abort_if($template->property_id !== null, 403);
 
-        $template->delete();
+        $this->templates->remove($template);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Template deleted.']);
 
@@ -191,7 +195,7 @@ class AgreementTemplateController extends Controller
         abort_if($template->organization_id !== $property->organization_id, 403);
         abort_if($template->property_id !== $property->id, 403);
 
-        $template->delete();
+        $this->templates->remove($template);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Template deleted.']);
 

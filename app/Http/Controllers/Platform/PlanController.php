@@ -4,8 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Platform;
 
+use App\Actions\Plans\CreatePlan;
+use App\Actions\Plans\DeletePlan;
 use App\Actions\Plans\ExportPlans;
 use App\Actions\Plans\ImportPlans;
+use App\Actions\Plans\SetPlanActive;
+use App\Actions\Plans\UpdatePlan;
 use App\Concerns\FlashesImportResult;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Platform\DestroyPlanRequest;
@@ -135,21 +139,18 @@ class PlanController extends Controller
         ];
     }
 
-    public function store(StorePlanRequest $request): RedirectResponse
+    public function store(StorePlanRequest $request, CreatePlan $action): RedirectResponse
     {
-        Plan::create(array_merge(
-            $request->validated(),
-            ['created_by' => $request->user()?->id],
-        ));
+        $action->handle($request->validated(), $request->user());
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Plan created.']);
 
         return redirect()->route('platform.plans.index');
     }
 
-    public function update(UpdatePlanRequest $request, Plan $plan): RedirectResponse
+    public function update(UpdatePlanRequest $request, Plan $plan, UpdatePlan $action): RedirectResponse
     {
-        $plan->update($request->validated());
+        $action->handle($plan, $request->validated());
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Plan updated.']);
 
@@ -190,9 +191,9 @@ class PlanController extends Controller
      * `is_active` gates which tiers a new organization can be put on, so it is
      * a state change worth confirming, but not worth a separate page.
      */
-    public function setStatus(UpdatePlanStatusRequest $request, Plan $plan): RedirectResponse
+    public function setStatus(UpdatePlanStatusRequest $request, Plan $plan, SetPlanActive $action): RedirectResponse
     {
-        $plan->update(['is_active' => $request->boolean('is_active')]);
+        $action->handle($plan, $request->boolean('is_active'));
 
         Inertia::flash('toast', [
             'type' => 'success',
@@ -204,9 +205,9 @@ class PlanController extends Controller
         return back();
     }
 
-    public function destroy(DestroyPlanRequest $request, Plan $plan): RedirectResponse
+    public function destroy(DestroyPlanRequest $request, Plan $plan, DeletePlan $action): RedirectResponse
     {
-        $plan->delete();
+        $action->handle($plan);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Plan deleted.']);
 
