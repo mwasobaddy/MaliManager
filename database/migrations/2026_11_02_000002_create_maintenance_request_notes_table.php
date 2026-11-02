@@ -26,7 +26,16 @@ return new class extends Migration
             $table->softDeletes();
 
             // The list is always "notes for this request, newest first".
-            $table->index(['maintenance_request_id', 'created_at']);
+            //
+            // Named explicitly: the generated name would be
+            // `maintenance_request_notes_maintenance_request_id_created_at_index`
+            // at 65 characters, and MySQL rejects identifiers over 64. SQLite
+            // accepted it, so the tests passed and only `migrate` on MySQL
+            // failed.
+            $table->index(
+                ['maintenance_request_id', 'created_at'],
+                'maintenance_notes_request_created_index',
+            );
         });
     }
 
