@@ -9,6 +9,7 @@ use App\Enums\PlatformRole;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Platform\DestroyRoleRequest;
 use App\Http\Requests\Platform\ImportRoleRequest;
+use App\Http\Requests\Platform\RoleIndexRequest;
 use App\Http\Requests\Platform\StoreRoleRequest;
 use App\Http\Requests\Platform\UpdateRolePermissionsRequest;
 use App\Http\Requests\Platform\UpdateRoleStatusRequest;
@@ -58,7 +59,7 @@ class RolesController extends Controller
      * editable — `Role::isProtected()` decides, by name, and the service
      * refuses to deactivate or delete one.
      */
-    public function index(Request $request): Response
+    public function index(RoleIndexRequest $request): Response
     {
         $sort = $request->string('sort')->toString();
         $sortColumn = self::SORTABLE[$sort] ?? null;
