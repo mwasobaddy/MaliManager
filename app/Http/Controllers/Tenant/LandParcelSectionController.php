@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Tenant;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Tenant\StoreLandParcelSectionRequest;
 use App\Models\AgreementTemplate;
 use App\Models\LandParcel;
 use App\Models\LandParcelSection;
@@ -28,16 +29,11 @@ use Inertia\Inertia;
  */
 class LandParcelSectionController extends Controller
 {
-    public function store(Request $request, LandParcel $landParcel): RedirectResponse
+    public function store(StoreLandParcelSectionRequest $request, LandParcel $landParcel): RedirectResponse
     {
         $this->authorizeParcelAccess($request, $landParcel);
 
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'area' => ['nullable', 'numeric', 'min:0'],
-            'status' => ['required', Rule::in(['vacant', 'leased', 'maintenance'])],
-            'notes' => ['nullable', 'string'],
-        ]);
+        $validated = $request->validated();
 
         $landParcel->sections()->create([
             'name' => $validated['name'],
