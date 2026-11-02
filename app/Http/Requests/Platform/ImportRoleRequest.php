@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Platform;
 
+use App\Data\Roles\ImportRolesData;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -16,7 +17,7 @@ class ImportRoleRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return true;
+        return $this->user()?->can('importRoles') ?? false;
     }
 
     /**
@@ -27,5 +28,10 @@ class ImportRoleRequest extends FormRequest
         return [
             'file' => ['required', 'file', 'mimes:csv,txt', 'max:2048'],
         ];
+    }
+
+    public function toData(): ImportRolesData
+    {
+        return new ImportRolesData(file: $this->file('file'));
     }
 }

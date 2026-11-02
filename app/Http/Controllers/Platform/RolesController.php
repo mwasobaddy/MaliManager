@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Platform;
 
+use App\Actions\Roles\ExportRoles;
+use App\Actions\Roles\ImportRoles;
+use App\Concerns\FlashesImportResult;
 use App\Enums\PlatformPermissionKey;
-use App\Enums\PlatformRole;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Platform\DestroyRoleRequest;
+use App\Http\Requests\Platform\ExportRolesRequest;
 use App\Http\Requests\Platform\ImportRoleRequest;
 use App\Http\Requests\Platform\RoleIndexRequest;
 use App\Http\Requests\Platform\StoreRoleRequest;
@@ -15,7 +18,6 @@ use App\Http\Requests\Platform\UpdateRolePermissionsRequest;
 use App\Http\Requests\Platform\UpdateRoleStatusRequest;
 use App\Models\Role;
 use App\Services\RoleManagementService;
-use App\Support\CsvReader;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -27,6 +29,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class RolesController extends Controller
 {
+    use FlashesImportResult;
+
     /**
      * Sort keys the table may order by, mapped to real columns.
      *
@@ -175,36 +179,17 @@ class RolesController extends Controller
      * Permissions are pipe-separated, matching the import format, so a file can
      * be exported, edited by hand and imported back.
      */
-    public function export(Request $request): StreamedResponse
+    public function export(ExportRolesRequest $request, ExportRoles $export): StreamedResponse
     {
-        $scope = $request->string('scope')->toString() === 'page' ? 'page' : 'all';
+        $csv = $export->handle($request->toData());
 
-        $query = $this->filtered($request)
-            ->with('permissions')
-            ->orderBy('name');
-
-        if ($scope === 'page') {
-            $query->forPage((int) $request->integer('page', 1), 15);
-        }
-
-        $csv = fopen('php://temp', 'r+');
-        fputcsv($csv, ['Name', 'Permissions', 'Status', 'Users', 'Protected']);
-
-        foreach ($query->get() as $role) {
-            fputcsv($csv, [
-                $role->name,
-                implode('|', $role->permissions->pluck('name')->all()),
-                $role->is_active ? 'active' : 'inactive',
-                $role->users()->count(),
-                $role->isProtected() ? 'yes' : 'no',
-            ]);
-        }
-
-        rewind($csv);
-
-        return response()->streamDownload(fn () => fpassthru($csv), 'roles.csv', [
-            'Content-Type' => 'text/csv',
-        ]);
+        return response()->streamDownload(
+            function () use ($csv): void {
+                echo $csv->content;
+            },
+            $csv->filename,
+            ['Content-Type' => 'text/csv'],
+        );
     }
 
     /**
@@ -220,86 +205,11 @@ class RolesController extends Controller
      * case where an operator's intent and the file disagree, and silently
      * ignoring it would import the file as a success while doing less than asked.
      */
-    public function import(ImportRoleRequest $request, CsvReader $csv): RedirectResponse
+    public function import(ImportRoleRequest $request, ImportRoles $import): RedirectResponse
     {
-        $parsed = $csv->rows($request->file('file'));
-        $errors = [];
-        $imported = 0;
+        $result = $import->handle($request->toData());
 
-        foreach ($parsed['rows'] as $row) {
-            $data = $row['data'];
-            $name = strtolower(trim($data['name'] ?? ''));
-
-            if ($name === '') {
-                $errors[] = ['row' => $row['row'], 'message' => "Row {$row['row']}: Name is required."];
-
-                continue;
-            }
-
-            if (! preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $name)) {
-                $errors[] = ['row' => $row['row'], 'message' => "Row {$row['row']}: \"{$name}\" must be lowercase words separated by hyphens."];
-
-                continue;
-            }
-
-            if (PlatformRole::tryFrom($name) !== null) {
-                $errors[] = ['row' => $row['row'], 'message' => "Row {$row['row']}: \"{$name}\" is a built-in role and cannot be imported."];
-
-                continue;
-            }
-
-            if (Role::where('name', $name)->exists()) {
-                $errors[] = ['row' => $row['row'], 'message' => "Row {$row['row']}: the role \"{$name}\" already exists."];
-
-                continue;
-            }
-
-            $names = collect(explode('|', $data['permissions'] ?? ''))
-                ->map(fn (string $permission): string => trim($permission))
-                ->filter()
-                ->unique()
-                ->values()
-                ->all();
-
-            $unknown = array_diff($names, array_column(PlatformPermissionKey::cases(), 'value'));
-
-            if ($unknown !== []) {
-                $errors[] = ['row' => $row['row'], 'message' => "Row {$row['row']}: unknown permission(s) ".implode(', ', $unknown).'.'];
-
-                continue;
-            }
-
-            $status = strtolower(trim($data['status'] ?? 'active'));
-            $isActive = ! in_array($status, ['inactive', 'disabled', '0', 'no'], true);
-
-            $this->roles->create($name, $names, $isActive);
-
-            $imported++;
-        }
-
-        if (! $parsed['ok']) {
-            $errors = $parsed['rows'];
-        }
-
-        $failed = count($errors);
-
-        if ($failed === 0) {
-            Inertia::flash('toast', [
-                'type' => 'success',
-                'message' => $imported === 1 ? '1 role imported.' : "{$imported} roles imported.",
-            ]);
-
-            return redirect()->route('platform.roles.index');
-        }
-
-        Inertia::flash('toast', [
-            'type' => $imported > 0 ? 'warning' : 'error',
-            'message' => "{$imported} imported, {$failed} failed.",
-        ]);
-
-        Inertia::flash('importErrors', $errors);
-
-        return back();
+        return $this->respondToImport($result, 'role', 'roles', 'platform.roles.index');
     }
 
     /**
@@ -307,25 +217,11 @@ class RolesController extends Controller
      */
     private function filtered(Request $request): Builder
     {
-        // `Request::string()` returns a Stringable and an object is always truthy,
-        // so `->when($request->string('search')->trim(), ...)` would run the
-        // filter with no term — binding `like '%%'` and matching everything.
-        return Role::query()
-            ->when($request->string('search')->trim()->toString(), fn (Builder $query, string $search) => $query->where('name', 'like', "%{$search}%"))
-            ->when(
-                $request->string('status')->toString() !== '',
-                fn (Builder $query) => $query->where('is_active', $request->string('status')->toString() === 'active'),
-            )
-            ->when($request->string('type')->toString() !== '', function (Builder $query) use ($request) {
-                // "default" is the built-in four — the rows whose name is an enum
-                // case. `Role::isProtected()` is the same test, but it is PHP, so
-                // the split has to be expressed in SQL as its negation.
-                $builtIn = array_column(PlatformRole::cases(), 'value');
-
-                $request->string('type')->toString() === 'default'
-                    ? $query->whereIn('name', $builtIn)
-                    : $query->whereNotIn('name', $builtIn);
-            });
+        return Role::query()->filtered([
+            'search' => $request->string('search')->trim()->toString(),
+            'status' => $request->string('status')->toString(),
+            'type' => $request->string('type')->toString(),
+        ]);
     }
 
     /**
