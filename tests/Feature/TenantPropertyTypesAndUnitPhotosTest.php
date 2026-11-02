@@ -152,7 +152,9 @@ test('deleting a type in use unlabels its properties instead of cascading', func
     ]);
 
     $this->actingAs($this->admin)
-        ->delete(route('platform.property-types.destroy', $type->id))
+        ->delete(route('platform.property-types.destroy', $type->id), [
+            'password' => 'password',
+        ])
         ->assertRedirect(route('platform.property-types.index'));
 
     $property->refresh();
@@ -163,6 +165,28 @@ test('deleting a type in use unlabels its properties instead of cascading', func
     expect($property->trashed())->toBeFalse()
         ->and($property->propertyType)->toBeNull()
         ->and(PropertyType::withTrashed()->find($property->property_type_id))->not->toBeNull();
+});
+
+test('deleting a type with the wrong password is rejected', function () {
+    $type = PropertyType::where('slug', 'villa')->firstOrFail();
+
+    $this->actingAs($this->admin)
+        ->delete(route('platform.property-types.destroy', $type->id), [
+            'password' => 'wrong-password',
+        ])
+        ->assertSessionHasErrors('password');
+
+    expect(PropertyType::where('slug', 'villa')->exists())->toBeTrue();
+});
+
+test('deleting a type without a password is rejected', function () {
+    $type = PropertyType::where('slug', 'villa')->firstOrFail();
+
+    $this->actingAs($this->admin)
+        ->delete(route('platform.property-types.destroy', $type->id))
+        ->assertSessionHasErrors('password');
+
+    expect(PropertyType::where('slug', 'villa')->exists())->toBeTrue();
 });
 
 test('a role without the create permission cannot create a type', function () {

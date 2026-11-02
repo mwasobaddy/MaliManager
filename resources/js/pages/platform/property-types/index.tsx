@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActionIconButton } from '@/components/action-icon-button';
+import ConfirmDeleteOverlay from '@/components/confirm-delete-overlay';
 import { CsvImportSheet, downloadCsv } from '@/components/csv-actions';
 import { CsvExportSheet } from '@/components/csv-export-sheet';
 import { DataTable } from '@/components/data-table';
@@ -26,7 +27,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Pagination } from '@/components/ui/pagination';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import * as typeRoutes from '@/routes/platform/property-types';
 
 type PropertyTypeRow = {
@@ -101,9 +108,14 @@ export default function PropertyTypesIndex({
         direction: query.get('direction') === 'asc' ? 'asc' : 'desc',
     };
 
-    type RowMode = 'view' | 'edit' | 'delete';
-    const rowMode = (query.get('mode') as RowMode | null) ?? 'view';
+    type RowMode = 'view' | 'edit';
+    const requestedMode = query.get('mode');
+    const rowMode: RowMode = requestedMode === 'edit' ? 'edit' : 'view';
     const isViewOpen = query.get('id') !== null;
+    // Delete is a Modal, not a fourth mode of the row sheet. A destructive gate
+    // needs the centred backdrop that blocks the rest of the page, and the
+    // sheet's footer is not the place for a password field.
+    const isDeleteOpen = requestedMode === 'delete' && isViewOpen;
     const isCreateOpen = query.get('create') === '1';
     const isFiltersOpen =
         query.get('filters') !== null && query.get('filters') !== '';
@@ -194,6 +206,10 @@ export default function PropertyTypesIndex({
         setOverlayParam('mode', mode, { keep: { id: String(type.id) } });
     }
 
+    function openDelete(type: PropertyTypeRow) {
+        setOverlayParam('mode', 'delete', { keep: { id: String(type.id) } });
+    }
+
     function applySorting(next: SortingState) {
         const first = next[0];
 
@@ -202,7 +218,11 @@ export default function PropertyTypesIndex({
                 search: filters.search,
                 category: filters.category,
                 sort: first?.id ?? '',
-                direction: first ? (first.desc ? 'desc' : 'asc') : sort.direction,
+                direction: first
+                    ? first.desc
+                        ? 'desc'
+                        : 'asc'
+                    : sort.direction,
             },
             { replace: true },
         );
@@ -346,7 +366,7 @@ export default function PropertyTypesIndex({
                                 label={`Delete ${type.name}`}
                                 color="danger"
                                 disabled={!canDelete}
-                                onClick={() => openRow(type, 'delete')}
+                                onClick={() => openDelete(type)}
                             />
                         </div>
                     );
@@ -430,9 +450,7 @@ export default function PropertyTypesIndex({
                                 icon={<Download />}
                                 label="Export"
                                 color="teal"
-                                onClick={() =>
-                                    setOverlayParam('export', '1')
-                                }
+                                onClick={() => setOverlayParam('export', '1')}
                             />
                         )}
                     </div>
@@ -458,6 +476,10 @@ export default function PropertyTypesIndex({
                 />
             </div>
 
+            {/* Create is a Modal while Edit (in the row sheet below) is a Sheet
+                for the same three fields. Deliberate, not a bug: creating has
+                no row to compare against, editing happens while scanning the
+                list. See the overlay policy in the laravel-feature-slice skill. */}
             <FormModal
                 open={isCreateOpen}
                 onOpenChange={(open) => {
@@ -496,7 +518,7 @@ export default function PropertyTypesIndex({
             </FormModal>
 
             <ResponsiveOverlay
-                open={isViewOpen && viewedType !== undefined}
+                open={isViewOpen && !isDeleteOpen && viewedType !== undefined}
                 onOpenChange={(open) => {
                     if (!open) {
                         closeRowSheet();
@@ -508,9 +530,7 @@ export default function PropertyTypesIndex({
                         ? 'This type is not on the current page of results.'
                         : rowMode === 'edit'
                           ? 'Rename it, recategorise it, or reorder it.'
-                          : rowMode === 'delete'
-                            ? 'Properties using it are kept and simply lose their type.'
-                            : 'Details for this type.'
+                          : 'Details for this type.'
                 }
                 footer={
                     rowMode === 'edit' && viewedType ? (
@@ -524,19 +544,6 @@ export default function PropertyTypesIndex({
                                 },
                             ]}
                         />
-                    ) : rowMode === 'delete' && viewedType ? (
-                        <OverlayFooter
-                            onCancel={closeRowSheet}
-                            actions={[
-                                {
-                                    label: 'Delete type',
-                                    tone: 'danger',
-                                    icon: <Trash2 className="size-4" />,
-                                    form: 'property-type-delete-form',
-                                    type: 'submit',
-                                },
-                            ]}
-                        />
                     ) : viewedType ? (
                         <OverlayFooter
                             actions={[
@@ -544,16 +551,14 @@ export default function PropertyTypesIndex({
                                     label: 'Edit',
                                     tone: 'secondary',
                                     icon: <Pencil className="size-4" />,
-                                    onClick: () =>
-                                        openRow(viewedType, 'edit'),
+                                    onClick: () => openRow(viewedType, 'edit'),
                                     ...(canEdit ? {} : { disabled: true }),
                                 },
                                 {
                                     label: 'Delete',
                                     tone: 'danger-ghost',
                                     icon: <Trash2 className="size-4" />,
-                                    onClick: () =>
-                                        openRow(viewedType, 'delete'),
+                                    onClick: () => openDelete(viewedType),
                                     ...(canDelete ? {} : { disabled: true }),
                                 },
                             ]}
@@ -570,7 +575,9 @@ export default function PropertyTypesIndex({
                         key={viewedType.id}
                         id="property-type-edit-form"
                         method="patch"
-                        action={typeRoutes.update({ propertyType: viewedType.id })}
+                        action={typeRoutes.update({
+                            propertyType: viewedType.id,
+                        })}
                         onSuccess={() => closeRowSheet()}
                         className="grid gap-3 py-2"
                     >
@@ -581,47 +588,31 @@ export default function PropertyTypesIndex({
                         />
                     </Form>
                 )}
-
-                {viewedType && rowMode === 'delete' && (
-                    <Form
-                        id="property-type-delete-form"
-                        method="delete"
-                        action={typeRoutes.destroy({
-                            propertyType: viewedType.id,
-                        })}
-                        onSuccess={() =>
-                            navigate(
-                                {
-                                    search: filters.search,
-                                    category: filters.category,
-                                    sort: sort.column ?? '',
-                                    direction: sort.direction,
-                                },
-                                { replace: true },
-                            )
-                        }
-                        className="grid gap-3"
-                    >
-                        <p className="text-sm">
-                            Delete <strong>{viewedType.name}</strong>?
-                            {viewedType.properties_count > 0 ? (
-                                <>
-                                    {' '}
-                                    {viewedType.properties_count} propert
-                                    {viewedType.properties_count === 1
-                                        ? 'y uses'
-                                        : 'ies use'}{' '}
-                                    it — they are kept and simply lose their
-                                    type.
-                                </>
-                            ) : (
-                                ' No properties use it.'
-                            )}{' '}
-                            This cannot be undone.
-                        </p>
-                    </Form>
-                )}
             </ResponsiveOverlay>
+
+            {canDelete && viewedType && (
+                <ConfirmDeleteOverlay
+                    open={isDeleteOpen}
+                    onOpenChange={(open) => {
+                        if (!open) {
+                            closeRowSheet();
+                        }
+                    }}
+                    action={
+                        typeRoutes.destroy({ propertyType: viewedType.id }).url
+                    }
+                    title={`Delete ${viewedType.name}?`}
+                    description={
+                        viewedType.properties_count > 0
+                            ? `${viewedType.properties_count} ${
+                                  viewedType.properties_count === 1
+                                      ? 'property uses'
+                                      : 'properties use'
+                              } it. They are kept and simply lose their type. Confirm with your password — this cannot be undone.`
+                            : 'No properties use it. Confirm with your password — this cannot be undone.'
+                    }
+                />
+            )}
 
             <ResponsiveOverlay
                 open={isFiltersOpen}
@@ -680,7 +671,10 @@ export default function PropertyTypesIndex({
                         className="space-y-3"
                     >
                         {[
-                            { value: 'all', label: 'Residential and commercial' },
+                            {
+                                value: 'all',
+                                label: 'Residential and commercial',
+                            },
                             ...CATEGORIES,
                         ].map((option) => (
                             <div
@@ -705,7 +699,9 @@ export default function PropertyTypesIndex({
 
             <CsvExportSheet
                 open={isExportOpen}
-                onClose={() => setOverlayParam('export', null, { replace: true })}
+                onClose={() =>
+                    setOverlayParam('export', null, { replace: true })
+                }
                 canExport={canExport}
                 total={propertyTypes.total}
                 pageCount={propertyTypes.data.length}
@@ -716,7 +712,9 @@ export default function PropertyTypesIndex({
 
             <CsvImportSheet
                 open={isImportOpen}
-                onClose={() => setOverlayParam('import', null, { replace: true })}
+                onClose={() =>
+                    setOverlayParam('import', null, { replace: true })
+                }
                 route={typeRoutes.importMethod}
                 idPrefix="property-types"
                 title="Import property types"
@@ -732,7 +730,7 @@ export default function PropertyTypesIndex({
 
 function Pill({ label, value }: { label: string; value: number }) {
     return (
-        <span className="bg-background flex items-center gap-2 rounded-md border border-border-strong px-3 py-1.5">
+        <span className="flex items-center gap-2 rounded-md border border-border-strong bg-background px-3 py-1.5">
             <span className="text-muted-foreground">{label}</span>
             <span className="font-medium tabular-nums">{value}</span>
         </span>
@@ -753,7 +751,10 @@ function PropertyTypeDetail({ type }: { type: PropertyTypeRow }) {
         ['Name', type.name],
         ['Category', type.category_label],
         ['Slug', type.slug],
-        ['In use', `${type.properties_count} propert${type.properties_count === 1 ? 'y' : 'ies'}`],
+        [
+            'In use',
+            `${type.properties_count} propert${type.properties_count === 1 ? 'y' : 'ies'}`,
+        ],
     ];
 
     return (
