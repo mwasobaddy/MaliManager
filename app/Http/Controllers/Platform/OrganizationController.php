@@ -7,6 +7,7 @@ use App\Enums\PlatformRole;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Platform\DestroyOrganizationRequest;
 use App\Http\Requests\Platform\ImportOrganizationRequest;
+use App\Http\Requests\Platform\OrganizationIndexRequest;
 use App\Http\Requests\Platform\StoreOrganizationRequest;
 use App\Http\Requests\Platform\UpdateOrganizationRequest;
 use App\Http\Requests\Platform\UpdateOrganizationStatusRequest;
@@ -29,7 +30,7 @@ class OrganizationController extends Controller
         private UserService $userService,
     ) {}
 
-    public function index(Request $request): Response
+    public function index(OrganizationIndexRequest $request): Response
     {
         // Allowlisted so a crafted `?sort=` can never reach the ORDER BY.
         // `domain` is intentionally absent: it is a host string, not a
