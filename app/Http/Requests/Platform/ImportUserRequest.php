@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Platform;
 
+use App\Data\Users\ImportUsersData;
 use Illuminate\Foundation\Http\FormRequest;
 
 class ImportUserRequest extends FormRequest
@@ -11,7 +12,7 @@ class ImportUserRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return true;
+        return $this->user()?->can('importUsers') ?? false;
     }
 
     /**
@@ -33,5 +34,13 @@ class ImportUserRequest extends FormRequest
             'file.mimes' => 'Upload a CSV file (a .txt file containing CSV also works).',
             'file.max' => 'The import file may not be larger than 2 MB.',
         ];
+    }
+
+    public function toData(): ImportUsersData
+    {
+        return new ImportUsersData(
+            file: $this->file('file'),
+            actor: $this->user(),
+        );
     }
 }

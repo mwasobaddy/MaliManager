@@ -5,9 +5,11 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Enums\PlatformRole;
 use App\Enums\SubPermissionKey;
+use App\Support\Search;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -161,5 +163,28 @@ class User extends Authenticatable implements PasskeyUser
         return SubRole::whereKey($membership->pivot->sub_role_id)
             ->whereHas('subPermissions', fn ($query) => $query->where('key', $key->value))
             ->exists();
+    }
+
+    /**
+     * The admin list predicate: search across name, email and phone, plus an
+     * exact status and role name. Shared by the index and the CSV export.
+     *
+     * @param  array{search?: string, status?: string, role?: string}  $filters
+     */
+    public function scopeFiltered(Builder $query, array $filters): Builder
+    {
+        return $query
+            ->when(
+                ($filters['search'] ?? '') !== '',
+                fn (Builder $q) => Search::apply($q, $filters['search'], ['name', 'email', 'phone']),
+            )
+            ->when(
+                ($filters['status'] ?? '') !== '',
+                fn (Builder $q) => $q->where('status', $filters['status']),
+            )
+            ->when(
+                ($filters['role'] ?? '') !== '',
+                fn (Builder $q) => $q->whereHas('roles', fn (Builder $role) => $role->where('name', $filters['role'])),
+            );
     }
 }

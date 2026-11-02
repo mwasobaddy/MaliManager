@@ -2,8 +2,12 @@
 
 namespace App\Http\Controllers\Platform;
 
+use App\Actions\Users\ExportUsers;
+use App\Actions\Users\ImportUsers;
+use App\Concerns\FlashesImportResult;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Platform\DestroyUserRequest;
+use App\Http\Requests\Platform\ExportUsersRequest;
 use App\Http\Requests\Platform\ImportUserRequest;
 use App\Http\Requests\Platform\StoreUserRequest;
 use App\Http\Requests\Platform\UpdateUserRequest;
@@ -21,6 +25,8 @@ use Inertia\Response;
 
 class UserController extends Controller
 {
+    use FlashesImportResult;
+
     public function __construct(private UserService $service) {}
 
     /**
@@ -32,17 +38,13 @@ class UserController extends Controller
     private function filtered(Request $request): Builder
     {
         return User::query()
+            ->filtered([
+                'search' => $request->string('search')->trim()->toString(),
+                'status' => $request->string('status')->toString(),
+                'role' => $request->string('role')->toString(),
+            ])
             ->with('person:id,first_name,last_name,email,phone,national_id,gender,status')
-            ->with('roles:id,name')
-            // `Request::string()` returns a Stringable and an object is always truthy,
-            // so `->when($request->string('search')->trim(), ...)` ran the filter even
-            // with no term — binding `like '%%'`, and for a category also `= ''`, which
-            // matched nothing and emptied the table. ->toString() gives a real string.
-            ->when($request->string('search')->trim()->toString(), function ($query, string $search) {
-                Search::apply($query, $search, ['name', 'email', 'phone']);
-            })
-            ->when($request->string('status')->toString() !== '', fn ($query) => $query->where('status', $request->string('status')))
-            ->when($request->string('role')->toString() !== '', fn ($query) => $query->whereHas('roles', fn ($q) => $q->where('name', $request->string('role'))));
+            ->with('roles:id,name');
     }
 
     public function index(UserIndexRequest $request): Response
@@ -182,76 +184,27 @@ class UserController extends Controller
      * Redirects back keeping the `import` flag when some rows failed, so the
      * import sheet stays open and can render the per-row report.
      */
-    public function import(ImportUserRequest $request): RedirectResponse
+    public function import(ImportUserRequest $request, ImportUsers $import): RedirectResponse
     {
-        $result = $this->service->import(
-            $request->file('file'),
-            $request->user(),
-        );
+        $result = $import->handle($request->toData());
 
-        if ($result['failed'] === 0) {
-            Inertia::flash('toast', [
-                'type' => 'success',
-                'message' => $result['imported'] === 1
-                    ? '1 user imported.'
-                    : $result['imported'].' users imported.',
-            ]);
-
-            return redirect()->route('platform.users.index');
-        }
-
-        Inertia::flash('toast', [
-            'type' => $result['imported'] > 0 ? 'warning' : 'error',
-            'message' => $result['imported'].' imported, '.$result['failed'].' failed.',
-        ]);
-
-        Inertia::flash('importErrors', $result['errors']);
-
-        return back();
+        return $this->respondToImport($result, 'user', 'users', 'platform.users.index');
     }
 
     /**
      * Streams the CSV. `scope=page` honours the pagination the user is looking
      * at; anything else exports the whole filtered set.
      */
-    public function export(Request $request): \Symfony\Component\HttpFoundation\Response
+    public function export(ExportUsersRequest $request, ExportUsers $export): \Symfony\Component\HttpFoundation\Response
     {
-        $scope = $request->string('scope')->toString() === 'page' ? 'page' : 'all';
-        $perPage = 15;
-
-        $query = $this->filtered($request);
-
-        if ($scope === 'page') {
-            $query->forPage((int) $request->integer('page', 1), $perPage);
-        }
-
-        $rows = $query
-            ->orderBy('id')
-            ->get()
-            ->map(fn (User $user): array => [
-                $user->id,
-                $user->person?->first_name ?? '',
-                $user->person?->last_name ?? '',
-                $user->email,
-                $user->phone ?? '',
-                $user->status,
-                $user->roles->pluck('name')->implode('|'),
-                $user->created_at?->toDateTimeString() ?? '',
-            ]);
-
-        $csv = fopen('php://temp', 'r+');
-        fputcsv($csv, ['ID', 'First name', 'Last name', 'Email', 'Phone', 'Status', 'Roles', 'Created at']);
-        foreach ($rows as $row) {
-            fputcsv($csv, $row);
-        }
-        rewind($csv);
-
-        $suffix = $scope === 'page' ? '-page'.$request->integer('page', 1) : '-all';
+        $csv = $export->handle($request->toData());
 
         return response()->streamDownload(
-            fn () => fpassthru($csv),
-            'users'.$suffix.'.csv',
-            ['Content-Type' => 'text/csv']
+            function () use ($csv): void {
+                echo $csv->content;
+            },
+            $csv->filename,
+            ['Content-Type' => 'text/csv'],
         );
     }
 
