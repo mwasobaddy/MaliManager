@@ -165,6 +165,182 @@ test('owners bypass sub-permission checks on the occupants index', function () {
         ->assertInertia(fn ($page) => $page->component('organisation/occupants/index'));
 });
 
+test('owners can view an occupant record with its units', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createOccupantOrganization($owner);
+
+    $property = $organization->properties()->create([
+        'name' => 'Sunset Heights',
+        'slug' => 'sunset-heights',
+        'status' => 'active',
+        'created_by' => $owner->id,
+    ]);
+
+    $unit = $property->units()->create([
+        'name' => 'Unit A1',
+        'status' => 'occupied',
+        'type' => '1 Bedroom',
+        'monthly_rent' => 25000,
+        'deposit' => 25000,
+        'created_by' => $owner->id,
+    ]);
+
+    $occupant = addOccupant($organization, $owner, $property, ['email' => 'sam@acme.test'], [$unit->id]);
+
+    $this->actingAs($owner)
+        ->get(occupantTenantUrl($organization, "/sunset-heights/occupants/{$occupant->id}"))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('organisation/occupants/show')
+            ->where('property.slug', 'sunset-heights')
+            ->where('occupant.email', 'sam@acme.test')
+            ->where('occupant.units.0.id', $unit->id));
+});
+
+test('an occupant record carries the active lease without the agreement body', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createOccupantOrganization($owner);
+
+    $property = $organization->properties()->create([
+        'name' => 'Sunset Heights',
+        'slug' => 'sunset-heights',
+        'status' => 'active',
+        'created_by' => $owner->id,
+    ]);
+
+    $unit = $property->units()->create([
+        'name' => 'Unit A1',
+        'status' => 'vacant',
+        'created_by' => $owner->id,
+    ]);
+
+    $this->actingAs($owner)
+        ->post(occupantTenantUrl($organization, '/sunset-heights/occupants'), [
+            'first_name' => 'Jane',
+            'email' => 'jane.lease@acme.test',
+            'status' => 'active',
+            'unit_ids' => [$unit->id],
+            'lease' => [
+                'rent_amount' => 25000,
+                'currency' => 'KES',
+                'agreement_text' => '<p>Rent is due</p>',
+            ],
+        ])->assertRedirect(occupantTenantUrl($organization, '/sunset-heights/occupants'));
+
+    $occupant = Occupant::where('organization_id', $organization->id)->firstOrFail();
+
+    $this->actingAs($owner)
+        ->get(occupantTenantUrl($organization, "/sunset-heights/occupants/{$occupant->id}"))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('organisation/occupants/show')
+            ->where('occupant.lease.currency', 'KES')
+            // The rendered contract is its own page; shipping it here would put
+            // a wall of HTML in every show response.
+            ->missing('occupant.lease.agreement_text'));
+});
+
+test('an occupant record is not reachable through another property', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createOccupantOrganization($owner);
+
+    $sunset = $organization->properties()->create([
+        'name' => 'Sunset Heights',
+        'slug' => 'sunset-heights',
+        'status' => 'active',
+        'created_by' => $owner->id,
+    ]);
+
+    $organization->properties()->create([
+        'name' => 'Harbour View',
+        'slug' => 'harbour-view',
+        'status' => 'active',
+        'created_by' => $owner->id,
+    ]);
+
+    $unit = $sunset->units()->create([
+        'name' => 'Unit A1',
+        'status' => 'occupied',
+        'created_by' => $owner->id,
+    ]);
+
+    $occupant = addOccupant($organization, $owner, $sunset, [], [$unit->id]);
+
+    $this->actingAs($owner)
+        ->get(occupantTenantUrl($organization, "/harbour-view/occupants/{$occupant->id}"))
+        ->assertNotFound();
+});
+
+test('occupants show requires the occupant.manage sub-permission', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createOccupantOrganization($owner);
+
+    $property = $organization->properties()->create([
+        'name' => 'Sunset Heights',
+        'slug' => 'sunset-heights',
+        'status' => 'active',
+        'created_by' => $owner->id,
+    ]);
+
+    $unit = $property->units()->create([
+        'name' => 'Unit A1',
+        'status' => 'occupied',
+        'created_by' => $owner->id,
+    ]);
+
+    $occupant = addOccupant($organization, $owner, $property, [], [$unit->id]);
+
+    $member = User::factory()->create(['onboarded_at' => now()]);
+
+    $role = $organization->subRoles()->create([
+        'name' => 'Viewer',
+        'slug' => 'viewer',
+        'description' => 'Read-only role without occupant access.',
+        'created_by' => $owner->id,
+    ]);
+    $role->subPermissions()->sync(
+        SubPermission::where('key', 'property.manage')->pluck('id')
+    );
+
+    $organization->users()->attach($member->id, [
+        'sub_role_id' => $role->id,
+        'status' => 'active',
+        'created_by' => $owner->id,
+    ]);
+
+    $this->actingAs($member)
+        ->get(occupantTenantUrl($organization, "/sunset-heights/occupants/{$occupant->id}"))
+        ->assertRedirect();
+    assertErrorToast();
+});
+
+test('staff without delegation cannot view an occupant record', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createOccupantOrganization($owner);
+
+    $property = $organization->properties()->create([
+        'name' => 'Sunset Heights',
+        'slug' => 'sunset-heights',
+        'status' => 'active',
+        'created_by' => $owner->id,
+    ]);
+
+    $unit = $property->units()->create([
+        'name' => 'Unit A1',
+        'status' => 'occupied',
+        'created_by' => $owner->id,
+    ]);
+
+    $occupant = addOccupant($organization, $owner, $property, [], [$unit->id]);
+
+    $caretaker = addMember($owner, $organization, 'caretaker');
+
+    $this->actingAs($caretaker)
+        ->get(occupantTenantUrl($organization, "/sunset-heights/occupants/{$occupant->id}"))
+        ->assertRedirect();
+    assertErrorToast();
+});
+
 test('staff without delegation cannot view occupants of a property', function () {
     $owner = User::factory()->create(['onboarded_at' => now()]);
     $organization = createOccupantOrganization($owner);

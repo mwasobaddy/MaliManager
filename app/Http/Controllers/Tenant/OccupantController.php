@@ -42,6 +42,41 @@ class OccupantController extends Controller
         ]);
     }
 
+    /**
+     * The record's own page, addressed at `/{property}/occupants/{occupant}`.
+     *
+     * It exists because a view is a full page: it is the address to send some-
+     * one, it survives a refresh, and it is where history and sub-navigation
+     * would grow. The index card is a summary, not the record.
+     */
+    public function show(OccupantAccessRequest $request, Property $property, Occupant $occupant): Response
+    {
+        $this->authorizePropertyAccess($request, $property);
+
+        abort_if($occupant->organization_id !== $property->organization_id, 403);
+
+        $occupant->load([
+            'person',
+            'units' => fn ($query) => $query->where('units.property_id', $property->id),
+        ]);
+
+        // The index only lists occupants holding a unit in this property, so an
+        // occupant with none here is either another property's record or a
+        // record the user cannot reach from anywhere in the app.
+        abort_if($occupant->units->isEmpty(), 404);
+
+        return Inertia::render('organisation/occupants/show', [
+            'organization' => TenancyContext::organization()->only('id', 'name', 'slug'),
+            'property' => $this->property($property),
+            'occupant' => [
+                ...$this->present($occupant, $property),
+                'gender' => $occupant->person->gender,
+                'added_at' => $occupant->created_at?->toDateString(),
+                'lease' => $this->leaseSummary($occupant, $property),
+            ],
+        ]);
+    }
+
     public function create(OccupantAccessRequest $request, Property $property): Response
     {
         $this->authorizePropertyAccess($request, $property);
@@ -176,6 +211,28 @@ class OccupantController extends Controller
             'agreement_document_name' => $document?->file_name,
             'agreement_document_url' => $document?->getUrl(),
         ];
+    }
+
+    /**
+     * The lease as the read-only page shows it.
+     *
+     * `agreement_text` is dropped: it is the full rendered contract and already
+     * has its own page. Shipping it here would put a wall of HTML in every show
+     * response for a field the page never renders.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function leaseSummary(Occupant $occupant, Property $property): ?array
+    {
+        $lease = $this->activeLease($occupant, $property);
+
+        if ($lease === null) {
+            return null;
+        }
+
+        unset($lease['agreement_text']);
+
+        return $lease;
     }
 
     public function agreement(OccupantAccessRequest $request, Property $property, Occupant $occupant): Response

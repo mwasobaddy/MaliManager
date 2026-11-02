@@ -116,6 +116,13 @@ Route::middleware([
         Route::middleware('sub-permission:occupant.manage')->group(function () {
             Route::get('/{property:slug}/occupants', [OccupantController::class, 'index'])
                 ->name('tenant.occupants.index');
+
+            // `whereNumber` is load-bearing: `/occupants/create` is registered in
+            // a later group, and an unconstrained `{occupant}` would match it
+            // first, fail the model binding and 404 the create form.
+            Route::get('/{property:slug}/occupants/{occupant}', [OccupantController::class, 'show'])
+                ->whereNumber('occupant')
+                ->name('tenant.occupants.show');
         });
 
         Route::middleware('sub-permission:occupant.create')->group(function () {

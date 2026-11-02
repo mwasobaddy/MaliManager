@@ -16,6 +16,7 @@ import {
     create as createOccupant,
     destroy as destroyOccupant,
     edit as editOccupant,
+    show as showOccupant,
 } from '@/routes/tenant/occupants';
 
 type Property = {
@@ -111,8 +112,16 @@ export default function OccupantsIndex({ property, occupants }: Props) {
                                     <div className="flex items-start justify-between gap-4">
                                         <div className="min-w-0">
                                             <CardTitle className="truncate">
-                                                {occupant.first_name}{' '}
-                                                {occupant.last_name}
+                                                <Link
+                                                    href={showOccupant({
+                                                        property: property.slug,
+                                                        occupant: occupant.id,
+                                                    })}
+                                                    className="hover:underline"
+                                                >
+                                                    {occupant.first_name}{' '}
+                                                    {occupant.last_name}
+                                                </Link>
                                             </CardTitle>
                                             <CardDescription className="mt-1 flex flex-col gap-1">
                                                 <span className="flex items-center gap-1.5 truncate">
