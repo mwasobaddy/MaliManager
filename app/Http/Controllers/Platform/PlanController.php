@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Platform;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Platform\DestroyPlanRequest;
 use App\Http\Requests\Platform\ImportPlanRequest;
+use App\Http\Requests\Platform\PlanIndexRequest;
 use App\Http\Requests\Platform\StorePlanRequest;
 use App\Http\Requests\Platform\UpdatePlanRequest;
 use App\Http\Requests\Platform\UpdatePlanStatusRequest;
@@ -64,7 +65,7 @@ class PlanController extends Controller
             );
     }
 
-    public function index(Request $request): Response
+    public function index(PlanIndexRequest $request): Response
     {
         $sort = $request->string('sort')->toString();
         $sortColumn = self::SORTABLE[$sort] ?? null;
