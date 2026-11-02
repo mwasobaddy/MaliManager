@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Tenant;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Tenant\EndLeaseRequest;
+use App\Http\Requests\Tenant\LeaseIndexRequest;
+use App\Http\Requests\Tenant\RenewalSuggestionRequest;
 use App\Models\Lease;
 use App\Models\Property;
 use App\Services\AiRenewalService;
@@ -21,7 +23,7 @@ use Inertia\Response;
  */
 class LeaseController extends Controller
 {
-    public function index(Request $request, Property $property): Response
+    public function index(LeaseIndexRequest $request, Property $property): Response
     {
         $this->authorizePropertyAccess($request, $property);
 
@@ -91,7 +93,7 @@ class LeaseController extends Controller
         abort(403);
     }
 
-    public function renewalSuggestion(Request $request, Property $property, Lease $lease, AiRenewalService $service): JsonResponse
+    public function renewalSuggestion(RenewalSuggestionRequest $request, Property $property, Lease $lease, AiRenewalService $service): JsonResponse
     {
         $this->authorizePropertyAccess($request, $property);
 
