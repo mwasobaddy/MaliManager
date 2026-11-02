@@ -3,18 +3,18 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Auth\OnboardingCompleteRequest;
+use App\Http\Requests\Auth\OnboardingRequest;
 use App\Models\Plan;
 use App\Services\OnboardingService;
 use App\Support\AuthLanding;
 use App\Support\InertiaRedirect;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class OnboardingController extends Controller
 {
-    public function show(Request $request): Response|RedirectResponse
+    public function show(OnboardingRequest $request): Response|RedirectResponse
     {
         $user = $request->user();
 
@@ -55,7 +55,7 @@ class OnboardingController extends Controller
     /**
      * The mandatory "add your first asset" page for fresh organizations.
      */
-    public function firstAsset(Request $request): Response
+    public function firstAsset(OnboardingRequest $request): Response
     {
         $organization = $request->user()
             ->organizations()
