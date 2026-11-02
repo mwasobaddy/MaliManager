@@ -15,6 +15,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | resources/js/lib/editor/** | .ai/rules/editor.md |
 | ** | .ai/rules/general.md |
 | app/Http/** | .ai/rules/http.md |
+| resources/js/**, resources/css/** | .ai/rules/frontend.md |
 | resources/js/** | .ai/rules/js.md |
 | app/Http/Middleware/** | .ai/rules/middleware.md |
 | database/migrations/**, database/migrations/0001_01_01_000000_create_users_table.php | .ai/rules/migrations.md |

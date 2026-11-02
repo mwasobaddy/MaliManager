@@ -1,3 +1,9 @@
+---
+paths:
+  - resources/js/**
+  - resources/css/**
+---
+
 # Frontend Rules
 
 ## Wayfinder
