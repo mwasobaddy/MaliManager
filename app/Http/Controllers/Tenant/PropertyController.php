@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Tenant;
 
 use App\Enums\SubPermissionKey;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Tenant\PropertyAccessRequest;
 use App\Http\Requests\Tenant\StorePropertyRequest;
 use App\Models\Organization;
 use App\Models\Property;
@@ -20,7 +21,7 @@ use Inertia\Response;
 
 class PropertyController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(PropertyAccessRequest $request): Response
     {
         $organization = TenancyContext::organization();
 
@@ -50,7 +51,7 @@ class PropertyController extends Controller
         ]);
     }
 
-    public function create(Request $request): Response
+    public function create(PropertyAccessRequest $request): Response
     {
         $organization = TenancyContext::organization();
 
@@ -108,7 +109,7 @@ class PropertyController extends Controller
         ))->with('status', 'Property created successfully.');
     }
 
-    public function dashboard(Request $request, Property $property): Response
+    public function dashboard(PropertyAccessRequest $request, Property $property): Response
     {
         $this->authorizePropertyAccess($request, $property);
 
