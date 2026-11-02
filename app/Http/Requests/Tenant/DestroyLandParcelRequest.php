@@ -17,6 +17,8 @@ class DestroyLandParcelRequest extends FormRequest
      */
     public function authorize(): bool
     {
+        // Enforced by the `sub-permission:land_parcel.delete` middleware on the route;
+        // this form is not a second gate.
         return true;
     }
 

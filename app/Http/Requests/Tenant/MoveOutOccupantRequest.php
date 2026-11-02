@@ -12,6 +12,8 @@ class MoveOutOccupantRequest extends FormRequest
      */
     public function authorize(): bool
     {
+        // Enforced by the `sub-permission:occupant.edit` middleware on the route;
+        // this form is not a second gate.
         return true;
     }
 

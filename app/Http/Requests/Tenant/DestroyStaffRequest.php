@@ -17,6 +17,8 @@ class DestroyStaffRequest extends FormRequest
      */
     public function authorize(): bool
     {
+        // Enforced by the `sub-permission:staff.delete` middleware on the route;
+        // this form is not a second gate.
         return true;
     }
 

@@ -17,6 +17,8 @@ class DestroyOccupantRequest extends FormRequest
      */
     public function authorize(): bool
     {
+        // Enforced by the `sub-permission:occupant.delete` middleware on the route;
+        // this form is not a second gate.
         return true;
     }
 
