@@ -117,9 +117,14 @@ Route::middleware([
             Route::get('/{property:slug}/occupants', [OccupantController::class, 'index'])
                 ->name('tenant.occupants.index');
 
-            // `whereNumber` is load-bearing: `/occupants/create` is registered in
-            // a later group, and an unconstrained `{occupant}` would match it
-            // first, fail the model binding and 404 the create form.
+            // The record is a sheet on the index, not a page of its own. This URL
+            // is kept for links and bookmarks; the controller validates the id
+            // and redirects to the query form the page already reads, the same
+            // shape the platform modules use.
+            //
+            // `whereNumber` is load-bearing: `/occupants/create` is registered
+            // in a later group, so an unconstrained `{occupant}` would match it
+            // first and 404 the create form.
             Route::get('/{property:slug}/occupants/{occupant}', [OccupantController::class, 'show'])
                 ->whereNumber('occupant')
                 ->name('tenant.occupants.show');

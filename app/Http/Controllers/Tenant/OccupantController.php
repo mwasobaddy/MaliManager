@@ -39,41 +39,39 @@ class OccupantController extends Controller
             'organization' => TenancyContext::organization()->only('id', 'name', 'slug'),
             'property' => $this->property($property),
             'occupants' => $occupants,
+            // The view sheet is on this page, so an occupant addressed by URL is
+            // resolved here rather than by a page of its own. Scoped to the
+            // property, so an id from another property resolves to nothing and
+            // the sheet simply does not open.
+            'focusedOccupant' => $this->focusedOccupant($request, $property),
         ]);
     }
 
     /**
-     * The record's own page, addressed at `/{property}/occupants/{occupant}`.
+     * The record's URL, at `/{property}/occupants/{occupant}`.
      *
-     * It exists because a view is a full page: it is the address to send some-
-     * one, it survives a refresh, and it is where history and sub-navigation
-     * would grow. The index card is a summary, not the record.
+     * The record itself is a sheet on the index, so this validates the id
+     * exactly as a page would — delegation, organization, and that the occupant
+     * actually holds a unit here — and then hands off to the query form the
+     * index already reads. Keeping the check here means a URL that names
+     * someone else's occupant 404s instead of redirecting to a sheet that would
+     * silently fail to open.
      */
-    public function show(OccupantAccessRequest $request, Property $property, Occupant $occupant): Response
+    public function show(OccupantAccessRequest $request, Property $property, Occupant $occupant): RedirectResponse
     {
         $this->authorizePropertyAccess($request, $property);
 
         abort_if($occupant->organization_id !== $property->organization_id, 403);
 
-        $occupant->load([
-            'person',
-            'units' => fn ($query) => $query->where('units.property_id', $property->id),
-        ]);
+        abort_unless(
+            $occupant->units()->where('units.property_id', $property->id)->exists(),
+            404,
+        );
 
-        // The index only lists occupants holding a unit in this property, so an
-        // occupant with none here is either another property's record or a
-        // record the user cannot reach from anywhere in the app.
-        abort_if($occupant->units->isEmpty(), 404);
-
-        return Inertia::render('organisation/occupants/show', [
-            'organization' => TenancyContext::organization()->only('id', 'name', 'slug'),
-            'property' => $this->property($property),
-            'occupant' => [
-                ...$this->present($occupant, $property),
-                'gender' => $occupant->person->gender,
-                'added_at' => $occupant->created_at?->toDateString(),
-                'lease' => $this->leaseSummary($occupant, $property),
-            ],
+        return redirect()->route('tenant.occupants.index', [
+            'property' => $property,
+            'mode' => 'view',
+            'occupant' => $occupant->id,
         ]);
     }
 
@@ -336,6 +334,44 @@ class OccupantController extends Controller
                 'status' => $unit->status,
             ])
             ->all();
+    }
+
+    /**
+     * The occupant addressed by `?occupant=`, carrying the fields the view
+     * sheet shows and list rows do not need: gender, the date added, and the
+     * active lease.
+     *
+     * Scoped to the property exactly like the index query, so an id belonging to
+     * another property — or another organization — resolves to null and the
+     * sheet does not open, instead of leaking a record through the URL.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function focusedOccupant(Request $request, Property $property): ?array
+    {
+        $id = $request->integer('occupant');
+
+        if ($id <= 0) {
+            return null;
+        }
+
+        $occupant = Occupant::query()
+            ->where('organization_id', $property->organization_id)
+            ->whereKey($id)
+            ->whereHas('units', fn ($query) => $query->where('units.property_id', $property->id))
+            ->with(['person', 'units' => fn ($query) => $query->where('units.property_id', $property->id)])
+            ->first();
+
+        if (! $occupant) {
+            return null;
+        }
+
+        return [
+            ...$this->present($occupant, $property),
+            'gender' => $occupant->person->gender,
+            'added_at' => $occupant->created_at?->toDateString(),
+            'lease' => $this->leaseSummary($occupant, $property),
+        ];
     }
 
     /**

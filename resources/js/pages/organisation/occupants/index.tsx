@@ -1,7 +1,17 @@
-import { Head, Link, usePage } from '@inertiajs/react';
-import { Mail, Phone, Plus, Trash2, Users } from 'lucide-react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
+import {
+    FileText,
+    Mail,
+    Pencil,
+    Phone,
+    Plus,
+    Trash2,
+    Users,
+} from 'lucide-react';
 import ConfirmDeleteOverlay from '@/components/confirm-delete-overlay';
 import Heading from '@/components/heading';
+import { OverlayFooter } from '@/components/overlay-footer';
+import { ResponsiveOverlay } from '@/components/responsive-overlay';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -13,6 +23,7 @@ import {
 } from '@/components/ui/card';
 import { useOverlayParam } from '@/hooks/use-overlay-param';
 import {
+    agreement as occupantAgreement,
     create as createOccupant,
     destroy as destroyOccupant,
     edit as editOccupant,
@@ -32,6 +43,16 @@ type Unit = {
     status: string;
 };
 
+type Lease = {
+    starts_at: string | null;
+    rent_amount: string | null;
+    rent_frequency: string | null;
+    deposit: string | null;
+    currency: string | null;
+    agreement_document_name: string | null;
+    agreement_document_url: string | null;
+};
+
 type Occupant = {
     id: number;
     first_name: string;
@@ -41,14 +62,24 @@ type Occupant = {
     national_id: string | null;
     status: string;
     units: Unit[];
+    // Present on the record resolved for the view sheet. List rows omit them
+    // because the card does not show them, and the sheet is the only reader.
+    gender?: string | null;
+    added_at?: string | null;
+    lease?: Lease | null;
 };
 
 type Props = {
     property: Property;
     occupants: Occupant[];
+    focusedOccupant: Occupant | null;
 };
 
-export default function OccupantsIndex({ property, occupants }: Props) {
+export default function OccupantsIndex({
+    property,
+    occupants,
+    focusedOccupant,
+}: Props) {
     const { context } = usePage().props;
     const permissions = context?.permissions ?? [];
     const canCreate = permissions.includes('occupant.create');
@@ -64,6 +95,30 @@ export default function OccupantsIndex({ property, occupants }: Props) {
         (occupant) => occupant.id === deleteTargetId,
     );
     const isDeleteOpen = query.get('mode') === 'delete' && !!deleteTarget;
+
+    // The record is a sheet on this page, so the id travels in the URL and the
+    // server resolves it into `focusedOccupant`. Falling back to the visible
+    // rows keeps opening from the list a single request.
+    const viewedOccupantId = Number(query.get('occupant'));
+    const isViewOpen = query.get('mode') === 'view' && viewedOccupantId > 0;
+    const viewedOccupant = isViewOpen
+        ? (focusedOccupant ??
+          occupants.find((occupant) => occupant.id === viewedOccupantId) ??
+          null)
+        : null;
+
+    function closeView() {
+        setOverlayParam('mode', null, {
+            replace: true,
+            only: ['occupants'],
+            keep: { occupant: '' },
+        });
+    }
+
+    const money = (
+        currency: string | null | undefined,
+        amount: string | null,
+    ) => (amount === null ? '—' : `${currency ?? ''} ${amount}`.trim());
 
     return (
         <>
@@ -235,6 +290,205 @@ export default function OccupantsIndex({ property, occupants }: Props) {
                     </div>
                 )}
             </div>
+
+            {viewedOccupant && (
+                <ResponsiveOverlay
+                    open={isViewOpen}
+                    onOpenChange={(open) => {
+                        if (!open) {
+                            closeView();
+                        }
+                    }}
+                    title={`${viewedOccupant.first_name} ${viewedOccupant.last_name ?? ''}`.trim()}
+                    description={`Occupant of ${property.name}.`}
+                    footer={
+                        <OverlayFooter
+                            onCancel={closeView}
+                            actions={[
+                                ...(viewedOccupant.lease
+                                    ? [
+                                          {
+                                              label: 'Agreement',
+                                              tone: 'secondary' as const,
+                                              icon: (
+                                                  <FileText className="size-4" />
+                                              ),
+                                              onClick: () =>
+                                                  router.visit(
+                                                      occupantAgreement({
+                                                          property:
+                                                              property.slug,
+                                                          occupant:
+                                                              viewedOccupant.id,
+                                                      }).url,
+                                                  ),
+                                          },
+                                      ]
+                                    : []),
+                                ...(canEdit
+                                    ? [
+                                          {
+                                              label: 'Edit',
+                                              icon: (
+                                                  <Pencil className="size-4" />
+                                              ),
+                                              onClick: () =>
+                                                  router.visit(
+                                                      editOccupant({
+                                                          property:
+                                                              property.slug,
+                                                          occupant:
+                                                              viewedOccupant.id,
+                                                      }).url,
+                                                  ),
+                                          },
+                                      ]
+                                    : []),
+                            ]}
+                        />
+                    }
+                >
+                    <dl className="grid gap-x-6 gap-y-3 py-2 text-sm sm:grid-cols-2">
+                        {(
+                            [
+                                ['Email', viewedOccupant.email],
+                                ['Phone', viewedOccupant.phone ?? '—'],
+                                [
+                                    'National ID',
+                                    viewedOccupant.national_id ?? '—',
+                                ],
+                                ['Gender', viewedOccupant.gender ?? '—'],
+                                ['Added', viewedOccupant.added_at ?? '—'],
+                            ] as [string, string][]
+                        ).map(([label, value]) => (
+                            <div
+                                key={label}
+                                className="grid grid-cols-[8rem_1fr] gap-2"
+                            >
+                                <dt className="text-muted-foreground">
+                                    {label}
+                                </dt>
+                                <dd className="min-w-0 break-words">{value}</dd>
+                            </div>
+                        ))}
+                    </dl>
+
+                    <div className="mt-6 space-y-2">
+                        <h3 className="text-sm font-medium">
+                            Units ({viewedOccupant.units.length})
+                        </h3>
+                        {viewedOccupant.units.length === 0 ? (
+                            <p className="text-sm text-muted-foreground">
+                                No units assigned.
+                            </p>
+                        ) : (
+                            <ul className="divide-y divide-border rounded-lg border border-input">
+                                {viewedOccupant.units.map((unit) => (
+                                    <li
+                                        key={unit.id}
+                                        className="flex flex-wrap items-center justify-between gap-3 p-3 text-sm"
+                                    >
+                                        <span className="font-medium">
+                                            {unit.name}
+                                        </span>
+                                        <span className="text-muted-foreground">
+                                            {unit.type ?? '—'}
+                                        </span>
+                                        <Badge
+                                            variant={
+                                                unit.status === 'occupied'
+                                                    ? 'default'
+                                                    : 'secondary'
+                                            }
+                                        >
+                                            {unit.status}
+                                        </Badge>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </div>
+
+                    <div className="mt-6 space-y-2">
+                        <h3 className="text-sm font-medium">Active lease</h3>
+                        {viewedOccupant.lease ? (
+                            <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
+                                {(
+                                    [
+                                        [
+                                            'Starts',
+                                            viewedOccupant.lease.starts_at ??
+                                                '—',
+                                        ],
+                                        [
+                                            'Rent',
+                                            `${money(
+                                                viewedOccupant.lease.currency,
+                                                viewedOccupant.lease
+                                                    .rent_amount,
+                                            )}${
+                                                viewedOccupant.lease
+                                                    .rent_frequency
+                                                    ? ` / ${viewedOccupant.lease.rent_frequency}`
+                                                    : ''
+                                            }`,
+                                        ],
+                                        [
+                                            'Deposit',
+                                            money(
+                                                viewedOccupant.lease.currency,
+                                                viewedOccupant.lease.deposit,
+                                            ),
+                                        ],
+                                    ] as [string, string][]
+                                ).map(([label, value]) => (
+                                    <div
+                                        key={label}
+                                        className="grid grid-cols-[8rem_1fr] gap-2"
+                                    >
+                                        <dt className="text-muted-foreground">
+                                            {label}
+                                        </dt>
+                                        <dd className="min-w-0 break-words">
+                                            {value}
+                                        </dd>
+                                    </div>
+                                ))}
+
+                                <div className="grid grid-cols-[8rem_1fr] gap-2">
+                                    <dt className="text-muted-foreground">
+                                        Agreement
+                                    </dt>
+                                    <dd className="min-w-0 break-words">
+                                        {viewedOccupant.lease
+                                            .agreement_document_url ? (
+                                            <a
+                                                href={
+                                                    viewedOccupant.lease
+                                                        .agreement_document_url
+                                                }
+                                                className="underline underline-offset-4"
+                                                target="_blank"
+                                                rel="noreferrer"
+                                            >
+                                                {viewedOccupant.lease
+                                                    .agreement_document_name ??
+                                                    'Download'}
+                                            </a>
+                                        ) : (
+                                            'None uploaded'
+                                        )}
+                                    </dd>
+                                </div>
+                            </dl>
+                        ) : (
+                            <p className="text-sm text-muted-foreground">
+                                No active lease in this property.
+                            </p>
+                        )}
+                    </div>
+                </ResponsiveOverlay>
+            )}
 
             {canDelete && deleteTarget && (
                 <ConfirmDeleteOverlay

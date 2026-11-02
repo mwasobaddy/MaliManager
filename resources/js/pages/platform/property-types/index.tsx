@@ -17,7 +17,6 @@ import ConfirmDeleteOverlay from '@/components/confirm-delete-overlay';
 import { CsvImportSheet, downloadCsv } from '@/components/csv-actions';
 import { CsvExportSheet } from '@/components/csv-export-sheet';
 import { DataTable } from '@/components/data-table';
-import { FormModal } from '@/components/form-modal';
 import Heading from '@/components/heading';
 import { LabelledIconButton } from '@/components/labelled-icon-button';
 import { OverlayFooter } from '@/components/overlay-footer';
@@ -476,11 +475,9 @@ export default function PropertyTypesIndex({
                 />
             </div>
 
-            {/* Create is a Modal while Edit (in the row sheet below) is a Sheet
-                for the same three fields. Deliberate, not a bug: creating has
-                no row to compare against, editing happens while scanning the
-                list. See the overlay policy in the laravel-feature-slice skill. */}
-            <FormModal
+            {/* Create and Edit share one sheet: the same three fields, the same
+                interaction. A centred modal is reserved for delete. */}
+            <ResponsiveOverlay
                 open={isCreateOpen}
                 onOpenChange={(open) => {
                     if (!open) {
@@ -515,7 +512,7 @@ export default function PropertyTypesIndex({
                 >
                     <PropertyTypeFields idPrefix="create" errors={errors} />
                 </Form>
-            </FormModal>
+            </ResponsiveOverlay>
 
             <ResponsiveOverlay
                 open={isViewOpen && !isDeleteOpen && viewedType !== undefined}

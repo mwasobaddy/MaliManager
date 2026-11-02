@@ -165,7 +165,7 @@ test('owners bypass sub-permission checks on the occupants index', function () {
         ->assertInertia(fn ($page) => $page->component('organisation/occupants/index'));
 });
 
-test('owners can view an occupant record with its units', function () {
+test('the record url opens the view sheet on the index instead of a page', function () {
     $owner = User::factory()->create(['onboarded_at' => now()]);
     $organization = createOccupantOrganization($owner);
 
@@ -179,25 +179,20 @@ test('owners can view an occupant record with its units', function () {
     $unit = $property->units()->create([
         'name' => 'Unit A1',
         'status' => 'occupied',
-        'type' => '1 Bedroom',
-        'monthly_rent' => 25000,
-        'deposit' => 25000,
         'created_by' => $owner->id,
     ]);
 
-    $occupant = addOccupant($organization, $owner, $property, ['email' => 'sam@acme.test'], [$unit->id]);
+    $occupant = addOccupant($organization, $owner, $property, [], [$unit->id]);
 
     $this->actingAs($owner)
         ->get(occupantTenantUrl($organization, "/sunset-heights/occupants/{$occupant->id}"))
-        ->assertOk()
-        ->assertInertia(fn ($page) => $page
-            ->component('organisation/occupants/show')
-            ->where('property.slug', 'sunset-heights')
-            ->where('occupant.email', 'sam@acme.test')
-            ->where('occupant.units.0.id', $unit->id));
+        ->assertRedirect(occupantTenantUrl(
+            $organization,
+            "/sunset-heights/occupants?mode=view&occupant={$occupant->id}",
+        ));
 });
 
-test('an occupant record carries the active lease without the agreement body', function () {
+test('the view sheet resolves the occupant with their units and lease', function () {
     $owner = User::factory()->create(['onboarded_at' => now()]);
     $organization = createOccupantOrganization($owner);
 
@@ -230,17 +225,22 @@ test('an occupant record carries the active lease without the agreement body', f
     $occupant = Occupant::where('organization_id', $organization->id)->firstOrFail();
 
     $this->actingAs($owner)
-        ->get(occupantTenantUrl($organization, "/sunset-heights/occupants/{$occupant->id}"))
+        ->get(occupantTenantUrl(
+            $organization,
+            "/sunset-heights/occupants?mode=view&occupant={$occupant->id}",
+        ))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('organisation/occupants/show')
-            ->where('occupant.lease.currency', 'KES')
-            // The rendered contract is its own page; shipping it here would put
-            // a wall of HTML in every show response.
-            ->missing('occupant.lease.agreement_text'));
+            ->component('organisation/occupants/index')
+            ->where('focusedOccupant.email', 'jane.lease@acme.test')
+            ->where('focusedOccupant.units.0.id', $unit->id)
+            ->where('focusedOccupant.lease.currency', 'KES')
+            // The rendered contract is its own page; the sheet never renders it,
+            // so it must not travel in the payload.
+            ->missing('focusedOccupant.lease.agreement_text'));
 });
 
-test('an occupant record is not reachable through another property', function () {
+test('another property occupant is not resolved into the view sheet', function () {
     $owner = User::factory()->create(['onboarded_at' => now()]);
     $organization = createOccupantOrganization($owner);
 
@@ -267,11 +267,17 @@ test('an occupant record is not reachable through another property', function ()
     $occupant = addOccupant($organization, $owner, $sunset, [], [$unit->id]);
 
     $this->actingAs($owner)
-        ->get(occupantTenantUrl($organization, "/harbour-view/occupants/{$occupant->id}"))
-        ->assertNotFound();
+        ->get(occupantTenantUrl(
+            $organization,
+            "/harbour-view/occupants?mode=view&occupant={$occupant->id}",
+        ))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('organisation/occupants/index')
+            ->where('focusedOccupant', null));
 });
 
-test('occupants show requires the occupant.manage sub-permission', function () {
+test('opening an occupant record requires the occupant.manage sub-permission', function () {
     $owner = User::factory()->create(['onboarded_at' => now()]);
     $organization = createOccupantOrganization($owner);
 
@@ -314,7 +320,7 @@ test('occupants show requires the occupant.manage sub-permission', function () {
     assertErrorToast();
 });
 
-test('staff without delegation cannot view an occupant record', function () {
+test('staff without delegation cannot open an occupant record', function () {
     $owner = User::factory()->create(['onboarded_at' => now()]);
     $organization = createOccupantOrganization($owner);
 
