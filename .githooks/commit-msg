@@ -1,0 +1,61 @@
+#!/bin/sh
+# Enforce the commit message shape recorded in .ai/rules/general.md.
+#
+# Tested by piping a message file:
+#   .githooks/commit-msg /tmp/msg && echo ok
+
+msg_file="$1"
+subject=$(sed -n '1p' "$msg_file")
+
+# Git's own messages do not follow the convention: merges, reverts, and the
+# fixup!/squash! markers that rebase produces.
+case "$subject" in
+    "Merge "*|"Revert "*|"fixup! "*|"squash! "*|"amend! "*) exit 0 ;;
+esac
+
+fail() {
+    printf '\n  %s\n\n' "$1" >&2
+    printf '  Expected: type(scope): imperative lowercase subject\n\n' >&2
+    printf '    type  feat | fix | refactor | test | docs | chore | style | build | ci | perf\n' >&2
+    printf '    e.g.  feat(admin): let an editor replace the homepage hero portrait\n\n' >&2
+    printf '  Then a blank line and the body: what was wrong or missing, what the\n' >&2
+    printf '  change does, and the constraint that shaped it. Close with\n' >&2
+    printf '  "Verified in the browser:" or "Verified by tests:" naming what you ran.\n\n' >&2
+    printf '  See .ai/rules/general.md.\n\n' >&2
+    exit 1
+}
+
+if [ -z "$subject" ]; then
+    fail "The commit message is empty."
+fi
+
+if ! printf '%s' "$subject" | grep -qE '^(feat|fix|refactor|test|docs|chore|style|build|ci|perf)(\([a-z0-9._-]+\))?: [a-z]'; then
+    fail "The subject does not start with type(scope): and a lowercase description."
+fi
+
+case "$subject" in
+    *.) fail "The subject ends with a full stop; drop it." ;;
+esac
+
+# The body must be separated from the subject by a blank line, or git and
+# every log view will render the whole thing as one long subject.
+second=$(sed -n '2p' "$msg_file" | sed 's/^[[:space:]]*//')
+case "$second" in
+    ""|"#"*) : ;;
+    *) fail "There is no blank line between the subject and the body." ;;
+esac
+
+length=$(printf '%s' "$subject" | awk '{ print length }')
+if [ "$length" -gt 72 ]; then
+    printf '\n  note: the subject is %s characters; aim for 72 and move the rest into the body.\n\n' "$length" >&2
+fi
+
+# A missing body is a warning, not a failure: a padded body would be worse
+# than an honest short one, and merges and dependency bumps legitimately have none.
+body=$(sed -n '2,$p' "$msg_file" | grep -vE '^#|^[[:space:]]*$' | head -1)
+if [ -z "$body" ]; then
+    printf '\n  note: no body. Say what was wrong before and what changed, %s\n' >&2
+    printf '  and close with what you actually verified. See .ai/rules/general.md.\n\n' >&2
+fi
+
+exit 0

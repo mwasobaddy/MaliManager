@@ -13,6 +13,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/Http/Controllers/**/*.php | .ai/rules/controllers.md |
 | resources/js/components/rich-text-editor.tsx, resources/css/editor.css | .ai/rules/css.md |
 | resources/js/lib/editor/** | .ai/rules/editor.md |
+| ** | .ai/rules/general.md |
 | app/Http/** | .ai/rules/http.md |
 | resources/js/** | .ai/rules/js.md |
 | app/Http/Middleware/** | .ai/rules/middleware.md |
@@ -27,3 +28,6 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/Support/DefaultSubRoles.php | .ai/rules/support.md |
 | app/Http/Controllers/Tenant/**, app/Models/** | .ai/rules/tenant-models.md |
 | app/Http/Controllers/Tenant/** | .ai/rules/tenant.md |
+| app/Actions/**, app/Data/**, app/Services/**, app/Http/Controllers/** | .ai/rules/actions.md |
+| database/migrations/**, app/Models/**, app/Data/** | .ai/rules/money.md |
+| tests/** | .ai/rules/testing.md |

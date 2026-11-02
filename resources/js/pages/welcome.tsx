@@ -158,8 +158,8 @@ const faqs: Faq[] = [
 
 const primaryCta =
     'inline-flex items-center justify-center rounded-full bg-primary px-5 py-2.5 text-[15px] font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring';
-const ghostCta =
-    'inline-flex items-center justify-center rounded-full border border-border px-4 py-2.5 text-[15px] font-medium text-foreground transition-colors hover:border-muted-foreground/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring';
+const accentCta =
+    'inline-flex items-center justify-center rounded-full border border-brand-accent px-5 py-2.5 font-medium transition-colors hover:border-accent-text-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring text-accent-text hover:text-accent-text-hover';
 
 const prefersReducedMotion = (): boolean =>
     typeof window === 'undefined' ? false : window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -320,23 +320,23 @@ export default function Welcome() {
                 {/* ============ NAV ============ */}
                 <header className="sticky top-0 z-50 border-b border-border bg-background/85 backdrop-blur-md">
                     <nav className="mx-auto flex h-18 max-w-7xl items-center justify-between px-6 lg:px-10">
-                        <a
+                        <Link
                             href="#top"
                             aria-label={`${name} home`}
                             className="shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                         >
                             <BrandMark />
-                        </a>
+                        </Link>
 
                         <div className="hidden items-center gap-9 text-[15px] text-muted-foreground md:flex">
                             {navLinks.map((link) => (
-                                <a
+                                <Link
                                     key={link.href}
                                     href={link.href}
                                     className="transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                                 >
                                     {link.label}
-                                </a>
+                                </Link>
                             ))}
                         </div>
 
@@ -347,7 +347,7 @@ export default function Welcome() {
                                 </Link>
                             ) : (
                                 <>
-                                    <Link href={login().url} className={ghostCta}>
+                                    <Link href={login().url} className={accentCta}>
                                         Log In
                                     </Link>
                                     <Link href={login().url} className={primaryCta}>
@@ -393,14 +393,14 @@ export default function Welcome() {
                             className="space-y-4 border-t border-border bg-background px-6 py-5 md:hidden"
                         >
                             {navLinks.map((link) => (
-                                <a
+                                <Link
                                     key={link.href}
                                     href={link.href}
                                     onClick={() => setMenuOpen(false)}
                                     className="block text-muted-foreground transition-colors hover:text-foreground"
                                 >
                                     {link.label}
-                                </a>
+                                </Link>
                             ))}
                             <div className="flex flex-col gap-3 pt-3">
                                 {auth.user ? (
@@ -416,7 +416,7 @@ export default function Welcome() {
                                         <Link
                                             href={login().url}
                                             onClick={() => setMenuOpen(false)}
-                                            className={`${ghostCta} w-full text-center`}
+                                            className={`${accentCta} w-full text-center`}
                                         >
                                             Log In
                                         </Link>
@@ -475,12 +475,12 @@ export default function Welcome() {
                                 >
                                     {auth.user ? 'Open Dashboard' : 'Get Started Free'}
                                 </Link>
-                                <a
+                                <Link
                                     href="#features"
-                                    className="inline-flex items-center justify-center rounded-full border border-border px-6 py-3.5 font-medium text-foreground transition-colors hover:border-muted-foreground/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                                    className={accentCta}
                                 >
                                     Watch a 2-Minute Demo
-                                </a>
+                                </Link>
                             </div>
 
                             <div
@@ -861,7 +861,7 @@ export default function Welcome() {
                                         className={
                                             tier.featured
                                                 ? `${primaryCta} w-full text-center`
-                                                : `${ghostCta} w-full text-center`
+                                                : `${accentCta} w-full text-center`
                                         }
                                     >
                                         {tier.cta}
@@ -969,19 +969,19 @@ export default function Welcome() {
                                 <p className="mb-4 text-sm font-medium text-foreground">Product</p>
                                 <ul className="space-y-2.5 text-sm text-muted-foreground">
                                     <li>
-                                        <a href="#features" className="transition-colors hover:text-foreground">
+                                        <Link href="#features" className="transition-colors hover:text-foreground">
                                             Features
-                                        </a>
+                                        </Link>
                                     </li>
                                     <li>
-                                        <a href="#pricing" className="transition-colors hover:text-foreground">
+                                        <Link href="#pricing" className="transition-colors hover:text-foreground">
                                             Pricing
-                                        </a>
+                                        </Link>
                                     </li>
                                     <li>
-                                        <a href="#faq" className="transition-colors hover:text-foreground">
+                                        <Link href="#faq" className="transition-colors hover:text-foreground">
                                             FAQ
-                                        </a>
+                                        </Link>
                                     </li>
                                 </ul>
                             </div>
@@ -1009,7 +1009,7 @@ export default function Welcome() {
                                 © 2026 MaliManager. All rights reserved.
                             </p>
                             <div className="flex items-center gap-4">
-                                <a
+                                <Link
                                     href="#"
                                     aria-label="X / Twitter"
                                     className="text-muted-foreground transition-colors hover:text-foreground"
@@ -1017,8 +1017,8 @@ export default function Welcome() {
                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                                         <path d="M18.9 2H22l-7.6 8.7L23.3 22h-7l-5.5-6.9L4.5 22H1.4l8.1-9.3L1 2h7.2l5 6.3L18.9 2zm-1.2 18h1.7L7.4 4H5.6l12.1 16z" />
                                     </svg>
-                                </a>
-                                <a
+                                </Link>
+                                <Link
                                     href="#"
                                     aria-label="LinkedIn"
                                     className="text-muted-foreground transition-colors hover:text-foreground"
@@ -1026,8 +1026,8 @@ export default function Welcome() {
                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                                         <path d="M4.98 3.5a2.5 2.5 0 11.02 5 2.5 2.5 0 01-.02-5zM3 8.98h4v12H3v-12zm7 0h3.83v1.64h.05c.53-.99 1.83-2.04 3.77-2.04 4.03 0 4.78 2.66 4.78 6.11v6.29h-4v-5.58c0-1.33-.02-3.04-1.85-3.04-1.86 0-2.14 1.45-2.14 2.94v5.68h-4v-12z" />
                                     </svg>
-                                </a>
-                                <a
+                                </Link>
+                                <Link
                                     href="#"
                                     aria-label="Facebook"
                                     className="text-muted-foreground transition-colors hover:text-foreground"
@@ -1035,7 +1035,7 @@ export default function Welcome() {
                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                                         <path d="M13.5 22v-8.5H16l.4-3.3h-2.9V8.2c0-1 .3-1.6 1.7-1.6h1.8V3.6C16.6 3.4 15.6 3.3 14.4 3.3c-2.6 0-4.4 1.6-4.4 4.5v2.4H7.5v3.3H10V22h3.5z" />
                                     </svg>
-                                </a>
+                                </Link>
                             </div>
                         </div>
                     </div>

@@ -51,7 +51,7 @@ function BreadcrumbLink({
        * to that direct rule.
        */
       className={cn(
-        "text-muted-foreground hover:text-accent-text rounded-sm transition-colors hover:underline hover:underline-offset-4",
+        "text-muted-foreground hover:text-accent-text rounded-sm transition-colors",
         className
       )}
       {...props}

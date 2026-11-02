@@ -56,11 +56,15 @@
     "scripts": {
         "setup": [
             "composer install",
+            "@hooks",
             "@php -r \"file_exists('.env') || copy('.env.example', '.env');\"",
             "@php artisan key:generate",
             "@php artisan migrate --force",
             "npm install",
             "npm run build"
+        ],
+        "hooks": [
+            "git config core.hooksPath .githooks"
         ],
         "dev": [
             "Composer\\Config::disableProcessTimeout",
@@ -100,6 +104,7 @@
             "@php -r \"file_exists('.env') || copy('.env.example', '.env');\""
         ],
         "post-create-project-cmd": [
+            "@hooks",
             "@php artisan key:generate --ansi",
             "@php -r \"file_exists('database/database.sqlite') || touch('database/database.sqlite');\"",
             "@php artisan migrate --graceful --ansi"

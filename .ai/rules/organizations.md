@@ -1,6 +1,6 @@
 ---
 paths:
-  - resources/js/pages/organizations/index.tsx
+  - resources/js/pages/platform/organizations/index.tsx
 ---
 
 # Organizations
