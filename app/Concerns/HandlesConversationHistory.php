@@ -20,7 +20,7 @@ trait HandlesConversationHistory
     /**
      * Render the conversation history page.
      */
-    public function history(Request $request): InertiaResponse
+    protected function handleHistory(Request $request): InertiaResponse
     {
         $user = $request->user();
         $scope = $this->scopeForHistory($request);
@@ -35,7 +35,7 @@ trait HandlesConversationHistory
     /**
      * Show a single conversation with its messages.
      */
-    public function showConversation(Request $request, int $id): InertiaResponse|JsonResponse
+    protected function handleConversation(Request $request, int $id): InertiaResponse|JsonResponse
     {
         $user = $request->user();
         $scope = $this->scopeForHistory($request);
@@ -86,7 +86,7 @@ trait HandlesConversationHistory
     /**
      * Delete a conversation and its messages.
      */
-    public function destroyConversation(Request $request, int $id): JsonResponse
+    protected function handleDeleteConversation(Request $request, int $id): JsonResponse
     {
         $user = $request->user();
         $scope = $this->scopeForHistory($request);

@@ -116,6 +116,22 @@ class InspectionController extends Controller
         return back();
     }
 
+    /**
+     * Soft-delete an inspection. The photo files stay on disk, so a mistaken
+     * delete can be recovered; `InspectionService::softDelete` owns the write.
+     */
+    public function destroy(Request $request, Property $property, Inspection $inspection, InspectionService $service): RedirectResponse
+    {
+        $this->authorize($request, $property);
+        abort_if($inspection->property_id !== $property->id, 403);
+
+        $service->softDelete($inspection);
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Inspection deleted.']);
+
+        return redirect()->route('tenant.inspections.index', $property);
+    }
+
     private static function reportSchema(): ObjectSchema
     {
         return new ObjectSchema(

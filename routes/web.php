@@ -47,9 +47,7 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
 // Central plan management module, gated by central plan.* permissions.
 Route::middleware(['auth', 'verified', 'can:managePlans'])->group(function () {
     Route::get('plans', [PlanController::class, 'index'])->name('plans.index');
-    Route::get('plans/create', [PlanController::class, 'create'])->name('plans.create')->middleware('can:createPlans');
     Route::post('plans', [PlanController::class, 'store'])->name('plans.store')->middleware('can:createPlans');
-    Route::get('plans/{plan}/edit', [PlanController::class, 'edit'])->name('plans.edit')->middleware('can:editPlans');
     Route::patch('plans/{plan}', [PlanController::class, 'update'])->name('plans.update')->middleware('can:editPlans');
     Route::delete('plans/{plan}', [PlanController::class, 'destroy'])->name('plans.destroy')->middleware('can:deletePlans');
 });

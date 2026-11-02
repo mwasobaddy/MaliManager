@@ -180,4 +180,20 @@ class AssistantController extends Controller
     {
         return route('platform.assistant.ask');
     }
+
+    // Route targets; the bodies live in HandlesConversationHistory.
+    public function history(Request $request): Response
+    {
+        return $this->handleHistory($request);
+    }
+
+    public function showConversation(Request $request, int $id): Response|JsonResponse
+    {
+        return $this->handleConversation($request, $id);
+    }
+
+    public function destroyConversation(Request $request, int $id): JsonResponse
+    {
+        return $this->handleDeleteConversation($request, $id);
+    }
 }
