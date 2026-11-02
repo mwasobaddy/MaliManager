@@ -2,10 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\AcknowledgePickerRequest;
+use App\Http\Requests\DashboardRequest;
 use App\Services\DashboardService;
 use App\Services\PropertyAccessService;
 use App\Support\TenancyContext;
-use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -26,7 +27,7 @@ class DashboardController extends Controller
      * between staying on the admin dashboard or entering a property. Once the
      * choice is acknowledged it stays closed on subsequent loads/refreshes.
      */
-    public function index(Request $request): Response
+    public function index(DashboardRequest $request): Response
     {
         $user = $request->user();
 
@@ -56,7 +57,7 @@ class DashboardController extends Controller
      * Record that the user acknowledged the property picker (e.g. chose to
      * continue as admin) so it is not force-opened again this session.
      */
-    public function acknowledge(Request $request): HttpResponse
+    public function acknowledge(AcknowledgePickerRequest $request): HttpResponse
     {
         $request->session()->put(self::ACK_KEY, true);
 
