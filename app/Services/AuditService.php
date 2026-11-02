@@ -91,11 +91,23 @@ class AuditService
      */
     public function sortFromRequest(Request $request): array
     {
-        $column = $request->string('sort')->toString();
+        return $this->sortFrom(
+            $request->string('sort')->toString(),
+            $request->string('direction')->toString(),
+        );
+    }
 
+    /**
+     * The same allowlist as `sortFromRequest()`, without a request, so an export
+     * action can ask for a sort without carrying HTTP into the service.
+     *
+     * @return array{column: string|null, direction: string}
+     */
+    public function sortFrom(string $column, string $direction): array
+    {
         return [
             'column' => isset(self::SORTABLE[$column]) ? $column : null,
-            'direction' => $request->string('direction')->toString() === 'asc' ? 'asc' : 'desc',
+            'direction' => $direction === 'asc' ? 'asc' : 'desc',
         ];
     }
 

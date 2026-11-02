@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Platform;
 
+use App\Actions\Audit\ExportAuditLog;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Platform\AuditIndexRequest;
+use App\Http\Requests\Platform\ExportAuditRequest;
 use App\Models\Audit;
 use App\Models\Organization;
 use App\Services\AuditService;
-use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -64,16 +65,16 @@ class AuditController extends Controller
         ]);
     }
 
-    public function export(Request $request)
+    public function export(ExportAuditRequest $request, ExportAuditLog $export): \Symfony\Component\HttpFoundation\Response
     {
-        $audits = $this->service
-            ->query(
-                $this->service->filtersFromRequest($request),
-                null,
-                $this->service->sortFromRequest($request),
-            )
-            ->get();
+        $csv = $export->handle($request->toData());
 
-        return $this->service->toCsv($audits, 'audit-log.csv');
+        return response()->streamDownload(
+            function () use ($csv): void {
+                echo $csv->content;
+            },
+            $csv->filename,
+            ['Content-Type' => 'text/csv'],
+        );
     }
 }
