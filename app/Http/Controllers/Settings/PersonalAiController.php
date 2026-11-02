@@ -5,12 +5,12 @@ namespace App\Http\Controllers\Settings;
 use App\Enums\AiFeature;
 use App\Enums\AiProvider;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Settings\PersonalAiRequest;
 use App\Http\Requests\Settings\UpdatePersonalAiSettingsRequest;
 use App\Models\AiSetting;
 use App\Models\AiUsageLog;
 use App\Support\Ai\AiGateway;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -22,7 +22,7 @@ class PersonalAiController extends Controller
 {
     public function __construct(private AiGateway $gateway) {}
 
-    public function edit(Request $request): Response
+    public function edit(PersonalAiRequest $request): Response
     {
         $setting = AiSetting::query()
             ->whereMorphedTo('owner', $request->user())
@@ -112,7 +112,7 @@ class PersonalAiController extends Controller
         return back();
     }
 
-    public function destroyKey(Request $request): RedirectResponse
+    public function destroyKey(PersonalAiRequest $request): RedirectResponse
     {
         AiSetting::query()
             ->whereMorphedTo('owner', $request->user())
