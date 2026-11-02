@@ -19,6 +19,7 @@ use App\Support\LeaseAgreementTemplate;
 use App\Support\TenancyContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use App\Actions\LandParcels\LeaseLandParcelSection;
 use Inertia\Inertia;
 
 /**
@@ -64,42 +65,29 @@ class LandParcelSectionController extends Controller
         ]);
     }
 
-    public function lease(LeaseLandParcelSectionRequest $request, LandParcel $landParcel, LandParcelSection $landParcelSection): RedirectResponse
-    {
+    public function lease(
+        LeaseLandParcelSectionRequest $request,
+        LandParcel $landParcel,
+        LandParcelSection $landParcelSection,
+        LeaseLandParcelSection $action,
+    ): RedirectResponse {
         $this->authorizeParcelAccess($request, $landParcel);
         abort_if($landParcelSection->land_parcel_id !== $landParcel->id, 404);
 
         $organization = TenancyContext::organization();
+        abort_if($organization === null, 403);
 
-        $validated = $request->validated();
+        $lease = $action->handle(
+            $landParcelSection,
+            $landParcel,
+            $organization,
+            $request->user(),
+            $request->toData(),
+        );
 
-        $person = $this->resolvePerson($request, $validated);
-
-        $lease = new Lease([
-            'person_id' => $person->id,
-            'organization_id' => $organization->id,
-            'tenant_id' => TenancyContext::tenantId(),
-            'land_parcel_id' => $landParcel->id,
-            'land_parcel_section_id' => $landParcelSection->id,
-            'rent_amount' => $validated['rent_amount'],
-            'rent_frequency' => $validated['rent_frequency'] ?? null,
-            'currency' => $validated['currency'] ?? null,
-            'deposit' => $validated['deposit'] ?? null,
-            'starts_at' => $validated['starts_at'],
-            'ends_at' => $validated['ends_at'] ?? null,
-            'status' => 'active',
-            'created_by' => $request->user()->id,
-        ]);
-        $lease->save();
-
-        $agreementText = $this->generateAgreement($organization, $lease, $validated['template_id'] ?? null);
-
-        if ($agreementText !== null) {
-            $lease->update(['agreement_text' => $agreementText]);
-            Inertia::flash('agreement_html', $agreementText);
+        if ($lease->agreement_text) {
+            Inertia::flash('agreement_html', $lease->agreement_text);
         }
-
-        $landParcelSection->update(['status' => 'leased']);
 
         Inertia::flash('toast', [
             'type' => 'success',
@@ -109,45 +97,6 @@ class LandParcelSectionController extends Controller
         return redirect()->route('tenant.land-parcels.show', [
             'land_parcel' => $landParcel->slug,
         ]);
-    }
-
-    private function resolvePerson(Request $request, array $data): Person
-    {
-        if (! empty($data['person_id'])) {
-            return Person::findOrFail($data['person_id']);
-        }
-
-        return Person::firstOrCreate(
-            ['email' => $data['tenant_email']],
-            [
-                'first_name' => $data['tenant_name'],
-                'last_name' => '',
-                'created_by' => $request->user()->id,
-            ],
-        );
-    }
-
-    private function generateAgreement(Organization $organization, Lease $lease, ?int $templateId): ?string
-    {
-        $template = null;
-
-        if ($templateId) {
-            $template = AgreementTemplate::where('organization_id', $organization->id)
-                ->where('id', $templateId)
-                ->first();
-        }
-
-        if (! $template) {
-            $template = AgreementTemplate::where('organization_id', $organization->id)
-                ->whereNull('property_id')
-                ->first();
-        }
-
-        if (! $template) {
-            return null;
-        }
-
-        return LeaseAgreementTemplate::render($template->body_html, $lease);
     }
 
     private function authorizeParcelAccess(Request $request, LandParcel $landParcel): void

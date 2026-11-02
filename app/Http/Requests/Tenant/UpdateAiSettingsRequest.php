@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Tenant;
 
+use App\Data\Ai\AiSettingsData;
 use App\Enums\AiFeature;
 use App\Enums\AiProvider;
 use Illuminate\Foundation\Http\FormRequest;
@@ -40,5 +41,20 @@ class UpdateAiSettingsRequest extends FormRequest
             'allowed_user_ids' => ['nullable', 'array'],
             'allowed_user_ids.*' => ['integer'],
         ];
+    }
+
+    public function toData(): AiSettingsData
+    {
+        $validated = $this->validated();
+
+        return new AiSettingsData(
+            provider: (string) $validated['provider'],
+            model: (string) $validated['model'],
+            baseUrl: $validated['base_url'] ?? null,
+            features: array_values($validated['features'] ?? []),
+            apiKey: ! empty($validated['api_key']) ? (string) $validated['api_key'] : null,
+            allowAllMembers: $this->boolean('allow_all_members'),
+            allowedUserIds: $validated['allowed_user_ids'] ?? [],
+        );
     }
 }

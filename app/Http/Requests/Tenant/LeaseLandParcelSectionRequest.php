@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Tenant;
 
+use App\Data\LandParcels\LandParcelSectionLeaseData;
 use App\Support\TenancyContext;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -46,5 +47,10 @@ class LeaseLandParcelSectionRequest extends FormRequest
             'starts_at' => ['required', 'date'],
             'ends_at' => ['nullable', 'date', 'after:starts_at'],
         ];
+    }
+
+    public function toData(): LandParcelSectionLeaseData
+    {
+        return LandParcelSectionLeaseData::fromValidated($this->validated(), TenancyContext::tenantId());
     }
 }

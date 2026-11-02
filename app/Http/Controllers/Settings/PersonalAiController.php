@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Settings;
 
+use App\Actions\Ai\SaveAiSettings;
 use App\Enums\AiFeature;
 use App\Enums\AiProvider;
 use App\Http\Controllers\Controller;
@@ -71,41 +72,9 @@ class PersonalAiController extends Controller
         ]);
     }
 
-    public function update(UpdatePersonalAiSettingsRequest $request): RedirectResponse
+    public function update(UpdatePersonalAiSettingsRequest $request, SaveAiSettings $action): RedirectResponse
     {
-        $validated = $request->validated();
-
-        /** @var AiSetting|null $setting */
-        $setting = AiSetting::query()
-            ->whereMorphedTo('owner', $request->user())
-            ->first();
-
-        $attributes = [
-            'provider' => $validated['provider'],
-            'model' => $validated['model'],
-            'base_url' => $validated['base_url'] ?? null,
-            'features' => array_values($validated['features'] ?? []),
-        ];
-
-        if (! empty($validated['api_key'])) {
-            $attributes['api_key'] = $validated['api_key'];
-        }
-
-        if ($setting) {
-            if (empty($validated['api_key']) && ! $setting->api_key) {
-                return back()->withErrors(['api_key' => 'An API key is required.']);
-            }
-
-            $setting->update($attributes);
-        } else {
-            if (empty($validated['api_key'])) {
-                return back()->withErrors(['api_key' => 'An API key is required.']);
-            }
-
-            $setting = new AiSetting($attributes + ['api_key' => $validated['api_key']]);
-            $setting->owner()->associate($request->user());
-            $setting->save();
-        }
+        $action->handle($request->user(), $request->toData());
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Personal AI settings saved.']);
 

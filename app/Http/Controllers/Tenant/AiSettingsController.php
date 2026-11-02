@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Tenant;
 
+use App\Actions\Ai\SaveAiSettings;
 use App\Enums\AiFeature;
 use App\Enums\AiProvider;
 use App\Http\Controllers\Controller;
@@ -73,47 +74,13 @@ class AiSettingsController extends Controller
         ]);
     }
 
-    public function update(UpdateAiSettingsRequest $request): RedirectResponse
+    public function update(UpdateAiSettingsRequest $request, SaveAiSettings $action): RedirectResponse
     {
         $organization = TenancyContext::organization();
 
         abort_unless($request->user()->isOwnerOf($organization), 403);
 
-        $validated = $request->validated();
-
-        /** @var AiSetting|null $setting */
-        $setting = AiSetting::query()
-            ->whereMorphedTo('owner', $organization)
-            ->first();
-
-        $attributes = [
-            'provider' => $validated['provider'],
-            'model' => $validated['model'],
-            'base_url' => $validated['base_url'] ?? null,
-            'features' => array_values($validated['features'] ?? []),
-            'allow_all_members' => $request->boolean('allow_all_members'),
-            'allowed_user_ids' => array_map(intval(...), $validated['allowed_user_ids'] ?? []),
-        ];
-
-        if (! empty($validated['api_key'])) {
-            $attributes['api_key'] = $validated['api_key'];
-        }
-
-        if ($setting) {
-            if (empty($validated['api_key']) && ! $setting->api_key) {
-                return back()->withErrors(['api_key' => 'An API key is required.']);
-            }
-
-            $setting->update($attributes);
-        } else {
-            if (empty($validated['api_key'])) {
-                return back()->withErrors(['api_key' => 'An API key is required.']);
-            }
-
-            $setting = new AiSetting($attributes + ['api_key' => $validated['api_key']]);
-            $setting->owner()->associate($organization);
-            $setting->save();
-        }
+        $action->handle($organization, $request->toData());
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'AI settings saved.']);
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Settings;
 
+use App\Data\Ai\AiSettingsData;
 use App\Enums\AiFeature;
 use App\Enums\AiProvider;
 use Illuminate\Foundation\Http\FormRequest;
@@ -35,5 +36,18 @@ class UpdatePersonalAiSettingsRequest extends FormRequest
             'features' => ['nullable', 'array'],
             'features.*' => [Rule::in(array_column(AiFeature::cases(), 'value'))],
         ];
+    }
+
+    public function toData(): AiSettingsData
+    {
+        $validated = $this->validated();
+
+        return new AiSettingsData(
+            provider: (string) $validated['provider'],
+            model: (string) $validated['model'],
+            baseUrl: $validated['base_url'] ?? null,
+            features: array_values($validated['features'] ?? []),
+            apiKey: ! empty($validated['api_key']) ? (string) $validated['api_key'] : null,
+        );
     }
 }
