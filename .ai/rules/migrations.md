@@ -8,7 +8,16 @@ paths:
 
 ## Edit existing migrations instead of adding new ones
 
-Prefer editing existing migrations over creating new ones. When a table already exists and needs a column change, modify the original migration in place (and re-run migrate:fresh or manually adjust the dev DB) rather than adding a new migration. Only add a new migration for genuinely new tables.
+Prefer editing existing migrations over creating new ones **while the project is unreleased**. When a
+table already exists and needs a column change, modify the original migration in place (and re-run
+migrate:fresh or manually adjust the dev DB) rather than adding a new migration. Only add a new
+migration for genuinely new tables.
+
+**Before editing an existing migration, ask whether the app is live.** If it is deployed anywhere with
+data that cannot be lost — a production or staging URL, real users, a managed database, backups — add a
+new migration instead. Editing one that has already run elsewhere cannot be undone by a rollback, so the
+question must come before the edit, not after. Signals and reasoning:
+`conventions.md` in the `laravel-feature-slice` skill.
 
 ## Null password for OAuth-only users
 
