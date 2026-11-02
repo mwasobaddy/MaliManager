@@ -2,17 +2,19 @@
 
 namespace App\Http\Controllers\Platform;
 
+use App\Actions\PropertyTypes\ExportPropertyTypes;
+use App\Actions\PropertyTypes\ImportPropertyTypes;
+use App\Concerns\FlashesImportResult;
 use App\Enums\PlatformPermissionKey;
 use App\Enums\PropertyCategory;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Platform\DestroyPropertyTypeRequest;
+use App\Http\Requests\Platform\ExportPropertyTypesRequest;
 use App\Http\Requests\Platform\ImportPropertyTypeRequest;
 use App\Http\Requests\Platform\PropertyTypeIndexRequest;
 use App\Http\Requests\Platform\StorePropertyTypeRequest;
 use App\Http\Requests\Platform\UpdatePropertyTypeRequest;
 use App\Models\PropertyType;
-use App\Support\CsvReader;
-use App\Support\PropertyTypeCatalog;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -35,6 +37,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 class PropertyTypeController extends Controller
 {
+    use FlashesImportResult;
+
     private const SORTABLE = [
         'name' => 'name',
         'category' => 'category',
@@ -138,36 +142,17 @@ class PropertyTypeController extends Controller
      * to get the catalog *wrong* in bulk. Export is the useful direction — the
      * 52 seeded rows are worth having in a spreadsheet.
      */
-    public function export(Request $request): StreamedResponse
+    public function export(ExportPropertyTypesRequest $request, ExportPropertyTypes $export): StreamedResponse
     {
-        $scope = $request->string('scope')->toString() === 'page' ? 'page' : 'all';
+        $csv = $export->handle($request->toData());
 
-        $query = $this->filtered($request)
-            ->withCount('properties')
-            ->orderBy('sort_order')
-            ->orderBy('name');
-
-        if ($scope === 'page') {
-            $query->forPage((int) $request->integer('page', 1), 20);
-        }
-
-        $csv = fopen('php://temp', 'r+');
-        fputcsv($csv, ['Name', 'Category', 'Properties in use', 'Description']);
-
-        foreach ($query->get() as $type) {
-            fputcsv($csv, [
-                $type->name,
-                $type->category->value,
-                $type->properties_count,
-                $type->description ?? '',
-            ]);
-        }
-
-        rewind($csv);
-
-        return response()->streamDownload(fn () => fpassthru($csv), 'property-types.csv', [
-            'Content-Type' => 'text/csv',
-        ]);
+        return response()->streamDownload(
+            function () use ($csv): void {
+                echo $csv->content;
+            },
+            $csv->filename,
+            ['Content-Type' => 'text/csv'],
+        );
     }
 
     /**
@@ -175,18 +160,10 @@ class PropertyTypeController extends Controller
      */
     private function filtered(Request $request): Builder
     {
-        // `Request::string()` returns a Stringable and an object is always truthy,
-        // so `->when($request->string('search')->trim(), ...)` would run the
-        // filter with no term — binding `like '%%'` and matching everything.
-        return $this->query()
-            ->when(
-                $request->string('search')->trim()->toString(),
-                fn (Builder $query, string $search) => $query->where('name', 'like', "%{$search}%"),
-            )
-            ->when(
-                $request->string('category')->toString() !== '',
-                fn (Builder $query) => $query->where('category', $request->string('category')->toString()),
-            );
+        return PropertyType::query()->filtered([
+            'search' => $request->string('search')->trim()->toString(),
+            'category' => $request->string('category')->toString(),
+        ]);
     }
 
     private function nextSortOrder(): int
@@ -205,84 +182,14 @@ class PropertyTypeController extends Controller
     }
 
     /**
-     * Create property types from an uploaded CSV.
-     *
-     * Rows are independent: a bad row is recorded and skipped while the good
-     * rows still land.
-     *
-     * Recognised columns (matched case-insensitively, spaces or underscores):
-     * Name (required), Category, Status.
-     *
-     * Because the catalog is global, a duplicate name is the common failure —
-     * the file was probably exported from here and re-imported — so that row
-     * is reported rather than silently treated as an update. Nobody has asked
-     * for an upsert here and quietly rewriting an admin's curated category
-     * from a spreadsheet is worse than a clear error.
+     * Create property types from an uploaded CSV. A bad row is recorded and
+     * skipped while the good rows still land.
      */
-    public function import(ImportPropertyTypeRequest $request, CsvReader $csv): RedirectResponse
+    public function import(ImportPropertyTypeRequest $request, ImportPropertyTypes $import): RedirectResponse
     {
-        $parsed = $csv->rows($request->file('file'));
-        $errors = [];
-        $imported = 0;
+        $result = $import->handle($request->toData());
 
-        foreach ($parsed['rows'] as $row) {
-            $data = $row['data'];
-            $name = trim($data['name'] ?? '');
-
-            if ($name === '') {
-                $errors[] = ['row' => $row['row'], 'message' => "Row {$row['row']}: Name is required."];
-
-                continue;
-            }
-
-            if (PropertyType::withTrashed()->where('name', $name)->exists()) {
-                $errors[] = ['row' => $row['row'], 'message' => "Row {$row['row']}: \"{$name}\" already exists."];
-
-                continue;
-            }
-
-            $category = strtolower(trim($data['category'] ?? '')) ?: PropertyCategory::Residential->value;
-
-            if (! PropertyCategory::tryFrom($category)) {
-                $errors[] = ['row' => $row['row'], 'message' => "Row {$row['row']}: category must be residential or commercial."];
-
-                continue;
-            }
-
-            PropertyType::create([
-                'name' => $name,
-                'slug' => PropertyTypeCatalog::slugFor($name),
-                'category' => $category,
-                'sort_order' => $this->nextSortOrder(),
-                'status' => strtolower(trim($data['status'] ?? 'active')) === 'inactive' ? 'inactive' : 'active',
-            ]);
-
-            $imported++;
-        }
-
-        if (! $parsed['ok']) {
-            $errors = $parsed['rows'];
-        }
-
-        $failed = count($errors);
-
-        if ($failed === 0) {
-            Inertia::flash('toast', [
-                'type' => 'success',
-                'message' => $imported === 1 ? '1 property type imported.' : "{$imported} property types imported.",
-            ]);
-
-            return redirect()->route('platform.property-types.index');
-        }
-
-        Inertia::flash('toast', [
-            'type' => $imported > 0 ? 'warning' : 'error',
-            'message' => "{$imported} imported, {$failed} failed.",
-        ]);
-
-        Inertia::flash('importErrors', $errors);
-
-        return back();
+        return $this->respondToImport($result, 'property type', 'property types', 'platform.property-types.index');
     }
 
     /**

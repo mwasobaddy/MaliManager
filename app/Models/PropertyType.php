@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\PropertyCategory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -87,5 +88,24 @@ class PropertyType extends Model
     public function getRouteKeyName(): string
     {
         return 'id';
+    }
+
+    /**
+     * The catalogue list predicate: name search plus an exact category. Shared by
+     * the index and the CSV export.
+     *
+     * @param  array{search?: string, category?: string}  $filters
+     */
+    public function scopeFiltered(Builder $query, array $filters): Builder
+    {
+        return $query
+            ->when(
+                ($filters['search'] ?? '') !== '',
+                fn (Builder $q) => $q->where('name', 'like', "%{$filters['search']}%"),
+            )
+            ->when(
+                ($filters['category'] ?? '') !== '',
+                fn (Builder $q) => $q->where('category', $filters['category']),
+            );
     }
 }

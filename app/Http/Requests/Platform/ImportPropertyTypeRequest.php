@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Platform;
 
+use App\Data\PropertyTypes\ImportPropertyTypesData;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -11,12 +12,9 @@ use Illuminate\Foundation\Http\FormRequest;
  */
 class ImportPropertyTypeRequest extends FormRequest
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     */
     public function authorize(): bool
     {
-        return true;
+        return $this->user()?->can('importPropertyTypes') ?? false;
     }
 
     /**
@@ -27,5 +25,10 @@ class ImportPropertyTypeRequest extends FormRequest
         return [
             'file' => ['required', 'file', 'mimes:csv,txt', 'max:2048'],
         ];
+    }
+
+    public function toData(): ImportPropertyTypesData
+    {
+        return new ImportPropertyTypesData(file: $this->file('file'));
     }
 }
