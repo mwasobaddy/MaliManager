@@ -5,12 +5,12 @@ namespace App\Http\Controllers\Settings;
 use App\Enums\AiFeature;
 use App\Enums\AiProvider;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Settings\UpdatePersonalAiSettingsRequest;
 use App\Models\AiSetting;
 use App\Models\AiUsageLog;
 use App\Support\Ai\AiGateway;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -71,16 +71,9 @@ class PersonalAiController extends Controller
         ]);
     }
 
-    public function update(Request $request): RedirectResponse
+    public function update(UpdatePersonalAiSettingsRequest $request): RedirectResponse
     {
-        $validated = $request->validate([
-            'provider' => ['required', Rule::in(array_column(AiProvider::cases(), 'value'))],
-            'model' => ['required', 'string', 'max:100'],
-            'base_url' => ['nullable', 'url', 'max:255'],
-            'api_key' => ['nullable', 'string', 'min:20'],
-            'features' => ['nullable', 'array'],
-            'features.*' => [Rule::in(array_column(AiFeature::cases(), 'value'))],
-        ]);
+        $validated = $request->validated();
 
         /** @var AiSetting|null $setting */
         $setting = AiSetting::query()
