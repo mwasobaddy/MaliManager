@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Tenant;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Tenant\DestroyLandParcelSectionRequest;
+use App\Http\Requests\Tenant\LeaseLandParcelSectionRequest;
 use App\Http\Requests\Tenant\StoreLandParcelSectionRequest;
 use App\Models\AgreementTemplate;
 use App\Models\LandParcel;
@@ -17,8 +19,6 @@ use App\Support\LeaseAgreementTemplate;
 use App\Support\TenancyContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 /**
@@ -50,7 +50,7 @@ class LandParcelSectionController extends Controller
         ]);
     }
 
-    public function destroy(Request $request, LandParcel $landParcel, LandParcelSection $landParcelSection): RedirectResponse
+    public function destroy(DestroyLandParcelSectionRequest $request, LandParcel $landParcel, LandParcelSection $landParcelSection): RedirectResponse
     {
         $this->authorizeParcelAccess($request, $landParcel);
         abort_if($landParcelSection->land_parcel_id !== $landParcel->id, 404);
@@ -64,25 +64,14 @@ class LandParcelSectionController extends Controller
         ]);
     }
 
-    public function lease(Request $request, LandParcel $landParcel, LandParcelSection $landParcelSection): RedirectResponse
+    public function lease(LeaseLandParcelSectionRequest $request, LandParcel $landParcel, LandParcelSection $landParcelSection): RedirectResponse
     {
         $this->authorizeParcelAccess($request, $landParcel);
         abort_if($landParcelSection->land_parcel_id !== $landParcel->id, 404);
 
         $organization = TenancyContext::organization();
 
-        $validated = Validator::validate($request->all(), [
-            'person_id' => ['nullable', Rule::exists('people', 'id')],
-            'tenant_name' => [Rule::requiredIf(blank($request->input('person_id'))), 'string', 'max:255'],
-            'tenant_email' => [Rule::requiredIf(blank($request->input('person_id'))), 'email', 'max:255'],
-            'template_id' => ['nullable', Rule::exists('agreement_templates', 'id')],
-            'rent_amount' => ['required', 'numeric', 'min:0'],
-            'rent_frequency' => ['nullable', 'string', 'max:50'],
-            'currency' => ['nullable', 'string', 'max:10'],
-            'deposit' => ['nullable', 'numeric', 'min:0'],
-            'starts_at' => ['required', 'date'],
-            'ends_at' => ['nullable', 'date', 'after:starts_at'],
-        ]);
+        $validated = $request->validated();
 
         $person = $this->resolvePerson($request, $validated);
 
