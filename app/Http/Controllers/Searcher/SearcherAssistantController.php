@@ -7,6 +7,8 @@ use App\Enums\AiFeature;
 use App\Exceptions\AssistantUnavailableException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Searcher\AskAssistantRequest;
+use App\Http\Requests\Searcher\AssistantConversationRequest;
+use App\Http\Requests\Searcher\AssistantPageRequest;
 use App\Models\AiConversation;
 use App\Models\AiMessage;
 use App\Models\User;
@@ -31,7 +33,7 @@ class SearcherAssistantController extends Controller
         private AiGateway $gateway,
     ) {}
 
-    public function page(Request $request): Response
+    public function page(AssistantPageRequest $request): Response
     {
         $user = $request->user();
         $enabled = $user->person_id !== null && $this->gateway->canUse($user, AiFeature::AskData);
@@ -160,17 +162,17 @@ class SearcherAssistantController extends Controller
     }
 
     // Route targets; the bodies live in HandlesConversationHistory.
-    public function history(Request $request): Response
+    public function history(AssistantPageRequest $request): Response
     {
         return $this->handleHistory($request);
     }
 
-    public function showConversation(Request $request, int $id): Response|JsonResponse
+    public function showConversation(AssistantConversationRequest $request, int $id): Response|JsonResponse
     {
         return $this->handleConversation($request, $id);
     }
 
-    public function destroyConversation(Request $request, int $id): JsonResponse
+    public function destroyConversation(AssistantConversationRequest $request, int $id): JsonResponse
     {
         return $this->handleDeleteConversation($request, $id);
     }
