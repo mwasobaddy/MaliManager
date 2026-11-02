@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Platform;
 use App\Enums\PlatformPermissionKey;
 use App\Enums\PropertyCategory;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Platform\DestroyPropertyTypeRequest;
 use App\Http\Requests\Platform\ImportPropertyTypeRequest;
+use App\Http\Requests\Platform\PropertyTypeIndexRequest;
 use App\Http\Requests\Platform\StorePropertyTypeRequest;
 use App\Http\Requests\Platform\UpdatePropertyTypeRequest;
 use App\Models\PropertyType;
@@ -40,7 +42,7 @@ class PropertyTypeController extends Controller
         'status' => 'status',
     ];
 
-    public function index(Request $request): Response
+    public function index(PropertyTypeIndexRequest $request): Response
     {
         $sort = $request->string('sort')->toString();
         $sortColumn = self::SORTABLE[$sort] ?? null;
@@ -109,7 +111,7 @@ class PropertyTypeController extends Controller
      * mis-click cannot take a landlord's buildings with it. The confirmation
      * states the count for that reason.
      */
-    public function destroy(Request $request, PropertyType $propertyType): RedirectResponse
+    public function destroy(DestroyPropertyTypeRequest $request, PropertyType $propertyType): RedirectResponse
     {
         $inUse = $propertyType->usageCount();
         $name = $propertyType->name;
