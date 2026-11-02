@@ -24,6 +24,54 @@ SKIP_DIRS = {"vendor", "node_modules", "storage", "bootstrap/cache", ".git",
              "public", "database/migrations"}
 
 
+def service_inventory(root):
+    """Classify public service methods as write use cases or read collaborators."""
+    base = os.path.join(root, "app/Services")
+    rows = []
+    for path in php_files(root, "app/Services"):
+        src = read(path)
+        code = strip_php(src)
+        methods = []
+        for m in re.finditer(r"public\s+function\s+(\w+)\s*\(([^)]*)\)[^{;]*\{", code):
+            name = m.group(1)
+            start = m.end()
+            depth, i = 1, start
+            while i < len(code) and depth:
+                if code[i] == "{":
+                    depth += 1
+                elif code[i] == "}":
+                    depth -= 1
+                i += 1
+            body = code[start:i - 1]
+            write = bool(re.search(
+                r"\$this->(save|delete|transaction)\s*\(|::create\s*\(|->update\s*\(|"
+                r"->delete\s*\(|->save\s*\(|::updateOrCreate\s*\(", body))
+            methods.append({"method": name, "write": write,
+                            "lines": body.count("\n") + 1})
+        if methods:
+            rows.append({"service": os.path.basename(path)[:-4],
+                         "file": rel(root, path), "methods": methods})
+    return rows
+
+
+def print_inventory(rows):
+    total_w = sum(1 for r in rows for m in r["methods"] if m["write"])
+    total = sum(len(r["methods"]) for r in rows)
+    print(f"\nservices: {len(rows)}   public methods: {total}   "
+          f"write use cases: {total_w}   read/aggregate: {total - total_w}")
+    print("\nwrite methods are Action candidates; read/aggregate methods stay in the service\n")
+    for r in sorted(rows, key=lambda x: x["service"]):
+        w = [m for m in r["methods"] if m["write"]]
+        rd = len(r["methods"]) - len(w)
+        if not w:
+            print(f"  {r['service']:38} {len(r['methods']):2} read  (query service — leave it)")
+            continue
+        print(f"  {r['service']:38} {len(w):2} write / {rd:2} read")
+        for m in w:
+            print(f"      -> {m['method']:28} {m['lines']:3} lines")
+    print()
+
+
 # --------------------------------------------------------------------------- helpers
 def strip_php(src):
     """Remove comments and string literals so code checks don't match prose."""
@@ -163,10 +211,6 @@ class LaravelAudit:
                          "$request->validate() in a controller",
                          "Extract to a Form Request. Validation in a controller cannot be reused "
                          "or unit-tested, and authorization has no home.")
-            if re.search(r"Request\s+\$request", code):
-                self.add(WARN, "raw-request-parameter", r,
-                         "raw Illuminate\\Http\\Request injected",
-                         "Type-hint a Form Request instead; it carries rules and authorize().")
             for pat, label in ((r"::create\s*\(", "::create()"),
                                (r"->save\s*\(", "->save()"),
                                (r"->update\s*\(", "->update()"),
@@ -180,9 +224,23 @@ class LaravelAudit:
             if re.search(r"\bDB::", code):
                 self.add(WARN, "db-in-controller", r, "DB facade used in a controller",
                          "Move queries into a repository, Action, or query scope.")
-            for name, (body, _params) in method_bodies(code).items():
+
+            # Method-level checks: index/show legitimately take a raw Request for filters
+            # and pagination, and write methods should take a Form Request instead.
+            GET_METHODS = {"index", "show", "create", "edit"}
+            # `Request` must be the whole type name. Without the boundary, "UpdateFooRequest
+            # $request" matches, which flags exactly the Form Requests this skill tells you
+            # to write.
+            RAW_REQUEST = re.compile(r"(?<![A-Za-z0-9_\\])\\?Request\s+\$request")
+            for name, (body, params) in method_bodies(code).items():
+                if RAW_REQUEST.search(params) and name not in GET_METHODS:
+                    self.add(WARN, "raw-request-parameter", r,
+                             f"{name}() takes a raw Illuminate\\Http\\Request",
+                             "Type-hint a Form Request instead; it carries rules and authorize().")
                 size = body.count("\n") + 1
-                if size > self.METHOD_WARN and name not in ("__construct",):
+                if name in GET_METHODS:
+                    continue  # list endpoints with filters legitimately run longer
+                if size > self.METHOD_WARN and name != "__construct":
                     self.add(WARN, "method-too-large", r,
                              f"{name}() is {size} lines",
                              "A controller method should call an Action and return a response.")
@@ -233,6 +291,10 @@ class LaravelAudit:
                 src = read(path)
                 code = strip_php(src)
                 r = rel(self.root, path)
+                # Traits under Concerns/ hold shared helpers, not use cases. They have
+                # no entrypoint by design and are not Actions.
+                if re.search(r"^\s*trait\s+\w+", code, re.M) or "/Concerns/" in r.replace("\\", "/"):
+                    continue
                 self.checked += 1
                 lines = src.count("\n") + 1
                 if lines > self.ACTION_WARN:
@@ -312,7 +374,9 @@ class LaravelAudit:
                 found = False
                 for base in roots:
                     for cand in (page, page.lower(), page[0].lower() + page[1:]):
-                        if any(os.path.exists(os.path.join(base, cand + e)) for e in exts):
+                        # Inertia resolves `a/b` to either a/b.tsx or a/b/index.tsx
+                        if any(os.path.exists(os.path.join(base, cand + e)) for e in exts) or \
+                           any(os.path.exists(os.path.join(base, cand, "index" + e)) for e in exts):
                             found = True
                             break
                     if found:
@@ -373,7 +437,7 @@ class LaravelAudit:
 
 
 # --------------------------------------------------------------------------- report
-def report(findings, checked, out_json=None):
+def report(findings, checked, out_json=None, baseline=None, fail_on_new=False):
     order = {ERROR: 0, WARN: 1, INFO: 2}
     findings = sorted(findings, key=lambda f: (order[f.severity], f.rule, f.file))
     counts = Counter(f.severity for f in findings)
@@ -382,6 +446,25 @@ def report(findings, checked, out_json=None):
 
     print(f"\nfiles checked: {checked}")
     print(f"score: {score}/100   errors: {errors}   warnings: {warns}   info: {counts.get(INFO, 0)}")
+
+    delta = None
+    if baseline:
+        base = {(b["rule"], b["file"]): b["severity"]
+                for b in baseline.get("findings", [])}
+        now = {(f.rule, f.file): f.severity for f in findings}
+        new = {k: v for k, v in now.items() if k not in base}
+        fixed = {k: v for k, v in base.items() if k not in now}
+        new_err = sum(1 for v in new.values() if v == ERROR)
+        new_warn = sum(1 for v in new.values() if v == WARN)
+        fixed_err = sum(1 for v in fixed.values() if v == ERROR)
+        fixed_warn = sum(1 for v in fixed.values() if v == WARN)
+        delta = {"introduced_errors": new_err, "introduced_warnings": new_warn,
+                 "resolved_errors": fixed_err, "resolved_warnings": fixed_warn,
+                 "introduced": [{"rule": r, "file": f} for (r, f) in sorted(new)]}
+        print(f"\nvs baseline   introduced: {new_err} errors, {new_warn} warnings"
+              f"    resolved: {fixed_err} errors, {fixed_warn} warnings")
+        print("  (score is absolute and floors on legacy debt; the delta is the progress signal)")
+
     if not findings:
         print("\nno findings\n")
 
@@ -396,11 +479,16 @@ def report(findings, checked, out_json=None):
             print(f"         fix: {f.fix}")
 
     if out_json:
-        json.dump({"score": score, "files_checked": checked, "counts": dict(counts),
-                   "findings": [f.as_dict() for f in findings]},
-                  open(out_json, "w"), indent=1)
+        payload = {"score": score, "files_checked": checked, "counts": dict(counts),
+                   "findings": [f.as_dict() for f in findings]}
+        if delta:
+            payload["delta"] = delta
+        json.dump(payload, open(out_json, "w"), indent=1)
         print(f"\nwrote {out_json}")
     print()
+
+    if fail_on_new:
+        return 1 if (delta and delta["introduced_errors"]) else 0
     return 1 if errors else 0
 
 
@@ -482,6 +570,22 @@ Route::post('/register', [RegisterController::class, 'missingMethod']);
 Route::get('/ghost', [App\\Http\\Controllers\\GhostController::class, 'index']);
 """
 
+# A read endpoint legitimately takes a raw Request (filters, pagination) and runs long.
+GET_CONTROLLER = """<?php
+namespace App\\Http\\Controllers;
+
+use Illuminate\\Http\\Request;
+
+class ListController extends Controller
+{
+    public function index(Request $request)
+    {
+        $rows = ['a', 'b', 'c'];
+        return response()->json(['rows' => $rows, 'page' => $request->query('page')]);
+    }
+}
+"""
+
 
 def selftest():
     import tempfile
@@ -510,6 +614,14 @@ def selftest():
             print("FAIL: flagged a Form Request that has authorize()")
             ok = False
 
+        # The regex must match `Request` as a whole type, not `FooRequest`. Flagging a Form
+        # Request would penalise exactly what the skill instructs you to write.
+        raw = [f for f in findings if f.rule == "raw-request-parameter"]
+        if len(raw) != 1 or "RegistrationController" not in raw[0].file:
+            print(f"FAIL: raw-request-parameter hit {[f.file for f in raw]} — expected only the "
+                  f"controller with a true Illuminate Request")
+            ok = False
+
     with tempfile.TemporaryDirectory() as root:
         def put2(relpath, content):
             p = os.path.join(root, relpath)
@@ -517,13 +629,21 @@ def selftest():
             open(p, "w", encoding="utf-8").write(content)
 
         put2("app/Http/Controllers/Auth/RegisterController.php", GOOD_CONTROLLER)
+        put2("app/Http/Controllers/ListController.php", GET_CONTROLLER)
         put2("app/Http/Requests/Auth/StoreRegistrationRequest.php", GOOD_FORM_REQUEST)
         put2("routes/web.php",
              "<?php\nuse App\\Http\\Controllers\\Auth\\RegisterController;\n"
              "Route::post('/register', [RegisterController::class, 'store']);")
-        clean = [f for f in LaravelAudit(root).run() if f.severity == ERROR]
+        findings = LaravelAudit(root).run()
+        clean = [f for f in findings if f.severity == ERROR]
         if clean:
             print(f"FAIL: clean fixture produced errors: {[f.rule for f in clean]}")
+            ok = False
+        noise = [f for f in findings
+                 if f.rule in ("raw-request-parameter", "method-too-large")]
+        if noise:
+            print(f"FAIL: clean fixture flagged {[(f.rule, f.file) for f in noise]} — "
+                  f"a Form Request hint and a GET index must both be accepted")
             ok = False
 
     print("selftest:", "PASS" if ok else "FAIL")
@@ -536,6 +656,11 @@ def main():
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("path", nargs="?", help="Laravel application root")
     ap.add_argument("--json", help="write a machine-readable report")
+    ap.add_argument("--baseline", help="previous --json report; prints introduced/resolved counts")
+    ap.add_argument("--fail-on-new", action="store_true",
+                    help="with --baseline, fail only when a NEW error is introduced")
+    ap.add_argument("--services", action="store_true",
+                    help="inventory app/Services and classify methods as Action candidates")
     ap.add_argument("--selftest", action="store_true")
     args = ap.parse_args()
 
@@ -547,8 +672,19 @@ def main():
         print(f"error: no app/ directory in {args.path} — is this a Laravel root?", file=sys.stderr)
         return 2
 
+    baseline = None
+    if args.baseline:
+        try:
+            baseline = json.load(open(args.baseline))
+        except Exception as e:
+            print(f"error: cannot read baseline {args.baseline}: {e}", file=sys.stderr)
+            return 2
+
     auditor = LaravelAudit(args.path)
-    return report(auditor.run(), auditor.checked, args.json)
+    if args.services:
+        print_inventory(service_inventory(args.path))
+        return 0
+    return report(auditor.run(), auditor.checked, args.json, baseline, args.fail_on_new)
 
 
 if __name__ == "__main__":

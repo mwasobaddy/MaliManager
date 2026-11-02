@@ -1,5 +1,8 @@
 {
-    "agents": ["claude_code", "opencode"],
+    "agents": [
+        "claude_code",
+        "opencode"
+    ],
     "cloud": false,
     "guidelines": true,
     "mcp": true,
@@ -13,6 +16,7 @@
         "wayfinder-development",
         "pest-testing",
         "inertia-react-development",
-        "tailwindcss-development"
+        "tailwindcss-development",
+        "laravel-feature-slice"
     ]
 }

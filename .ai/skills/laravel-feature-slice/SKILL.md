@@ -1,13 +1,13 @@
 ---
 name: laravel-feature-slice
-description: Structure Laravel features so controllers stay thin and every layer exists. Use when implementing or reviewing a Laravel feature — login, onboarding, CRUD, payments, admin — and you need the complete file manifest, covering Form Requests, Actions, DTOs, Services, Policies, Enums, Events, Jobs, Resources, migrations, models, tests, and the matching React, Vue, Svelte or Livewire pages with backend and frontend validation on both sides. Also use when fixing bulky controllers, inline validation, or business logic leaking into the wrong layer. Targets Laravel 13 and the official starter kits, and composes with Laravel Boost.
+description: Structure Laravel features so controllers stay thin and every layer exists, in multi-tenant codebases. Use when implementing or reviewing a feature — login, onboarding, CRUD, payments, admin — where a tenant is identified by subdomain, custom domain, URL path, or a tenant column, and where roles, permissions or policies decide what a member may do. Starts with a discovery pass that detects the app's tenancy model, authorization tiers, base classes, money representation and frontend stack before any code is written, then gives the file manifest for Form Requests, Actions, DTOs, Services, Policies, Enums, Events, Jobs, Resources, migrations, models and tests, with backend and frontend validation on both sides. Works with stancl/tenancy, spatie multitenancy, custom organization scoping, and single-tenant Laravel apps. Targets Laravel 13 and Laravel Boost.
 license: MIT
 metadata:
   author: mwasobaddy
   version: "1.0"
 ---
 
-# Laravel feature slices
+# Laravel feature slices for multi-tenant apps
 
 The default failure mode of AI-assisted Laravel is one controller doing everything: `$request->validate()`,
 three `Model::create()` calls, a mail, and a redirect — 300 lines, untestable, and impossible to reuse.
@@ -15,6 +15,46 @@ This skill makes a feature a **slice of files**, each with one job.
 
 It is prescriptive on purpose. Laravel Boost already ships descriptive framework guidance; use that
 for "how does Inertia work". Use this for "what files does this feature need, and what goes in each".
+
+## Discover the project first
+
+This skill's defaults are wrong for some project, including probably yours. Tenancy model, authorization
+tiers, base classes, money representation and frontend stack all vary, and each changes the answer.
+
+**A documented project rule always beats a default here.** If `.ai/rules`, `AGENTS.md` or `CLAUDE.md`
+states a convention, that is the answer; this skill only fills the gaps.
+
+Spend one pass producing a six-line profile before writing code — `references/project-discovery.md` has
+the commands. The three questions that matter most:
+
+1. **How is the tenant identified?** Subdomain, custom domain, URL path, or a column. This decides which
+   routes exist and where identity comes from.
+2. **Is storage shared or per-tenant?** A separate database scopes for you. A shared database scopes
+   nothing, and every query becomes your responsibility.
+3. **Which authorization tiers exist?** Coarse role, scoped permission, record policy — or a mix.
+   Choosing the wrong one fails open.
+
+A feature that gets these wrong is wrong even when its tests pass, because the failure mode is
+cross-tenant data exposure.
+
+- Tenancy detail — `references/multitenancy.md`
+- Authorization detail — `references/authorization.md`
+
+## Authorization has three tiers
+
+Picking the wrong tier is a security bug, not a style problem.
+
+| Tier | Answers | Typical implementation |
+| --- | --- | --- |
+| **Coarse role** | What kind of account is this? | enum, or a role on the user |
+| **Scoped permission** | What may this member do *in this scope*? | permission keys, granted per team/organization |
+| **Policy** | May this user act on *this record*? | Laravel policy |
+
+Most feature decisions are **scoped permissions**, not coarse roles. Where a helper already grants
+super-admin and owner bypasses, do not reimplement them inline — and never evaluate a permission against
+a scope supplied by the request.
+
+Full model, the "adding a permission" sequence, and the mistake table: `references/authorization.md`.
 
 ## The one rule
 
@@ -44,6 +84,24 @@ Never start with the page. Each layer's contract determines the next.
 | 13 | Tests | Feature per action, unit per Action | `tests/` |
 
 Full manifests for login, onboarding, and a paid order: `references/feature-manifest.md`.
+
+## When the app already disagrees
+
+Most apps have conventions older than this skill, often written into `.ai/rules` or `AGENTS.md`.
+**A documented project rule wins.** This skill is the default when the app has not decided.
+
+| Conflict | Default resolution |
+| --- | --- |
+| App documents Services in `.ai/rules` | Follow the app. Do not add Actions alongside it — that is how two idioms appear. |
+| App uses Services but has no written rule | New work in Actions; existing Services stay until touched. Record it. |
+| App stores `decimal(14,2)`, this skill's example says cents | Match the app. Two money representations is a bug factory. |
+| `tests/Unit` doesn't boot Laravel | Bind `Unit/Actions` to the TestCase, or use Feature for actions that hit the DB. |
+| Authorization returns redirect + toast, not 403 | Assert the redirect, the toast, **and** that nothing was written. |
+| Tenancy is ambient | Pass the tenant id in the DTO; keep the context out of Actions. |
+| Wayfinder typed routes | `php artisan wayfinder:generate` after adding routes. |
+
+Full detail: `references/adapting-to-an-app.md`. Whatever you decide, write it to a rule file so the
+next agent doesn't resolve the same conflict differently.
 
 ## Thin controller, before and after
 
@@ -165,6 +223,10 @@ echo "skill dir: ${SKILL_DIR:-NOT FOUND}"
 python3 "$SKILL_DIR/scripts/laravel_audit.py" --selftest        # proves it runs
 python3 "$SKILL_DIR/scripts/laravel_audit.py" /path/to/app
 python3 "$SKILL_DIR/scripts/laravel_audit.py" . --json report.json
+
+# in a legacy app: baseline once, then measure what your work introduced
+python3 "$SKILL_DIR/scripts/laravel_audit.py" . --json baseline.json
+python3 "$SKILL_DIR/scripts/laravel_audit.py" . --baseline baseline.json --fail-on-new
 ```
 
 **If no directory is found, say so and give the user the command to run.** Do not substitute an
@@ -175,6 +237,18 @@ Flags inline validation, Eloquent writes in controllers, raw `Request` injection
 missing `rules()`/`authorize()`, oversize controllers/models/actions, `env()` outside config, `dd()`
 left in, routes pointing at missing classes or methods, `Inertia::render()` targets with no page
 component, Livewire views that don't exist, and controllers with no test.
+
+Two deliberate carve-outs: `index`/`show`/`create`/`edit` may take a raw `Request` (filters and
+pagination have no Form Request) and are exempt from the method-length rule. A Form Request type-hint
+is never flagged — the rule matches `Request` as a whole type name.
+
+**In an existing codebase the score is the wrong metric.** Pre-existing debt floors it at 0, so it
+reads the same before and after your work. Use `--baseline`: it prints introduced vs resolved, and
+`--fail-on-new` exits non-zero only when your changes add an error. Regenerate the baseline after
+upgrading the auditor — a delta is only meaningful across the same rule set.
+
+For a full audit-and-refactor pass — triage order, the fix for every rule, commit granularity, and what
+to do when the suite starts red — read `references/refactoring-an-existing-app.md`.
 
 Exit code `1` on errors, so it runs in CI. Fix errors before warnings, and fix the **template** that
 caused them rather than each instance.
@@ -192,7 +266,13 @@ Paths, form patterns, and per-kit rules: `references/starter-kits.md`.
 | File | Read it when |
 | --- | --- |
 | `references/feature-manifest.md` | Starting a feature and you need the exact file list, in order |
+| `references/project-discovery.md` | Always first — establish this app's tenancy, authorization, base classes, money and frontend |
+| `references/multitenancy.md` | Any feature touching tenant data — hosts, subdomain flow, scoping, queues, cross-tenant tests |
+| `references/authorization.md` | Any feature with permissions — choosing between platform role, sub-permission, and policy |
 | `references/layers.md` | Writing or reviewing one layer; need the rule and a code shape |
+| `references/adapting-to-an-app.md` | The app already has conventions that differ — Services vs Actions, money representation, test bootstrapping, tenancy, Wayfinder |
+| `references/migrating-services-to-actions.md` | You are converting an existing service layer to Actions, per use case |
+| `references/refactoring-an-existing-app.md` | Auditing a real app — triage order, the fix for each rule, one commit per change |
 | `references/starter-kits.md` | Frontend work — Inertia or Livewire, and dual validation |
 | `references/laravel-13-boost.md` | Laravel 13 specifics, or wiring this into Laravel Boost and project rules |
 

@@ -36,3 +36,6 @@ storage/tenant*/
 
 # Agent tooling worktrees
 .kilo/
+
+# local audit reports
+.audit/
