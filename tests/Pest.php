@@ -19,6 +19,14 @@ pest()->extend(TestCase::class)
     ->in('Feature');
 
 /*
+ * Action tests are "unit" in the sense that matters — no HTTP, no route, no
+ * session — but an Action that writes through Eloquent still needs a booted
+ * application and a database. Feature gets `RefreshDatabase` unconditionally;
+ * here it stays opt-in per file so a genuinely pure test pays nothing.
+ */
+pest()->extend(TestCase::class)->in('Unit/Actions');
+
+/*
 |--------------------------------------------------------------------------
 | Expectations
 |--------------------------------------------------------------------------
