@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Tenant;
 use App\Enums\AiFeature;
 use App\Enums\AiProvider;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Tenant\AiSettingsRequest;
 use App\Http\Requests\Tenant\UpdateAiSettingsRequest;
 use App\Models\AiSetting;
 use App\Models\AiUsageLog;
@@ -12,7 +13,6 @@ use App\Models\User;
 use App\Support\Ai\AiGateway;
 use App\Support\TenancyContext;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -25,11 +25,9 @@ class AiSettingsController extends Controller
 {
     public function __construct(private AiGateway $gateway) {}
 
-    public function edit(Request $request): Response
+    public function edit(AiSettingsRequest $request): Response
     {
         $organization = TenancyContext::organization();
-
-        abort_unless($request->user()->isOwnerOf($organization), 403);
 
         $setting = AiSetting::query()
             ->whereMorphedTo('owner', $organization)
@@ -122,11 +120,9 @@ class AiSettingsController extends Controller
         return back();
     }
 
-    public function destroyKey(Request $request): RedirectResponse
+    public function destroyKey(AiSettingsRequest $request): RedirectResponse
     {
         $organization = TenancyContext::organization();
-
-        abort_unless($request->user()->isOwnerOf($organization), 403);
 
         AiSetting::query()
             ->whereMorphedTo('owner', $organization)
