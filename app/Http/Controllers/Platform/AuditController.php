@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Platform;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Platform\AuditIndexRequest;
 use App\Models\Audit;
 use App\Models\Organization;
 use App\Services\AuditService;
@@ -16,7 +17,7 @@ class AuditController extends Controller
 {
     public function __construct(private AuditService $service) {}
 
-    public function index(Request $request): Response
+    public function index(AuditIndexRequest $request): Response
     {
         $filters = $this->service->filtersFromRequest($request);
         $sort = $this->service->sortFromRequest($request);
