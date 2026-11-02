@@ -17,6 +17,16 @@ class OnboardingCompleteRequest extends FormRequest
     }
 
     /**
+     * Self-service: an authenticated user completes their own onboarding. Every
+     * rule reads `$this->user()`; no account id arrives from the request, so
+     * there is no other record to authorize against.
+     */
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    /**
      * Get the validation rules that apply to the request.
      *
      * @return array<string, array<int, Rule|Password|string>>
