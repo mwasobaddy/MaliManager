@@ -415,11 +415,15 @@
         transition: color 150ms ease-out;
     }
 
+    /*
+     * Hover deepens the colour only. Underlining on hover is opt-in — running
+     * prose gets it below, and `TextLink` carries it explicitly — because the
+     * sidebar, menus and toolbar are full of anchors that are not inline links
+     * and should not sprout an underline as the pointer passes over them.
+     */
     a:hover,
     a:focus-visible {
         color: var(--accent-text-hover);
-        text-decoration-line: underline;
-        text-decoration-color: currentColor;
     }
 
     /*

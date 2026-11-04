@@ -36,7 +36,7 @@ export default function AuthSimpleLayout({
                 <div className="flex h-full flex-col gap-8 px-6 py-8 sm:px-10 sm:py-10 lg:px-14 lg:py-12">
                     <Link
                         href={home()}
-                        className="flex items-center gap-2 self-start font-medium"
+                        className="flex items-center gap-2 self-center font-medium"
                         aria-label={`${name ?? 'MaliManager'} home`}
                     >
                         <span className="flex size-9 items-center justify-center">
