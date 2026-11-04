@@ -45,8 +45,9 @@ export default function Login({ status }: Props) {
             </a>
 
             <div className="relative text-center text-sm">
-                <span className="relative z-10 bg-sidebar px-2 text-muted-foreground">
-                    or
+                <span className="border-border absolute inset-x-0 top-1/2 border-t" />
+                <span className="bg-card text-muted-foreground relative z-10 px-3">
+                    Or continue with email
                 </span>
             </div>
 
