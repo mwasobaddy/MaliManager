@@ -21,7 +21,7 @@ export default function AuthSimpleLayout({
     const { name } = usePage().props;
 
     return (
-        <div className="relative flex min-h-svh items-center justify-center bg-background p-4 sm:p-6 lg:p-10">
+        <div className="relative flex min-h-svh w-full bg-background">
             {/* Ambient brand glow behind the card. */}
             <div
                 aria-hidden
@@ -31,9 +31,9 @@ export default function AuthSimpleLayout({
                 <div className="absolute right-0 -bottom-32 size-[26rem] rounded-full bg-brand-accent-100 opacity-50 blur-3xl dark:opacity-20" />
             </div>
 
-            <div className="relative grid w-full max-w-6xl overflow-hidden rounded-[28px] border border-border bg-card shadow-[0_1px_2px_rgb(42_38_33_/_0.04),0_24px_60px_-24px_rgb(42_38_33_/_0.25)] lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+            <div className="relative grid min-h-svh w-full bg-transparent lg:grid-cols-2">
                 {/* Form column */}
-                <div className="flex flex-col gap-8 px-6 py-8 sm:px-10 sm:py-10 lg:px-14 lg:py-12">
+                <div className="flex h-full flex-col gap-8 px-6 py-8 sm:px-10 sm:py-10 lg:px-14 lg:py-12">
                     <Link
                         href={home()}
                         className="flex items-center gap-2 self-start font-medium"
@@ -76,8 +76,8 @@ export default function AuthSimpleLayout({
                 </div>
 
                 {/* Brand column */}
-                <div className="relative hidden p-3 lg:block">
-                    <div className="relative flex h-full flex-col overflow-hidden rounded-[20px] bg-brand-secondary px-10 py-12 text-on-secondary">
+                <div className="relative hidden h-full lg:block">
+                    <div className="relative flex h-full w-full flex-col overflow-hidden bg-brand-secondary px-10 py-12 text-on-secondary">
                         {/* Faint grid, like the reference panel. */}
                         <div
                             aria-hidden
