@@ -28,12 +28,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::inertia('settings/appearance', 'settings/appearance')->name('appearance.edit');
 });
 
-Route::get('.well-known/passkey-endpoints', function () {
-    return response()->json([
-        'enroll' => route('security.edit'),
-        'manage' => route('security.edit'),
-    ]);
-})->name('well-known.passkeys');
+// Passkeys disabled: this advertises enroll/manage URLs to browsers and
+// password managers, which would point at a page with no passkey section.
+// Route::get('.well-known/passkey-endpoints', function () {
+//     return response()->json([
+//         'enroll' => route('security.edit'),
+//         'manage' => route('security.edit'),
+//     ]);
+// })->name('well-known.passkeys');
 
 // Personal AI provider key (own-data scoped).
 Route::middleware(['auth', 'verified'])->group(function () {

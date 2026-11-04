@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use Laravel\Passkeys\Passkeys;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -22,6 +23,12 @@ class AppServiceProvider extends ServiceProvider
         // same-origin on tenant subdomains (avoids cross-origin fetch
         // failures / white screens when switching assets).
         $this->app->singleton(Vite::class, TenantAwareVite::class);
+
+        // Passkeys disabled until the feature is wanted again. The package
+        // registers its routes unconditionally, so commenting out the Fortify
+        // feature flag alone would leave /auth/passkeys/* live. register() runs
+        // before every provider boots, so this lands in time.
+        Passkeys::ignoreRoutes();
     }
 
     /**

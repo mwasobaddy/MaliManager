@@ -2,7 +2,8 @@ import { Form, Head } from '@inertiajs/react';
 import { useState } from 'react';
 import { GoogleIcon } from '@/components/google-icon';
 import InputError from '@/components/input-error';
-import PasskeyVerify from '@/components/passkey-verify';
+// Passkeys disabled.
+// import PasskeyVerify from '@/components/passkey-verify';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -27,7 +28,9 @@ export default function Login({ status }: Props) {
         <>
             <Head title="Log in" />
 
+            {/* Passkeys disabled.
             <PasskeyVerify />
+            */}
 
             <a href={googleRedirect.url('google')} className="w-full">
                 <Button

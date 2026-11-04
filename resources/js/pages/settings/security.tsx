@@ -3,8 +3,9 @@ import { useRef } from 'react';
 import SecurityController from '@/actions/App/Http/Controllers/Settings/SecurityController';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
-import type { Props as ManagePasskeysProps } from '@/components/manage-passkeys';
-import ManagePasskeys from '@/components/manage-passkeys';
+// Passkeys disabled.
+// import type { Props as ManagePasskeysProps } from '@/components/manage-passkeys';
+// import ManagePasskeys from '@/components/manage-passkeys';
 import type { Props as ManageTwoFactorProps } from '@/components/manage-two-factor';
 import ManageTwoFactor from '@/components/manage-two-factor';
 import PasswordInput from '@/components/password-input';
@@ -14,7 +15,9 @@ import { edit } from '@/routes/security';
 
 type Props = {
     passwordRules: string;
-} & ManagePasskeysProps &
+} &
+    // Passkeys disabled.
+    // ManagePasskeysProps &
     ManageTwoFactorProps;
 
 export default function Security(props: Props) {
@@ -129,10 +132,12 @@ export default function Security(props: Props) {
                 twoFactorEnabled={props.twoFactorEnabled}
             />
 
+            {/* Passkeys disabled.
             <ManagePasskeys
                 canManagePasskeys={props.canManagePasskeys}
                 passkeys={props.passkeys}
             />
+            */}
         </>
     );
 }

@@ -168,9 +168,11 @@ return [
             'confirmPassword' => true,
             // 'window' => 0
         ]),
-        Features::passkeys([
-            'confirmPassword' => true,
-        ]),
+        // Passkeys disabled. To restore passwordless sign-in, uncomment this
+        // entry and remove Passkeys::ignoreRoutes() in AppServiceProvider.
+        // Features::passkeys([
+        //     'confirmPassword' => true,
+        // ]),
     ],
 
 ];

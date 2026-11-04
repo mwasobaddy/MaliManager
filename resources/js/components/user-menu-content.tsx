@@ -1,7 +1,8 @@
 import { Link, router } from '@inertiajs/react';
 import {
     ArrowLeftRight,
-    KeyRound,
+    // Passkeys disabled.
+    // KeyRound,
     LogOut,
     Settings,
     Sparkles,
@@ -104,6 +105,7 @@ export function UserMenuContent({ user }: Props) {
                         Personal AI
                     </Link>
                 </DropdownMenuItem>
+                {/* Passkeys disabled.
                 <DropdownMenuItem asChild>
                     <Link
                         className="block w-full cursor-pointer"
@@ -115,6 +117,7 @@ export function UserMenuContent({ user }: Props) {
                         Passkeys
                     </Link>
                 </DropdownMenuItem>
+                */}
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
