@@ -17,8 +17,11 @@ return new class extends Migration
             $table->foreignId('person_id')->constrained('persons')->cascadeOnDelete();
             $table->foreignId('organization_id')->constrained()->cascadeOnDelete();
             $table->string('tenant_id')->nullable()->comment('Audit: stancl tenancy id at write time');
-            $table->foreignId('property_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('unit_id')->constrained()->cascadeOnDelete();
+            // Nullable: land-parcel leases have no property or unit, so the
+            // columns cannot be NOT NULL. (Previously a separate alter
+            // migration; folded here per the migrations rule — unreleased.)
+            $table->foreignId('property_id')->nullable()->constrained()->cascadeOnDelete();
+            $table->foreignId('unit_id')->nullable()->constrained()->cascadeOnDelete();
             $table->foreignId('land_parcel_id')->nullable()->constrained('land_parcels')->nullOnDelete();
             $table->foreignId('land_parcel_section_id')->nullable()->constrained('land_parcel_sections')->nullOnDelete();
             $table->foreignId('occupant_id')->nullable()->constrained()->nullOnDelete();
