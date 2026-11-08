@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Tenant;
 
+use App\Actions\LandParcels\LeaseLandParcelSection;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Tenant\DestroyLandParcelSectionRequest;
 use App\Http\Requests\Tenant\LeaseLandParcelSectionRequest;
@@ -12,14 +13,10 @@ use App\Models\AgreementTemplate;
 use App\Models\LandParcel;
 use App\Models\LandParcelSection;
 use App\Models\Lease;
-use App\Models\Organization;
-use App\Models\Person;
 use App\Services\StaffService;
-use App\Support\LeaseAgreementTemplate;
 use App\Support\TenancyContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use App\Actions\LandParcels\LeaseLandParcelSection;
 use Inertia\Inertia;
 
 /**
