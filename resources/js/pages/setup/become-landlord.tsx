@@ -3,7 +3,7 @@ import { BadgeCheck, Smartphone, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
-import { SetupSteps } from '@/components/setup-steps';
+import { SetupWelcome } from '@/components/setup-welcome';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -56,7 +56,11 @@ export default function BecomeLandlord({ plans }: Props) {
             <Head title="Become a landlord" />
 
             <div className="mx-auto max-w-2xl space-y-6 p-4 md:p-6">
-                <SetupSteps current={1} />
+                <SetupWelcome
+                    title="Let's get your rental business set up"
+                    description="Two quick steps and your first property can start earning."
+                    current={1}
+                />
 
                 <Heading
                     level="h1"
@@ -122,16 +126,19 @@ export default function BecomeLandlord({ plans }: Props) {
                                     </div>
 
                                     <div className="flex items-center justify-between gap-4 rounded-lg border p-4">
-                                        <div>
-                                            <p className="text-sm font-medium">
+                                        <Label
+                                            htmlFor="list_publicly"
+                                            className="flex-1 cursor-pointer"
+                                        >
+                                            <span className="block text-sm font-medium">
                                                 List vacant units publicly
-                                            </p>
-                                            <p className="text-sm text-muted-foreground">
+                                            </span>
+                                            <span className="block text-sm text-muted-foreground">
                                                 Guests can discover them on the
                                                 home page. Individual units can
                                                 still be held back.
-                                            </p>
-                                        </div>
+                                            </span>
+                                        </Label>
                                         <Checkbox
                                             id="list_publicly"
                                             checked={listPublicly}

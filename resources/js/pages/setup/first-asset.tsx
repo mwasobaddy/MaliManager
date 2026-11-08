@@ -1,7 +1,7 @@
 import { Head, Link } from '@inertiajs/react';
 import { Building2, Map } from 'lucide-react';
 import Heading from '@/components/heading';
-import { SetupSteps } from '@/components/setup-steps';
+import { SetupWelcome } from '@/components/setup-welcome';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -28,7 +28,11 @@ export default function FirstAsset({ organization }: Props) {
             <Head title="Add your first asset" />
 
             <div className="flex flex-1 flex-col gap-6 py-4">
-                <SetupSteps current={2} />
+                <SetupWelcome
+                    title="Almost there — add your first asset"
+                    description="Choose what you'd like to set up first. You can add the other type later."
+                    current={2}
+                />
 
                 <Heading
                     variant="small"
