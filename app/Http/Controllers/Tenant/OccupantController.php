@@ -8,13 +8,13 @@ use App\Http\Requests\Tenant\MoveOutOccupantRequest;
 use App\Http\Requests\Tenant\OccupantAccessRequest;
 use App\Http\Requests\Tenant\StoreOccupantRequest;
 use App\Http\Requests\Tenant\UpdateOccupantRequest;
-use App\Models\AgreementTemplate;
 use App\Models\Lease;
 use App\Models\Occupant;
 use App\Models\Property;
 use App\Services\OccupantService;
 use App\Services\StaffService;
 use App\Support\LeaseAgreementTemplate;
+use App\Support\OccupantPresenter;
 use App\Support\TenancyContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -33,17 +33,17 @@ class OccupantController extends Controller
             ->with(['person', 'units' => fn ($query) => $query->where('units.property_id', $property->id)])
             ->orderByDesc('created_at')
             ->get()
-            ->map(fn (Occupant $occupant) => $this->present($occupant, $property));
+            ->map(fn (Occupant $occupant) => OccupantPresenter::present($occupant, $property));
 
         return Inertia::render('organisation/occupants/index', [
             'organization' => TenancyContext::organization()->only('id', 'name', 'slug'),
-            'property' => $this->property($property),
+            'property' => OccupantPresenter::property($property),
             'occupants' => $occupants,
             // The view sheet is on this page, so an occupant addressed by URL is
             // resolved here rather than by a page of its own. Scoped to the
             // property, so an id from another property resolves to nothing and
             // the sheet simply does not open.
-            'focusedOccupant' => $this->focusedOccupant($request, $property),
+            'focusedOccupant' => OccupantPresenter::focusedOccupant($request->integer('occupant') ?: null, $property),
         ]);
     }
 
@@ -81,9 +81,9 @@ class OccupantController extends Controller
 
         return Inertia::render('organisation/occupants/create', [
             'organization' => TenancyContext::organization()->only('id', 'name', 'slug'),
-            'property' => $this->property($property),
-            'units' => $this->units($property),
-            'templates' => $this->agreementTemplates($property),
+            'property' => OccupantPresenter::property($property),
+            'units' => OccupantPresenter::units($property),
+            'templates' => OccupantPresenter::agreementTemplates($property),
             'availableTokens' => LeaseAgreementTemplate::availableTokens(),
         ]);
     }
@@ -114,7 +114,7 @@ class OccupantController extends Controller
 
         return Inertia::render('organisation/occupants/edit', [
             'organization' => TenancyContext::organization()->only('id', 'name', 'slug'),
-            'property' => $this->property($property),
+            'property' => OccupantPresenter::property($property),
             'occupant' => [
                 'id' => $occupant->id,
                 'first_name' => $occupant->person->first_name,
@@ -124,10 +124,10 @@ class OccupantController extends Controller
                 'national_id' => $occupant->person->national_id,
                 'status' => $occupant->status,
                 'unit_ids' => $occupantService->unitsForProperty($occupant, $property)->pluck('id')->all(),
-                'lease' => $this->activeLease($occupant, $property),
+                'lease' => OccupantPresenter::activeLease($occupant, $property),
             ],
-            'units' => $this->units($property),
-            'templates' => $this->agreementTemplates($property),
+            'units' => OccupantPresenter::units($property),
+            'templates' => OccupantPresenter::agreementTemplates($property),
             'availableTokens' => LeaseAgreementTemplate::availableTokens(),
         ]);
     }
@@ -173,66 +173,6 @@ class OccupantController extends Controller
         return redirect()->route('tenant.occupants.index', $property);
     }
 
-    /**
-     * @return array{id: int, name: string, slug: string}
-     */
-    private function property(Property $property): array
-    {
-        return $property->only('id', 'name', 'slug');
-    }
-
-    /**
-     * The occupant's active lease in this property together with the
-     * uploaded agreement document (if any) for the edit form.
-     */
-    private function activeLease(Occupant $occupant, Property $property): ?array
-    {
-        $lease = Lease::query()
-            ->where('occupant_id', $occupant->id)
-            ->where('property_id', $property->id)
-            ->where('status', 'active')
-            ->first();
-
-        if (! $lease) {
-            return null;
-        }
-
-        $document = $lease->getFirstMedia('agreement');
-
-        return [
-            'starts_at' => $lease->starts_at?->toDateString(),
-            'rent_amount' => $lease->rent_amount,
-            'rent_frequency' => $lease->rent_frequency,
-            'deposit' => $lease->deposit,
-            'currency' => $lease->currency,
-            'agreement_text' => $lease->agreement_text,
-            'agreement_document_name' => $document?->file_name,
-            'agreement_document_url' => $document?->getUrl(),
-        ];
-    }
-
-    /**
-     * The lease as the read-only page shows it.
-     *
-     * `agreement_text` is dropped: it is the full rendered contract and already
-     * has its own page. Shipping it here would put a wall of HTML in every show
-     * response for a field the page never renders.
-     *
-     * @return array<string, mixed>|null
-     */
-    private function leaseSummary(Occupant $occupant, Property $property): ?array
-    {
-        $lease = $this->activeLease($occupant, $property);
-
-        if ($lease === null) {
-            return null;
-        }
-
-        unset($lease['agreement_text']);
-
-        return $lease;
-    }
-
     public function agreement(OccupantAccessRequest $request, Property $property, Occupant $occupant): Response
     {
         $this->authorizePropertyAccess($request, $property);
@@ -252,41 +192,6 @@ class OccupantController extends Controller
             'documentUrl' => $lease->getFirstMedia('agreement')?->getUrl(),
             'occupantName' => trim(($occupant->person->first_name ?? '').' '.($occupant->person->last_name ?? '')),
         ]);
-    }
-
-    /**
-     * The agreement templates offered on the occupant form, grouped by
-     * scope: this property's templates first, then the organization-wide
-     * library.
-     *
-     * @return array{property: array<int, array{id: int, name: string, body_html: string}>, organization: array<int, array{id: int, name: string, body_html: string}>}
-     */
-    private function agreementTemplates(Property $property): array
-    {
-        return [
-            'property' => AgreementTemplate::query()
-                ->where('organization_id', $property->organization_id)
-                ->where('property_id', $property->id)
-                ->orderBy('name')
-                ->get(['id', 'name', 'body_html'])
-                ->map(fn (AgreementTemplate $template) => [
-                    'id' => $template->id,
-                    'name' => $template->name,
-                    'body_html' => $template->body_html,
-                ])
-                ->all(),
-            'organization' => AgreementTemplate::query()
-                ->where('organization_id', $property->organization_id)
-                ->whereNull('property_id')
-                ->orderBy('name')
-                ->get(['id', 'name', 'body_html'])
-                ->map(fn (AgreementTemplate $template) => [
-                    'id' => $template->id,
-                    'name' => $template->name,
-                    'body_html' => $template->body_html,
-                ])
-                ->all(),
-        ];
     }
 
     /**
@@ -317,85 +222,6 @@ class OccupantController extends Controller
                 ->addMediaFromRequest('lease.agreement_document')
                 ->toMediaCollection('agreement');
         }
-    }
-
-    /**
-     * @return array<int, array{id: int, name: string, type: string|null, status: string}>
-     */
-    private function units(Property $property): array
-    {
-        return $property->units()
-            ->orderBy('name')
-            ->get(['id', 'name', 'type', 'status'])
-            ->map(fn ($unit) => [
-                'id' => $unit->id,
-                'name' => $unit->name,
-                'type' => $unit->type,
-                'status' => $unit->status,
-            ])
-            ->all();
-    }
-
-    /**
-     * The occupant addressed by `?occupant=`, carrying the fields the view
-     * sheet shows and list rows do not need: gender, the date added, and the
-     * active lease.
-     *
-     * Scoped to the property exactly like the index query, so an id belonging to
-     * another property — or another organization — resolves to null and the
-     * sheet does not open, instead of leaking a record through the URL.
-     *
-     * @return array<string, mixed>|null
-     */
-    private function focusedOccupant(Request $request, Property $property): ?array
-    {
-        $id = $request->integer('occupant');
-
-        if ($id <= 0) {
-            return null;
-        }
-
-        $occupant = Occupant::query()
-            ->where('organization_id', $property->organization_id)
-            ->whereKey($id)
-            ->whereHas('units', fn ($query) => $query->where('units.property_id', $property->id))
-            ->with(['person', 'units' => fn ($query) => $query->where('units.property_id', $property->id)])
-            ->first();
-
-        if (! $occupant) {
-            return null;
-        }
-
-        return [
-            ...$this->present($occupant, $property),
-            'gender' => $occupant->person->gender,
-            'added_at' => $occupant->created_at?->toDateString(),
-            'lease' => $this->leaseSummary($occupant, $property),
-        ];
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function present(Occupant $occupant, Property $property): array
-    {
-        return [
-            'id' => $occupant->id,
-            'first_name' => $occupant->person->first_name,
-            'last_name' => $occupant->person->last_name,
-            'email' => $occupant->person->email,
-            'phone' => $occupant->person->phone,
-            'national_id' => $occupant->person->national_id,
-            'status' => $occupant->status,
-            'units' => $occupant->units
-                ->map(fn ($unit) => [
-                    'id' => $unit->id,
-                    'name' => $unit->name,
-                    'type' => $unit->type,
-                    'status' => $unit->status,
-                ])
-                ->all(),
-        ];
     }
 
     /**
