@@ -43,6 +43,9 @@ class GuestController extends Controller
             ->paginate(12)
             ->withQueryString();
 
+        // Cast to object: an empty $request->only() is a PHP list, which
+        // JSON-encodes as [] — and [].sort is Array.prototype.sort, so an
+        // unfiltered page would hand every reader a native function.
         return Inertia::render('guest/home', [
             // The page types listings flat (property_name, photo_url,
             // trust...), so the mapping lives in ListingPresenter rather
@@ -53,7 +56,7 @@ class GuestController extends Controller
                 ->where('user_id', $user->id)
                 ->orderByDesc('id')
                 ->get(['id', 'name', 'filters']),
-            'filters' => $request->only(['query', 'min_rent', 'max_rent', 'type', 'sort']),
+            'filters' => (object) $request->only(['query', 'min_rent', 'max_rent', 'type', 'sort']),
             'available_types' => ListingPresenter::availableTypes(),
             'canBecomeLandlord' => $user->organizations()->wherePivot('is_owner', true)->exists() === false,
             'workspaces' => $this->workspaces($request, $user),
