@@ -1,5 +1,10 @@
 import { BadgeCheck, CheckCircle2 } from 'lucide-react';
-import { SETUP_STEPS, SetupSteps } from '@/components/setup-steps';
+import {
+    SETUP_STEPS,
+    SetupStepTitle,
+    SetupSteps,
+    type SetupProgress,
+} from '@/components/setup-steps';
 import { cn } from '@/lib/utils';
 
 /**
@@ -8,7 +13,13 @@ import { cn } from '@/lib/utils';
  * page's LeftStepIndicator, including the completed halo, the dashed upcoming
  * connector and the 64px gap under each step.
  */
-function SetupLeftIndicator({ current }: { current: 1 | 2 | 3 | 4 }) {
+function SetupLeftIndicator({
+    current,
+    progress,
+}: {
+    current: 1 | 2 | 3 | 4;
+    progress: SetupProgress;
+}) {
     return (
         <div className="mb-8">
             <div className="mx-auto flex max-w-3xl flex-col">
@@ -64,7 +75,11 @@ function SetupLeftIndicator({ current }: { current: 1 | 2 | 3 | 4 }) {
 
                             <div className="flex-1 pb-16">
                                 <h3 className="mb-3 text-xl font-bold">
-                                    {step.title}
+                                    <SetupStepTitle
+                                        stepNumber={number}
+                                        current={current}
+                                        progress={progress}
+                                    />
                                 </h3>
                                 <p className="text-muted-foreground">
                                     {step.description}
@@ -87,9 +102,11 @@ function SetupLeftIndicator({ current }: { current: 1 | 2 | 3 | 4 }) {
 export function SetupSidePanel({
     intro,
     current,
+    progress,
 }: {
     intro: [string, string];
     current: 1 | 2 | 3 | 4;
+    progress: SetupProgress;
 }) {
     return (
         <div className="hidden h-fit self-start rounded-xl border bg-card bg-linear-to-t from-brand-accent-100 to-brand-primary-100 px-8 py-6 shadow-xl lg:sticky lg:top-8 lg:col-span-3 lg:block">
@@ -110,7 +127,7 @@ export function SetupSidePanel({
             </div>
 
             <div>
-                <SetupLeftIndicator current={current} />
+                <SetupLeftIndicator current={current} progress={progress} />
             </div>
         </div>
     );
@@ -120,10 +137,16 @@ export function SetupSidePanel({
  * The same steps as a compact card above the form, shown only where the side
  * panel is hidden.
  */
-export function SetupStepsTopCard({ current }: { current: 1 | 2 | 3 | 4 }) {
+export function SetupStepsTopCard({
+    current,
+    progress,
+}: {
+    current: 1 | 2 | 3 | 4;
+    progress: SetupProgress;
+}) {
     return (
         <div className="rounded-xl border bg-card p-4 lg:hidden">
-            <SetupSteps current={current} />
+            <SetupSteps current={current} progress={progress} />
         </div>
     );
 }

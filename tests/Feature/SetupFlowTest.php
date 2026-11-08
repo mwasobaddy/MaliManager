@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\LandParcel;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\Plan;
@@ -41,33 +42,22 @@ function attachSetupStaff(Organization $organization, User $staff): void
     ]);
 }
 
-test('a fresh owner can open the team step without any property', function () {
+test('the team step redirects to the first asset without any asset', function () {
     $owner = User::factory()->create(['onboarded_at' => now()]);
     $organization = createSetupOrganization($owner);
 
     $this->actingAs($owner)
         ->get(setupTenantUrl($organization, '/setup/team'))
-        ->assertOk()
-        ->assertInertia(fn ($page) => $page
-            ->component('setup/team')
-            ->where('organization.name', 'Setup Estates')
-            ->has('sub_roles')
-        );
+        ->assertRedirect(setupTenantUrl($organization, '/setup/first-asset'));
 });
 
-test('a fresh owner can open the review step without any property', function () {
+test('the review step redirects to the first asset without any asset', function () {
     $owner = User::factory()->create(['onboarded_at' => now()]);
     $organization = createSetupOrganization($owner);
 
     $this->actingAs($owner)
         ->get(setupTenantUrl($organization, '/setup/review'))
-        ->assertOk()
-        ->assertInertia(fn ($page) => $page
-            ->component('setup/review')
-            ->where('organization.name', 'Setup Estates')
-            ->where('properties', [])
-            ->where('team.0.role', 'owner')
-        );
+        ->assertRedirect(setupTenantUrl($organization, '/setup/first-asset'));
 });
 
 test('staff are redirected from the setup funnel instead of denied', function () {
@@ -173,7 +163,7 @@ test('creating outside setup still lands on the property dashboard', function ()
         ])->assertRedirect(setupTenantUrl($organization, '/sunset-heights/dashboard'));
 });
 
-test('the create pages expose the setup flag as a server prop', function () {
+test('the create pages stay inside the setup funnel when flagged', function () {
     $owner = User::factory()->create(['onboarded_at' => now()]);
     $organization = createSetupOrganization($owner);
 
@@ -181,8 +171,11 @@ test('the create pages expose the setup flag as a server prop', function () {
         ->get(setupTenantUrl($organization, '/properties/create?setup=1'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('organisation/properties/create')
-            ->where('inSetup', true)
+            ->component('setup/property')
+            ->has('organization')
+            ->has('plan')
+            ->has('propertyTypes')
+            ->has('canCreateProperty')
         );
 
     $this->actingAs($owner)
@@ -190,15 +183,19 @@ test('the create pages expose the setup flag as a server prop', function () {
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('organisation/properties/create')
-            ->where('inSetup', false)
+            ->has('organization')
+            ->has('plan')
+            ->has('propertyTypes')
+            ->has('canCreateProperty')
         );
 
     $this->actingAs($owner)
         ->get(setupTenantUrl($organization, '/land-parcels/create?setup=1'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('organisation/land-parcels/create')
-            ->where('inSetup', true)
+            ->component('setup/parcel')
+            ->has('organization')
+            ->has('managers')
         );
 
     $this->actingAs($owner)
@@ -206,7 +203,8 @@ test('the create pages expose the setup flag as a server prop', function () {
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('organisation/land-parcels/create')
-            ->where('inSetup', false)
+            ->has('organization')
+            ->has('managers')
         );
 });
 
@@ -222,4 +220,63 @@ test('creating a land parcel outside setup still lands on its detail page', func
             'available_for_lease' => '0',
             'manager_ids' => [],
         ])->assertRedirect(setupTenantUrl($organization, '/land-parcels/ruiru-plot-a'));
+});
+
+test('funnel pages report no progress before the organization exists', function () {
+    $user = User::factory()->create(['onboarded_at' => now()]);
+
+    $this->actingAs($user)
+        ->get(route('guest.become-landlord.show'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('setup/become-landlord')
+            ->where('setupProgress', ['hasOrganization' => false, 'hasAsset' => false])
+        );
+
+    $this->actingAs($user)
+        ->get(route('onboarding.first-asset'))
+        ->assertRedirect(route('guest.become-landlord.show'));
+});
+
+test('setup progress flips on once the organization has an asset', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createSetupOrganization($owner);
+
+    $this->actingAs($owner)
+        ->get(setupTenantUrl($organization, '/setup/team'))
+        ->assertRedirect(setupTenantUrl($organization, '/setup/first-asset'));
+
+    $organization->properties()->create([
+        'name' => 'Sunset Heights',
+        'slug' => 'sunset-heights',
+        'status' => 'active',
+        'created_by' => $owner->id,
+    ]);
+
+    $this->actingAs($owner)
+        ->get(setupTenantUrl($organization, '/setup/team'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('setupProgress', ['hasOrganization' => true, 'hasAsset' => true])
+        );
+
+    $this->actingAs($owner)
+        ->get(setupTenantUrl($organization, '/setup/review'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('setupProgress', ['hasOrganization' => true, 'hasAsset' => true])
+        );
+});
+
+test('a land parcel alone counts as the first asset for setup progress', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createSetupOrganization($owner);
+    LandParcel::factory()->for($organization)->create();
+
+    $this->actingAs($owner)
+        ->get(setupTenantUrl($organization, '/setup/team'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('setupProgress', ['hasOrganization' => true, 'hasAsset' => true])
+        );
 });

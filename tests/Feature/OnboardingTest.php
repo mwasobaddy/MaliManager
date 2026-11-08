@@ -129,6 +129,11 @@ test('organization owner with multiple properties lands on the picker', function
 
 test('first asset page offers both building and land parcel', function () {
     $user = User::factory()->create(['onboarded_at' => now()]);
+    $organization = app(TenantService::class)->createOrganization(
+        owner: $user,
+        name: 'Setup Estates',
+        plan: Plan::where('slug', 'free')->firstOrFail(),
+    );
 
     $this->actingAs($user)
         ->get(route('onboarding.first-asset'))
@@ -136,4 +141,12 @@ test('first asset page offers both building and land parcel', function () {
         ->assertInertia(fn ($page) => $page
             ->component('setup/first-asset')
             ->has('organization'));
+});
+
+test('first asset page without an organization returns to become-landlord', function () {
+    $user = User::factory()->create(['onboarded_at' => now()]);
+
+    $this->actingAs($user)
+        ->get(route('onboarding.first-asset'))
+        ->assertRedirect(route('guest.become-landlord.show'));
 });

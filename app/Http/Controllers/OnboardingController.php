@@ -7,6 +7,7 @@ use App\Http\Requests\Auth\OnboardingRequest;
 use App\Services\OnboardingService;
 use App\Support\AuthLanding;
 use App\Support\InertiaRedirect;
+use App\Support\SetupProgress;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -49,19 +50,29 @@ class OnboardingController extends Controller
 
     /**
      * The mandatory "add your first asset" page for fresh organizations.
+     * Without an owned organization there is nothing to add the asset to,
+     * so org-less visitors go back to the organization step instead of a
+     * choice page whose links would all refuse them.
      */
-    public function firstAsset(OnboardingRequest $request): Response
+    public function firstAsset(OnboardingRequest $request): Response|RedirectResponse
     {
         $organization = $request->user()
             ->organizations()
             ->wherePivot('is_owner', true)
             ->first();
 
+        if ($organization === null) {
+            Inertia::flash('toast', ['type' => 'warning', 'message' => 'Set up your organization first.']);
+
+            return redirect()->route('guest.become-landlord.show');
+        }
+
         return Inertia::render('setup/first-asset', [
             'organization' => $organization ? [
                 'id' => $organization->id,
                 'name' => $organization->name,
             ] : null,
+            'setupProgress' => SetupProgress::forOrganization($organization),
         ]);
     }
 }

@@ -1,4 +1,5 @@
-import { Form, Head } from '@inertiajs/react';
+import { Form, Head, router } from '@inertiajs/react';
+import { ArrowLeft } from 'lucide-react';
 import { useState } from 'react';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
@@ -25,7 +26,21 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
-import { becomeLandlord as storeLandlord } from '@/routes/guest';
+import type { SetupProgress } from '@/components/setup-steps';
+import { becomeLandlord as storeLandlord, home } from '@/routes/guest';
+
+/**
+ * The first funnel step has no previous section, so its Back button
+ * returns to wherever the user came from, falling back to home when
+ * there is no history (fresh tab, direct link).
+ */
+function goToPreviousUrl() {
+    if (window.history.length > 1) {
+        window.history.back();
+    } else {
+        router.visit(home.url());
+    }
+}
 
 type Plan = {
     name: string;
@@ -38,6 +53,7 @@ type Plan = {
 
 type Props = {
     plans: Plan[];
+    setupProgress: SetupProgress;
 };
 
 const currencies = ['KES', 'USD', 'UGX', 'TZS', 'RWF', 'NGN', 'GBP', 'EUR'];
@@ -48,7 +64,7 @@ const currencies = ['KES', 'USD', 'UGX', 'TZS', 'RWF', 'NGN', 'GBP', 'EUR'];
  * name, the currency, a plan, and whether vacant units should be listed
  * publicly.
  */
-export default function BecomeLandlord({ plans }: Props) {
+export default function BecomeLandlord({ plans, setupProgress }: Props) {
     const [currency, setCurrency] = useState('KES');
     const [listPublicly, setListPublicly] = useState(false);
     const [planSlug, setPlanSlug] = useState(plans[0]?.slug ?? '');
@@ -64,16 +80,27 @@ export default function BecomeLandlord({ plans }: Props) {
                         'Free up to 10 units · No card required',
                     ]}
                     current={1}
+                    progress={setupProgress}
                 />
 
                 <div className="col-span-7 space-y-6 lg:col-span-4">
-                    <SetupStepsTopCard current={1} />
+                    <SetupStepsTopCard current={1} progress={setupProgress} />
 
-                    <Heading
-                        level="h1"
-                        title="Become a landlord"
-                        description="Set up your organization. You can add properties right after."
-                    />
+                    <div className="flex items-start justify-between gap-4">
+                        <Heading
+                            level="h1"
+                            title="Become a landlord"
+                            description="Set up your organization. You can add properties right after."
+                        />
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={goToPreviousUrl}
+                        >
+                            <ArrowLeft className="size-4" />
+                            Back
+                        </Button>
+                    </div>
 
                     <Form
                         {...storeLandlord.form()}

@@ -1,4 +1,5 @@
 import { Form, Head, Link } from '@inertiajs/react';
+import { ArrowLeft } from 'lucide-react';
 import { useState } from 'react';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
@@ -6,6 +7,7 @@ import {
     SetupSidePanel,
     SetupStepsTopCard,
 } from '@/components/setup-side-panel';
+import type { SetupProgress } from '@/components/setup-steps';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -25,6 +27,7 @@ import {
 } from '@/components/ui/select';
 import { review as setupReview } from '@/routes/tenant/setup';
 import { store as storeTeam } from '@/routes/tenant/setup/team';
+import { firstAsset } from '@/routes/onboarding';
 
 type SubRole = {
     id: number;
@@ -34,9 +37,14 @@ type SubRole = {
 type Props = {
     organization: { id: number; name: string; slug: string };
     sub_roles: SubRole[];
+    setupProgress: SetupProgress;
 };
 
-export default function SetupTeam({ organization, sub_roles }: Props) {
+export default function SetupTeam({
+    organization,
+    sub_roles,
+    setupProgress,
+}: Props) {
     const [subRoleId, setSubRoleId] = useState('');
 
     return (
@@ -50,16 +58,25 @@ export default function SetupTeam({ organization, sub_roles }: Props) {
                         'Caretakers and managers get their own logins.',
                     ]}
                     current={3}
+                    progress={setupProgress}
                 />
 
                 <div className="col-span-7 space-y-6 lg:col-span-4">
-                    <SetupStepsTopCard current={3} />
+                    <SetupStepsTopCard current={3} progress={setupProgress} />
 
-                    <Heading
-                        level="h1"
-                        title="Invite your team"
-                        description={`Give ${organization.name} someone to help run it — or skip this step and do it later.`}
-                    />
+                    <div className="flex items-start justify-between gap-4">
+                        <Heading
+                            level="h1"
+                            title="Invite your team"
+                            description={`Give ${organization.name} someone to help run it — or skip this step and do it later.`}
+                        />
+                        <Button asChild variant="outline" size="sm">
+                            <Link href={firstAsset.url()}>
+                                <ArrowLeft className="size-4" />
+                                Back
+                            </Link>
+                        </Button>
+                    </div>
 
                     <Form {...storeTeam.form()} className="space-y-6">
                         {({ processing, errors }) => (

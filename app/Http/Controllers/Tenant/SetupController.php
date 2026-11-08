@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Tenant\StoreStaffRequest;
 use App\Models\Organization;
 use App\Services\StaffService;
+use App\Support\AuthLanding;
+use App\Support\SetupProgress;
 use App\Support\TenancyContext;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
@@ -14,10 +16,11 @@ use Inertia\Response;
 /**
  * Funnel steps 3 and 4: invite the team, then review and launch.
  *
- * These run outside the first-property gate — a fresh organization has no
- * properties yet by definition — but they are owner-only. Staff who wander
- * here are sent to the properties list with an explanation instead of a
- * bare 403.
+ * Both require the first asset — an owner who pastes these URLs (or
+ * clicks a stale stepper link) without one is sent back to the asset
+ * step with an explanation instead of walking an empty funnel. They are
+ * also owner-only: staff who wander here are sent to the properties
+ * list with an explanation instead of a bare 403.
  */
 class SetupController extends Controller
 {
@@ -29,9 +32,14 @@ class SetupController extends Controller
             return $organization;
         }
 
+        if ($redirect = $this->requireAsset($organization)) {
+            return $redirect;
+        }
+
         return Inertia::render('setup/team', [
             'organization' => $organization->only('id', 'name', 'slug'),
             'sub_roles' => $staffService->formOptions($organization)['sub_roles'],
+            'setupProgress' => SetupProgress::forOrganization($organization),
         ]);
     }
 
@@ -64,6 +72,10 @@ class SetupController extends Controller
             return $organization;
         }
 
+        if ($redirect = $this->requireAsset($organization)) {
+            return $redirect;
+        }
+
         return Inertia::render('setup/review', [
             'organization' => [
                 ...$organization->only('id', 'name', 'slug'),
@@ -72,6 +84,7 @@ class SetupController extends Controller
             ],
             'properties' => $this->propertySummary($organization),
             'team' => $this->teamSummary($organization),
+            'setupProgress' => SetupProgress::forOrganization($organization),
         ]);
     }
 
@@ -91,6 +104,23 @@ class SetupController extends Controller
         }
 
         return $organization;
+    }
+
+    /**
+     * Steps 3 and 4 build on the first asset. An owner without one — a
+     * pasted URL, a stale stepper link — goes back to the asset step with
+     * an explanation instead of walking an empty funnel. Either asset
+     * kind (building or land parcel) satisfies the gate.
+     */
+    private function requireAsset(Organization $organization): ?RedirectResponse
+    {
+        if ($organization->properties()->exists() || $organization->landParcels()->exists()) {
+            return null;
+        }
+
+        Inertia::flash('toast', ['type' => 'warning', 'message' => 'Add your first asset to continue setup.']);
+
+        return redirect()->to(AuthLanding::for(request()->user(), request()));
     }
 
     /**

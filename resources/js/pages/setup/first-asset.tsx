@@ -1,10 +1,11 @@
 import { Head, Link } from '@inertiajs/react';
-import { Building2, Map } from 'lucide-react';
+import { ArrowLeft, Building2, Map } from 'lucide-react';
 import Heading from '@/components/heading';
 import {
     SetupSidePanel,
     SetupStepsTopCard,
 } from '@/components/setup-side-panel';
+import type { SetupProgress } from '@/components/setup-steps';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -15,6 +16,7 @@ import {
 } from '@/components/ui/card';
 import { create as createParcel } from '@/routes/tenant/land-parcels';
 import { create as createProperty } from '@/routes/tenant/properties';
+import { show as becomeLandlord } from '@/routes/guest/become-landlord';
 
 type Organization = {
     id: number;
@@ -23,9 +25,10 @@ type Organization = {
 
 type Props = {
     organization: Organization;
+    setupProgress: SetupProgress;
 };
 
-export default function FirstAsset({ organization }: Props) {
+export default function FirstAsset({ organization, setupProgress }: Props) {
     return (
         <>
             <Head title="Add your first asset" />
@@ -37,17 +40,26 @@ export default function FirstAsset({ organization }: Props) {
                         'Add your first building or land parcel',
                     ]}
                     current={2}
+                    progress={setupProgress}
                 />
 
                 <div className="col-span-7 space-y-6 lg:col-span-4">
-                    <SetupStepsTopCard current={2} />
+                    <SetupStepsTopCard current={2} progress={setupProgress} />
 
-                    <Heading
-                        variant="small"
-                        level="h1"
-                        title={`Add your first asset${organization ? ` to ${organization.name}` : ''}`}
-                        description="Choose what you'd like to set up first. You can add the other type later."
-                    />
+                    <div className="flex items-start justify-between gap-4">
+                        <Heading
+                            variant="small"
+                            level="h1"
+                            title={`Add your first asset${organization ? ` to ${organization.name}` : ''}`}
+                            description="Choose what you'd like to set up first. You can add the other type later."
+                        />
+                        <Button asChild variant="outline" size="sm">
+                            <Link href={becomeLandlord()}>
+                                <ArrowLeft className="size-4" />
+                                Back
+                            </Link>
+                        </Button>
+                    </div>
 
                     <div className="grid gap-4">
                         <Link

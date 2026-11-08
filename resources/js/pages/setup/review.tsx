@@ -1,10 +1,11 @@
 import { Head, Link } from '@inertiajs/react';
-import { ArrowRight, Building2, Users } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Building2, Users } from 'lucide-react';
 import Heading from '@/components/heading';
 import {
     SetupSidePanel,
     SetupStepsTopCard,
 } from '@/components/setup-side-panel';
+import type { SetupProgress } from '@/components/setup-steps';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -15,6 +16,7 @@ import {
     CardTitle,
 } from '@/components/ui/card';
 import { overview as tenantOverview } from '@/routes/tenant';
+import { team as setupTeam } from '@/routes/tenant/setup';
 
 type PropertySummary = {
     id: number;
@@ -39,9 +41,15 @@ type Props = {
     };
     properties: PropertySummary[];
     team: TeamMember[];
+    setupProgress: SetupProgress;
 };
 
-export default function SetupReview({ organization, properties, team }: Props) {
+export default function SetupReview({
+    organization,
+    properties,
+    team,
+    setupProgress,
+}: Props) {
     return (
         <>
             <Head title="Review and launch" />
@@ -53,16 +61,25 @@ export default function SetupReview({ organization, properties, team }: Props) {
                         'Review your setup, then open your dashboard.',
                     ]}
                     current={4}
+                    progress={setupProgress}
                 />
 
                 <div className="col-span-7 space-y-6 lg:col-span-4">
-                    <SetupStepsTopCard current={4} />
+                    <SetupStepsTopCard current={4} progress={setupProgress} />
 
-                    <Heading
-                        level="h1"
-                        title="Review and launch"
-                        description="Confirm everything looks right, then open your dashboard."
-                    />
+                    <div className="flex items-start justify-between gap-4">
+                        <Heading
+                            level="h1"
+                            title="Review and launch"
+                            description="Confirm everything looks right, then open your dashboard."
+                        />
+                        <Button asChild variant="outline" size="sm">
+                            <Link href={setupTeam()}>
+                                <ArrowLeft className="size-4" />
+                                Back
+                            </Link>
+                        </Button>
+                    </div>
 
                     <Card>
                         <CardHeader>
