@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Tenant;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Tenant\ReportIndexRequest;
 use App\Http\Requests\Tenant\ReportRequest;
 use App\Services\Reporting\ReportService;
 use App\Support\TenancyContext;
@@ -28,7 +29,7 @@ class ReportController extends Controller
         'occupant.manage',
     ];
 
-    public function index(Request $request): Response
+    public function index(ReportIndexRequest $request): Response
     {
         $this->authorize($request);
 

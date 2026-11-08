@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Tenant;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Tenant\StoreUnitRequest;
+use App\Http\Requests\Tenant\UnitIndexRequest;
+use App\Http\Requests\Tenant\UnitShowRequest;
 use App\Models\Property;
 use App\Models\Unit;
 use App\Services\PropertyService;
@@ -33,7 +35,7 @@ class UnitController extends Controller
      * them. This is the place a landlord can browse the whole portfolio and
      * open one to look at its pictures.
      */
-    public function index(Request $request): Response
+    public function index(UnitIndexRequest $request): Response
     {
         $sort = $request->string('sort')->toString();
         $sortColumn = self::SORTABLE[$sort] ?? null;
@@ -113,7 +115,7 @@ class UnitController extends Controller
     /**
      * One unit, with every photo.
      */
-    public function show(Request $request, Unit $unit): Response
+    public function show(UnitShowRequest $request, Unit $unit): Response
     {
         abort_unless(
             $unit->property?->organization_id === TenancyContext::organization()?->id,
