@@ -3,6 +3,7 @@
 namespace App\Actions\Onboarding;
 
 use App\Actions\Onboarding\Concerns\OnboardingHelpers;
+use App\Data\Onboarding\BecomeLandlordData;
 use App\Models\Organization;
 use App\Models\User;
 use App\Services\Service;
@@ -21,15 +22,12 @@ class BecomeLandlord extends Service
 
     public function __construct(private TenantService $tenantService) {}
 
-    /**
-     * @param  array{organization_name: string, currency: string, plan_slug: string, list_publicly?: bool}  $validated
-     */
-    public function handle(User $user, array $validated): Organization
+    public function handle(User $user, BecomeLandlordData $data): Organization
     {
-        return $this->transaction(function () use ($user, $validated): Organization {
-            $organization = $this->resolveOrganization($user, null, $validated);
+        return $this->transaction(function () use ($user, $data): Organization {
+            $organization = $this->resolveOrganization($user, null, $data);
 
-            if (($validated['list_publicly'] ?? false) === true) {
+            if ($data->listPublicly === true) {
                 $settings = $organization->settings ?? [];
                 $settings['list_publicly'] = true;
                 $organization->update(['settings' => $settings]);

@@ -3,11 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Actions\Onboarding\Concerns\OnboardingHelpers;
+use App\Http\Requests\BrowseListingsRequest;
+use App\Http\Requests\DestroySavedSearchRequest;
 use App\Http\Requests\StoreSavedSearchRequest;
 use App\Models\Lease;
 use App\Models\Person;
 use App\Models\SavedSearch;
 use App\Models\Unit;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -26,7 +29,7 @@ class GuestController extends Controller
 {
     use OnboardingHelpers;
 
-    public function home(Request $request): Response
+    public function home(BrowseListingsRequest $request): Response
     {
         $user = $request->user();
 
@@ -56,6 +59,7 @@ class GuestController extends Controller
                 ->get(['id', 'name', 'filters']),
             'filters' => $request->only(['query', 'min_rent', 'max_rent', 'type']),
             'canBecomeLandlord' => $user->organizations()->wherePivot('is_owner', true)->exists() === false,
+            'workspaces' => $this->workspaces($request, $user),
         ]);
     }
 
@@ -85,14 +89,40 @@ class GuestController extends Controller
         return back();
     }
 
-    public function destroySearch(Request $request, SavedSearch $search): RedirectResponse
+    public function destroySearch(DestroySavedSearchRequest $request, SavedSearch $search): RedirectResponse
     {
-        abort_if($search->user_id !== $request->user()->id, 403);
-
         $search->delete();
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Saved search removed.']);
 
         return back();
+    }
+
+    /**
+     * Organizations the user belongs to — owned or staff — each with a link
+     * into its property domain. Central-domain staff see their way to work
+     * here instead of a bare guest page.
+     *
+     * @return array<int, array{organization_id: int, organization_name: string, role: string, url: string}>
+     */
+    private function workspaces(Request $request, User $user): array
+    {
+        $scheme = $request->secure() ? 'https' : 'http';
+
+        return $user->organizations()
+            ->withPivot('is_owner')
+            ->orderBy('organizations.name')
+            ->get(['organizations.id', 'organizations.name', 'organizations.tenant_id'])
+            ->map(function ($organization) use ($scheme): array {
+                $domain = $organization->tenant?->domains()->value('domain');
+
+                return [
+                    'organization_id' => $organization->id,
+                    'organization_name' => $organization->name,
+                    'role' => $organization->pivot->is_owner ? 'owner' : 'staff',
+                    'url' => $domain ? "{$scheme}://{$domain}/properties" : route('guest.home'),
+                ];
+            })
+            ->all();
     }
 }

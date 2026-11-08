@@ -2,6 +2,7 @@
 
 namespace App\Actions\Onboarding\Concerns;
 
+use App\Data\Onboarding\BecomeLandlordData;
 use App\Enums\PlatformRole;
 use App\Models\Organization;
 use App\Models\Person;
@@ -36,19 +37,17 @@ trait OnboardingHelpers
 
     /**
      * Update the existing organization or provision a brand-new one.
-     *
-     * @param  array<string, mixed>  $validated
      */
-    private function resolveOrganization(User $user, ?Organization $organization, array $validated): Organization
+    private function resolveOrganization(User $user, ?Organization $organization, BecomeLandlordData $data): Organization
     {
-        $plan = Plan::where('slug', $validated['plan_slug'])->firstOrFail();
+        $plan = Plan::where('slug', $data->planSlug)->firstOrFail();
 
         if ($organization) {
             $organization->update([
-                'name' => $validated['organization_name'],
+                'name' => $data->organizationName,
                 'plan_id' => $plan->id,
                 'settings' => array_merge($organization->settings ?? [], [
-                    'currency' => $validated['currency'],
+                    'currency' => $data->currency,
                 ]),
             ]);
 
@@ -57,15 +56,15 @@ trait OnboardingHelpers
 
         $organization = $this->tenantService->createOrganization(
             owner: $user,
-            name: $validated['organization_name'],
+            name: $data->organizationName,
             plan: $plan,
             email: $user->email,
-            phone: $validated['phone'] ?? null,
+            phone: $user->phone,
         );
 
         $organization->update([
             'settings' => [
-                'currency' => $validated['currency'],
+                'currency' => $data->currency,
             ],
         ]);
 

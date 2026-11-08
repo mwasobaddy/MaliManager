@@ -29,7 +29,7 @@ class LandlordController extends Controller
             return InertiaRedirect::to(AuthLanding::for($user, $request), $request);
         }
 
-        $upgrade->handle($user, $request->validated());
+        $upgrade->handle($user, $request->toData());
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Welcome, landlord. Add your first asset to get started.']);
 

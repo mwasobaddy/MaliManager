@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Data\Onboarding\BecomeLandlordData;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -30,5 +31,15 @@ class BecomeLandlordRequest extends FormRequest
             'plan_slug' => ['required', 'string', 'exists:plans,slug'],
             'list_publicly' => ['nullable', 'boolean'],
         ];
+    }
+
+    public function toData(): BecomeLandlordData
+    {
+        return new BecomeLandlordData(
+            organizationName: (string) $this->string('organization_name'),
+            currency: (string) $this->string('currency'),
+            planSlug: (string) $this->string('plan_slug'),
+            listPublicly: $this->boolean('list_publicly'),
+        );
     }
 }
