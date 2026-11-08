@@ -157,6 +157,7 @@ export default function PropertiesDashboard({
                     <div className="space-y-0.5">
                         <Heading
                             variant="small"
+                            level="h1"
                             title={property.name}
                             description={`${property.city ?? 'No city set'}${property.address ? ` · ${property.address}` : ''}`}
                         />

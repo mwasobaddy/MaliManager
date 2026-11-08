@@ -111,6 +111,7 @@ export default function GuestHome({
             <div className="mx-auto max-w-5xl space-y-6 p-4 md:p-6">
                 <div className="flex flex-wrap items-end justify-between gap-4">
                     <Heading
+                        level="h1"
                         title="Find a place to rent"
                         description="Browse units listed by landlords on MaliManager."
                     />

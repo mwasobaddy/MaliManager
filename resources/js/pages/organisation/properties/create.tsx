@@ -93,6 +93,7 @@ export default function PropertiesCreate({
                 <div className="flex items-center justify-between gap-4">
                     <Heading
                         variant="small"
+                        level="h1"
                         title="Add a property"
                         description={`Add ${organization.name}'s first property and its units.`}
                     />

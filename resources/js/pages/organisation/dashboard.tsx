@@ -143,6 +143,7 @@ export default function OrganizationDashboard({
                 <div className="flex flex-wrap items-center justify-between gap-4">
                     <Heading
                         variant="small"
+                        level="h1"
                         title={`${organization.name} overview`}
                         description={`${properties_count} ${properties_count === 1 ? 'property' : 'properties'} across your portfolio`}
                     />

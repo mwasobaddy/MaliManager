@@ -207,6 +207,7 @@ export default function Dashboard(props: Props) {
         <>
             <Head title="Dashboard" />
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
+                <h1 className="sr-only">Dashboard</h1>
                 {visibleTabs.length === 0 ? (
                     <p className="text-muted-foreground">
                         You don't have any dashboard data yet.

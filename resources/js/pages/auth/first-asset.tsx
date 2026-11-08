@@ -29,6 +29,7 @@ export default function FirstAsset({ organization }: Props) {
             <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-4">
                 <Heading
                     variant="small"
+                    level="h1"
                     title={`Add your first asset${organization ? ` to ${organization.name}` : ''}`}
                     description="Choose what you'd like to set up first. You can add the other type later."
                 />

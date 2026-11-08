@@ -74,6 +74,7 @@ export default function SearcherRentals({ leases }: Props) {
                 <div className="flex flex-wrap items-center justify-between gap-4">
                     <Heading
                         variant="small"
+                        level="h1"
                         title="My rentals"
                         description="Your rental history across every organization you have rented from."
                     />

@@ -86,6 +86,7 @@ export default function SearcherMaintenance({
             <Head title="Maintenance" />
             <div className="mx-auto flex h-full w-full max-w-3xl flex-1 flex-col gap-6 p-6">
                 <Heading
+                    level="h1"
                     title="Maintenance"
                     description="Report issues with the units you rent and follow their progress."
                 />

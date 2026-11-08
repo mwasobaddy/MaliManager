@@ -55,6 +55,7 @@ export default function BecomeLandlord({ plans }: Props) {
 
             <div className="mx-auto max-w-2xl space-y-6 p-4 md:p-6">
                 <Heading
+                    level="h1"
                     title="Become a landlord"
                     description="Set up your organization. You can add properties right after."
                 />
