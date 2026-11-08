@@ -21,6 +21,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { formatMoney } from '@/lib/format-money';
 import { dashboard } from '@/routes';
 
 type AdminStats = {
@@ -319,12 +320,12 @@ function AdminTab({ stats }: { stats: AdminStats }) {
                     },
                     {
                         label: 'Total Income',
-                        value: `$${Number(stats.income_total).toLocaleString()}`,
+                        value: formatMoney(stats.income_total),
                         variant: 'primary',
                     },
                     {
                         label: 'Total Expenses',
-                        value: `$${Number(stats.expenses_total).toLocaleString()}`,
+                        value: formatMoney(stats.expenses_total),
                         variant: 'accent',
                     },
                 ]}
@@ -415,7 +416,7 @@ function OrganizationTab({ stats }: { stats: OrgStats }) {
                     },
                     {
                         label: 'Expenses YTD',
-                        value: `$${Number(stats.expenses_ytd).toLocaleString()}`,
+                        value: formatMoney(stats.expenses_ytd),
                         variant: 'primary',
                     },
                 ]}
@@ -530,7 +531,7 @@ function PersonTab({
                     },
                     {
                         label: 'Total Rent',
-                        value: `$${Number(stats.total_rent).toLocaleString()}`,
+                        value: formatMoney(stats.total_rent),
                         variant: 'primary',
                     },
                     {

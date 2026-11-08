@@ -20,6 +20,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { formatMoney } from '@/lib/format-money';
 import { dashboard, index } from '@/routes/tenant/properties';
 
 const MONTHS = [
@@ -41,6 +42,7 @@ type Organization = {
     id: number;
     name: string;
     slug: string;
+    currency: string;
 };
 
 type Property = {
@@ -113,8 +115,6 @@ export default function OrganizationDashboard({
     const [filterMonth, setFilterMonth] = useState<string>(
         month ? String(month) : '',
     );
-    const ccy = (value: number) => Number(value).toLocaleString();
-
     const updateFilters = (newYear: string, newMonth: string) => {
         setFilterYear(newYear);
         setFilterMonth(newMonth);
@@ -211,7 +211,10 @@ export default function OrganizationDashboard({
                         },
                         {
                             label: 'Monthly Rent Potential',
-                            value: ccy(rent_potential),
+                            value: formatMoney(
+                                rent_potential,
+                                organization.currency,
+                            ),
                             variant: 'primary',
                         },
                     ]}
@@ -323,7 +326,10 @@ export default function OrganizationDashboard({
                                                 {property.open_maintenance}
                                             </td>
                                             <td className="py-3 tabular-nums">
-                                                KES {ccy(property.rent_potential)}
+                                                {formatMoney(
+                                                    property.rent_potential,
+                                                    organization.currency,
+                                                )}
                                             </td>
                                         </tr>
                                     ))}

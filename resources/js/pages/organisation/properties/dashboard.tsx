@@ -32,6 +32,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { formatMoney } from '@/lib/format-money';
 import { index } from '@/routes/tenant/properties';
 import { store as storeUnit } from '@/routes/tenant/properties/units';
 
@@ -67,6 +68,13 @@ type Unit = {
     monthly_rent: string | null;
 };
 
+type Organization = {
+    id: number;
+    name: string;
+    slug: string;
+    currency: string;
+};
+
 type Plan = {
     units_limit: number | null;
 };
@@ -92,6 +100,7 @@ type PropertyStat = {
 };
 
 type Props = {
+    organization: Organization;
     property: Property;
     units: Unit[];
     stats: PropertyStat;
@@ -101,6 +110,7 @@ type Props = {
 };
 
 export default function PropertiesDashboard({
+    organization,
     property,
     units,
     stats,
@@ -117,8 +127,6 @@ export default function PropertiesDashboard({
     );
     const atUnitLimit =
         plan.units_limit !== null && units.length >= plan.units_limit;
-
-    const ccy = (value: number) => Number(value).toLocaleString();
 
     const updateFilters = (newYear: string, newMonth: string) => {
         setFilterYear(newYear);
@@ -235,7 +243,10 @@ export default function PropertiesDashboard({
                         },
                         {
                             label: 'Monthly Rent Potential',
-                            value: ccy(stats.rent_potential),
+                            value: formatMoney(
+                                stats.rent_potential,
+                                organization.currency,
+                            ),
                             variant: 'primary',
                         },
                         {
