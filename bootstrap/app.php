@@ -27,6 +27,10 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
 
+        // Safaricom posts STK callbacks without a session; the callback
+        // correlates purely by payload and answers its own envelope.
+        $middleware->validateCsrfTokens(except: ['billing/mpesa/callback']);
+
         $middleware->web(append: [
             HandleAppearance::class,
             HandleInertiaRequests::class,

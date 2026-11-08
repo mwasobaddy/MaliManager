@@ -6,6 +6,7 @@ use App\Http\Controllers\Tenant\AgreementTemplateController;
 use App\Http\Controllers\Tenant\AiSettingsController;
 use App\Http\Controllers\Tenant\AssistantController;
 use App\Http\Controllers\Tenant\AuditController;
+use App\Http\Controllers\Tenant\BillingController;
 use App\Http\Controllers\Tenant\DepositRefundController;
 use App\Http\Controllers\Tenant\DraftingController;
 use App\Http\Controllers\Tenant\EditorImageController;
@@ -18,6 +19,7 @@ use App\Http\Controllers\Tenant\LeaseController;
 use App\Http\Controllers\Tenant\MaintenanceController;
 use App\Http\Controllers\Tenant\MaintenanceNoteController;
 use App\Http\Controllers\Tenant\MeterReadingController;
+use App\Http\Controllers\Tenant\MpesaCallbackController;
 use App\Http\Controllers\Tenant\OccupantController;
 use App\Http\Controllers\Tenant\OrganizationDashboardController;
 use App\Http\Controllers\Tenant\PaymentController;
@@ -76,6 +78,23 @@ Route::middleware([
             ->name('tenant.setup.team.store');
         Route::get('/setup/review', [SetupController::class, 'review'])
             ->name('tenant.setup.review');
+
+        // Self-serve billing for the organization's plan. Owner-only;
+        // BillingController redirects staff. Kept outside has-property so
+        // a lapsed organization can always reach the page that unblocks
+        // it. The M-Pesa callback carries no session, so it sits outside
+        // auth (and is CSRF-exempt in bootstrap/app.php).
+        Route::get('/billing', [BillingController::class, 'show'])
+            ->name('tenant.billing.show');
+        Route::post('/billing/mpesa', [BillingController::class, 'initiateMpesa'])
+            ->name('tenant.billing.mpesa');
+        Route::post('/billing/card', [BillingController::class, 'initiateCard'])
+            ->name('tenant.billing.card');
+        Route::get('/billing/card/callback', [BillingController::class, 'verifyCard'])
+            ->name('tenant.billing.card.callback');
+        Route::post('/billing/mpesa/callback', [MpesaCallbackController::class, 'store'])
+            ->withoutMiddleware(['auth', 'organization.active'])
+            ->name('tenant.billing.mpesa.callback');
     });
 
     Route::middleware(['auth', 'organization.active', 'has-property'])->group(function () {

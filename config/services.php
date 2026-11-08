@@ -41,4 +41,12 @@ return [
         'redirect' => env('GOOGLE_REDIRECT_URI'),
     ],
 
+    'mpesa' => [
+        'shortcode' => env('MPESA_SHORT_CODE'),
+    ],
+
+    'paystack' => [
+        'secret' => env('PAYSTACK_SECRET_KEY'),
+    ],
+
 ];
