@@ -67,13 +67,13 @@ test('the admin seeder stores the opencode key from the environment', function (
         ->firstOrFail();
 
     expect($setting->provider)->toBe('opencode')
-        ->and($setting->model)->toBe('muse-spark-1.3-contributor')
+        ->and($setting->model)->toBe('muse-spark-1.3')
         ->and($setting->api_key)->toBe('oc_sk_test_key_0123456789abcdef')
         ->and($setting->supportsFeature(AiFeature::AskData))->toBeTrue();
 
     // The settings screen renders the model as a strict dropdown of the
     // provider's suggestions: an unlisted model would display blank.
-    expect(AiProvider::OpenCode->suggestedModels())->toContain('muse-spark-1.3-contributor');
+    expect(AiProvider::OpenCode->suggestedModels())->toContain('muse-spark-1.3');
 });
 
 test('the admin seeder skips the ai key when the environment variable is missing', function () {

@@ -74,7 +74,7 @@ class AdminSeeder extends Seeder
             ],
             [
                 'provider' => AiProvider::OpenCode->value,
-                'model' => 'muse-spark-1.3-contributor',
+                'model' => 'muse-spark-1.3',
                 'base_url' => null,
                 'api_key' => $apiKey,
                 'features' => null,
@@ -82,7 +82,7 @@ class AdminSeeder extends Seeder
         );
 
         if ($setting->wasRecentlyCreated) {
-            $this->command?->info('Admin personal AI key seeded (OpenCode, muse-spark-1.3-contributor).');
+            $this->command?->info('Admin personal AI key seeded (OpenCode, muse-spark-1.3).');
         }
     }
 }

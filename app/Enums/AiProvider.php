@@ -107,7 +107,7 @@ enum AiProvider: string
             self::ElevenLabs => ['eleven_multilingual_v2_5'],
             self::VoyageAi => ['voyage-3-large', 'voyage-3-lite'],
             // Models Console serves natively over Chat Completions.
-            self::OpenCode => ['muse-spark-1.3-contributor', 'kimi-k3', 'glm-5.3', 'deepseek-v4.1-flash', 'minimax-m3', 'qwen3.8-max'],
+            self::OpenCode => ['muse-spark-1.3', 'kimi-k3', 'glm-5.3', 'deepseek-v4.1-flash', 'minimax-m3', 'qwen3.8-max'],
         };
     }
 
