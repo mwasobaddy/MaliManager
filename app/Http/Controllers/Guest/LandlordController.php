@@ -39,7 +39,7 @@ class LandlordController extends Controller
 
     public function show(): Response
     {
-        return Inertia::render('guest/become-landlord', [
+        return Inertia::render('setup/become-landlord', [
             'plans' => Plan::where('is_active', true)
                 ->orderBy('sort_order')
                 ->get(['name', 'slug', 'description', 'price', 'currency'])

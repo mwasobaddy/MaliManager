@@ -1,7 +1,9 @@
 import { Form, Head } from '@inertiajs/react';
+import { BadgeCheck, Smartphone, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
+import { SetupSteps } from '@/components/setup-steps';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -54,6 +56,8 @@ export default function BecomeLandlord({ plans }: Props) {
             <Head title="Become a landlord" />
 
             <div className="mx-auto max-w-2xl space-y-6 p-4 md:p-6">
+                <SetupSteps current={1} />
+
                 <Heading
                     level="h1"
                     title="Become a landlord"
@@ -209,6 +213,30 @@ export default function BecomeLandlord({ plans }: Props) {
                                 {processing && <Spinner />}
                                 Create my organization
                             </Button>
+
+                            <ul className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
+                                <li className="flex items-center gap-1.5">
+                                    <Sparkles
+                                        className="size-4 text-brand-accent"
+                                        aria-hidden
+                                    />
+                                    Free up to 10 units
+                                </li>
+                                <li className="flex items-center gap-1.5">
+                                    <Smartphone
+                                        className="size-4 text-brand-accent"
+                                        aria-hidden
+                                    />
+                                    Collect rent via M-Pesa
+                                </li>
+                                <li className="flex items-center gap-1.5">
+                                    <BadgeCheck
+                                        className="size-4 text-brand-accent"
+                                        aria-hidden
+                                    />
+                                    No card required
+                                </li>
+                            </ul>
                         </>
                     )}
                 </Form>

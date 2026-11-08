@@ -1,6 +1,7 @@
 import { Head, Link } from '@inertiajs/react';
 import { Building2, Map } from 'lucide-react';
 import Heading from '@/components/heading';
+import { SetupSteps } from '@/components/setup-steps';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -27,6 +28,8 @@ export default function FirstAsset({ organization }: Props) {
             <Head title="Add your first asset" />
 
             <div className="flex flex-1 flex-col gap-6 py-4">
+                <SetupSteps current={2} />
+
                 <Heading
                     variant="small"
                     level="h1"
