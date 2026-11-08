@@ -7,9 +7,11 @@ use App\Http\Requests\DashboardRequest;
 use App\Services\DashboardService;
 use App\Services\PropertyAccessService;
 use App\Support\TenancyContext;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Response as HttpResponse;
 use Inertia\Inertia;
 use Inertia\Response;
+use Stancl\Tenancy\Database\Models\Domain;
 
 class DashboardController extends Controller
 {
@@ -27,13 +29,20 @@ class DashboardController extends Controller
      * between staying on the admin dashboard or entering a property. Once the
      * choice is acknowledged it stays closed on subsequent loads/refreshes.
      */
-    public function index(DashboardRequest $request): Response
+    public function index(DashboardRequest $request): Response|RedirectResponse
     {
         $user = $request->user();
 
         if (TenancyContext::organization()) {
             // Already inside a tenant context; nothing to pick.
             return Inertia::render('dashboard');
+        }
+
+        if ($this->isTenantHost($request)) {
+            // An org subdomain serves only tenant routes: without tenancy the
+            // central dashboard renders with the guest sidebar and no link to
+            // the org home. Hand over to the guarded tenant overview instead.
+            return redirect()->to($request->getSchemeAndHttpHost().'/overview');
         }
 
         $access = app(PropertyAccessService::class)->organizationsWithProperties($user);
@@ -51,6 +60,16 @@ class DashboardController extends Controller
                     && ! $request->session()->get(self::ACK_KEY, false),
             ],
         ));
+    }
+
+    /**
+     * Whether the request arrived on a registered organization subdomain.
+     * Central routes never initialize tenancy, so on an org host the
+     * dashboard would otherwise render centrally with no org context.
+     */
+    private function isTenantHost(DashboardRequest $request): bool
+    {
+        return Domain::where('domain', $request->getHost())->exists();
     }
 
     /**

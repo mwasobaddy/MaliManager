@@ -2,10 +2,13 @@
 
 use App\Enums\PlatformRole;
 use App\Models\Organization;
+use App\Models\Plan;
 use App\Models\SubRole;
 use App\Models\SubscriptionPayment;
 use App\Models\User;
 use App\Services\StaffService;
+use App\Services\TenantService;
+use Database\Seeders\PlansSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -138,4 +141,21 @@ it('builds merged operations series for the organization payload', function () {
             ->where('organization.operations_monthly.0.label', 'Jan')
             ->has('organization.operations_monthly.0.expenses')
             ->has('organization.operations_monthly.0.maintenance'));
+});
+
+it('redirects the central dashboard to the overview on an organization subdomain', function () {
+    $this->seed(RolesAndPermissionsSeeder::class);
+    (new PlansSeeder)->run();
+
+    $owner = makeOnboardedUser();
+    $organization = app(TenantService::class)->createOrganization(
+        owner: $owner,
+        name: 'Redirect Estates',
+        plan: Plan::where('slug', 'free')->firstOrFail(),
+    );
+    $domain = $organization->tenant->domains()->value('domain');
+
+    $this->actingAs($owner)
+        ->get("http://{$domain}/dashboard")
+        ->assertRedirect("http://{$domain}/overview");
 });
