@@ -11,6 +11,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { ActionIconButton } from '@/components/action-icon-button';
 import Heading from '@/components/heading';
+import { HomeDashboardTabs } from '@/components/home-dashboard-tabs';
 import { ListingTrustBadges } from '@/components/listing-trust-badges';
 import { OverlayFooter } from '@/components/overlay-footer';
 import { ResponsiveOverlay } from '@/components/responsive-overlay';
@@ -280,7 +281,8 @@ export default function GuestHome({
         <>
             <Head title="Find a place" />
 
-            <div className="mx-auto max-w-5xl space-y-6 p-4 md:p-6">
+            <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
+                <HomeDashboardTabs />
                 <div className="flex flex-wrap items-end justify-between gap-4">
                     <Heading
                         level="h1"

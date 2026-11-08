@@ -1,5 +1,5 @@
-import { Head, router, usePage } from '@inertiajs/react';
-import { TriangleAlert } from 'lucide-react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
+import { LayoutDashboard, TriangleAlert } from 'lucide-react';
 import { useState } from 'react';
 import {
     Pie,
@@ -12,7 +12,10 @@ import {
 import { ComboChart } from '@/components/dashboard/combo-chart';
 import type { ComboPoint } from '@/components/dashboard/combo-chart';
 import { StatsCards } from '@/components/dashboard/stats-cards';
+import { HomeDashboardTabs } from '@/components/home-dashboard-tabs';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Empty } from '@/components/ui/empty';
 import {
     Select,
     SelectContent,
@@ -23,6 +26,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { formatMoney } from '@/lib/format-money';
 import { dashboard } from '@/routes';
+import { home as guestHome } from '@/routes/guest';
 
 type AdminStats = {
     organizations_count: number;
@@ -124,6 +128,57 @@ const TABS = [
 
 type TabKey = (typeof TABS)[number]['key'];
 
+/**
+ * What renders when the user holds none of the dashboard metric
+ * permissions: a next step instead of a dead end. Fresh owners are sent
+ * back into the funnel, pure guests toward browsing or becoming a
+ * landlord, and everyone else toward listings.
+ */
+function DashboardEmptyState() {
+    const { props } = usePage();
+    const canBecomeLandlord = (props.auth?.canBecomeLandlord ??
+        false) as boolean;
+
+    if (canBecomeLandlord) {
+        return (
+            <Empty
+                icon={<LayoutDashboard className="size-4" />}
+                title="Nothing here yet"
+                description="Your dashboard fills in once you rent a place or list one of your own."
+                action={
+                    <Button asChild>
+                        <Link href="/become-landlord">Become a landlord</Link>
+                    </Button>
+                }
+                secondaryAction={
+                    <Link
+                        href={guestHome.url()}
+                        className="text-sm font-medium text-accent-text hover:text-foreground"
+                    >
+                        Browse listings instead
+                    </Link>
+                }
+            />
+        );
+    }
+
+    return (
+        <Empty
+            icon={<LayoutDashboard className="size-4" />}
+            title="Nothing here yet"
+            description="You don't have access to any dashboard data. Ask your administrator, or browse what's publicly listed."
+            secondaryAction={
+                <Link
+                    href={guestHome.url()}
+                    className="text-sm font-medium text-accent-text hover:text-foreground"
+                >
+                    Browse listings
+                </Link>
+            }
+        />
+    );
+}
+
 const MONTHS = [
     'Jan',
     'Feb',
@@ -208,10 +263,13 @@ export default function Dashboard(props: Props) {
             <Head title="Dashboard" />
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
                 <h1 className="sr-only">Dashboard</h1>
+                <HomeDashboardTabs />
                 {visibleTabs.length === 0 ? (
-                    <p className="text-muted-foreground">
-                        You don't have any dashboard data yet.
-                    </p>
+                    <Card>
+                        <CardContent>
+                            <DashboardEmptyState />
+                        </CardContent>
+                    </Card>
                 ) : (
                     <>
                         <div className="flex flex-wrap items-center gap-3">
