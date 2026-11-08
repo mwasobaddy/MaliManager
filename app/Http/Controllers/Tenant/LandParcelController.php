@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Tenant;
 use App\Enums\SubPermissionKey;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Tenant\DestroyLandParcelRequest;
+use App\Http\Requests\Tenant\LandParcelFormRequest;
+use App\Http\Requests\Tenant\LandParcelIndexRequest;
 use App\Http\Requests\Tenant\StoreLandParcelRequest;
 use App\Http\Requests\Tenant\UpdateLandParcelRequest;
 use App\Models\LandParcel;
@@ -21,7 +23,7 @@ use Inertia\Response;
 
 class LandParcelController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(LandParcelIndexRequest $request): Response
     {
         $organization = TenancyContext::organization();
         $user = $request->user();
@@ -41,7 +43,7 @@ class LandParcelController extends Controller
         ]);
     }
 
-    public function create(Request $request): Response
+    public function create(LandParcelFormRequest $request): Response
     {
         $organization = TenancyContext::organization();
         $parcel = new LandParcel;
@@ -68,7 +70,7 @@ class LandParcelController extends Controller
         ]);
     }
 
-    public function show(Request $request, LandParcel $landParcel): Response
+    public function show(LandParcelFormRequest $request, LandParcel $landParcel): Response
     {
         $this->authorizeAccess($request, $landParcel);
 
@@ -90,7 +92,7 @@ class LandParcelController extends Controller
         ]);
     }
 
-    public function edit(Request $request, LandParcel $landParcel): Response
+    public function edit(LandParcelFormRequest $request, LandParcel $landParcel): Response
     {
         $this->authorizeAccess($request, $landParcel);
 

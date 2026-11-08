@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Tenant;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Tenant\DestroyExpenseRequest;
+use App\Http\Requests\Tenant\ExpenseFormRequest;
+use App\Http\Requests\Tenant\ExpenseIndexRequest;
 use App\Http\Requests\Tenant\StoreExpenseRequest;
 use App\Http\Requests\Tenant\UpdateExpenseRequest;
 use App\Models\Expense;
@@ -23,7 +25,7 @@ use Inertia\Response;
  */
 class ExpenseController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(ExpenseIndexRequest $request): Response
     {
         $category = $request->string('category')->toString();
 
@@ -58,7 +60,7 @@ class ExpenseController extends Controller
         ]);
     }
 
-    public function create(Request $request): Response
+    public function create(ExpenseFormRequest $request): Response
     {
         return Inertia::render('organisation/expenses/form', [
             'expense' => null,
@@ -81,7 +83,7 @@ class ExpenseController extends Controller
         return redirect()->route('tenant.expenses.index');
     }
 
-    public function edit(Request $request, Expense $expense): Response
+    public function edit(ExpenseFormRequest $request, Expense $expense): Response
     {
         abort_if($expense->organization_id !== TenancyContext::organization()?->id, 403);
 
