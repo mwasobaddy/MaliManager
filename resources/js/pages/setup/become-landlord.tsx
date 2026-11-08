@@ -3,7 +3,10 @@ import { BadgeCheck, Smartphone, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
-import { SetupWelcome } from '@/components/setup-welcome';
+import {
+    SetupSidePanel,
+    SetupStepsTopCard,
+} from '@/components/setup-side-panel';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -55,198 +58,204 @@ export default function BecomeLandlord({ plans }: Props) {
         <>
             <Head title="Become a landlord" />
 
-            <div className="mx-auto max-w-2xl space-y-6 p-4 md:p-6">
-                <SetupWelcome
-                    title="Let's get your rental business set up"
-                    description="Two quick steps and your first property can start earning."
-                    current={1}
-                />
+            <div className="grid flex-1 gap-6 py-4 lg:grid-cols-7">
+                <div className="col-span-7 lg:col-span-3">
+                    <SetupSidePanel
+                        title="Let's get your rental business set up"
+                        description="Two quick steps and your first property can start earning."
+                        current={1}
+                        points={[
+                            {
+                                icon: Sparkles,
+                                text: 'Free up to 10 units',
+                            },
+                            {
+                                icon: Smartphone,
+                                text: 'Collect rent via M-Pesa',
+                            },
+                            {
+                                icon: BadgeCheck,
+                                text: 'No card required',
+                            },
+                        ]}
+                    />
+                </div>
 
-                <Heading
-                    level="h1"
-                    title="Become a landlord"
-                    description="Set up your organization. You can add properties right after."
-                />
+                <div className="col-span-7 space-y-6 lg:col-span-4">
+                    <SetupStepsTopCard current={1} />
 
-                <Form {...storeLandlord.form()} className="flex flex-col gap-6">
-                    {({ processing, errors }) => (
-                        <>
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle className="text-base font-medium">
-                                        Organization
-                                    </CardTitle>
-                                    <CardDescription>
-                                        The business tenants will see.
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent className="grid gap-4">
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="organization_name">
-                                            Organization name
-                                        </Label>
-                                        <Input
-                                            id="organization_name"
-                                            name="organization_name"
-                                            required
-                                        />
-                                        <InputError
-                                            message={errors.organization_name}
-                                        />
-                                    </div>
+                    <Heading
+                        level="h1"
+                        title="Become a landlord"
+                        description="Set up your organization. You can add properties right after."
+                    />
 
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="currency">
-                                            Currency
-                                        </Label>
-                                        <input
-                                            type="hidden"
-                                            name="currency"
-                                            value={currency}
-                                        />
-                                        <Select
-                                            value={currency}
-                                            onValueChange={setCurrency}
-                                        >
-                                            <SelectTrigger id="currency">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {currencies.map((code) => (
-                                                    <SelectItem
-                                                        key={code}
-                                                        value={code}
-                                                    >
-                                                        {code}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                        <InputError message={errors.currency} />
-                                    </div>
-
-                                    <div className="flex items-center justify-between gap-4 rounded-lg border p-4">
-                                        <Label
-                                            htmlFor="list_publicly"
-                                            className="flex-1 cursor-pointer"
-                                        >
-                                            <span className="block text-sm font-medium">
-                                                List vacant units publicly
-                                            </span>
-                                            <span className="block text-sm text-muted-foreground">
-                                                Guests can discover them on the
-                                                home page. Individual units can
-                                                still be held back.
-                                            </span>
-                                        </Label>
-                                        <Checkbox
-                                            id="list_publicly"
-                                            checked={listPublicly}
-                                            onCheckedChange={(checked) =>
-                                                setListPublicly(
-                                                    checked === true,
-                                                )
-                                            }
-                                        />
-                                        <input
-                                            type="hidden"
-                                            name="list_publicly"
-                                            value={listPublicly ? '1' : '0'}
-                                        />
-                                    </div>
-                                </CardContent>
-                            </Card>
-
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle className="text-base font-medium">
-                                        Plan
-                                    </CardTitle>
-                                    <CardDescription>
-                                        You can change this later.
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <input
-                                        type="hidden"
-                                        name="plan_slug"
-                                        value={planSlug}
-                                    />
-                                    <div
-                                        className="grid gap-3"
-                                        role="radiogroup"
-                                        aria-label="Plan"
-                                    >
-                                        {plans.map((plan) => (
-                                            <button
-                                                key={plan.slug}
-                                                type="button"
-                                                role="radio"
-                                                aria-checked={
-                                                    planSlug === plan.slug
+                    <Form
+                        {...storeLandlord.form()}
+                        className="flex flex-col gap-6"
+                    >
+                        {({ processing, errors }) => (
+                            <>
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle className="text-base font-medium">
+                                            Organization
+                                        </CardTitle>
+                                        <CardDescription>
+                                            The business tenants will see.
+                                        </CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="grid gap-4">
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="organization_name">
+                                                Organization name
+                                            </Label>
+                                            <Input
+                                                id="organization_name"
+                                                name="organization_name"
+                                                required
+                                            />
+                                            <InputError
+                                                message={
+                                                    errors.organization_name
                                                 }
-                                                onClick={() =>
-                                                    setPlanSlug(plan.slug)
-                                                }
-                                                className={`rounded-lg border p-4 text-left transition-colors ${
-                                                    planSlug === plan.slug
-                                                        ? 'border-primary bg-primary/5'
-                                                        : 'border-input hover:bg-muted'
-                                                }`}
+                                            />
+                                        </div>
+
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="currency">
+                                                Currency
+                                            </Label>
+                                            <input
+                                                type="hidden"
+                                                name="currency"
+                                                value={currency}
+                                            />
+                                            <Select
+                                                value={currency}
+                                                onValueChange={setCurrency}
                                             >
-                                                <div className="flex items-center justify-between">
-                                                    <span className="font-medium">
-                                                        {plan.name}
-                                                    </span>
-                                                    <span className="text-sm text-muted-foreground">
-                                                        {plan.price_label}
-                                                    </span>
-                                                </div>
-                                                <p className="mt-1 text-sm text-muted-foreground">
-                                                    {plan.description}
-                                                </p>
-                                            </button>
-                                        ))}
-                                    </div>
-                                    <InputError message={errors.plan_slug} />
-                                </CardContent>
-                            </Card>
+                                                <SelectTrigger id="currency">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {currencies.map((code) => (
+                                                        <SelectItem
+                                                            key={code}
+                                                            value={code}
+                                                        >
+                                                            {code}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                            <InputError
+                                                message={errors.currency}
+                                            />
+                                        </div>
 
-                            <Button
-                                type="submit"
-                                className="w-full"
-                                disabled={processing || planSlug === ''}
-                            >
-                                {processing && <Spinner />}
-                                Create my organization
-                            </Button>
+                                        <div className="flex items-center justify-between gap-4 rounded-lg border p-4">
+                                            <Label
+                                                htmlFor="list_publicly"
+                                                className="flex-1 cursor-pointer"
+                                            >
+                                                <span className="block text-sm font-medium">
+                                                    List vacant units publicly
+                                                </span>
+                                                <span className="block text-sm text-muted-foreground">
+                                                    Guests can discover them on
+                                                    the home page. Individual
+                                                    units can still be held
+                                                    back.
+                                                </span>
+                                            </Label>
+                                            <Checkbox
+                                                id="list_publicly"
+                                                checked={listPublicly}
+                                                onCheckedChange={(checked) =>
+                                                    setListPublicly(
+                                                        checked === true,
+                                                    )
+                                                }
+                                            />
+                                            <input
+                                                type="hidden"
+                                                name="list_publicly"
+                                                value={listPublicly ? '1' : '0'}
+                                            />
+                                        </div>
+                                    </CardContent>
+                                </Card>
 
-                            <ul className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
-                                <li className="flex items-center gap-1.5">
-                                    <Sparkles
-                                        className="size-4 text-brand-accent"
-                                        aria-hidden
-                                    />
-                                    Free up to 10 units
-                                </li>
-                                <li className="flex items-center gap-1.5">
-                                    <Smartphone
-                                        className="size-4 text-brand-accent"
-                                        aria-hidden
-                                    />
-                                    Collect rent via M-Pesa
-                                </li>
-                                <li className="flex items-center gap-1.5">
-                                    <BadgeCheck
-                                        className="size-4 text-brand-accent"
-                                        aria-hidden
-                                    />
-                                    No card required
-                                </li>
-                            </ul>
-                        </>
-                    )}
-                </Form>
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle className="text-base font-medium">
+                                            Plan
+                                        </CardTitle>
+                                        <CardDescription>
+                                            You can change this later.
+                                        </CardDescription>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <input
+                                            type="hidden"
+                                            name="plan_slug"
+                                            value={planSlug}
+                                        />
+                                        <div
+                                            className="grid gap-3"
+                                            role="radiogroup"
+                                            aria-label="Plan"
+                                        >
+                                            {plans.map((plan) => (
+                                                <button
+                                                    key={plan.slug}
+                                                    type="button"
+                                                    role="radio"
+                                                    aria-checked={
+                                                        planSlug === plan.slug
+                                                    }
+                                                    onClick={() =>
+                                                        setPlanSlug(plan.slug)
+                                                    }
+                                                    className={`rounded-lg border p-4 text-left transition-colors ${
+                                                        planSlug === plan.slug
+                                                            ? 'border-primary bg-primary/5'
+                                                            : 'border-input hover:bg-muted'
+                                                    }`}
+                                                >
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="font-medium">
+                                                            {plan.name}
+                                                        </span>
+                                                        <span className="text-sm text-muted-foreground">
+                                                            {plan.price_label}
+                                                        </span>
+                                                    </div>
+                                                    <p className="mt-1 text-sm text-muted-foreground">
+                                                        {plan.description}
+                                                    </p>
+                                                </button>
+                                            ))}
+                                        </div>
+                                        <InputError
+                                            message={errors.plan_slug}
+                                        />
+                                    </CardContent>
+                                </Card>
+
+                                <Button
+                                    type="submit"
+                                    className="w-full"
+                                    disabled={processing || planSlug === ''}
+                                >
+                                    {processing && <Spinner />}
+                                    Create my organization
+                                </Button>
+                            </>
+                        )}
+                    </Form>
+                </div>
             </div>
         </>
     );
