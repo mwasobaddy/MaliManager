@@ -172,7 +172,7 @@ export default function PropertiesCreate({
                                             inputMode="url"
                                             placeholder="https://maps.app.goo.gl/..."
                                         />
-                                        <p className="text-muted-foreground text-xs">
+                                        <p className="text-xs text-muted-foreground">
                                             A Google Maps, Plus Code or
                                             OpenStreetMap link. Kept separate
                                             from the address above, so the
@@ -196,50 +196,53 @@ export default function PropertiesCreate({
                                                 <SelectItem value="">
                                                     Not set
                                                 </SelectItem>
-                                                {['residential', 'commercial'].map(
-                                                    (category) => {
-                                                        const group =
-                                                            propertyTypes.filter(
-                                                                (type) =>
-                                                                    type.category ===
-                                                                    category,
-                                                            );
-
-                                                        if (group.length === 0) {
-                                                            return null;
-                                                        }
-
-                                                        return (
-                                                            <SelectGroup
-                                                                key={category}
-                                                            >
-                                                                <SelectLabel>
-                                                                    {category ===
-                                                                    'residential'
-                                                                        ? 'Residential'
-                                                                        : 'Commercial'}
-                                                                </SelectLabel>
-                                                                {group.map(
-                                                                    (type) => (
-                                                                        <SelectItem
-                                                                            key={
-                                                                                type.id
-                                                                            }
-                                                                            value={String(
-                                                                                type.id,
-                                                                            )}
-                                                                        >
-                                                                            {type.name}
-                                                                        </SelectItem>
-                                                                    ),
-                                                                )}
-                                                            </SelectGroup>
+                                                {[
+                                                    'residential',
+                                                    'commercial',
+                                                ].map((category) => {
+                                                    const group =
+                                                        propertyTypes.filter(
+                                                            (type) =>
+                                                                type.category ===
+                                                                category,
                                                         );
-                                                    },
-                                                )}
+
+                                                    if (group.length === 0) {
+                                                        return null;
+                                                    }
+
+                                                    return (
+                                                        <SelectGroup
+                                                            key={category}
+                                                        >
+                                                            <SelectLabel>
+                                                                {category ===
+                                                                'residential'
+                                                                    ? 'Residential'
+                                                                    : 'Commercial'}
+                                                            </SelectLabel>
+                                                            {group.map(
+                                                                (type) => (
+                                                                    <SelectItem
+                                                                        key={
+                                                                            type.id
+                                                                        }
+                                                                        value={String(
+                                                                            type.id,
+                                                                        )}
+                                                                    >
+                                                                        {
+                                                                            type.name
+                                                                        }
+                                                                    </SelectItem>
+                                                                ),
+                                                            )}
+                                                        </SelectGroup>
+                                                    );
+                                                })}
                                             </SelectContent>
                                         </Select>
-                                        <p className="text-muted-foreground text-xs">
+                                        <p className="text-xs text-muted-foreground">
                                             Manage these on the property types
                                             page.
                                         </p>
@@ -383,8 +386,9 @@ export default function PropertiesCreate({
                                                         <Label
                                                             htmlFor={`units-${i}-photos`}
                                                         >
-                                                            Photos (optional, up to{' '}
-                                                            {MAX_UNIT_PHOTOS})
+                                                            Photos (optional, up
+                                                            to {MAX_UNIT_PHOTOS}
+                                                            )
                                                         </Label>
                                                         <Input
                                                             /*
@@ -402,23 +406,30 @@ export default function PropertiesCreate({
                                                             accept="image/jpeg,image/png,image/webp"
                                                             multiple
                                                             onChange={(e) =>
-                                                                setUnits((prev) =>
-                                                                    prev.map((u, j) =>
-                                                                        j === i
-                                                                            ? {
-                                                                                  ...u,
-                                                                                  photoCount:
-                                                                                      e.target
-                                                                                          .files
-                                                                                          ?.length ??
-                                                                                      0,
-                                                                              }
-                                                                            : u,
-                                                                    ),
+                                                                setUnits(
+                                                                    (prev) =>
+                                                                        prev.map(
+                                                                            (
+                                                                                u,
+                                                                                j,
+                                                                            ) =>
+                                                                                j ===
+                                                                                i
+                                                                                    ? {
+                                                                                          ...u,
+                                                                                          photoCount:
+                                                                                              e
+                                                                                                  .target
+                                                                                                  .files
+                                                                                                  ?.length ??
+                                                                                              0,
+                                                                                      }
+                                                                                    : u,
+                                                                        ),
                                                                 )
                                                             }
                                                         />
-                                                        <p className="text-muted-foreground text-xs">
+                                                        <p className="text-xs text-muted-foreground">
                                                             {unit.photoCount > 0
                                                                 ? `${unit.photoCount} selected. `
                                                                 : ''}

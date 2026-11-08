@@ -194,10 +194,7 @@ export default function GuestHome({
                                     placeholder="e.g. Kilimani 2BR under 40k"
                                     value={saveForm.data.name}
                                     onChange={(e) =>
-                                        saveForm.setData(
-                                            'name',
-                                            e.target.value,
-                                        )
+                                        saveForm.setData('name', e.target.value)
                                     }
                                 />
                             </div>
@@ -302,10 +299,12 @@ export default function GuestHome({
                                             >
                                                 {workspace.role}
                                             </Badge>
-                                            <Button asChild variant="ghost" size="sm">
-                                                <a href={workspace.url}>
-                                                    Open
-                                                </a>
+                                            <Button
+                                                asChild
+                                                variant="ghost"
+                                                size="sm"
+                                            >
+                                                <a href={workspace.url}>Open</a>
                                             </Button>
                                         </span>
                                     </li>
@@ -327,7 +326,7 @@ export default function GuestHome({
                         </CardHeader>
                         <CardContent>
                             {savedSearches.length === 0 ? (
-                                <p className="text-muted-foreground text-sm">
+                                <p className="text-sm text-muted-foreground">
                                     Nothing saved yet. Run a search above and
                                     give it a name.
                                 </p>
@@ -340,10 +339,8 @@ export default function GuestHome({
                                         >
                                             <button
                                                 type="button"
-                                                onClick={() =>
-                                                    runSaved(search)
-                                                }
-                                                className="text-accent-text hover:text-accent-text-hover text-sm font-medium"
+                                                onClick={() => runSaved(search)}
+                                                className="text-sm font-medium text-accent-text hover:text-accent-text-hover"
                                             >
                                                 {search.name}
                                             </button>
@@ -354,10 +351,11 @@ export default function GuestHome({
                                                 aria-label={`Delete ${search.name}`}
                                                 onClick={() =>
                                                     router.delete(
-                                                        destroySavedSearch({ search: search.id }).url,
+                                                        destroySavedSearch({
+                                                            search: search.id,
+                                                        }).url,
                                                         {
-                                                            preserveScroll:
-                                                                true,
+                                                            preserveScroll: true,
                                                         },
                                                     )
                                                 }
@@ -382,7 +380,7 @@ export default function GuestHome({
                         </CardHeader>
                         <CardContent>
                             {leases.length === 0 ? (
-                                <p className="text-muted-foreground text-sm">
+                                <p className="text-sm text-muted-foreground">
                                     No leases yet. When you rent a unit listed
                                     here, it shows up in this list.
                                 </p>

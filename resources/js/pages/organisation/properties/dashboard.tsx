@@ -452,8 +452,8 @@ export default function PropertiesDashboard({
                                     No units yet
                                 </p>
                                 <p className="mt-1 text-sm text-muted-foreground">
-                                    Add your first unit to start managing tenants
-                                    and leases.
+                                    Add your first unit to start managing
+                                    tenants and leases.
                                 </p>
                                 {!addUnit && (
                                     <Button

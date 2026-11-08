@@ -266,22 +266,22 @@ export default function OrganizationDashboard({
                             <table className="w-full min-w-[720px] text-sm">
                                 <thead>
                                     <tr className="border-b text-left text-muted-foreground">
-                                        <th className="pb-2 pr-4 font-medium">
+                                        <th className="pr-4 pb-2 font-medium">
                                             Property
                                         </th>
-                                        <th className="pb-2 pr-4 font-medium">
+                                        <th className="pr-4 pb-2 font-medium">
                                             Units
                                         </th>
-                                        <th className="pb-2 pr-4 font-medium">
+                                        <th className="pr-4 pb-2 font-medium">
                                             Occupied
                                         </th>
-                                        <th className="pb-2 pr-4 font-medium">
+                                        <th className="pr-4 pb-2 font-medium">
                                             Vacant
                                         </th>
-                                        <th className="pb-2 pr-4 font-medium">
+                                        <th className="pr-4 pb-2 font-medium">
                                             Occupancy
                                         </th>
-                                        <th className="pb-2 pr-4 font-medium">
+                                        <th className="pr-4 pb-2 font-medium">
                                             Open maintenance
                                         </th>
                                         <th className="pb-2 font-medium">
@@ -313,17 +313,21 @@ export default function OrganizationDashboard({
                                             <td className="py-3 pr-4 tabular-nums">
                                                 {property.total_units}
                                             </td>
-                                            <td className="py-3 pr-4 tabular-nums text-status-success">
+                                            <td className="py-3 pr-4 text-status-success tabular-nums">
                                                 {property.occupied}
-                                                {property.in_maintenance > 0 && (
+                                                {property.in_maintenance >
+                                                    0 && (
                                                     <span className="text-muted-foreground">
                                                         {' '}
-                                                        + {property.in_maintenance}{' '}
+                                                        +{' '}
+                                                        {
+                                                            property.in_maintenance
+                                                        }{' '}
                                                         maint.
                                                     </span>
                                                 )}
                                             </td>
-                                            <td className="py-3 pr-4 tabular-nums text-muted-foreground">
+                                            <td className="py-3 pr-4 text-muted-foreground tabular-nums">
                                                 {property.vacant}
                                             </td>
                                             <td className="py-3 pr-4 tabular-nums">

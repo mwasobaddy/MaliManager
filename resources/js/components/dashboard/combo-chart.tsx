@@ -67,7 +67,7 @@ export function ComboChart({ title, data, series, height = 280 }: Props) {
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="text-muted-foreground hover:text-foreground gap-1.5"
+                    className="gap-1.5 text-muted-foreground hover:text-foreground"
                     onClick={() =>
                         setView((current) =>
                             current === 'chart' ? 'table' : 'chart',
@@ -172,29 +172,30 @@ export function ComboChart({ title, data, series, height = 280 }: Props) {
                                 {title} — the same data as the chart, as a table
                             </caption>
                             <thead>
-                                <tr className="bg-bg-base border-border-strong sticky top-0 border-b">
-                                    {['Period', ...series.map((s) => s.label)].map(
-                                        (heading) => (
-                                            <th
-                                                key={heading}
-                                                scope="col"
-                                                className="text-muted-foreground px-3 py-2 text-right text-xs font-medium tracking-wide uppercase first:text-left"
-                                            >
-                                                {heading}
-                                            </th>
-                                        ),
-                                    )}
+                                <tr className="sticky top-0 border-b border-border-strong bg-bg-base">
+                                    {[
+                                        'Period',
+                                        ...series.map((s) => s.label),
+                                    ].map((heading) => (
+                                        <th
+                                            key={heading}
+                                            scope="col"
+                                            className="px-3 py-2 text-right text-xs font-medium tracking-wide text-muted-foreground uppercase first:text-left"
+                                        >
+                                            {heading}
+                                        </th>
+                                    ))}
                                 </tr>
                             </thead>
                             <tbody>
                                 {data.map((point, index) => (
                                     <tr
                                         key={index}
-                                        className="border-border/60 border-b last:border-b-0"
+                                        className="border-b border-border/60 last:border-b-0"
                                     >
                                         <th
                                             scope="row"
-                                            className="text-foreground px-3 py-1.5 text-left font-normal"
+                                            className="px-3 py-1.5 text-left font-normal text-foreground"
                                         >
                                             {point.label}
                                         </th>

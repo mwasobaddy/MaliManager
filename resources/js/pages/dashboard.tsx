@@ -483,7 +483,7 @@ function OrganizationTab({ stats }: { stats: OrgStats }) {
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2 text-base font-medium">
                             <TriangleAlert
-                                className="text-status-warning size-4"
+                                className="size-4 text-status-warning"
                                 aria-hidden
                             />
                             Needs attention

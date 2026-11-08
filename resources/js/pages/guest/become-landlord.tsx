@@ -60,10 +60,7 @@ export default function BecomeLandlord({ plans }: Props) {
                     description="Set up your organization. You can add properties right after."
                 />
 
-                <Form
-                    {...storeLandlord.form()}
-                    className="flex flex-col gap-6"
-                >
+                <Form {...storeLandlord.form()} className="flex flex-col gap-6">
                     {({ processing, errors }) => (
                         <>
                             <Card>
@@ -117,9 +114,7 @@ export default function BecomeLandlord({ plans }: Props) {
                                                 ))}
                                             </SelectContent>
                                         </Select>
-                                        <InputError
-                                            message={errors.currency}
-                                        />
+                                        <InputError message={errors.currency} />
                                     </div>
 
                                     <div className="flex items-center justify-between gap-4 rounded-lg border p-4">
@@ -127,10 +122,10 @@ export default function BecomeLandlord({ plans }: Props) {
                                             <p className="text-sm font-medium">
                                                 List vacant units publicly
                                             </p>
-                                            <p className="text-muted-foreground text-sm">
-                                                Guests can discover them on
-                                                the home page. Individual
-                                                units can still be held back.
+                                            <p className="text-sm text-muted-foreground">
+                                                Guests can discover them on the
+                                                home page. Individual units can
+                                                still be held back.
                                             </p>
                                         </div>
                                         <Checkbox
@@ -192,11 +187,11 @@ export default function BecomeLandlord({ plans }: Props) {
                                                     <span className="font-medium">
                                                         {plan.name}
                                                     </span>
-                                                    <span className="text-muted-foreground text-sm">
+                                                    <span className="text-sm text-muted-foreground">
                                                         {plan.price_label}
                                                     </span>
                                                 </div>
-                                                <p className="text-muted-foreground mt-1 text-sm">
+                                                <p className="mt-1 text-sm text-muted-foreground">
                                                     {plan.description}
                                                 </p>
                                             </button>

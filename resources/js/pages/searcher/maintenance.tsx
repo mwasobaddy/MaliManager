@@ -139,11 +139,11 @@ export default function SearcherMaintenance({
                                     Describe the issue
                                 </Label>
                                 <Textarea
-id="description"
+                                    id="description"
                                     name="description"
                                     rows={4}
-                    placeholder="Tell us what needs to be fixed and where."
-                />
+                                    placeholder="Tell us what needs to be fixed and where."
+                                />
                                 <InputError message={errors.description} />
                             </div>
 

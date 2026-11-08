@@ -114,7 +114,9 @@ export function AppSidebar() {
     const aiEnabled = usePage().props.auth?.ai_enabled ?? false;
     const authPermissions = usePage().props.auth?.permissions ?? [];
     const canManageRoles = authPermissions.includes('manage roles');
-    const canManagePropertyTypes = authPermissions.includes('property-type.manage');
+    const canManagePropertyTypes = authPermissions.includes(
+        'property-type.manage',
+    );
     const canViewAnyAudit = authPermissions.includes('view audit');
     const canManageUsers = authPermissions.includes('user.manage');
     const canManageOrganizations = authPermissions.includes(
@@ -176,7 +178,11 @@ export function AppSidebar() {
                 label: 'Property',
                 items: [
                     item('Dashboard', propertyDashboard(slug), LayoutGrid),
-                    item('Units', `${propertyDashboard(slug).url}#units`, Building2),
+                    item(
+                        'Units',
+                        `${propertyDashboard(slug).url}#units`,
+                        Building2,
+                    ),
                     ...(canManageOccupants || canViewLeases
                         ? [
                               dropdown('Tenancy', UserRound, [
@@ -212,11 +218,7 @@ export function AppSidebar() {
                         : []),
                     ...(canManageLandParcels
                         ? [
-                              item(
-                                  'Land parcels',
-                                  landParcelsIndex(),
-                                  Map,
-                              ),
+                              item('Land parcels', landParcelsIndex(), Map),
                               ...(canCreateLandParcel
                                   ? [
                                         item(
