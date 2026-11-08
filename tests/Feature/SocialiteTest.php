@@ -21,7 +21,7 @@ test('socialite callback logs in an existing user by email', function () {
     );
 
     $this->get(route('auth.socialite.callback', ['provider' => 'google']))
-        ->assertRedirect(route('dashboard'));
+        ->assertRedirect(route('guest.home'));
 
     $this->assertAuthenticatedAs($user);
 });

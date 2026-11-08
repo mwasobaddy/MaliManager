@@ -21,7 +21,7 @@ test('users can authenticate using a one-time code', function () {
     $response = $this->post(route('login.otp.verify'), ['code' => $code]);
 
     $this->assertAuthenticated();
-    $response->assertRedirect(route('dashboard', absolute: false));
+    $response->assertRedirect(route('guest.home', absolute: false));
 });
 
 test('users can logout', function () {

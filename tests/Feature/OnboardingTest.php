@@ -1,6 +1,5 @@
 <?php
 
-use App\Enums\PlatformRole;
 use App\Models\Organization;
 use App\Models\Person;
 use App\Models\Plan;
@@ -30,123 +29,53 @@ test('onboarded user can access the dashboard', function () {
         ->assertOk();
 });
 
-test('onboarding page renders with plans for a new user', function () {
+test('onboarding page renders without plans for a new user', function () {
     $user = User::factory()->create();
 
+    // Plan choice moved to the landlord upgrade; onboarding is profile-only.
     $this->actingAs($user)
         ->get(route('onboarding.show'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page->component('auth/onboarding')
-            ->has('plans'));
+            ->missing('plans'));
 });
 
-test('organization onboarding creates a tenant, org, sub-roles and owner', function () {
+test('guest onboarding completes with profile details only', function () {
     $user = User::factory()->create();
 
     $this->actingAs($user)
         ->post(route('onboarding.complete'), [
-            'account_type' => 'organization',
             'name' => 'Jane Doe',
             'phone' => '+254712345678',
             'password' => 'password',
             'password_confirmation' => 'password',
-            'organization_name' => 'Sunset Apartments',
-            'currency' => 'KES',
-            'plan_slug' => 'free',
-        ])->assertRedirect('http://sunset-apartments.malimanager.test/setup/first-asset');
+        ])->assertRedirect(route('guest.home'));
 
     $user->refresh();
     expect($user->isOnboarded())->toBeTrue()
-        ->and($user->hasRole(PlatformRole::OrganizationOwner->value))->toBeTrue();
-
-    $organization = Organization::where('name', 'Sunset Apartments')->first();
-    expect($organization)->not->toBeNull()
-        ->and($organization->plan->slug)->toBe('free')
-        ->and($organization->settings['currency'])->toBe('KES')
-        ->and($organization->users)->toHaveCount(1)
-        ->and($organization->users->first()->pivot->is_owner)->toBeTrue()
-        ->and($organization->tenant->domains()->value('domain'))
-        ->toBe('sunset-apartments.malimanager.test');
+        ->and($user->name)->toBe('Jane Doe')
+        // No org, no role, no person: a guest is just an identity.
+        ->and($user->organizations()->count())->toBe(0)
+        ->and($user->person_id)->toBeNull()
+        ->and(Organization::count())->toBe(0)
+        ->and(Person::count())->toBe(0);
 });
 
-test('cross-domain redirect to tenant uses 409 X-Inertia-Location for Inertia requests', function () {
-    $user = User::factory()->create();
-
-    $this->actingAs($user)
-        ->withHeader('X-Inertia', 'true')
-        ->withHeader('X-Inertia-Version', '1')
-        ->post(route('onboarding.complete'), [
-            'account_type' => 'organization',
-            'name' => 'Jane Doe',
-            'phone' => '+254712345678',
-            'password' => 'password',
-            'password_confirmation' => 'password',
-            'organization_name' => 'Sunset Apartments',
-            'currency' => 'KES',
-            'plan_slug' => 'free',
-        ])->assertStatus(409)
-        ->assertHeader('X-Inertia-Location', 'http://sunset-apartments.malimanager.test/setup/first-asset');
-});
-
-test('searcher onboarding creates a person and links it to the user', function () {
-    $user = User::factory()->create();
-
-    $this->actingAs($user)
-        ->post(route('onboarding.complete'), [
-            'account_type' => 'searcher',
-            'name' => 'Bob Tenant',
-            'phone' => '+254700000000',
-            'password' => 'password',
-            'password_confirmation' => 'password',
-        ])->assertRedirect(route('dashboard'));
-
-    $user->refresh();
-    expect($user->isOnboarded())->toBeTrue()
-        ->and($user->hasRole(PlatformRole::Searcher->value))->toBeTrue();
-
-    $person = Person::where('email', $user->email)->first();
-    expect($person)->not->toBeNull()
-        ->and($user->person_id)->toBe($person->id);
-});
-
-test('organization onboarding requires a plan', function () {
+test('onboarding ignores account type fields from the old flow', function () {
     $user = User::factory()->create();
 
     $this->actingAs($user)
         ->post(route('onboarding.complete'), [
             'account_type' => 'organization',
+            'organization_name' => 'Should Not Exist',
+            'currency' => 'KES',
+            'plan_slug' => 'free',
             'name' => 'Jane Doe',
             'password' => 'password',
             'password_confirmation' => 'password',
-            'organization_name' => 'Sunset Apartments',
-            'currency' => 'KES',
-        ])->assertSessionHasErrors('plan_slug');
+        ])->assertRedirect(route('guest.home'));
 
-    expect($user->refresh()->isOnboarded())->toBeFalse();
-});
-
-test('existing organization owners can update their settings', function () {
-    $user = User::factory()->create();
-    $organization = app(TenantService::class)->createOrganization(
-        owner: $user,
-        name: 'Sunset Apartments',
-        plan: Plan::where('slug', 'free')->firstOrFail(),
-    );
-
-    $this->actingAs($user)
-        ->post(route('onboarding.complete'), [
-            'name' => $user->name,
-            'phone' => null,
-            'password' => 'password',
-            'password_confirmation' => 'password',
-            'organization_name' => 'Sunset Apartments Ltd',
-            'currency' => 'KES',
-            'plan_slug' => 'free',
-        ])->assertRedirect('http://sunset-apartments.malimanager.test/setup/first-asset');
-
-    $organization->refresh();
-    expect($organization->name)->toBe('Sunset Apartments Ltd')
-        ->and($organization->settings['currency'])->toBe('KES')
+    expect(Organization::count())->toBe(0)
         ->and($user->refresh()->isOnboarded())->toBeTrue();
 });
 
@@ -155,7 +84,7 @@ test('onboarding page redirects already onboarded users', function () {
 
     $this->actingAs($user)
         ->get(route('onboarding.show'))
-        ->assertRedirect(route('dashboard'));
+        ->assertRedirect(route('guest.home'));
 });
 
 test('organization owner with a single property lands on the picker', function () {

@@ -17,25 +17,15 @@ class CompleteOnboarding extends Service
     public function handle(User $user, array $validated): ?Organization
     {
         return $this->transaction(function () use ($user, $validated) {
-            $organization = $user->organizations()
-                ->wherePivot('is_owner', true)
-                ->first();
-
             $user->update([
                 'name' => $validated['name'],
                 'phone' => $validated['phone'] ?? null,
                 'password' => $validated['password'],
             ]);
 
-            $isOrganization = ($validated['account_type'] ?? null) === 'organization'
-                || $organization !== null;
-
-            if ($isOrganization) {
-                $organization = $this->resolveOrganization($user, $organization, $validated);
-            } else {
-                $this->createSearcherIdentity($user, $validated);
-            }
-
+            // Guest-minimal by design: no org, no role, no Person row. The
+            // organization half of the old branch relocated to `BecomeLandlord`;
+            // the tenant identity is created lazily on first tenant action.
             $user->markOnboarded();
 
             activity()->inLog('onboarding')
@@ -43,7 +33,7 @@ class CompleteOnboarding extends Service
                 ->event('onboarding.completed')
                 ->log('Completed onboarding');
 
-            return $organization;
+            return null;
         });
     }
 }

@@ -209,12 +209,12 @@ it('does not auto-open the picker once acknowledged this session', function () {
             ->where('autoOpenPropertyPicker', false));
 });
 
-it('returns the dashboard when the user has no accessible properties', function () {
+it('returns the guest home when the user has no accessible properties', function () {
     $user = onboardedUser();
 
     $landing = AuthLanding::for($user, Request::create('/'));
 
-    expect(Str::contains($landing, 'dashboard'))->toBeTrue();
+    expect(Str::contains($landing, 'home'))->toBeTrue();
 });
 
 it('resolves property access with a bounded query count regardless of organization count', function () {

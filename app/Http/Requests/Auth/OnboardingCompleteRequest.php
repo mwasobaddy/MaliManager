@@ -27,29 +27,19 @@ class OnboardingCompleteRequest extends FormRequest
     }
 
     /**
-     * Get the validation rules that apply to the request.
+     * Guest-minimal: the profile every user needs, landlord or tenant. The
+     * organization branch used to live here; it relocated to
+     * `BecomeLandlordRequest`, which runs when the user chooses to upgrade.
      *
      * @return array<string, array<int, Rule|Password|string>>
      */
     public function rules(): array
     {
-        $rules = [
+        return [
             'name' => ['required', 'string', 'max:255'],
             'phone' => ['nullable', 'string', 'max:20'],
             'password' => ['required', 'confirmed', Password::defaults()],
         ];
-
-        if (! $this->ownsOrganization()) {
-            $rules['account_type'] = ['required', Rule::in(['organization', 'searcher'])];
-
-            if ($this->input('account_type') === 'organization') {
-                $this->addOrganizationRules($rules);
-            }
-        } else {
-            $this->addOrganizationRules($rules);
-        }
-
-        return $rules;
     }
 
     /**

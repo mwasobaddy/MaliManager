@@ -73,7 +73,7 @@ test('correct code marks the email verified and logs the user in', function () {
         ->and(Audit::where('event', 'otp.verified')->where('subject_type', User::class)->where('subject_id', $user->id)->exists())->toBeTrue();
 });
 
-test('correct code redirects onboarded users to the dashboard', function () {
+test('correct code redirects onboarded guests to the guest home', function () {
     Mail::fake();
 
     $user = User::factory()->create(['email' => 'existing@example.com', 'onboarded_at' => now()]);
@@ -82,7 +82,7 @@ test('correct code redirects onboarded users to the dashboard', function () {
     session(['login.email' => 'existing@example.com']);
 
     $this->post(route('login.otp.verify'), ['code' => $code])
-        ->assertRedirect(route('dashboard'));
+        ->assertRedirect(route('guest.home'));
 });
 
 test('wrong code is rejected', function () {

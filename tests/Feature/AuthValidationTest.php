@@ -20,16 +20,15 @@ test('otp verify rejects codes that are not six digits', function () {
     $this->assertGuest();
 });
 
-test('onboarding rejects an invalid account type', function () {
+test('onboarding requires a name', function () {
     $user = User::factory()->create();
 
     $this->actingAs($user)
         ->post(route('onboarding.complete'), [
-            'account_type' => 'landlord',
-            'name' => 'Jane Doe',
+            'name' => '',
             'password' => 'password',
             'password_confirmation' => 'password',
-        ])->assertSessionHasErrors('account_type');
+        ])->assertSessionHasErrors('name');
 });
 
 test('onboarding requires a password of at least eight characters', function () {
@@ -37,22 +36,17 @@ test('onboarding requires a password of at least eight characters', function () 
 
     $this->actingAs($user)
         ->post(route('onboarding.complete'), [
-            'account_type' => 'searcher',
             'name' => 'Jane Doe',
             'password' => 'short',
             'password_confirmation' => 'short',
         ])->assertSessionHasErrors('password');
 });
 
-test('onboarding requires a three-character currency code for organizations', function () {
-    $user = User::factory()->create();
+test('landlord upgrade requires a three-character currency code', function () {
+    $user = User::factory()->create(['onboarded_at' => now()]);
 
     $this->actingAs($user)
-        ->post(route('onboarding.complete'), [
-            'account_type' => 'organization',
-            'name' => 'Jane Doe',
-            'password' => 'password',
-            'password_confirmation' => 'password',
+        ->post(route('guest.become-landlord'), [
             'organization_name' => 'Sunset Apartments',
             'currency' => 'KE',
             'plan_slug' => 'free',

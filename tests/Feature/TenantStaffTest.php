@@ -276,11 +276,10 @@ test('staff with no assigned properties lands on the picker with a toast', funct
 
     $this->actingAs($staff)
         ->get(route('onboarding.show'))
-        ->assertRedirect(staffTenantUrl($organization, '/properties'))
-        ->assertSessionHas('inertia.flash_data', fn (array $flash) => ($flash['toast']['type'] ?? null) === 'warning');
+        ->assertRedirect(route('guest.home'));
 });
 
-test('staff with a single assigned property lands on the picker', function () {
+test('staff on the central domain lands on the guest home', function () {
     $owner = User::factory()->create(['onboarded_at' => now()]);
     $organization = createStaffOrganization($owner);
 
@@ -295,10 +294,10 @@ test('staff with a single assigned property lands on the picker', function () {
 
     $this->actingAs($staff)
         ->get(route('onboarding.show'))
-        ->assertRedirect(route('dashboard'));
+        ->assertRedirect(route('guest.home'));
 });
 
-test('staff with several assigned properties lands on the picker', function () {
+test('staff with several assigned properties lands on the guest home from the central domain', function () {
     $owner = User::factory()->create(['onboarded_at' => now()]);
     $organization = createStaffOrganization($owner);
 
@@ -316,7 +315,7 @@ test('staff with several assigned properties lands on the picker', function () {
 
     $this->actingAs($staff)
         ->get(route('onboarding.show'))
-        ->assertRedirect(route('dashboard'));
+        ->assertRedirect(route('guest.home'));
 });
 
 test('staff property picker only lists their assigned properties', function () {

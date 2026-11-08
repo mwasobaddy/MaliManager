@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\Auth\OnboardingCompleteRequest;
 use App\Http\Requests\Auth\OnboardingRequest;
-use App\Models\Plan;
 use App\Services\OnboardingService;
 use App\Support\AuthLanding;
 use App\Support\InertiaRedirect;
@@ -36,10 +35,6 @@ class OnboardingController extends Controller
                 'name' => $organization->name,
                 'currency' => $organization->settings['currency'] ?? 'KES',
             ] : null,
-            'plans' => Plan::where('is_active', true)
-                ->orderBy('sort_order')
-                ->get(['id', 'name', 'slug', 'description', 'price', 'currency', 'properties_limit', 'units_limit'])
-                ->map(fn ($plan) => [...$plan->toArray(), 'price_label' => $plan->price === 0 ? 'Free' : number_format($plan->price).' '.$plan->currency]),
         ]);
     }
 
