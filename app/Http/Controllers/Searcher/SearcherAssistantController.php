@@ -2,102 +2,72 @@
 
 namespace App\Http\Controllers\Searcher;
 
-use App\Actions\Assistant\AskAssistant;
-use App\Concerns\HandlesConversationHistory;
 use App\Enums\AiFeature;
-use App\Exceptions\AssistantUnavailableException;
-use App\Http\Controllers\Controller;
+use App\Http\Controllers\Shared\BaseAssistantController;
 use App\Http\Requests\Searcher\AskAssistantRequest;
 use App\Http\Requests\Searcher\AssistantConversationRequest;
 use App\Http\Requests\Searcher\AssistantPageRequest;
-use App\Models\AiConversation;
-use App\Models\AiMessage;
 use App\Models\User;
-use App\Support\Ai\AiGateway;
-use App\Support\Ai\AssistantService;
 use App\Support\Ai\Scope;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
 use Inertia\Response;
 
 /**
  * Occupant-facing AI assistant. Strictly scoped to the signed-in user's OWN
  * data (leases + maintenance requests) via a person-scoped data boundary.
  */
-class SearcherAssistantController extends Controller
+class SearcherAssistantController extends BaseAssistantController
 {
-    use HandlesConversationHistory;
-
-    public function __construct(
-        private AssistantService $assistant,
-        private AiGateway $gateway,
-    ) {}
-
     public function page(AssistantPageRequest $request): Response
     {
-        $user = $request->user();
-        $enabled = $user->person_id !== null && $this->gateway->canUse($user, AiFeature::AskData);
-
-        return Inertia::render('searcher/assistant', [
-            'enabled' => $enabled,
-            'initial_messages' => $enabled ? $this->loadMessages($user, Scope::person($user->person_id, $user->id)) : [],
-            'quick_prompts' => [
-                'What is my current rent and when is it due?',
-                'Show my active lease details.',
-                'What maintenance requests have I raised, and their status?',
-                'Do I have any unresolved maintenance issues?',
-            ],
-        ]);
+        return $this->renderAssistantPage($request->user());
     }
 
-    public function ask(AskAssistantRequest $request, AskAssistant $action): JsonResponse
+    public function ask(AskAssistantRequest $request): JsonResponse
     {
-        $user = $request->user();
+        return $this->answerAssistant($request->user(), $request->toData());
+    }
 
-        if ($user->person_id === null) {
-            return response()->json(['error' => 'AI is not configured for your account.'], 403);
-        }
+    protected function assistantEnabled(User $user): bool
+    {
+        return $user->person_id !== null
+            && $this->gateway->canUse($user, AiFeature::AskData);
+    }
 
-        try {
-            $answer = $action->handle($user, Scope::person($user->person_id, $user->id), $request->toData());
-        } catch (AssistantUnavailableException $e) {
-            return response()->json(['error' => $e->getMessage()], 403);
-        }
+    protected function assistantScope(User $user): ?Scope
+    {
+        return $user->person_id === null
+            ? null
+            : Scope::person($user->person_id, $user->id);
+    }
 
-        return response()->json($answer->toArray());
+    protected function missingScopeError(): string
+    {
+        return 'AI is not configured for your account.';
+    }
+
+    protected function assistantView(): string
+    {
+        return 'searcher/assistant';
     }
 
     /**
-     * @return array<int, array{role: string, content: string, artifacts?: array}>
+     * @return array<int, string>
      */
-    private function loadMessages(User $user, Scope $scope): array
+    protected function quickPrompts(): array
     {
-        $conversation = AiConversation::findLatest($user, $scope);
-
-        if ($conversation === null) {
-            return [];
-        }
-
-        return $conversation->messages()
-            ->orderBy('id')
-            ->get(['role', 'content', 'artifacts'])
-            ->map(fn (AiMessage $message) => [
-                'role' => $message->role,
-                'content' => $message->content,
-                'artifacts' => $message->artifacts ?? [],
-            ])
-            ->all();
+        return [
+            'What is my current rent and when is it due?',
+            'Show my active lease details.',
+            'What maintenance requests have I raised, and their status?',
+            'Do I have any unresolved maintenance issues?',
+        ];
     }
 
-    /**
-     * @return array<int, array{role: string, content: string}>
-     */
     protected function scopeForHistory(Request $request): Scope
     {
-        $user = $request->user();
-
-        return Scope::person($user->person_id, $user->id);
+        return $this->assistantScope($request->user()) ?? Scope::person(0, $request->user()->id);
     }
 
     protected function historyView(): string

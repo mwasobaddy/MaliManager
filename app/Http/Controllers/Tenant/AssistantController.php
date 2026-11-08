@@ -2,104 +2,76 @@
 
 namespace App\Http\Controllers\Tenant;
 
-use App\Actions\Assistant\AskAssistant;
-use App\Concerns\HandlesConversationHistory;
 use App\Enums\AiFeature;
-use App\Exceptions\AssistantUnavailableException;
-use App\Http\Controllers\Controller;
+use App\Http\Controllers\Shared\BaseAssistantController;
 use App\Http\Requests\Tenant\AskAssistantRequest;
 use App\Http\Requests\Tenant\AssistantConversationRequest;
 use App\Http\Requests\Tenant\AssistantPageRequest;
-use App\Models\AiConversation;
-use App\Models\AiMessage;
 use App\Models\User;
-use App\Support\Ai\AiGateway;
-use App\Support\Ai\AssistantService;
 use App\Support\Ai\Scope;
 use App\Support\TenancyContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
 use Inertia\Response;
 
 /**
  * Organization ask-your-data assistant. Powered by AssistantService with an
  * org-scoped data boundary — the LLM can only read this organization's data.
  */
-class AssistantController extends Controller
+class AssistantController extends BaseAssistantController
 {
-    use HandlesConversationHistory;
-
-    public function __construct(
-        private AssistantService $assistant,
-        private AiGateway $gateway,
-    ) {}
-
     public function page(AssistantPageRequest $request): Response
     {
-        $organization = TenancyContext::organization();
-        $enabled = $organization !== null && $this->gateway->canUse($request->user(), AiFeature::AskData, $organization);
-
-        return Inertia::render('organisation/assistant', [
-            'enabled' => $enabled,
-            'initial_messages' => $enabled ? $this->loadMessages($request->user(), Scope::org($organization->id)) : [],
-            'quick_prompts' => [
-                'How many units are vacant right now, by property?',
-                'What rent is outstanding this month?',
-                'Which leases expire in the next 60 days?',
-                'Show my open maintenance backlog by priority.',
-                'Summarise expenses by category this year.',
-            ],
-        ]);
+        return $this->renderAssistantPage($request->user());
     }
 
-    public function ask(AskAssistantRequest $request, AskAssistant $action): JsonResponse
+    public function ask(AskAssistantRequest $request): JsonResponse
+    {
+        return $this->answerAssistant($request->user(), $request->toData());
+    }
+
+    protected function assistantEnabled(User $user): bool
     {
         $organization = TenancyContext::organization();
 
-        if ($organization === null) {
-            return response()->json(['error' => 'No organization context.'], 403);
-        }
-
-        try {
-            $answer = $action->handle($request->user(), Scope::org($organization->id), $request->toData());
-        } catch (AssistantUnavailableException $e) {
-            return response()->json(['error' => $e->getMessage()], 403);
-        }
-
-        return response()->json($answer->toArray());
+        return $organization !== null
+            && $this->gateway->canUse($user, AiFeature::AskData, $organization);
     }
 
-    /**
-     * @return array<int, array{role: string, content: string, artifacts?: array}>
-     */
-    private function loadMessages(User $user, Scope $scope): array
+    protected function assistantScope(User $user): ?Scope
     {
-        $conversation = AiConversation::findLatest($user, $scope);
+        $organization = TenancyContext::organization();
 
-        if ($conversation === null) {
-            return [];
-        }
+        return $organization === null ? null : Scope::org($organization->id);
+    }
 
-        return $conversation->messages()
-            ->orderBy('id')
-            ->get(['role', 'content', 'artifacts'])
-            ->map(fn (AiMessage $message) => [
-                'role' => $message->role,
-                'content' => $message->content,
-                'artifacts' => $message->artifacts ?? [],
-            ])
-            ->all();
+    protected function missingScopeError(): string
+    {
+        return 'No organization context.';
+    }
+
+    protected function assistantView(): string
+    {
+        return 'organisation/assistant';
     }
 
     /**
-     * @return array<int, array{role: string, content: string}>
+     * @return array<int, string>
      */
+    protected function quickPrompts(): array
+    {
+        return [
+            'How many units are vacant right now, by property?',
+            'What rent is outstanding this month?',
+            'Which leases expire in the next 60 days?',
+            'Show my open maintenance backlog by priority.',
+            'Summarise expenses by category this year.',
+        ];
+    }
+
     protected function scopeForHistory(Request $request): Scope
     {
-        $organization = TenancyContext::organization();
-
-        return Scope::org($organization?->id ?? 0);
+        return $this->assistantScope($request->user()) ?? Scope::org(0);
     }
 
     protected function historyView(): string

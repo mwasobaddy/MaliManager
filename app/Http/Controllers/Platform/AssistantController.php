@@ -2,69 +2,37 @@
 
 namespace App\Http\Controllers\Platform;
 
-use App\Actions\Assistant\AskAssistant;
-use App\Concerns\HandlesConversationHistory;
 use App\Enums\AiFeature;
-use App\Exceptions\AssistantUnavailableException;
-use App\Http\Controllers\Controller;
+use App\Http\Controllers\Shared\BaseAssistantController;
 use App\Http\Requests\Platform\AskAssistantRequest;
 use App\Http\Requests\Platform\AssistantConversationRequest;
 use App\Http\Requests\Platform\AssistantPageRequest;
-use App\Models\AiConversation;
-use App\Models\AiMessage;
 use App\Models\Organization;
 use App\Models\User;
-use App\Support\Ai\AiGateway;
-use App\Support\Ai\AssistantService;
 use App\Support\Ai\Scope;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
 use Inertia\Response;
 
 /**
  * Platform-wide admin assistant. Uses a platform scope (no forced tenant
  * filter) so administrators can analyse data across every organization.
  */
-class AssistantController extends Controller
+class AssistantController extends BaseAssistantController
 {
-    use HandlesConversationHistory;
-
-    public function __construct(
-        private AssistantService $assistant,
-        private AiGateway $gateway,
-    ) {}
-
     public function page(AssistantPageRequest $request): Response
     {
-        $user = $request->user();
-        $enabled = $this->gateway->resolvePlatformOrFirstOrg($user, AiFeature::AskData) !== null;
-
-        return Inertia::render('platform/assistant/index', [
-            'enabled' => $enabled,
-            'initial_messages' => $enabled ? $this->loadMessages($user, $this->scopeFor($user)) : [],
-            'quick_prompts' => [
-                'How many organizations are active on the platform?',
-                'What is the total occupied vs vacant unit ratio across all orgs?',
-                'Which organizations have the most open maintenance requests?',
-                'Total rent potential collected vs outstanding, platform-wide.',
-                'Leases expiring in the next 60 days across all organizations.',
-            ],
-        ]);
+        return $this->renderAssistantPage($request->user());
     }
 
-    public function ask(AskAssistantRequest $request, AskAssistant $action): JsonResponse
+    public function ask(AskAssistantRequest $request): JsonResponse
     {
-        $user = $request->user();
-        $scope = $this->scopeFor($user);
+        return $this->answerAssistant($request->user(), $request->toData());
+    }
 
-        try {
-            $answer = $action->handle($user, $scope, $request->toData());
-        } catch (AssistantUnavailableException $e) {
-            return response()->json(['error' => $e->getMessage()], 403);
-        }
-
-        return response()->json($answer->toArray());
+    protected function assistantEnabled(User $user): bool
+    {
+        return $this->gateway->resolvePlatformOrFirstOrg($user, AiFeature::AskData) !== null;
     }
 
     /**
@@ -72,7 +40,7 @@ class AssistantController extends Controller
      * first organization the user can access that has a usable credential
      * (so the assistant still works from the central dashboard).
      */
-    private function scopeFor(User $user): Scope
+    protected function assistantScope(User $user): ?Scope
     {
         $credential = $this->gateway->resolvePlatformOrFirstOrg($user, AiFeature::AskData);
 
@@ -94,34 +62,33 @@ class AssistantController extends Controller
         return Scope::platform();
     }
 
-    /**
-     * @return array<int, array{role: string, content: string, artifacts?: array}>
-     */
-    private function loadMessages(User $user, Scope $scope): array
+    protected function missingScopeError(): string
     {
-        $conversation = AiConversation::findLatest($user, $scope);
+        return 'AI is not configured for your account.';
+    }
 
-        if ($conversation === null) {
-            return [];
-        }
-
-        return $conversation->messages()
-            ->orderBy('id')
-            ->get(['role', 'content', 'artifacts'])
-            ->map(fn (AiMessage $message) => [
-                'role' => $message->role,
-                'content' => $message->content,
-                'artifacts' => $message->artifacts ?? [],
-            ])
-            ->all();
+    protected function assistantView(): string
+    {
+        return 'platform/assistant/index';
     }
 
     /**
-     * @return array<int, array{role: string, content: string}>
+     * @return array<int, string>
      */
+    protected function quickPrompts(): array
+    {
+        return [
+            'How many organizations are active on the platform?',
+            'What is the total occupied vs vacant unit ratio across all orgs?',
+            'Which organizations have the most open maintenance requests?',
+            'Total rent potential collected vs outstanding, platform-wide.',
+            'Leases expiring in the next 60 days across all organizations.',
+        ];
+    }
+
     protected function scopeForHistory(Request $request): Scope
     {
-        return $this->scopeFor($request->user());
+        return $this->assistantScope($request->user()) ?? Scope::platform();
     }
 
     protected function historyView(): string
