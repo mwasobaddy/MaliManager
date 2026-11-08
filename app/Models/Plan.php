@@ -71,6 +71,16 @@ class Plan extends Model
     }
 
     /**
+     * The free tier every organization falls back to when no paid access
+     * is active. Loud when missing: silently returning null would read as
+     * "no limit" at every enforcement point.
+     */
+    public static function free(): Plan
+    {
+        return static::where('slug', 'free')->firstOrFail();
+    }
+
+    /**
      * The admin list predicate: search across name, slug and description, plus an
      * exact active/inactive status. Shared by the index and the CSV export.
      *

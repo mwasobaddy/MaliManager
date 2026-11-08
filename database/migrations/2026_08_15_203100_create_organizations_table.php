@@ -19,6 +19,11 @@ return new class extends Migration
             $table->string('status')->default('active');
             $table->foreignId('plan_id')->nullable()->constrained('plans')->nullOnDelete();
             $table->json('settings')->nullable();
+            // One-month free trial on paid plans, then the subscription
+            // period paid for through billing. Both null means the free
+            // tier (or a free plan): limits always resolve to free.
+            $table->timestamp('trial_ends_at')->nullable();
+            $table->timestamp('subscription_ends_at')->nullable();
 
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();

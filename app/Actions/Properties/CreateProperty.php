@@ -17,7 +17,7 @@ class CreateProperty extends Service
     public function handle(Organization $organization, User $user, array $data): Property
     {
         $this->assertWithinLimit(
-            $organization->plan?->properties_limit,
+            $organization->effectivePlan()?->properties_limit,
             $organization->properties()->count(),
             'property',
         );

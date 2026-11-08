@@ -32,6 +32,10 @@ class CreateOrganization extends Service
                 'phone' => $phone,
                 'status' => 'active',
                 'plan_id' => $plan->id,
+                // Paid plans start with a one-month free trial: full limits
+                // now, payment only when value is proven. Free plans need
+                // no trial; their limits always apply.
+                'trial_ends_at' => $plan->price > 0 ? now()->addMonth() : null,
                 'created_by' => $owner->id,
             ]));
 

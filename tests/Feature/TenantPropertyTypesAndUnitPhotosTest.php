@@ -369,9 +369,11 @@ test('units with the same name in different properties get different folders', f
     Storage::fake(config('filesystems.default'));
 
     // The free plan allows a single property, and the second create would be
-    // rejected on the limit before it ever reached the slug logic.
+    // rejected on the limit before it ever reached the slug logic — so the
+    // org gets starter limits via an active trial for this test.
     $this->organization->update([
         'plan_id' => Plan::where('slug', 'starter')->firstOrFail()->id,
+        'trial_ends_at' => now()->addMonth(),
     ]);
 
     foreach (['Alpha Court', 'Beta Court'] as $name) {

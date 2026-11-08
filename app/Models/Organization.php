@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\OrganizationStatus;
 use App\Support\Search;
 use App\Support\StorageLayout;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -23,6 +24,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property OrganizationStatus $status
  * @property int|null $plan_id
  * @property array|null $settings
+ * @property CarbonImmutable|null $trial_ends_at
+ * @property CarbonImmutable|null $subscription_ends_at
  * @property int|null $created_by
  */
 class Organization extends Model
@@ -38,6 +41,8 @@ class Organization extends Model
         'status',
         'plan_id',
         'settings',
+        'trial_ends_at',
+        'subscription_ends_at',
         'created_by',
     ];
 
@@ -46,6 +51,8 @@ class Organization extends Model
         return [
             'settings' => 'array',
             'status' => OrganizationStatus::class,
+            'trial_ends_at' => 'datetime',
+            'subscription_ends_at' => 'datetime',
         ];
     }
 
@@ -66,6 +73,41 @@ class Organization extends Model
     public function plan(): BelongsTo
     {
         return $this->belongsTo(Plan::class);
+    }
+
+    /**
+     * Whether the attached paid plan is currently usable: inside the
+     * one-month free trial or inside a paid subscription period.
+     */
+    public function onTrial(): bool
+    {
+        return $this->trial_ends_at !== null && $this->trial_ends_at->isFuture();
+    }
+
+    public function hasActiveSubscription(): bool
+    {
+        return $this->subscription_ends_at !== null && $this->subscription_ends_at->isFuture();
+    }
+
+    public function hasPaidAccess(): bool
+    {
+        return $this->plan !== null && $this->plan->price > 0
+            && ($this->onTrial() || $this->hasActiveSubscription());
+    }
+
+    /**
+     * The plan whose limits apply right now: the attached paid plan while
+     * trial or subscription is active, otherwise the free tier. Limit
+     * enforcement must read this, never `plan` directly, or an expired
+     * trial keeps paid limits.
+     */
+    public function effectivePlan(): ?Plan
+    {
+        if ($this->hasPaidAccess()) {
+            return $this->plan;
+        }
+
+        return Plan::free();
     }
 
     public function creator(): BelongsTo
@@ -106,6 +148,11 @@ class Organization extends Model
     public function landParcels(): HasMany
     {
         return $this->hasMany(LandParcel::class);
+    }
+
+    public function paymentAttempts(): HasMany
+    {
+        return $this->hasMany(PaymentAttempt::class);
     }
 
     public function occupants(): HasMany

@@ -15,7 +15,7 @@ class AddPropertyUnit extends Service
     public function handle(Property $property, User $user, array $data): Unit
     {
         $this->assertWithinLimit(
-            $property->organization->plan?->units_limit,
+            $property->organization->effectivePlan()?->units_limit,
             $property->units()->count(),
             'unit',
         );
