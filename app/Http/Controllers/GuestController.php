@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Actions\Onboarding\Concerns\OnboardingHelpers;
+use App\Actions\Searches\DeleteSavedSearch;
+use App\Actions\Searches\SaveSearch;
 use App\Http\Requests\BrowseListingsRequest;
 use App\Http\Requests\DestroySavedSearchRequest;
 use App\Http\Requests\StoreSavedSearchRequest;
@@ -34,15 +36,7 @@ class GuestController extends Controller
         $user = $request->user();
 
         $units = Unit::query()
-            ->publiclyListed()
-            ->with(['property:id,name,organization_id', 'property.organization:id,name'])
-            ->when($request->string('query')->trim()->toString(), fn ($query, string $term) => $query
-                ->where('name', 'like', "%{$term}%")
-                ->orWhere('type', 'like', "%{$term}%"))
-            ->when($request->filled('min_rent'), fn ($query) => $query->where('monthly_rent', '>=', $request->input('min_rent')))
-            ->when($request->filled('max_rent'), fn ($query) => $query->where('monthly_rent', '<=', $request->input('max_rent')))
-            ->when($request->string('type')->toString() !== '', fn ($query) => $query->where('type', $request->string('type')->toString()))
-            ->orderByDesc('units.id')
+            ->browse($request->validated())
             ->paginate(12)
             ->withQueryString();
 
@@ -63,35 +57,22 @@ class GuestController extends Controller
         ]);
     }
 
-    public function storeSearch(StoreSavedSearchRequest $request): RedirectResponse
+    public function storeSearch(StoreSavedSearchRequest $request, SaveSearch $save): RedirectResponse
     {
-        $user = $request->user();
-
-        // First tenant-ish action: a guest who saves a search is searching, so
-        // the Person identity and Searcher role are created here, lazily,
-        // instead of at signup.
-        if ($user->person_id === null) {
-            $this->createSearcherIdentity($user, [
-                'name' => $user->name,
-                'phone' => $user->phone,
-            ]);
-
-            $user->refresh();
-        }
-
-        $user->savedSearches()->create([
-            'name' => $request->string('name')->toString(),
-            'filters' => $request->validated('filters'),
-        ]);
+        $save->handle(
+            $request->user(),
+            $request->string('name')->toString(),
+            $request->validated('filters'),
+        );
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Search saved.']);
 
         return back();
     }
 
-    public function destroySearch(DestroySavedSearchRequest $request, SavedSearch $search): RedirectResponse
+    public function destroySearch(DestroySavedSearchRequest $request, SavedSearch $search, DeleteSavedSearch $delete): RedirectResponse
     {
-        $search->delete();
+        $delete->handle($search);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Saved search removed.']);
 

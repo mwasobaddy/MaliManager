@@ -181,6 +181,26 @@ class Unit extends Model implements HasMedia
      * in settings rather than a column so existing orgs change nothing by
      * default — listings start only when an owner opts in.
      */
+    /**
+     * Browsable public listings with the guest filters applied. Shared by the
+     * guest page and the public API so the two can never disagree.
+     *
+     * @param  array{query?: string, min_rent?: mixed, max_rent?: mixed, type?: string}  $filters
+     */
+    public function scopeBrowse(Builder $query, array $filters): Builder
+    {
+        return $query
+            ->publiclyListed()
+            ->with(['property:id,name,organization_id', 'property.organization:id,name'])
+            ->when(trim((string) ($filters['query'] ?? '')), fn (Builder $q, string $term) => $q
+                ->where('name', 'like', "%{$term}%")
+                ->orWhere('type', 'like', "%{$term}%"))
+            ->when(($filters['min_rent'] ?? null) !== null && ($filters['min_rent'] ?? '') !== '', fn (Builder $q) => $q->where('monthly_rent', '>=', $filters['min_rent']))
+            ->when(($filters['max_rent'] ?? null) !== null && ($filters['max_rent'] ?? '') !== '', fn (Builder $q) => $q->where('monthly_rent', '<=', $filters['max_rent']))
+            ->when(($filters['type'] ?? '') !== '', fn (Builder $q) => $q->where('type', $filters['type']))
+            ->orderByDesc('units.id');
+    }
+
     public function scopePubliclyListed(Builder $query): Builder
     {
         // The org gate lives in `settings` JSON, which cannot be queried
