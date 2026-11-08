@@ -22,6 +22,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/Models/** | .ai/rules/models.md |
 | resources/js/pages/platform/organizations/index.tsx | .ai/rules/organizations.md |
 | resources/js/pages/welcome.tsx, resources/js/pages/**/*.tsx | .ai/rules/pages.md |
+| app/Policies/**, app/Http/Requests/**/Destroy*.php | .ai/rules/policies.md |
 | app/Support/**, app/Http/Requests/** | .ai/rules/requests.md |
 | resources/css/editor.css, resources/css/app.css | .ai/rules/resources-css.md |
 | routes/web.php, routes/tenant.php | .ai/rules/routes.md |

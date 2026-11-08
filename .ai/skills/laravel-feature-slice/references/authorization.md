@@ -96,6 +96,23 @@ Two rules that follow:
   that can drift — name the gate instead.
 - If no gate exists on the route, `return true` is a hole. Check before writing it.
 
+## When not to create a policy
+
+A policy earns its file through reuse or complexity, not through existing. Do not create one when a
+single endpoint owns the check:
+
+- One record, one action, one caller — e.g. deleting a saved search only its owner can reach. Assert
+  ownership inline in the Form Request's `authorize()` with a comment naming the rule.
+- The route middleware is already the gate. A policy repeating the middleware's answer is a second
+  representation of the same rule, and the two will drift.
+- The check is a membership test (`isOwnerOf`, `membershipFor() !== null`) with no record-specific
+  logic. That belongs in `authorize()`; a policy would only forward to the same call.
+
+Create the policy when the same record-level rule is enforced in two or more places (two controllers,
+or a controller plus a request), or when the check is complex enough to need tests of its own. A
+policy with one method and one caller is indirection without reuse — the same over-generation class
+as a repository per model.
+
 ## Tests that actually prove it
 
 ```php
@@ -124,6 +141,7 @@ it('refuses a member without the create permission', function () {
 | Hidden UI only | the route is still callable |
 | `authorize()` missing in a Form Request | defaults to allow |
 | Authorizing `create` without the parent record | member creates inside another tenant |
+| Single-use policy for a one-caller check | indirection without reuse; inline it in `authorize()` |
 | No test for the refusal | the leak ships |
 
 ## Reference implementation
