@@ -1,8 +1,8 @@
 <?php
 
 use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\GuestController;
-use App\Http\Controllers\LandlordController;
+use App\Http\Controllers\Guest\GuestController;
+use App\Http\Controllers\Guest\LandlordController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\Platform\AssistantController;
 use App\Http\Controllers\Platform\PlanController;

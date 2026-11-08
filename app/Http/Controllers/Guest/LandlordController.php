@@ -1,6 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Guest;
+
+use App\Http\Controllers\Controller;
 
 use App\Actions\Onboarding\BecomeLandlord;
 use App\Http\Requests\BecomeLandlordRequest;
