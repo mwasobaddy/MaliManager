@@ -134,6 +134,6 @@ test('first asset page offers both building and land parcel', function () {
         ->get(route('onboarding.first-asset'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('auth/first-asset')
+            ->component('setup/first-asset')
             ->has('organization'));
 });

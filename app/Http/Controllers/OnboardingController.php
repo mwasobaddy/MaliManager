@@ -57,7 +57,7 @@ class OnboardingController extends Controller
             ->wherePivot('is_owner', true)
             ->first();
 
-        return Inertia::render('auth/first-asset', [
+        return Inertia::render('setup/first-asset', [
             'organization' => $organization ? [
                 'id' => $organization->id,
                 'name' => $organization->name,

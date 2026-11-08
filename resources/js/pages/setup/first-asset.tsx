@@ -26,7 +26,7 @@ export default function FirstAsset({ organization }: Props) {
         <>
             <Head title="Add your first asset" />
 
-            <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-4">
+            <div className="flex flex-1 flex-col gap-6 py-4">
                 <Heading
                     variant="small"
                     level="h1"
@@ -51,7 +51,9 @@ export default function FirstAsset({ organization }: Props) {
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>
-                                <Button>Add a building</Button>
+                                <Button asChild>
+                                    <span>Add a building</span>
+                                </Button>
                             </CardContent>
                         </Card>
                     </Link>
@@ -72,7 +74,9 @@ export default function FirstAsset({ organization }: Props) {
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>
-                                <Button>Add a land parcel</Button>
+                                <Button asChild>
+                                    <span>Add a land parcel</span>
+                                </Button>
                             </CardContent>
                         </Card>
                     </Link>

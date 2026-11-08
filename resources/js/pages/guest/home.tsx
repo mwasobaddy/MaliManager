@@ -104,6 +104,10 @@ export default function GuestHome({
         );
     };
 
+    const hasActiveFilters = Boolean(
+        filters.query ?? filters.min_rent ?? filters.max_rent ?? filters.type,
+    );
+
     return (
         <>
             <Head title="Find a place" />
@@ -124,6 +128,51 @@ export default function GuestHome({
                         </Button>
                     )}
                 </div>
+
+                {workspaces.length > 0 && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="text-base font-medium">
+                                Your workspaces
+                            </CardTitle>
+                            <CardDescription>
+                                Organizations you own or work for.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <ul className="space-y-2">
+                                {workspaces.map((workspace) => (
+                                    <li
+                                        key={workspace.organization_id}
+                                        className="flex items-center justify-between gap-2 text-sm"
+                                    >
+                                        <span>
+                                            {workspace.organization_name}
+                                        </span>
+                                        <span className="flex items-center gap-2">
+                                            <Badge
+                                                variant={
+                                                    workspace.role === 'owner'
+                                                        ? 'primary'
+                                                        : 'neutral'
+                                                }
+                                            >
+                                                {workspace.role}
+                                            </Badge>
+                                            <Button
+                                                asChild
+                                                variant="ghost"
+                                                size="sm"
+                                            >
+                                                <a href={workspace.url}>Open</a>
+                                            </Button>
+                                        </span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </CardContent>
+                    </Card>
+                )}
 
                 <Card>
                     <CardContent className="pt-6">
@@ -183,7 +232,7 @@ export default function GuestHome({
 
                         <form
                             onSubmit={saveSearch}
-                            className="mt-3 flex flex-wrap items-end gap-3"
+                            className="mt-3 flex flex-wrap items-end gap-3 border-t border-border pt-3"
                         >
                             <div className="min-w-48 flex-1 space-y-2">
                                 <Label htmlFor="search_name">
@@ -216,8 +265,16 @@ export default function GuestHome({
                 {units.data.length === 0 ? (
                     <Empty
                         icon={<Search className="size-4" />}
-                        title="No units found"
-                        description="Try widening the rent range or clearing the search. New listings appear here as landlords publish them."
+                        title={
+                            hasActiveFilters
+                                ? 'No units match that search'
+                                : 'No public listings yet'
+                        }
+                        description={
+                            hasActiveFilters
+                                ? 'Try widening the rent range or clearing the search.'
+                                : 'New listings appear here as landlords publish them. Save a search above and we will keep it ready for when they land.'
+                        }
                     />
                 ) : (
                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -267,51 +324,6 @@ export default function GuestHome({
                             )
                         }
                     />
-                )}
-
-                {workspaces.length > 0 && (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-base font-medium">
-                                Your workspaces
-                            </CardTitle>
-                            <CardDescription>
-                                Organizations you own or work for.
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <ul className="space-y-2">
-                                {workspaces.map((workspace) => (
-                                    <li
-                                        key={workspace.organization_id}
-                                        className="flex items-center justify-between gap-2 text-sm"
-                                    >
-                                        <span>
-                                            {workspace.organization_name}
-                                        </span>
-                                        <span className="flex items-center gap-2">
-                                            <Badge
-                                                variant={
-                                                    workspace.role === 'owner'
-                                                        ? 'primary'
-                                                        : 'neutral'
-                                                }
-                                            >
-                                                {workspace.role}
-                                            </Badge>
-                                            <Button
-                                                asChild
-                                                variant="ghost"
-                                                size="sm"
-                                            >
-                                                <a href={workspace.url}>Open</a>
-                                            </Button>
-                                        </span>
-                                    </li>
-                                ))}
-                            </ul>
-                        </CardContent>
-                    </Card>
                 )}
 
                 <div className="grid gap-6 lg:grid-cols-2">
