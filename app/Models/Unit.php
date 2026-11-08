@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Concerns\LogsTenantActivity;
 use Database\Factories\UnitFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -43,6 +44,7 @@ class Unit extends Model implements HasMedia
         'name',
         'slug',
         'status',
+        'list_publicly',
         'type',
         'monthly_rent',
         'deposit',
@@ -53,6 +55,7 @@ class Unit extends Model implements HasMedia
     protected function casts(): array
     {
         return [
+            'list_publicly' => 'boolean',
             'monthly_rent' => 'decimal:2',
             'deposit' => 'decimal:2',
             'settings' => 'array',
@@ -168,5 +171,33 @@ class Unit extends Model implements HasMedia
             ])
             ->values()
             ->all();
+    }
+
+    /**
+     * Units visible on the public guest browse: vacant, in an organization that
+     * allows public listings, and not explicitly held back at the unit level.
+     *
+     * `list_publicly` null means "follow the organization". The org gate lives
+     * in settings rather than a column so existing orgs change nothing by
+     * default — listings start only when an owner opts in.
+     */
+    public function scopePubliclyListed(Builder $query): Builder
+    {
+        // The org gate lives in `settings` JSON, which cannot be queried
+        // portably (SQLite in tests has no JSON-contains), so the opted-in org
+        // ids are resolved first. One extra query for a list page is cheap.
+        $orgIds = Organization::query()
+            ->get(['id', 'settings'])
+            ->filter(fn (Organization $org) => ($org->settings['list_publicly'] ?? false) === true)
+            ->map(fn (Organization $org) => $org->id)
+            ->all();
+
+        return $query
+            ->where('units.status', 'vacant')
+            ->where(function (Builder $q): void {
+                $q->whereNull('units.list_publicly')
+                    ->orWhere('units.list_publicly', true);
+            })
+            ->whereHas('property', fn (Builder $prop) => $prop->whereIn('organization_id', $orgIds));
     }
 }
