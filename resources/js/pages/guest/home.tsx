@@ -20,31 +20,18 @@ import {
     destroy as destroySavedSearch,
     store as storeSavedSearch,
 } from '@/routes/guest/saved-searches';
+import type {
+    GuestLease,
+    ListedUnit,
+    SavedSearch,
+    Workspace,
+} from '@/types/guest';
 
-type ListedUnit = {
-    id: number;
-    name: string;
-    type: string | null;
-    monthly_rent: number | null;
-    property_name: string | null;
-    organization_name: string | null;
-};
-
-type GuestLease = {
-    id: number;
-    property_name: string | null;
-    unit_name: string | null;
-    rent_amount: number | null;
-    currency: string | null;
-    status: string;
-};
-
-type SavedSearch = {
-    id: number;
-    name: string;
-    filters: Record<string, string | number | null>;
-};
-
+/**
+ * Guest home: browse public units, re-run saved searches, see own leases, and
+ * become a landlord. The central-domain landing for anyone without a property
+ * context.
+ */
 type Props = {
     units: {
         data: ListedUnit[];
@@ -54,26 +41,18 @@ type Props = {
     };
     leases: GuestLease[];
     savedSearches: SavedSearch[];
-    filters: {
-        query?: string | null;
-        min_rent?: string | number | null;
-        max_rent?: string | number | null;
-        type?: string | null;
-    };
+    filters: Record<string, string | number | null>;
     canBecomeLandlord: boolean;
+    workspaces: Workspace[];
 };
 
-/**
- * Guest home: browse public units, re-run saved searches, see own leases, and
- * become a landlord. The central-domain landing for anyone without a property
- * context.
- */
 export default function GuestHome({
     units,
     leases,
     savedSearches,
     filters,
     canBecomeLandlord,
+    workspaces,
 }: Props) {
     const filterForm = useForm({
         query: (filters.query as string) ?? '',
@@ -290,6 +269,49 @@ export default function GuestHome({
                             )
                         }
                     />
+                )}
+
+                {workspaces.length > 0 && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="text-base font-medium">
+                                Your workspaces
+                            </CardTitle>
+                            <CardDescription>
+                                Organizations you own or work for.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <ul className="space-y-2">
+                                {workspaces.map((workspace) => (
+                                    <li
+                                        key={workspace.organization_id}
+                                        className="flex items-center justify-between gap-2 text-sm"
+                                    >
+                                        <span>
+                                            {workspace.organization_name}
+                                        </span>
+                                        <span className="flex items-center gap-2">
+                                            <Badge
+                                                variant={
+                                                    workspace.role === 'owner'
+                                                        ? 'primary'
+                                                        : 'neutral'
+                                                }
+                                            >
+                                                {workspace.role}
+                                            </Badge>
+                                            <Button asChild variant="ghost" size="sm">
+                                                <a href={workspace.url}>
+                                                    Open
+                                                </a>
+                                            </Button>
+                                        </span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </CardContent>
+                    </Card>
                 )}
 
                 <div className="grid gap-6 lg:grid-cols-2">
