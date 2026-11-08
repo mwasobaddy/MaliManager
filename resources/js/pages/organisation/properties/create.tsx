@@ -15,6 +15,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { firstAsset } from '@/routes/onboarding';
 import { index } from '@/routes/tenant/properties';
 import { store } from '@/routes/tenant/properties';
 
@@ -37,6 +38,7 @@ type PropertyType = {
 
 type Props = {
     organization: Organization;
+    inSetup: boolean;
     plan: Plan;
     propertyTypes: PropertyType[];
     canCreateProperty: boolean;
@@ -67,6 +69,7 @@ const MAX_UNIT_PHOTOS = 12;
 
 export default function PropertiesCreate({
     organization,
+    inSetup,
     plan,
     propertyTypes,
     canCreateProperty,
@@ -90,6 +93,17 @@ export default function PropertiesCreate({
             <Head title="Add property" />
 
             <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-4">
+                {inSetup && (
+                    <p className="rounded-xl border border-input bg-muted px-4 py-3 text-sm text-muted-foreground">
+                        Step 2 of 4 · Adding your first asset.{' '}
+                        <Link
+                            href={firstAsset.url()}
+                            className="font-medium text-foreground underline underline-offset-4"
+                        >
+                            Back to choices
+                        </Link>
+                    </p>
+                )}
                 <div className="flex items-center justify-between gap-4">
                     <Heading
                         variant="small"
@@ -98,7 +112,11 @@ export default function PropertiesCreate({
                         description={`Add ${organization.name}'s first property and its units.`}
                     />
                     <Button asChild variant="outline">
-                        <Link href={index()}>Back to properties</Link>
+                        {inSetup ? (
+                            <Link href={firstAsset.url()}>Back to choices</Link>
+                        ) : (
+                            <Link href={index()}>Back to properties</Link>
+                        )}
                     </Button>
                 </div>
 
@@ -115,12 +133,19 @@ export default function PropertiesCreate({
                      * anywhere to explain why.
                      */
                     <Form
-                        {...store.form()}
+                        {...store.form(
+                            inSetup ? { query: { setup: 1 } } : undefined,
+                        )}
                         encType="multipart/form-data"
                         className="space-y-6"
                     >
                         {({ processing, errors }) => (
                             <>
+                                <input
+                                    type="hidden"
+                                    name="setup"
+                                    value={inSetup ? '1' : ''}
+                                />
                                 <div className="grid gap-6 rounded-xl border border-input p-6 md:grid-cols-2">
                                     <div className="grid gap-2">
                                         <Label htmlFor="name">
@@ -452,7 +477,13 @@ export default function PropertiesCreate({
 
                                 <div className="flex gap-3">
                                     <Button asChild variant="shadcndefault">
-                                        <Link href={index()}>Cancel</Link>
+                                        {inSetup ? (
+                                            <Link href={firstAsset.url()}>
+                                                Cancel
+                                            </Link>
+                                        ) : (
+                                            <Link href={index()}>Cancel</Link>
+                                        )}
                                     </Button>
                                     <Button type="submit" disabled={processing}>
                                         {processing

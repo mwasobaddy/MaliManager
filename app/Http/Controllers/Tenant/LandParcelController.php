@@ -15,6 +15,7 @@ use App\Models\OrganizationUser;
 use App\Models\SubRole;
 use App\Services\LandParcelService;
 use App\Services\StaffService;
+use App\Support\AuthLanding;
 use App\Support\TenancyContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -50,6 +51,7 @@ class LandParcelController extends Controller
 
         return Inertia::render('organisation/land-parcels/create', [
             'organization' => $organization->only('id', 'name', 'slug'),
+            'inSetup' => $request->boolean('setup'),
             'managers' => $this->managers($organization),
             'parcel' => null,
             'selected_manager_ids' => [],
@@ -65,9 +67,11 @@ class LandParcelController extends Controller
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Land parcel created.']);
 
-        return redirect()->route('tenant.land-parcels.show', [
-            'land_parcel' => $parcel->slug,
-        ]);
+        return redirect()->to(AuthLanding::landParcel(
+            $organization,
+            $parcel->slug,
+            $request,
+        ));
     }
 
     public function show(LandParcelFormRequest $request, LandParcel $landParcel): Response

@@ -23,6 +23,7 @@ use App\Http\Controllers\Tenant\OrganizationDashboardController;
 use App\Http\Controllers\Tenant\PaymentController;
 use App\Http\Controllers\Tenant\PropertyController;
 use App\Http\Controllers\Tenant\ReportController;
+use App\Http\Controllers\Tenant\SetupController;
 use App\Http\Controllers\Tenant\StaffController;
 use App\Http\Controllers\Tenant\UnitController;
 use App\Support\TenancyContext;
@@ -64,6 +65,18 @@ Route::middleware([
 
     Route::get('/impersonate/{token}', [ImpersonationController::class, 'login'])
         ->name('tenant.impersonate');
+
+    // Funnel steps 3 and 4 live outside the first-property gate: inviting the
+    // team and reviewing the setup happen before or right after the first
+    // asset exists. They are owner-only; SetupController redirects staff.
+    Route::middleware(['auth', 'organization.active'])->group(function () {
+        Route::get('/setup/team', [SetupController::class, 'team'])
+            ->name('tenant.setup.team');
+        Route::post('/setup/team', [SetupController::class, 'storeTeam'])
+            ->name('tenant.setup.team.store');
+        Route::get('/setup/review', [SetupController::class, 'review'])
+            ->name('tenant.setup.review');
+    });
 
     Route::middleware(['auth', 'organization.active', 'has-property'])->group(function () {
         Route::get('/overview', [OrganizationDashboardController::class, 'index'])

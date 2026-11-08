@@ -14,6 +14,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { firstAsset } from '@/routes/onboarding';
 import { store } from '@/routes/tenant/land-parcels';
 
 type Organization = {
@@ -30,6 +31,7 @@ type Manager = {
 
 type Props = {
     organization: Organization;
+    inSetup: boolean;
     managers: Manager[];
     parcel: null;
     selected_manager_ids: number[];
@@ -45,6 +47,7 @@ const ZONING = [
 
 export default function LandParcelCreate({
     organization,
+    inSetup,
     managers,
     selected_manager_ids,
 }: Props) {
@@ -68,6 +71,17 @@ export default function LandParcelCreate({
             <Head title="Add land parcel" />
 
             <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-4">
+                {inSetup && (
+                    <p className="rounded-xl border border-input bg-muted px-4 py-3 text-sm text-muted-foreground">
+                        Step 2 of 4 · Adding your first asset.{' '}
+                        <Link
+                            href={firstAsset.url()}
+                            className="font-medium text-foreground underline underline-offset-4"
+                        >
+                            Back to choices
+                        </Link>
+                    </p>
+                )}
                 <div className="flex items-center justify-between gap-4">
                     <Heading
                         variant="small"
@@ -75,13 +89,29 @@ export default function LandParcelCreate({
                         description={`Record a plot of land for ${organization.name}.`}
                     />
                     <Button asChild variant="outline">
-                        <Link href="/land-parcels">Back to land parcels</Link>
+                        {inSetup ? (
+                            <Link href={firstAsset.url()}>Back to choices</Link>
+                        ) : (
+                            <Link href="/land-parcels">
+                                Back to land parcels
+                            </Link>
+                        )}
                     </Button>
                 </div>
 
-                <Form {...store.form()} className="space-y-6">
+                <Form
+                    {...store.form(
+                        inSetup ? { query: { setup: 1 } } : undefined,
+                    )}
+                    className="space-y-6"
+                >
                     {({ processing, errors }) => (
                         <>
+                            <input
+                                type="hidden"
+                                name="setup"
+                                value={inSetup ? '1' : ''}
+                            />
                             <div className="grid gap-6 rounded-xl border border-input p-6 md:grid-cols-2">
                                 <div className="grid gap-2">
                                     <Label htmlFor="name">Name</Label>
@@ -275,11 +305,11 @@ export default function LandParcelCreate({
                                         Notes (optional)
                                     </Label>
                                     <Textarea
-id="notes"
+                                        id="notes"
                                         name="notes"
                                         rows={3}
-                    placeholder="Anything worth noting about this parcel."
-                />
+                                        placeholder="Anything worth noting about this parcel."
+                                    />
                                     <InputError message={errors.notes} />
                                 </div>
 
@@ -357,7 +387,13 @@ id="notes"
 
                             <div className="flex gap-3">
                                 <Button asChild variant="shadcndefault">
-                                    <Link href="/land-parcels">Cancel</Link>
+                                    {inSetup ? (
+                                        <Link href={firstAsset.url()}>
+                                            Cancel
+                                        </Link>
+                                    ) : (
+                                        <Link href="/land-parcels">Cancel</Link>
+                                    )}
                                 </Button>
                                 <Button type="submit" disabled={processing}>
                                     {processing ? 'Adding…' : 'Add land parcel'}

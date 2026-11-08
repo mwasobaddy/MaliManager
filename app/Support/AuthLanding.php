@@ -83,7 +83,9 @@ class AuthLanding
     }
 
     /**
-     * The tenant-subdomain URL for a property page.
+     * The tenant-subdomain URL to land on after creating a property.
+     * A create that carries the setup flag keeps the onboarding funnel
+     * moving to the team step instead of landing on the dashboard.
      */
     public static function property(Organization $organization, string $slug, Request $request): string
     {
@@ -95,7 +97,33 @@ class AuthLanding
 
         $scheme = $request->secure() ? 'https' : 'http';
 
+        if ($request->boolean('setup')) {
+            return "{$scheme}://{$domain}/setup/team";
+        }
+
         return "{$scheme}://{$domain}/{$slug}/dashboard";
+    }
+
+    /**
+     * The tenant-subdomain URL to land on after creating a land parcel.
+     * Mirrors property(): a create that carries the setup flag keeps the
+     * onboarding funnel moving to the team step instead of the detail page.
+     */
+    public static function landParcel(Organization $organization, string $slug, Request $request): string
+    {
+        $domain = $organization->tenant?->domains()->first()?->domain;
+
+        if (! $domain) {
+            return route('dashboard');
+        }
+
+        $scheme = $request->secure() ? 'https' : 'http';
+
+        if ($request->boolean('setup')) {
+            return "{$scheme}://{$domain}/setup/team";
+        }
+
+        return "{$scheme}://{$domain}/land-parcels/{$slug}";
     }
 
     private static function organizationLanding(Organization $organization, Request $request): string

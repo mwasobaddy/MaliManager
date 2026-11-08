@@ -21,7 +21,7 @@ class EnsureOrganizationHasProperty
             return $next($request);
         }
 
-        if ($request->routeIs('tenant.properties.create', 'tenant.properties.store')) {
+        if ($request->routeIs('tenant.properties.create', 'tenant.properties.store', 'tenant.setup.team', 'tenant.setup.team.store', 'tenant.setup.review')) {
             return $next($request);
         }
 

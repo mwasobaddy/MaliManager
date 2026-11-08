@@ -59,6 +59,7 @@ class PropertyController extends Controller
 
         return Inertia::render('organisation/properties/create', [
             'organization' => $organization->only('id', 'name', 'slug'),
+            'inSetup' => $request->boolean('setup'),
             'plan' => [
                 'properties_limit' => $organization->plan?->properties_limit,
                 'units_limit' => $organization->plan?->units_limit,

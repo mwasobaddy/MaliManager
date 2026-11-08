@@ -8,7 +8,6 @@ use App\Http\Requests\Tenant\StoreStaffRequest;
 use App\Http\Requests\Tenant\UpdateStaffRequest;
 use App\Models\OrganizationUser;
 use App\Models\Property;
-use App\Models\SubRole;
 use App\Models\User;
 use App\Services\StaffService;
 use App\Support\TenancyContext;
@@ -46,14 +45,13 @@ class StaffController extends Controller
         ]);
     }
 
-    public function create(): Response
+    public function create(StaffService $staffService): Response
     {
         $organization = TenancyContext::organization();
 
         return Inertia::render('organisation/staff/create', [
             'organization' => $organization->only('id', 'name', 'slug'),
-            'sub_roles' => $this->subRoles(),
-            'properties' => $this->properties(),
+            ...$staffService->formOptions($organization),
         ]);
     }
 
@@ -94,8 +92,7 @@ class StaffController extends Controller
                 'sub_role_id' => $membership->sub_role_id,
                 'property_ids' => $staffService->delegatedPropertyIds($membership),
             ],
-            'sub_roles' => $this->subRoles(),
-            'properties' => $this->properties(),
+            ...$staffService->formOptions($organization),
         ]);
     }
 
@@ -131,29 +128,5 @@ class StaffController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Staff member removed.']);
 
         return redirect()->route('tenant.staff.index');
-    }
-
-    /**
-     * @return array<int, array{id: int, name: string}>
-     */
-    private function subRoles(): array
-    {
-        return SubRole::where('organization_id', TenancyContext::organization()->id)
-            ->orderBy('name')
-            ->get(['id', 'name'])
-            ->map(fn (SubRole $role) => ['id' => $role->id, 'name' => $role->name])
-            ->all();
-    }
-
-    /**
-     * @return array<int, array{id: int, name: string, slug: string}>
-     */
-    private function properties(): array
-    {
-        return Property::where('organization_id', TenancyContext::organization()->id)
-            ->orderBy('name')
-            ->get(['id', 'name', 'slug'])
-            ->map(fn (Property $property) => ['id' => $property->id, 'name' => $property->name, 'slug' => $property->slug])
-            ->all();
     }
 }

@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
  * page's LeftStepIndicator, including the completed halo, the dashed upcoming
  * connector and the 64px gap under each step.
  */
-function SetupLeftIndicator({ current }: { current: 1 | 2 }) {
+function SetupLeftIndicator({ current }: { current: 1 | 2 | 3 | 4 }) {
     return (
         <div className="mb-8">
             <div className="mx-auto flex max-w-3xl flex-col">
@@ -89,10 +89,10 @@ export function SetupSidePanel({
     current,
 }: {
     intro: [string, string];
-    current: 1 | 2;
+    current: 1 | 2 | 3 | 4;
 }) {
     return (
-        <div className="hidden rounded-xl border bg-card bg-linear-to-t from-brand-accent-100 to-brand-primary-100 px-8 py-6 shadow-xl lg:col-span-3 lg:block">
+        <div className="hidden h-fit self-start rounded-xl border bg-card bg-linear-to-t from-brand-accent-100 to-brand-primary-100 px-8 py-6 shadow-xl lg:sticky lg:top-8 lg:col-span-3 lg:block">
             <div className="mb-8 flex items-center gap-4 pt-6">
                 <div className="mb-4 flex justify-center">
                     <div className="flex h-8 w-8 items-center justify-center rounded-full bg-linear-to-r from-brand-primary to-brand-primary-600 shadow-lg">
@@ -120,7 +120,7 @@ export function SetupSidePanel({
  * The same steps as a compact card above the form, shown only where the side
  * panel is hidden.
  */
-export function SetupStepsTopCard({ current }: { current: 1 | 2 }) {
+export function SetupStepsTopCard({ current }: { current: 1 | 2 | 3 | 4 }) {
     return (
         <div className="rounded-xl border bg-card p-4 lg:hidden">
             <SetupSteps current={current} />

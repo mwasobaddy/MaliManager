@@ -11,6 +11,7 @@ use App\Models\LandParcel;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\Property;
+use App\Models\SubRole;
 use App\Models\User;
 use Illuminate\Support\Collection;
 
@@ -29,6 +30,28 @@ class StaffService extends Service
     public function create(Organization $organization, User $actor, array $data): User
     {
         return app(CreateStaff::class)->handle($organization, $actor, $data);
+    }
+
+    /**
+     * Dropdown data for the staff form, shared by the staff pages and the
+     * setup funnel so both offer the same roles and properties.
+     *
+     * @return array{sub_roles: array<int, array{id: int, name: string}>, properties: array<int, array{id: int, name: string, slug: string}>}
+     */
+    public function formOptions(Organization $organization): array
+    {
+        return [
+            'sub_roles' => SubRole::where('organization_id', $organization->id)
+                ->orderBy('name')
+                ->get(['id', 'name'])
+                ->map(fn (SubRole $role) => ['id' => $role->id, 'name' => $role->name])
+                ->all(),
+            'properties' => Property::where('organization_id', $organization->id)
+                ->orderBy('name')
+                ->get(['id', 'name', 'slug'])
+                ->map(fn (Property $property) => ['id' => $property->id, 'name' => $property->name, 'slug' => $property->slug])
+                ->all(),
+        ];
     }
 
     /**

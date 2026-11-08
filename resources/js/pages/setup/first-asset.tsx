@@ -51,7 +51,7 @@ export default function FirstAsset({ organization }: Props) {
 
                     <div className="grid gap-4">
                         <Link
-                            href={createProperty()}
+                            href={createProperty({ query: { setup: 1 } })}
                             className="rounded-xl border border-input bg-card transition-colors hover:bg-muted"
                         >
                             <Card className="border-0 bg-transparent shadow-none">
@@ -74,7 +74,7 @@ export default function FirstAsset({ organization }: Props) {
                         </Link>
 
                         <Link
-                            href={createParcel()}
+                            href={createParcel({ query: { setup: 1 } })}
                             className="rounded-xl border border-input bg-card transition-colors hover:bg-muted"
                         >
                             <Card className="border-0 bg-transparent shadow-none">

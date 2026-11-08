@@ -1,4 +1,4 @@
-import { Building2, Check, House } from 'lucide-react';
+import { Building2, Check, House, Rocket, Users } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -23,6 +23,16 @@ export const SETUP_STEPS: SetupStep[] = [
         description: 'A building or a land parcel',
         icon: House,
     },
+    {
+        title: 'Invite your team',
+        description: 'Optional — skip anytime',
+        icon: Users,
+    },
+    {
+        title: 'Review and launch',
+        description: 'Confirm and open your dashboard',
+        icon: Rocket,
+    },
 ];
 
 /**
@@ -30,7 +40,7 @@ export const SETUP_STEPS: SetupStep[] = [
  * Text labels, not just dots: someone arriving mid-flow should read what is
  * next rather than decode a position.
  */
-export function SetupSteps({ current }: { current: 1 | 2 }) {
+export function SetupSteps({ current }: { current: 1 | 2 | 3 | 4 }) {
     return (
         <ol className="flex items-center gap-2" aria-label="Setup progress">
             {SETUP_STEPS.map((step, index) => {
