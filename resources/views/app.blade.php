@@ -4,6 +4,7 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
+        <meta name="description" content="MaliManager gives landlords and property managers a single, real-time view across every unit — rent through M-Pesa, leases and maintenance in one place.">
 
         {{-- Inline script to detect system dark mode preference and apply it immediately --}}
         <script>
