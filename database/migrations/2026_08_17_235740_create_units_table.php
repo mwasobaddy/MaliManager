@@ -23,6 +23,11 @@ return new class extends Migration
             // the path is stable even if the unit is later renamed.
             $table->string('slug');
             $table->string('status')->default('vacant');
+            $table->boolean('list_publicly')->nullable();
+            // Null means "follow the organization": listed only when the org
+            // allows public listings. True/false overrides it per unit, so a
+            // landlord can hold back a unit under renovation without turning
+            // the whole portfolio off.
             $table->string('type')->nullable();
             $table->decimal('monthly_rent', 12, 2)->nullable();
             $table->decimal('deposit', 12, 2)->nullable();

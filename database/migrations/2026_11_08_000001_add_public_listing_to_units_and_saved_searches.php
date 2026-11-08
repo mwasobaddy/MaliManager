@@ -8,14 +8,6 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('units', function (Blueprint $table) {
-            // Null means "follow the organization": listed only when the org
-            // allows public listings. True/false overrides it per unit, so a
-            // landlord can hold back a unit under renovation without turning
-            // the whole portfolio off.
-            $table->boolean('list_publicly')->nullable()->after('status');
-        });
-
         Schema::create('saved_searches', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
@@ -33,9 +25,5 @@ return new class extends Migration
     public function down(): void
     {
         Schema::dropIfExists('saved_searches');
-
-        Schema::table('units', function (Blueprint $table) {
-            $table->dropColumn('list_publicly');
-        });
     }
 };
