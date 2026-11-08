@@ -3,13 +3,13 @@
 namespace App\Http\Controllers\Searcher;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Searcher\MaintenanceListRequest;
 use App\Http\Requests\Tenant\StoreMaintenanceRequest;
 use App\Jobs\TriageMaintenanceRequest;
 use App\Models\Lease;
 use App\Models\MaintenanceRequest;
 use App\Services\MaintenanceRequestService;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -21,7 +21,7 @@ use Inertia\Response;
  */
 class MyMaintenanceController extends Controller
 {
-    public function index(Request $request, MaintenanceRequestService $service): Response
+    public function index(MaintenanceListRequest $request, MaintenanceRequestService $service): Response
     {
         $user = $request->user();
 

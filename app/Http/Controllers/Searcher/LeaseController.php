@@ -3,9 +3,9 @@
 namespace App\Http\Controllers\Searcher;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Searcher\LeaseListRequest;
 use App\Models\Lease;
 use App\Models\Person;
-use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -14,7 +14,7 @@ class LeaseController extends Controller
     /**
      * Show the searcher's own rental history across all organizations.
      */
-    public function index(Request $request): Response
+    public function index(LeaseListRequest $request): Response
     {
         $user = $request->user();
 
