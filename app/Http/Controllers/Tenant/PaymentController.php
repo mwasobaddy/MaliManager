@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Tenant;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Tenant\DestroyPaymentRequest;
+use App\Http\Requests\Tenant\PaymentIndexRequest;
 use App\Http\Requests\Tenant\StorePaymentRequest;
 use App\Http\Requests\Tenant\UpdatePaymentRequest;
 use App\Models\Lease;
@@ -11,13 +12,12 @@ use App\Models\Payment;
 use App\Services\PaymentService;
 use App\Support\TenancyContext;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class PaymentController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(PaymentIndexRequest $request): Response
     {
         $status = $request->string('status')->toString();
 

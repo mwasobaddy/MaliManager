@@ -4,13 +4,13 @@ namespace App\Http\Controllers\Tenant;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Tenant\DestroyMaintenanceRequest as DestroyRequest;
+use App\Http\Requests\Tenant\MaintenanceIndexRequest;
 use App\Http\Requests\Tenant\UpdateMaintenanceRequest;
 use App\Models\MaintenanceRequest;
 use App\Models\User;
 use App\Services\MaintenanceRequestService;
 use App\Support\TenancyContext;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -20,7 +20,7 @@ use Inertia\Response;
  */
 class MaintenanceController extends Controller
 {
-    public function index(Request $request, MaintenanceRequestService $service): Response
+    public function index(MaintenanceIndexRequest $request, MaintenanceRequestService $service): Response
     {
         $status = $request->string('status')->toString();
         $priority = $request->string('priority')->toString();
