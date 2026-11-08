@@ -74,7 +74,7 @@ export function ComboChart({ title, data, series, height = 280 }: Props) {
                         )
                     }
                     aria-pressed={view === 'table'}
-                    aria-controls={tableId}
+                    aria-controls={view === 'table' ? tableId : undefined}
                 >
                     {view === 'chart' ? (
                         <Table2 className="size-4" aria-hidden />
