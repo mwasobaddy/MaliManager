@@ -5,6 +5,7 @@ import {
     ListFilter,
     Search,
     Trash2,
+    X,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
@@ -117,6 +118,18 @@ export default function GuestHome({
             },
             { replace: true },
         );
+    };
+
+    const clearAllFilters = () => {
+        setSearchDraft('');
+        filterForm.setData({
+            query: '',
+            min_rent: '',
+            max_rent: '',
+            type: '',
+            sort: 'newest',
+        });
+        refetch({}, { replace: true });
     };
 
     const applyType = (type: string) => {
@@ -557,6 +570,12 @@ export default function GuestHome({
                             setOverlayParam('filters', null, { replace: true })
                         }
                         actions={[
+                            {
+                                label: 'Clear all',
+                                icon: <X className="size-4" />,
+                                onClick: clearAllFilters,
+                                tone: 'secondary',
+                            },
                             {
                                 label: 'Show results',
                                 form: 'listing-filters-form',
