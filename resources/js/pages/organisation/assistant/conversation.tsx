@@ -1,10 +1,5 @@
 import ConversationDetail from '@/pages/shared/conversation-detail';
-
-type Message = {
-    role: 'user' | 'assistant' | 'error';
-    content: string;
-    artifacts?: unknown[];
-};
+import type { ConversationMessage } from '@/pages/shared/conversation-detail';
 
 type Props = {
     conversation: {
@@ -12,23 +7,19 @@ type Props = {
         title: string | null;
         created_at: string;
     };
-    messages: Message[];
-    askUrl: string;
-    scope: string;
+    messages: ConversationMessage[];
 };
 
 export default function TenantConversationDetail({
     conversation,
     messages,
-    askUrl,
-    scope,
 }: Props) {
     return (
         <ConversationDetail
             conversation={conversation}
             messages={messages}
-            askUrl={askUrl}
-            scope={scope}
+            historyUrl="/assistant/history"
+            assistantUrl="/assistant"
         />
     );
 }

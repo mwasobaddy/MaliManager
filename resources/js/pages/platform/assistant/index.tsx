@@ -1,18 +1,11 @@
-import { Head, Link } from '@inertiajs/react';
-import { History } from 'lucide-react';
-import type { AssistantArtifact } from '@/components/assistant-chart';
-import { AssistantChat } from '@/components/assistant-chat';
-import { Button } from '@/components/ui/button';
+import AssistantPage from '@/pages/shared/assistant-page';
+import type { AssistantInitialMessage } from '@/pages/shared/assistant-page';
 import { ask as askRoute } from '@/routes/platform/assistant';
 
 type Props = {
     enabled: boolean;
     quick_prompts?: string[];
-    initial_messages?: {
-        role: 'user' | 'assistant' | 'error';
-        content: string;
-        artifacts?: AssistantArtifact[];
-    }[];
+    initial_messages?: AssistantInitialMessage[];
 };
 
 const DEFAULT_PROMPTS = [
@@ -28,43 +21,18 @@ export default function Assistant({
     quick_prompts,
     initial_messages,
 }: Props) {
-    if (!enabled) {
-        return (
-            <>
-                <Head title="Platform assistant" />
-                <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
-                    <p className="text-sm text-muted-foreground">
-                        The platform assistant is not configured. Add a personal
-                        API key in Settings → AI, or configure a platform-wide
-                        key.
-                    </p>
-                </div>
-            </>
-        );
-    }
-
     return (
-        <>
-            <Head title="Platform assistant" />
-            <AssistantChat
-                askUrl={askRoute().url}
-                quickPrompts={quick_prompts ?? DEFAULT_PROMPTS}
-                title="Platform assistant"
-                description="Analyse data across every organization on the platform. The assistant retrieves live data for you."
-                placeholder="Ask about the platform…"
-                initialMessages={initial_messages}
-                headerActions={
-                    <Button asChild variant="ghost" size="sm">
-                        <Link
-                            href="/platform/assistant/history"
-                            className="gap-2"
-                        >
-                            <History className="size-4" />
-                            History
-                        </Link>
-                    </Button>
-                }
-            />
-        </>
+        <AssistantPage
+            enabled={enabled}
+            headTitle="Platform assistant"
+            title="Platform assistant"
+            description="Analyse data across every organization on the platform. The assistant retrieves live data for you."
+            placeholder="Ask about the platform…"
+            disabledMessage="The platform assistant is not configured. Add a personal API key in Settings → AI, or configure a platform-wide key."
+            askUrl={askRoute().url}
+            historyUrl="/platform/assistant/history"
+            quickPrompts={quick_prompts ?? DEFAULT_PROMPTS}
+            initialMessages={initial_messages}
+        />
     );
 }

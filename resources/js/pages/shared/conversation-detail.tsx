@@ -1,11 +1,11 @@
 import { Head, Link } from '@inertiajs/react';
-import { ArrowLeft, Clock } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { AssistantChart } from '@/components/assistant-chart';
 import type { AssistantArtifact } from '@/components/assistant-chart';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
 
-type Message = {
+export type ConversationMessage = {
     role: 'user' | 'assistant' | 'error';
     content: string;
     artifacts?: AssistantArtifact[];
@@ -17,13 +17,17 @@ type Props = {
         title: string | null;
         created_at: string;
     };
-    messages: Message[];
-    askUrl: string;
+    messages: ConversationMessage[];
+    historyUrl: string;
+    assistantUrl: string;
 };
 
-export default function ConversationDetail({ conversation, messages }: Props) {
-    const historyUrl = `/assistant/history`;
-
+export default function ConversationDetail({
+    conversation,
+    messages,
+    historyUrl,
+    assistantUrl,
+}: Props) {
     return (
         <>
             <Head title={conversation.title || 'Conversation'} />
@@ -42,22 +46,17 @@ export default function ConversationDetail({ conversation, messages }: Props) {
                             title={
                                 conversation.title || 'Untitled conversation'
                             }
-                            description={
-                                <span className="flex items-center gap-1.5">
-                                    <Clock className="size-3" />
-                                    {new Date(
-                                        conversation.created_at,
-                                    ).toLocaleDateString('en-US', {
-                                        month: 'long',
-                                        day: 'numeric',
-                                        year: 'numeric',
-                                    })}
-                                </span>
-                            }
+                            description={new Date(
+                                conversation.created_at,
+                            ).toLocaleDateString('en-US', {
+                                month: 'long',
+                                day: 'numeric',
+                                year: 'numeric',
+                            })}
                         />
                     </div>
                     <Button asChild variant="outline" size="sm">
-                        <Link href={`/assistant`}>Continue chatting</Link>
+                        <Link href={assistantUrl}>Continue chatting</Link>
                     </Button>
                 </div>
 
