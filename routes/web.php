@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\GuestController;
+use App\Http\Controllers\LandlordController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\Platform\AssistantController;
 use App\Http\Controllers\Platform\PlanController;
@@ -68,6 +70,21 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // rental history across every organization.
     Route::get('searcher/rentals', [LeaseController::class, 'index'])
         ->name('searcher.rentals');
+
+    // Guest home: public unit browsing, saved searches and own leases. The
+    // central-domain landing for anyone without a property context.
+    Route::get('home', [GuestController::class, 'home'])
+        ->name('guest.home');
+    Route::post('saved-searches', [GuestController::class, 'storeSearch'])
+        ->name('guest.saved-searches.store');
+    Route::delete('saved-searches/{search}', [GuestController::class, 'destroySearch'])
+        ->name('guest.saved-searches.destroy');
+
+    // Landlord upgrade: the relocated half of the old signup branch.
+    Route::get('become-landlord', [LandlordController::class, 'show'])
+        ->name('guest.become-landlord.show');
+    Route::post('become-landlord', [LandlordController::class, 'store'])
+        ->name('guest.become-landlord');
 
     // Occupant-side maintenance requests (active-lease holders only; the
     // service enforces the lease requirement).

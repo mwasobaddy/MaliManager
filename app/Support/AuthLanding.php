@@ -32,6 +32,19 @@ class AuthLanding
             return route('onboarding.show');
         }
 
+        // Central door vs work door: on the central domain without a property
+        // context, anyone who is not an owner with accessible properties lands
+        // on the guest home — that includes staff, who work through their
+        // property domain instead. Owners with properties keep the dashboard
+        // and its picker.
+        if (! TenancyContext::initialized()) {
+            $ownsOrg = $user->organizations()->wherePivot('is_owner', true)->exists();
+
+            if (! $ownsOrg) {
+                return route('guest.home');
+            }
+        }
+
         $access = app(PropertyAccessService::class);
         $organizations = $access->organizationsWithProperties($user);
         $properties = self::flattenProperties($organizations);
