@@ -1,6 +1,6 @@
 import { Link } from '@inertiajs/react';
 import { ChevronRight } from 'lucide-react';
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import {
     Collapsible,
     CollapsibleContent,
@@ -68,12 +68,14 @@ function NavDropdown({ item }: { item: NavItem }) {
         false;
 
     return (
-        <Collapsible
-            open={open || childActive}
-            onOpenChange={setOpen}
-            className="group/collapsible"
-        >
-            <SidebarMenuItem>
+        // The collapsible lives inside the <li>: SidebarMenu is a <ul> and
+        // axe requires <li> as its direct children.
+        <SidebarMenuItem>
+            <Collapsible
+                open={open || childActive}
+                onOpenChange={setOpen}
+                className="group/collapsible"
+            >
                 <CollapsibleTrigger asChild>
                     <SidebarMenuButton tooltip={{ children: item.title }}>
                         {item.icon && <item.icon />}
@@ -97,8 +99,8 @@ function NavDropdown({ item }: { item: NavItem }) {
                         ))}
                     </SidebarMenuSub>
                 </CollapsibleContent>
-            </SidebarMenuItem>
-        </Collapsible>
+            </Collapsible>
+        </SidebarMenuItem>
     );
 }
 
@@ -111,7 +113,7 @@ export function NavMain({ groups = [] }: { groups?: NavGroup[] }) {
                     <SidebarGroupContent>
                         <SidebarMenu>
                             {group.items.map((item) => (
-                                <div key={item.title}>
+                                <Fragment key={item.title}>
                                     {item.children &&
                                     item.children.length > 0 ? (
                                         <NavDropdown item={item} />
@@ -120,7 +122,7 @@ export function NavMain({ groups = [] }: { groups?: NavGroup[] }) {
                                             <NavItemLink item={item} />
                                         </SidebarMenuItem>
                                     )}
-                                </div>
+                                </Fragment>
                             ))}
                         </SidebarMenu>
                     </SidebarGroupContent>
