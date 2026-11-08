@@ -35,6 +35,7 @@ function listingUnit(Organization $organization, array $overrides = []): Unit
         'name' => 'List Court',
         'slug' => 'list-court-'.str()->random(6),
         'status' => 'active',
+        'city' => 'Nairobi',
         'created_by' => $organization->users()->first()->id,
     ]);
 
@@ -136,4 +137,27 @@ test('listing payloads carry display currency and photo slot', function () {
         ->assertJsonPath('data.0.photo_url', null)
         ->assertJsonPath('data.0.property_name', 'List Court')
         ->assertJsonPath('data.0.organization_name', 'Open Estates');
+});
+
+test('the public api matches property name, city and organization', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = listingOrganization($owner, 'Riverside Estates', true);
+    listingUnit($organization, ['name' => 'A1']);
+
+    foreach (['Riverside', 'List Court', 'Nairobi', 'Riverside Estates'] as $term) {
+        $this->getJson('/api/listings?query='.urlencode($term))
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.name', 'A1');
+    }
+});
+
+test('a type match does not bypass the rent bounds', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = listingOrganization($owner, 'Open Estates', true);
+    listingUnit($organization, ['name' => 'A1', 'type' => '1BR', 'monthly_rent' => 90000]);
+
+    $this->getJson('/api/listings?query=1BR&max_rent=10000')
+        ->assertOk()
+        ->assertJsonCount(0, 'data');
 });

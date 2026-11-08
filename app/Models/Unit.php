@@ -202,6 +202,11 @@ class Unit extends Model implements HasMedia
      * Browsable public listings with the guest filters applied. Shared by the
      * guest page and the public API so the two can never disagree.
      *
+     * The free-text term matches the unit, its property (name, city) and its
+     * organization, grouped in one nested where: a bare orWhere would bind
+     * looser than the surrounding ANDs and let a type match smuggle in units
+     * that fail the rent bounds.
+     *
      * @param  array{query?: string, min_rent?: mixed, max_rent?: mixed, type?: string, sort?: string}  $filters
      */
     public function scopeBrowse(Builder $query, array $filters): Builder
@@ -210,8 +215,15 @@ class Unit extends Model implements HasMedia
             ->publiclyListed()
             ->with(['property:id,name,organization_id', 'property.organization:id,name,settings,created_at', 'media'])
             ->when(trim((string) ($filters['query'] ?? '')), fn (Builder $q, string $term) => $q
-                ->where('name', 'like', "%{$term}%")
-                ->orWhere('type', 'like', "%{$term}%"))
+                ->where(function (Builder $nested) use ($term): void {
+                    $nested->where('units.name', 'like', "%{$term}%")
+                        ->orWhere('units.type', 'like', "%{$term}%")
+                        ->orWhereHas('property', function (Builder $property) use ($term): void {
+                            $property->where('properties.name', 'like', "%{$term}%")
+                                ->orWhere('properties.city', 'like', "%{$term}%")
+                                ->orWhereHas('organization', fn (Builder $org) => $org->where('organizations.name', 'like', "%{$term}%"));
+                        });
+                }))
             ->when(($filters['min_rent'] ?? null) !== null && ($filters['min_rent'] ?? '') !== '', fn (Builder $q) => $q->where('monthly_rent', '>=', $filters['min_rent']))
             ->when(($filters['max_rent'] ?? null) !== null && ($filters['max_rent'] ?? '') !== '', fn (Builder $q) => $q->where('monthly_rent', '<=', $filters['max_rent']))
             ->when(($filters['type'] ?? '') !== '', fn (Builder $q) => $q->where('type', $filters['type']))
