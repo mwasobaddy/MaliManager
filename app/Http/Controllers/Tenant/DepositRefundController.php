@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Tenant;
 use App\Actions\Deposits\DecideDepositRefund;
 use App\Actions\Deposits\RequestDepositRefund;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Tenant\DepositRefundIndexRequest;
 use App\Http\Requests\Tenant\StoreDepositRefundRequest;
 use App\Http\Requests\Tenant\UpdateDepositRefundRequest;
 use App\Http\Resources\Deposits\DepositRefundResource;
@@ -15,7 +16,6 @@ use App\Models\Lease;
 use App\Support\InertiaRedirect;
 use App\Support\TenancyContext;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -24,7 +24,7 @@ use Inertia\Response;
  */
 class DepositRefundController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(DepositRefundIndexRequest $request): Response
     {
         $organizationId = (int) TenancyContext::organization()?->id;
         $status = $request->string('status')->toString();

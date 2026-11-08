@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Tenant;
 use App\Actions\Metering\RecordMeterReading;
 use App\Enums\UtilityType;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Tenant\MeterReadingIndexRequest;
 use App\Http\Requests\Tenant\StoreMeterReadingRequest;
 use App\Http\Resources\Metering\UnitMeterReadingResource;
 use App\Models\Property;
@@ -29,7 +30,7 @@ use Inertia\Response;
  */
 class MeterReadingController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(MeterReadingIndexRequest $request): Response
     {
         $organizationId = (int) TenancyContext::organization()?->id;
         $unitId = $request->integer('unit_id') ?: null;
