@@ -108,3 +108,74 @@ test('the guest home sorts cheapest first', function () {
             ->where('units.data.1.name', 'Pricy')
         );
 });
+
+test('guests without an organization are flagged upgradeable for the sidebar', function () {
+    $user = User::factory()->create(['onboarded_at' => now()]);
+
+    $this->actingAs($user)
+        ->get(route('guest.home'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('auth.canBecomeLandlord', true)
+            ->where('canBecomeLandlord', true)
+        );
+});
+
+test('organization owners are not flagged upgradeable', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    app(TenantService::class)->createOrganization(
+        owner: $owner,
+        name: 'Owned Estates',
+        plan: Plan::where('slug', 'free')->firstOrFail(),
+    );
+
+    $this->actingAs($owner)
+        ->get(route('guest.home'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('auth.canBecomeLandlord', false)
+            ->where('canBecomeLandlord', false)
+        );
+});
+
+test('the sidebar receives the five most recent saved searches', function () {
+    $user = User::factory()->create(['onboarded_at' => now()]);
+
+    foreach (range(1, 7) as $i) {
+        $user->savedSearches()->create([
+            'name' => "Search {$i}",
+            'filters' => ['query' => "area-{$i}"],
+        ]);
+    }
+
+    $this->actingAs($user)
+        ->get(route('guest.home'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('recentSearches', 5)
+            ->where('recentSearches.0.name', 'Search 7')
+            ->where('recentSearches.0.filters.query', 'area-7')
+            ->where('recentSearches.4.name', 'Search 3')
+            ->has('savedSearches', 7)
+        );
+});
+
+test('the sidebar receives workspaces shared across pages', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = app(TenantService::class)->createOrganization(
+        owner: $owner,
+        name: 'Shared Estates',
+        plan: Plan::where('slug', 'free')->firstOrFail(),
+    );
+    $domain = $organization->tenant->domains()->value('domain');
+
+    $this->actingAs($owner)
+        ->get(route('guest.home'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('workspaces', 1)
+            ->where('workspaces.0.organization_name', 'Shared Estates')
+            ->where('workspaces.0.role', 'owner')
+            ->where('workspaces.0.url', "http://{$domain}/properties")
+        );
+});

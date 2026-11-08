@@ -1,6 +1,7 @@
-import { Link, usePage } from '@inertiajs/react';
+import { Link, router, usePage } from '@inertiajs/react';
 import {
     BarChart3,
+    Bookmark,
     Building2,
     CreditCard,
     DoorOpen,
@@ -36,6 +37,7 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard as centralDashboard } from '@/routes';
+import { home as guestHome } from '@/routes/guest';
 import { index as platformAuditIndex } from '@/routes/platform/audit';
 import { index as platformExpensesIndex } from '@/routes/platform/expenses';
 import { index as organizationsIndex } from '@/routes/platform/organizations';
@@ -111,6 +113,31 @@ export function AppSidebar() {
     const canViewAudit = context?.permissions?.includes('audit.view') ?? false;
     const canRaiseMaintenance =
         usePage().props.auth?.canRaiseMaintenance ?? false;
+    const canBecomeLandlord = usePage().props.auth?.canBecomeLandlord ?? false;
+
+    type WorkspaceLink = {
+        organization_id: number;
+        organization_name: string;
+        role: string;
+        url: string;
+    };
+    type RecentSearch = {
+        id: number;
+        name: string;
+        filters: Record<string, string | number | null>;
+    };
+    const workspaces =
+        (usePage().props.workspaces as WorkspaceLink[] | undefined) ?? [];
+    const recentSearches =
+        (usePage().props.recentSearches as RecentSearch[] | undefined) ?? [];
+
+    const runSavedSearch = (search: RecentSearch) => {
+        router.get(
+            guestHome.url({ query: search.filters }),
+            {},
+            { preserveScroll: true },
+        );
+    };
     const aiEnabled = usePage().props.auth?.ai_enabled ?? false;
     const authPermissions = usePage().props.auth?.permissions ?? [];
     const canManageRoles = authPermissions.includes('manage roles');
@@ -411,8 +438,43 @@ export function AppSidebar() {
                     ...(canRaiseMaintenance
                         ? [item('Maintenance', maintenanceRoute(), Wrench)]
                         : []),
+                    // The upgrade path stays visible until they own an
+                    // organization; the page header keeps the louder CTA.
+                    ...(canBecomeLandlord
+                        ? [item('Become a landlord', '/become-landlord', Plus)]
+                        : []),
                 ],
             },
+            // Dynamic sections: user-created content with a cap, per the
+            // sidebar pattern — workspaces to jump between orgs, recent
+            // searches to re-run in one tap. Full management lives on the
+            // guest home, which no longer duplicates these as cards.
+            ...(workspaces.length > 0
+                ? [
+                      {
+                          label: 'Your workspaces',
+                          items: workspaces.map((workspace) =>
+                              item(
+                                  workspace.organization_name,
+                                  workspace.url,
+                                  Building2,
+                              ),
+                          ),
+                      },
+                  ]
+                : []),
+            ...(recentSearches.length > 0
+                ? [
+                      {
+                          label: 'Saved searches',
+                          items: recentSearches.map((search) => ({
+                              title: search.name,
+                              icon: Bookmark,
+                              onClick: () => runSavedSearch(search),
+                          })),
+                      },
+                  ]
+                : []),
             ...(adminChildren.length > 0
                 ? [
                       {

@@ -41,17 +41,12 @@ import {
     destroy as destroySavedSearch,
     store as storeSavedSearch,
 } from '@/routes/guest/saved-searches';
-import type {
-    GuestLease,
-    ListedUnit,
-    SavedSearch,
-    Workspace,
-} from '@/types/guest';
+import type { ListedUnit, SavedSearch } from '@/types/guest';
 
 /**
- * Guest home: browse public units, re-run saved searches, see own leases, and
- * become a landlord. The central-domain landing for anyone without a property
- * context.
+ * Guest home: browse public units and manage saved searches, plus the
+ * invitation to become a landlord. Workspaces, recent searches and leases
+ * live in the sidebar and on the rentals page — not as cards here.
  */
 type Props = {
     units: {
@@ -60,22 +55,18 @@ type Props = {
         last_page: number;
         total: number;
     };
-    leases: GuestLease[];
     savedSearches: SavedSearch[];
     filters: Record<string, string | number | null>;
     available_types: string[];
     canBecomeLandlord: boolean;
-    workspaces: Workspace[];
 };
 
 export default function GuestHome({
     units,
-    leases,
     savedSearches,
     filters,
     available_types,
     canBecomeLandlord,
-    workspaces,
 }: Props) {
     const filterForm = useForm({
         query: (filters.query as string) ?? '',
@@ -293,51 +284,6 @@ export default function GuestHome({
                     )}
                 </div>
 
-                {workspaces.length > 0 && (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-base font-medium">
-                                Your workspaces
-                            </CardTitle>
-                            <CardDescription>
-                                Organizations you own or work for.
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <ul className="space-y-2">
-                                {workspaces.map((workspace) => (
-                                    <li
-                                        key={workspace.organization_id}
-                                        className="flex items-center justify-between gap-2 text-sm"
-                                    >
-                                        <span>
-                                            {workspace.organization_name}
-                                        </span>
-                                        <span className="flex items-center gap-2">
-                                            <Badge
-                                                variant={
-                                                    workspace.role === 'owner'
-                                                        ? 'primary'
-                                                        : 'neutral'
-                                                }
-                                            >
-                                                {workspace.role}
-                                            </Badge>
-                                            <Button
-                                                asChild
-                                                variant="ghost"
-                                                size="sm"
-                                            >
-                                                <a href={workspace.url}>Open</a>
-                                            </Button>
-                                        </span>
-                                    </li>
-                                ))}
-                            </ul>
-                        </CardContent>
-                    </Card>
-                )}
-
                 {/*
                  * One card = the discovery frame, mirroring the platform
                  * lists: search and utilities live in a header band above the
@@ -508,14 +454,16 @@ export default function GuestHome({
                     />
                 )}
 
-                <div className="grid gap-6 lg:grid-cols-2">
+                <div>
                     <Card>
                         <CardHeader>
                             <CardTitle className="text-base font-medium">
                                 Saved searches
                             </CardTitle>
                             <CardDescription>
-                                Re-run a search in one tap.
+                                Re-run a search in one tap, or remove one you no
+                                longer need. Your five most recent are also in
+                                the sidebar.
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
@@ -556,49 +504,6 @@ export default function GuestHome({
                                             >
                                                 <Trash2 className="size-4" />
                                             </Button>
-                                        </li>
-                                    ))}
-                                </ul>
-                            )}
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-base font-medium">
-                                My leases
-                            </CardTitle>
-                            <CardDescription>
-                                Units you currently or previously rented.
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            {leases.length === 0 ? (
-                                <p className="text-sm text-muted-foreground">
-                                    No leases yet. When you rent a unit listed
-                                    here, it shows up in this list.
-                                </p>
-                            ) : (
-                                <ul className="space-y-2">
-                                    {leases.map((lease) => (
-                                        <li
-                                            key={lease.id}
-                                            className="flex items-center justify-between gap-2 text-sm"
-                                        >
-                                            <span>
-                                                {lease.unit_name ??
-                                                    lease.property_name ??
-                                                    `Lease #${lease.id}`}
-                                            </span>
-                                            <Badge
-                                                variant={
-                                                    lease.status === 'active'
-                                                        ? 'success'
-                                                        : 'neutral'
-                                                }
-                                            >
-                                                {lease.status}
-                                            </Badge>
                                         </li>
                                     ))}
                                 </ul>

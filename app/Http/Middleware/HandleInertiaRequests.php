@@ -7,10 +7,12 @@ use App\Enums\PlatformPermissionKey;
 use App\Enums\SubPermissionKey;
 use App\Models\Lease;
 use App\Models\Property;
+use App\Models\SavedSearch;
 use App\Models\User;
 use App\Services\PropertyAccessService;
 use App\Support\Ai\AiGateway;
 use App\Support\TenancyContext;
+use App\Support\WorkspaceLinks;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
 use Inertia\Middleware;
@@ -68,6 +70,9 @@ class HandleInertiaRequests extends Middleware
                 'organizations' => $user
                     ? App::make(PropertyAccessService::class)->organizationsWithProperties($user)
                     : [],
+                // Non-owners see the upgrade path in the sidebar.
+                'canBecomeLandlord' => $user !== null
+                    && ! $user->organizations()->wherePivot('is_owner', true)->exists(),
             ],
             'context' => [
                 'organization' => $organization?->only('id', 'name', 'slug'),
@@ -80,6 +85,20 @@ class HandleInertiaRequests extends Middleware
             'impersonation' => $this->impersonation($request),
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'assistant' => $this->assistant($user, $organization),
+            // Sidebar navigation data: workspaces are persistent destinations
+            // (not page cards), and the five most recent saved searches re-run
+            // in one tap. Full management lives on the guest home.
+            'workspaces' => $user !== null
+                ? WorkspaceLinks::for($user, $request->secure() ? 'https' : 'http')
+                : [],
+            'recentSearches' => $user !== null
+                ? SavedSearch::query()
+                    ->where('user_id', $user->id)
+                    ->orderByDesc('id')
+                    ->limit(5)
+                    ->get(['id', 'name', 'filters'])
+                    ->all()
+                : [],
         ];
     }
 

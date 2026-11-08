@@ -42,6 +42,7 @@ export type Auth = {
     user: User;
     ai_enabled?: boolean;
     canRaiseMaintenance?: boolean;
+    canBecomeLandlord?: boolean;
     permissions: string[];
     organizations: OrganizationSummary[];
 };
