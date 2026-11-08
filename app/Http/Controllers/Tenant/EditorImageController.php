@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers\Tenant;
 
+use App\Actions\EditorImages\StoreEditorImage;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Tenant\StoreEditorImageRequest;
-use App\Models\EditorImage;
 use App\Support\TenancyContext;
 use Illuminate\Http\JsonResponse;
 
@@ -16,14 +16,12 @@ use Illuminate\Http\JsonResponse;
  */
 class EditorImageController extends Controller
 {
-    public function store(StoreEditorImageRequest $request): JsonResponse
+    public function store(StoreEditorImageRequest $request, StoreEditorImage $store): JsonResponse
     {
-        $image = EditorImage::create([
-            'organization_id' => TenancyContext::organization()?->id,
-            'created_by' => $request->user()->id,
-        ]);
-
-        $image->addMediaFromRequest('image')->toMediaCollection('image');
+        $image = $store->handle(
+            (int) TenancyContext::organization()?->id,
+            $request->user(),
+        );
 
         return response()->json([
             'url' => $image->getFirstMedia('image')->getUrl(),

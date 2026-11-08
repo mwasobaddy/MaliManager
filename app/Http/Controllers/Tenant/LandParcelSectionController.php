@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Tenant;
 
+use App\Actions\LandParcels\DeleteLandParcelSection;
 use App\Actions\LandParcels\LeaseLandParcelSection;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Tenant\DestroyLandParcelSectionRequest;
@@ -48,12 +49,12 @@ class LandParcelSectionController extends Controller
         ]);
     }
 
-    public function destroy(DestroyLandParcelSectionRequest $request, LandParcel $landParcel, LandParcelSection $landParcelSection): RedirectResponse
+    public function destroy(DestroyLandParcelSectionRequest $request, LandParcel $landParcel, LandParcelSection $landParcelSection, DeleteLandParcelSection $delete): RedirectResponse
     {
         $this->authorizeParcelAccess($request, $landParcel);
         abort_if($landParcelSection->land_parcel_id !== $landParcel->id, 404);
 
-        $landParcelSection->delete();
+        $delete->handle($landParcelSection);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Section removed.']);
 
