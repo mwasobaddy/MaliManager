@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Tenant;
 
+use App\Actions\Ai\DeleteAiSetting;
 use App\Actions\Ai\SaveAiSettings;
 use App\Enums\AiFeature;
 use App\Enums\AiProvider;
@@ -87,13 +88,9 @@ class AiSettingsController extends Controller
         return back();
     }
 
-    public function destroyKey(AiSettingsRequest $request): RedirectResponse
+    public function destroyKey(AiSettingsRequest $request, DeleteAiSetting $delete): RedirectResponse
     {
-        $organization = TenancyContext::organization();
-
-        AiSetting::query()
-            ->whereMorphedTo('owner', $organization)
-            ->delete();
+        $delete->handle(TenancyContext::organization());
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Organization API key removed.']);
 

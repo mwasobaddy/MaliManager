@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Settings;
 
+use App\Actions\Ai\DeleteAiSetting;
 use App\Actions\Ai\SaveAiSettings;
 use App\Enums\AiFeature;
 use App\Enums\AiProvider;
@@ -81,11 +82,9 @@ class PersonalAiController extends Controller
         return back();
     }
 
-    public function destroyKey(PersonalAiRequest $request): RedirectResponse
+    public function destroyKey(PersonalAiRequest $request, DeleteAiSetting $delete): RedirectResponse
     {
-        AiSetting::query()
-            ->whereMorphedTo('owner', $request->user())
-            ->delete();
+        $delete->handle($request->user());
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Personal API key removed.']);
 
