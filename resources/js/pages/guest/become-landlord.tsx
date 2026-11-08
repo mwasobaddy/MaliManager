@@ -165,11 +165,19 @@ export default function BecomeLandlord({ plans }: Props) {
                                         name="plan_slug"
                                         value={planSlug}
                                     />
-                                    <div className="grid gap-3">
+                                    <div
+                                        className="grid gap-3"
+                                        role="radiogroup"
+                                        aria-label="Plan"
+                                    >
                                         {plans.map((plan) => (
                                             <button
                                                 key={plan.slug}
                                                 type="button"
+                                                role="radio"
+                                                aria-checked={
+                                                    planSlug === plan.slug
+                                                }
                                                 onClick={() =>
                                                     setPlanSlug(plan.slug)
                                                 }
