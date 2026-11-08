@@ -239,8 +239,11 @@ export default function Dashboard(props: Props) {
                                         updateFilters(value, filterMonth)
                                     }
                                 >
-                                    <SelectTrigger className="w-[100px]">
-                                        <SelectValue placeholder="Year" />
+                                    <SelectTrigger
+                                        className="w-[100px]"
+                                        aria-label="Filter by year"
+                                    >
+                                        <SelectValue placeholder="All years" />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {availableYears.map((year) => (
@@ -260,7 +263,10 @@ export default function Dashboard(props: Props) {
                                         updateFilters(filterYear, value)
                                     }
                                 >
-                                    <SelectTrigger className="w-[110px]">
+                                    <SelectTrigger
+                                        className="w-[110px]"
+                                        aria-label="Filter by month"
+                                    >
                                         <SelectValue placeholder="All months" />
                                     </SelectTrigger>
                                     <SelectContent>

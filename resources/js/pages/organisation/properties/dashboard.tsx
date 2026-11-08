@@ -181,8 +181,11 @@ export default function PropertiesDashboard({
                                 updateFilters(value, filterMonth)
                             }
                         >
-                            <SelectTrigger className="w-[100px]">
-                                <SelectValue placeholder="Year" />
+                            <SelectTrigger
+                                className="w-[100px]"
+                                aria-label="Filter by year"
+                            >
+                                <SelectValue placeholder="All years" />
                             </SelectTrigger>
                             <SelectContent>
                                 {stats.available_years.map((y) => (
@@ -199,7 +202,10 @@ export default function PropertiesDashboard({
                                 updateFilters(filterYear, value)
                             }
                         >
-                            <SelectTrigger className="w-[110px]">
+                            <SelectTrigger
+                                className="w-[110px]"
+                                aria-label="Filter by month"
+                            >
                                 <SelectValue placeholder="All months" />
                             </SelectTrigger>
                             <SelectContent>
