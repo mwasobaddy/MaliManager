@@ -3,7 +3,10 @@ import type { LucideIcon } from 'lucide-react';
 
 export type BreadcrumbItem = {
     title: string;
-    href: NonNullable<InertiaLinkProps['href']>;
+    // The current page is the last crumb and renders as text, so it never
+    // needs an href. The type used to require one, which pushed pages into
+    // untyped layout objects where a `label` typo shipped an empty link.
+    href?: NonNullable<InertiaLinkProps['href']>;
 };
 
 export type NavItem = {

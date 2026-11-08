@@ -637,7 +637,7 @@ function PersonTab({
 Dashboard.layout = {
     breadcrumbs: [
         {
-            label: 'Dashboard',
+            title: 'Dashboard',
             href: dashboard(),
         },
     ],

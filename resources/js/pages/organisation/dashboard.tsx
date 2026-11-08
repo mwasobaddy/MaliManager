@@ -442,11 +442,11 @@ export default function OrganizationDashboard({
 OrganizationDashboard.layout = {
     breadcrumbs: [
         {
-            label: 'Properties',
+            title: 'Properties',
             href: index(),
         },
         {
-            label: 'Overview',
+            title: 'Overview',
         },
     ],
 };
