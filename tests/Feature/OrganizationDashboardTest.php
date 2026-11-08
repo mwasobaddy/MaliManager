@@ -61,6 +61,7 @@ test('the organization overview renders portfolio stats for an owner', function 
         ->assertInertia(fn ($page) => $page
             ->component('organisation/dashboard')
             ->where('organization.name', 'Acme Estates')
+            ->where('organization.currency', 'KES')
             ->where('properties_count', 1)
             ->where('total_units', 3)
             ->where('occupied', 1)
@@ -152,4 +153,17 @@ test('the organization overview switches to a daily axis when a month is selecte
             ->where('operations_monthly', fn ($rows) => count($rows) === 28)
             ->where('operations_monthly.0.label', '1')
             ->where('operations_monthly.27.label', '28'));
+});
+
+test('the organization overview exposes the organization currency from settings', function () {
+    $user = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createOverviewOrganization($user);
+    $organization->update(['settings' => array_merge($organization->settings ?? [], ['currency' => 'UGX'])]);
+    createOverviewProperty($organization, $user, 'Kampala Courts', 'kampala-courts');
+
+    $this->actingAs($user)
+        ->get(tenantOverviewUrl($organization, '/overview'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('organization.currency', 'UGX'));
 });

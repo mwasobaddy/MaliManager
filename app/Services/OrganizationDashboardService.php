@@ -55,7 +55,13 @@ class OrganizationDashboardService extends Service
             ->all();
 
         return [
-            'organization' => $organization->only('id', 'name', 'slug'),
+            'organization' => [
+                ...$organization->only('id', 'name', 'slug'),
+                // Display currency comes from the org's own settings (chosen
+                // at signup), not a literal in each page: a USD/UGX org must
+                // not render KES figures.
+                'currency' => $organization->settings['currency'] ?? 'KES',
+            ],
             'available_years' => $this->availableYears($organization, $propertyIds),
             'properties' => $perProperty,
             'properties_count' => count($perProperty),

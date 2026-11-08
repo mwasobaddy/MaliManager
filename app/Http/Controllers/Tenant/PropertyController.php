@@ -128,7 +128,10 @@ class PropertyController extends Controller
         $month = $request->input('month') ? (int) $request->input('month') : null;
 
         return Inertia::render('organisation/properties/dashboard', [
-            'organization' => TenancyContext::organization()->only('id', 'name', 'slug'),
+            'organization' => [
+                ...TenancyContext::organization()->only('id', 'name', 'slug'),
+                'currency' => TenancyContext::organization()->settings['currency'] ?? 'KES',
+            ],
             'property' => [
                 'id' => $property->id,
                 'name' => $property->name,
