@@ -1,66 +1,124 @@
-import type { LucideIcon } from 'lucide-react';
-import { SetupSteps } from '@/components/setup-steps';
-
-export type SetupPoint = {
-    icon: LucideIcon;
-    text: string;
-};
+import { BadgeCheck, CheckCircle2 } from 'lucide-react';
+import { SETUP_STEPS, SetupSteps } from '@/components/setup-steps';
+import { cn } from '@/lib/utils';
 
 /**
- * The funnel's side panel, following the register-page inspo: a brand
- * gradient card with the welcome copy, the step indicator, and the page's
- * value props. Desktop only — on phones the same steps render as a compact
- * top card so the form stays first on screen.
+ * The vertical step list for the left card: a 48px circle per step joined by
+ * a connector, with the title and description beside it. Mirrors the register
+ * page's LeftStepIndicator, including the completed halo, the dashed upcoming
+ * connector and the 64px gap under each step.
  */
-export function SetupSidePanel({
-    title,
-    description,
-    current,
-    points = [],
-}: {
-    title: string;
-    description: string;
-    current: 1 | 2;
-    points?: SetupPoint[];
-}) {
+function SetupLeftIndicator({ current }: { current: 1 | 2 }) {
     return (
-        <div className="hidden lg:block">
-            <div className="rounded-xl border bg-gradient-to-b from-brand-primary-100 via-card to-brand-accent-100 p-8">
-                <p className="text-xl font-semibold tracking-tight text-foreground">
-                    {title}
-                </p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                    {description}
-                </p>
-                {points.length > 0 && (
-                    <ul className="mt-6 space-y-3">
-                        {points.map((point) => (
-                            <li
-                                key={point.text}
-                                className="flex items-center gap-2.5 text-sm"
-                            >
-                                <point.icon
-                                    className="size-4 shrink-0 text-brand-accent"
-                                    aria-hidden
-                                />
-                                <span className="text-foreground">
-                                    {point.text}
-                                </span>
-                            </li>
-                        ))}
-                    </ul>
-                )}
-                <div className="mt-8">
-                    <SetupSteps current={current} direction="vertical" />
-                </div>
+        <div className="mb-8">
+            <div className="mx-auto flex max-w-3xl flex-col">
+                {SETUP_STEPS.map((step, index) => {
+                    const Icon = step.icon;
+                    const number = index + 1;
+                    const isActive = current === number;
+                    const isCompleted = current > number;
+
+                    return (
+                        <div key={step.title} className="flex gap-2">
+                            <div className="flex flex-col items-center">
+                                <div
+                                    className={cn(
+                                        isCompleted
+                                            ? 'rounded-full bg-brand-accent-100 p-2 transition-all'
+                                            : 'px-2',
+                                    )}
+                                >
+                                    <div
+                                        className={cn(
+                                            'flex h-12 w-12 items-center justify-center rounded-full transition-all',
+                                            isActive &&
+                                                'border-2 border-brand-accent bg-card text-brand-accent shadow-lg',
+                                            isCompleted &&
+                                                'bg-brand-accent text-on-accent',
+                                            !isActive &&
+                                                !isCompleted &&
+                                                'border-2 border-border-strong bg-card text-muted-foreground',
+                                        )}
+                                    >
+                                        {isCompleted ? (
+                                            <CheckCircle2 className="h-7 w-7" />
+                                        ) : (
+                                            <Icon className="h-7 w-7" />
+                                        )}
+                                    </div>
+                                </div>
+
+                                {index < SETUP_STEPS.length - 1 && (
+                                    <div className="w-0.5 flex-1">
+                                        <div
+                                            className={cn(
+                                                'h-full w-full transition-all',
+                                                isCompleted
+                                                    ? 'bg-brand-accent'
+                                                    : 'border-l-2 border-dashed border-input bg-border-strong',
+                                            )}
+                                        />
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="flex-1 pb-16">
+                                <h3 className="mb-3 text-xl font-bold">
+                                    {step.title}
+                                </h3>
+                                <p className="text-muted-foreground">
+                                    {step.description}
+                                </p>
+                            </div>
+                        </div>
+                    );
+                })}
             </div>
         </div>
     );
 }
 
 /**
- * The same steps as a compact top card for phones, where the side panel is
- * hidden so the form comes first.
+ * The left card of the setup funnel, matching the register page's welcome
+ * card: a gradient surface with a badge, a welcome heading, two lines of
+ * context and the step list. Desktop only; phones get the compact stepper
+ * above the form instead.
+ */
+export function SetupSidePanel({
+    intro,
+    current,
+}: {
+    intro: [string, string];
+    current: 1 | 2;
+}) {
+    return (
+        <div className="hidden rounded-xl border bg-card bg-linear-to-t from-brand-accent-100 to-brand-primary-100 px-8 py-6 shadow-xl lg:col-span-3 lg:block">
+            <div className="mb-8 flex items-center gap-4 pt-6">
+                <div className="mb-4 flex justify-center">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-linear-to-r from-brand-primary to-brand-primary-600 shadow-lg">
+                        <BadgeCheck
+                            className="h-8 w-8 text-white"
+                            aria-hidden
+                        />
+                    </div>
+                </div>
+                <div>
+                    <h2 className="mb-0 text-xl font-bold">Welcome, aboard!</h2>
+                    <p className="text-muted-foreground">{intro[0]}</p>
+                    <p className="text-muted-foreground">{intro[1]}</p>
+                </div>
+            </div>
+
+            <div>
+                <SetupLeftIndicator current={current} />
+            </div>
+        </div>
+    );
+}
+
+/**
+ * The same steps as a compact card above the form, shown only where the side
+ * panel is hidden.
  */
 export function SetupStepsTopCard({ current }: { current: 1 | 2 }) {
     return (

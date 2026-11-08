@@ -30,14 +30,14 @@ export default function FirstAsset({ organization }: Props) {
         <>
             <Head title="Add your first asset" />
 
-            <div className="grid flex-1 gap-6 py-4 lg:grid-cols-7">
-                <div className="col-span-7 lg:col-span-3">
-                    <SetupSidePanel
-                        title="Almost there"
-                        description="Add your first asset to unlock the dashboard. You can add the other type later."
-                        current={2}
-                    />
-                </div>
+            <div className="mx-auto grid w-full max-w-7xl flex-1 grid-cols-7 gap-8 px-4 py-8">
+                <SetupSidePanel
+                    intro={[
+                        'Your organization is ready',
+                        'Add your first building or land parcel',
+                    ]}
+                    current={2}
+                />
 
                 <div className="col-span-7 space-y-6 lg:col-span-4">
                     <SetupStepsTopCard current={2} />

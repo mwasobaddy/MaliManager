@@ -1,5 +1,4 @@
 import { Form, Head } from '@inertiajs/react';
-import { BadgeCheck, Smartphone, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
@@ -58,28 +57,14 @@ export default function BecomeLandlord({ plans }: Props) {
         <>
             <Head title="Become a landlord" />
 
-            <div className="grid flex-1 gap-6 py-4 lg:grid-cols-7">
-                <div className="col-span-7 lg:col-span-3">
-                    <SetupSidePanel
-                        title="Let's get your rental business set up"
-                        description="Two quick steps and your first property can start earning."
-                        current={1}
-                        points={[
-                            {
-                                icon: Sparkles,
-                                text: 'Free up to 10 units',
-                            },
-                            {
-                                icon: Smartphone,
-                                text: 'Collect rent via M-Pesa',
-                            },
-                            {
-                                icon: BadgeCheck,
-                                text: 'No card required',
-                            },
-                        ]}
-                    />
-                </div>
+            <div className="mx-auto grid w-full max-w-7xl flex-1 grid-cols-7 gap-8 px-4 py-8">
+                <SetupSidePanel
+                    intro={[
+                        "Let's get your rental business set up",
+                        'Free up to 10 units · No card required',
+                    ]}
+                    current={1}
+                />
 
                 <div className="col-span-7 space-y-6 lg:col-span-4">
                     <SetupStepsTopCard current={1} />

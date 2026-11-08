@@ -37,7 +37,7 @@ export default function SetupLayout({ children }: { children: ReactNode }) {
                     <span aria-hidden />
                 </div>
             </header>
-            <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col p-4 md:p-6">
+            <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col">
                 {children}
             </main>
             <footer className="px-4 py-6 text-center text-xs text-muted-foreground md:px-6">
