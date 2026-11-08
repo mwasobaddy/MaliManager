@@ -2,6 +2,7 @@ import { Head, Link, router, useForm } from '@inertiajs/react';
 import { BookmarkPlus, Building2, Search, Trash2 } from 'lucide-react';
 import type { FormEvent } from 'react';
 import Heading from '@/components/heading';
+import { ListingTrustBadges } from '@/components/listing-trust-badges';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -15,7 +16,16 @@ import { Empty } from '@/components/ui/empty';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Pagination } from '@/components/ui/pagination';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import { formatMoney } from '@/lib/format-money';
 import { home as guestHome } from '@/routes/guest';
+import { show as showListing } from '@/routes/guest/listings';
 import {
     destroy as destroySavedSearch,
     store as storeSavedSearch,
@@ -42,6 +52,7 @@ type Props = {
     leases: GuestLease[];
     savedSearches: SavedSearch[];
     filters: Record<string, string | number | null>;
+    available_types: string[];
     canBecomeLandlord: boolean;
     workspaces: Workspace[];
 };
@@ -51,6 +62,7 @@ export default function GuestHome({
     leases,
     savedSearches,
     filters,
+    available_types,
     canBecomeLandlord,
     workspaces,
 }: Props) {
@@ -59,12 +71,13 @@ export default function GuestHome({
         min_rent: (filters.min_rent as string) ?? '',
         max_rent: (filters.max_rent as string) ?? '',
         type: (filters.type as string) ?? '',
+        sort: (filters.sort as string) ?? 'newest',
     });
 
     const saveForm = useForm({ name: '' });
 
-    const applyFilters = (event: FormEvent) => {
-        event.preventDefault();
+    const applyFilters = (event?: FormEvent) => {
+        event?.preventDefault();
         router.get(
             guestHome.url({
                 query: {
@@ -72,6 +85,30 @@ export default function GuestHome({
                     min_rent: filterForm.data.min_rent || undefined,
                     max_rent: filterForm.data.max_rent || undefined,
                     type: filterForm.data.type || undefined,
+                    sort:
+                        filterForm.data.sort !== 'newest'
+                            ? filterForm.data.sort
+                            : undefined,
+                },
+            }),
+            {},
+            { preserveScroll: true, preserveState: true },
+        );
+    };
+
+    const applyType = (type: string) => {
+        filterForm.setData('type', type);
+        router.get(
+            guestHome.url({
+                query: {
+                    query: filterForm.data.query || undefined,
+                    min_rent: filterForm.data.min_rent || undefined,
+                    max_rent: filterForm.data.max_rent || undefined,
+                    type: type || undefined,
+                    sort:
+                        filterForm.data.sort !== 'newest'
+                            ? filterForm.data.sort
+                            : undefined,
                 },
             }),
             {},
@@ -176,6 +213,29 @@ export default function GuestHome({
 
                 <Card>
                     <CardContent className="pt-6">
+                        {available_types.length > 0 && (
+                            <div
+                                className="mb-4 flex flex-wrap gap-2"
+                                role="group"
+                                aria-label="Filter by unit type"
+                            >
+                                {['', ...available_types].map((type) => (
+                                    <Button
+                                        key={type || 'all'}
+                                        type="button"
+                                        variant={
+                                            filterForm.data.type === type
+                                                ? 'default'
+                                                : 'outline'
+                                        }
+                                        size="sm"
+                                        onClick={() => applyType(type)}
+                                    >
+                                        {type === '' ? 'All types' : type}
+                                    </Button>
+                                ))}
+                            </div>
+                        )}
                         <form
                             onSubmit={applyFilters}
                             className="flex flex-wrap items-end gap-3"
@@ -262,6 +322,71 @@ export default function GuestHome({
                     </CardContent>
                 </Card>
 
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                    <p
+                        className="text-sm text-muted-foreground"
+                        role="status"
+                        aria-live="polite"
+                    >
+                        {units.total === 0
+                            ? 'No units to show'
+                            : `${units.total} unit${units.total === 1 ? '' : 's'} for rent`}
+                    </p>
+                    {units.total > 1 && (
+                        <Select
+                            value={filterForm.data.sort}
+                            onValueChange={(value) => {
+                                filterForm.setData('sort', value);
+                                router.get(
+                                    guestHome.url({
+                                        query: {
+                                            query:
+                                                filterForm.data.query ||
+                                                undefined,
+                                            min_rent:
+                                                filterForm.data.min_rent ||
+                                                undefined,
+                                            max_rent:
+                                                filterForm.data.max_rent ||
+                                                undefined,
+                                            type:
+                                                filterForm.data.type ||
+                                                undefined,
+                                            sort:
+                                                value !== 'newest'
+                                                    ? value
+                                                    : undefined,
+                                        },
+                                    }),
+                                    {},
+                                    {
+                                        preserveScroll: true,
+                                        preserveState: true,
+                                    },
+                                );
+                            }}
+                        >
+                            <SelectTrigger
+                                className="w-[140px]"
+                                aria-label="Sort listings"
+                            >
+                                <SelectValue placeholder="Sort" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="newest">
+                                    Newest first
+                                </SelectItem>
+                                <SelectItem value="cheapest">
+                                    Cheapest first
+                                </SelectItem>
+                                <SelectItem value="priciest">
+                                    Priciest first
+                                </SelectItem>
+                            </SelectContent>
+                        </Select>
+                    )}
+                </div>
+
                 {units.data.length === 0 ? (
                     <Empty
                         icon={<Search className="size-4" />}
@@ -279,31 +404,60 @@ export default function GuestHome({
                 ) : (
                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                         {units.data.map((unit) => (
-                            <Card key={unit.id}>
-                                <CardHeader>
-                                    <CardTitle className="text-base">
-                                        {unit.name}
-                                    </CardTitle>
-                                    <CardDescription>
-                                        {unit.property_name ?? '—'}
-                                        {unit.organization_name
-                                            ? ` · ${unit.organization_name}`
-                                            : ''}
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent className="flex items-center justify-between">
-                                    <span className="font-semibold tabular-nums">
-                                        {unit.monthly_rent !== null
-                                            ? `${Number(unit.monthly_rent).toLocaleString()}`
-                                            : '—'}
-                                    </span>
-                                    {unit.type && (
-                                        <Badge variant="neutral">
-                                            {unit.type}
-                                        </Badge>
+                            <Link
+                                key={unit.id}
+                                href={showListing(unit.id).url}
+                                className="rounded-xl"
+                            >
+                                <Card className="h-full overflow-hidden pt-0 transition-colors hover:bg-muted">
+                                    {unit.photo_url ? (
+                                        <img
+                                            src={unit.photo_url}
+                                            alt={`${unit.name} photo`}
+                                            className="aspect-video w-full object-cover"
+                                            loading="lazy"
+                                        />
+                                    ) : (
+                                        <div
+                                            aria-hidden
+                                            className="flex aspect-video w-full items-center justify-center bg-muted"
+                                        >
+                                            <Building2 className="size-8 text-muted-foreground" />
+                                        </div>
                                     )}
-                                </CardContent>
-                            </Card>
+                                    <CardHeader>
+                                        <CardTitle className="text-base">
+                                            {unit.name}
+                                        </CardTitle>
+                                        <CardDescription>
+                                            {unit.property_name ?? '—'}
+                                            {unit.organization_name
+                                                ? ` · ${unit.organization_name}`
+                                                : ''}
+                                        </CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="flex flex-col gap-3">
+                                        <div className="flex items-center justify-between">
+                                            <span className="font-semibold tabular-nums">
+                                                {unit.monthly_rent !== null
+                                                    ? formatMoney(
+                                                          unit.monthly_rent,
+                                                          unit.currency,
+                                                      )
+                                                    : '—'}
+                                            </span>
+                                            {unit.type && (
+                                                <Badge variant="neutral">
+                                                    {unit.type}
+                                                </Badge>
+                                            )}
+                                        </div>
+                                        <ListingTrustBadges
+                                            trust={unit.trust}
+                                        />
+                                    </CardContent>
+                                </Card>
+                            </Link>
                         ))}
                     </div>
                 )}
@@ -424,6 +578,35 @@ export default function GuestHome({
                         </CardContent>
                     </Card>
                 </div>
+
+                {canBecomeLandlord && (
+                    <Card>
+                        <CardContent className="flex flex-wrap items-center justify-between gap-4 py-6">
+                            <div className="flex items-center gap-3">
+                                <span className="flex size-10 items-center justify-center rounded-lg bg-muted">
+                                    <Building2
+                                        className="size-5 text-muted-foreground"
+                                        aria-hidden
+                                    />
+                                </span>
+                                <div>
+                                    <p className="font-medium">
+                                        Have a property to let?
+                                    </p>
+                                    <p className="text-sm text-muted-foreground">
+                                        List it free and collect rent through
+                                        M-Pesa.
+                                    </p>
+                                </div>
+                            </div>
+                            <Button asChild>
+                                <Link href="/become-landlord">
+                                    Become a landlord
+                                </Link>
+                            </Button>
+                        </CardContent>
+                    </Card>
+                )}
             </div>
         </>
     );

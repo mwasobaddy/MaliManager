@@ -105,3 +105,35 @@ test('the public api filters by rent range', function () {
 test('the public api needs no authentication', function () {
     $this->getJson('/api/listings')->assertOk();
 });
+
+test('the public api sorts cheapest first with rentless units last', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = listingOrganization($owner, 'Open Estates', true);
+    listingUnit($organization, ['name' => 'Pricy', 'monthly_rent' => 90000]);
+    listingUnit($organization, ['name' => 'NoRent', 'monthly_rent' => null]);
+    listingUnit($organization, ['name' => 'Cheap', 'monthly_rent' => 15000]);
+
+    $this->getJson('/api/listings?sort=cheapest')
+        ->assertOk()
+        ->assertJsonPath('data.0.name', 'Cheap')
+        ->assertJsonPath('data.1.name', 'Pricy')
+        ->assertJsonPath('data.2.name', 'NoRent');
+});
+
+test('the public api rejects an unknown sort', function () {
+    $this->getJson('/api/listings?sort=random')->assertStatus(422);
+});
+
+test('listing payloads carry display currency and photo slot', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = listingOrganization($owner, 'Open Estates', true);
+    $organization->update(['settings' => ['list_publicly' => true, 'currency' => 'UGX']]);
+    listingUnit($organization, ['name' => 'A1', 'monthly_rent' => 25000]);
+
+    $this->getJson('/api/listings')
+        ->assertOk()
+        ->assertJsonPath('data.0.currency', 'UGX')
+        ->assertJsonPath('data.0.photo_url', null)
+        ->assertJsonPath('data.0.property_name', 'List Court')
+        ->assertJsonPath('data.0.organization_name', 'Open Estates');
+});

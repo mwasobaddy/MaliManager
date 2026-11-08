@@ -30,6 +30,9 @@ class ListingResource extends JsonResource
             'type' => $this->type,
             'monthly_rent' => $this->monthly_rent,
             'deposit' => $this->deposit,
+            'currency' => $this->property?->organization?->settings['currency'] ?? 'KES',
+            'photo_url' => $this->getFirstMediaUrl('photos') ?: null,
+            'trust' => $this->trustBadges(),
             'property_name' => $this->whenLoaded('property', fn () => $this->property?->name),
             'organization_name' => $this->whenLoaded(
                 'property',

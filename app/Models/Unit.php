@@ -174,6 +174,23 @@ class Unit extends Model implements HasMedia
     }
 
     /**
+     * Factual trust signals for public listings. Every flag is derived, never
+     * claimed: photos exist on the unit, a deposit is stated, and the year
+     * the landlord organization was created. No verification theatre — if a
+     * relation is not loaded the corresponding flag resolves empty.
+     *
+     * @return array{photos: bool, deposit: bool, landlord_since: int|null}
+     */
+    public function trustBadges(): array
+    {
+        return [
+            'photos' => $this->getMedia('photos')->isNotEmpty(),
+            'deposit' => $this->deposit !== null,
+            'landlord_since' => $this->property?->organization?->created_at?->year,
+        ];
+    }
+
+    /**
      * Units visible on the public guest browse: vacant, in an organization that
      * allows public listings, and not explicitly held back at the unit level.
      *
@@ -185,20 +202,28 @@ class Unit extends Model implements HasMedia
      * Browsable public listings with the guest filters applied. Shared by the
      * guest page and the public API so the two can never disagree.
      *
-     * @param  array{query?: string, min_rent?: mixed, max_rent?: mixed, type?: string}  $filters
+     * @param  array{query?: string, min_rent?: mixed, max_rent?: mixed, type?: string, sort?: string}  $filters
      */
     public function scopeBrowse(Builder $query, array $filters): Builder
     {
         return $query
             ->publiclyListed()
-            ->with(['property:id,name,organization_id', 'property.organization:id,name'])
+            ->with(['property:id,name,organization_id', 'property.organization:id,name,settings,created_at', 'media'])
             ->when(trim((string) ($filters['query'] ?? '')), fn (Builder $q, string $term) => $q
                 ->where('name', 'like', "%{$term}%")
                 ->orWhere('type', 'like', "%{$term}%"))
             ->when(($filters['min_rent'] ?? null) !== null && ($filters['min_rent'] ?? '') !== '', fn (Builder $q) => $q->where('monthly_rent', '>=', $filters['min_rent']))
             ->when(($filters['max_rent'] ?? null) !== null && ($filters['max_rent'] ?? '') !== '', fn (Builder $q) => $q->where('monthly_rent', '<=', $filters['max_rent']))
             ->when(($filters['type'] ?? '') !== '', fn (Builder $q) => $q->where('type', $filters['type']))
-            ->orderByDesc('units.id');
+            ->when(
+                ($filters['sort'] ?? 'newest') === 'cheapest',
+                fn (Builder $q) => $q->orderByRaw('monthly_rent is null, monthly_rent asc'),
+                fn (Builder $q) => $q->when(
+                    ($filters['sort'] ?? 'newest') === 'priciest',
+                    fn (Builder $inner) => $inner->orderByRaw('monthly_rent is null, monthly_rent desc'),
+                    fn (Builder $inner) => $inner->orderByDesc('units.id'),
+                ),
+            );
     }
 
     public function scopePubliclyListed(Builder $query): Builder

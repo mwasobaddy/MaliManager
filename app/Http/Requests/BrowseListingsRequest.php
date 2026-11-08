@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 /**
  * Public unit browsing filters.
@@ -29,6 +30,7 @@ class BrowseListingsRequest extends FormRequest
             'min_rent' => ['nullable', 'numeric', 'min:0'],
             'max_rent' => ['nullable', 'numeric', 'min:0'],
             'type' => ['nullable', 'string', 'max:64'],
+            'sort' => ['nullable', Rule::in(['newest', 'cheapest', 'priciest'])],
         ];
     }
 }

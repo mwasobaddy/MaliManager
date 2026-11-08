@@ -75,6 +75,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // central-domain landing for anyone without a property context.
     Route::get('home', [GuestController::class, 'home'])
         ->name('guest.home');
+    Route::get('listings/{unit}', [GuestController::class, 'show'])
+        ->whereNumber('unit')
+        ->name('guest.listings.show');
     Route::post('saved-searches', [GuestController::class, 'storeSearch'])
         ->name('guest.saved-searches.store');
     Route::delete('saved-searches/{search}', [GuestController::class, 'destroySearch'])

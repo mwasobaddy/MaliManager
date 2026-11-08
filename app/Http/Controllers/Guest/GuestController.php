@@ -2,11 +2,10 @@
 
 namespace App\Http\Controllers\Guest;
 
-use App\Http\Controllers\Controller;
-
 use App\Actions\Onboarding\Concerns\OnboardingHelpers;
 use App\Actions\Searches\DeleteSavedSearch;
 use App\Actions\Searches\SaveSearch;
+use App\Http\Controllers\Controller;
 use App\Http\Requests\BrowseListingsRequest;
 use App\Http\Requests\DestroySavedSearchRequest;
 use App\Http\Requests\StoreSavedSearchRequest;
@@ -15,8 +14,10 @@ use App\Models\Person;
 use App\Models\SavedSearch;
 use App\Models\Unit;
 use App\Models\User;
+use App\Support\ListingPresenter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -42,18 +43,18 @@ class GuestController extends Controller
             ->paginate(12)
             ->withQueryString();
 
-        $leases = $user->person_id && ($person = Person::find($user->person_id))
-            ? Lease::forPerson($person)->with(['property:id,name', 'unit:id,name'])->orderByDesc('starts_at')->get()
-            : collect();
-
         return Inertia::render('guest/home', [
-            'units' => $units,
-            'leases' => $leases,
+            // The page types listings flat (property_name, photo_url,
+            // trust...), so the mapping lives in ListingPresenter rather
+            // than here — the same reason OccupantPresenter exists.
+            'units' => ListingPresenter::presentPage($units, $request),
+            'leases' => $this->leasesFor($user),
             'savedSearches' => SavedSearch::query()
                 ->where('user_id', $user->id)
                 ->orderByDesc('id')
                 ->get(['id', 'name', 'filters']),
-            'filters' => $request->only(['query', 'min_rent', 'max_rent', 'type']),
+            'filters' => $request->only(['query', 'min_rent', 'max_rent', 'type', 'sort']),
+            'available_types' => ListingPresenter::availableTypes(),
             'canBecomeLandlord' => $user->organizations()->wherePivot('is_owner', true)->exists() === false,
             'workspaces' => $this->workspaces($request, $user),
         ]);
@@ -79,6 +80,52 @@ class GuestController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Saved search removed.']);
 
         return back();
+    }
+
+    /**
+     * One public listing. The public scope is the gate: anything held back
+     * or unpublished 404s instead of leaking through the id.
+     */
+    public function show(int $unit): Response
+    {
+        $listing = Unit::query()
+            ->publiclyListed()
+            ->with(['property:id,name,city,organization_id', 'property.organization:id,name,settings,created_at', 'media'])
+            ->findOrFail($unit);
+
+        $organization = $listing->property->organization;
+
+        return Inertia::render('guest/listing', [
+            'unit' => [
+                'id' => $listing->id,
+                'name' => $listing->name,
+                'type' => $listing->type,
+                'monthly_rent' => $listing->monthly_rent,
+                'deposit' => $listing->deposit,
+                'currency' => $organization?->settings['currency'] ?? 'KES',
+                'photos' => $listing->photoPayload(),
+                'property_name' => $listing->property?->name,
+                'property_city' => $listing->property?->city,
+                'organization_name' => $organization?->name,
+                'landlord_since' => $organization?->created_at?->year,
+                'trust' => $listing->trustBadges(),
+            ],
+        ]);
+    }
+
+    /**
+     * The signed-in user's own leases for the "my leases" card, or an empty
+     * collection for pure searchers with no linked person.
+     *
+     * @return Collection<int, Lease>
+     */
+    private function leasesFor(User $user): Collection
+    {
+        if (! $user->person_id || ! ($person = Person::find($user->person_id))) {
+            return collect();
+        }
+
+        return Lease::forPerson($person)->with(['property:id,name', 'unit:id,name'])->orderByDesc('starts_at')->get();
     }
 
     /**

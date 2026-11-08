@@ -44,3 +44,67 @@ test('the guest home hides workspaces from users without memberships', function 
         ->assertOk()
         ->assertInertia(fn ($page) => $page->has('workspaces', 0));
 });
+
+test('the guest home shapes listings flat for cards', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = app(TenantService::class)->createOrganization(
+        owner: $owner,
+        name: 'Listed Estates',
+        plan: Plan::where('slug', 'free')->firstOrFail(),
+    );
+    $organization->update(['settings' => ['list_publicly' => true, 'currency' => 'KES']]);
+    $property = $organization->properties()->create([
+        'name' => 'List Court',
+        'slug' => 'list-court',
+        'status' => 'active',
+        'created_by' => $owner->id,
+    ]);
+    $property->units()->create([
+        'name' => 'A1',
+        'slug' => 'a1',
+        'status' => 'vacant',
+        'type' => '1BR',
+        'monthly_rent' => 35000,
+        'created_by' => $owner->id,
+    ]);
+
+    $this->actingAs($owner)
+        ->get(route('guest.home'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('units.data.0.name', 'A1')
+            ->where('units.data.0.property_name', 'List Court')
+            ->where('units.data.0.organization_name', 'Listed Estates')
+            ->where('units.data.0.currency', 'KES')
+            ->where('units.data.0.photo_url', null)
+            ->where('available_types', ['1BR'])
+        );
+});
+
+test('the guest home sorts cheapest first', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = app(TenantService::class)->createOrganization(
+        owner: $owner,
+        name: 'Sorted Estates',
+        plan: Plan::where('slug', 'free')->firstOrFail(),
+    );
+    $organization->update(['settings' => ['list_publicly' => true]]);
+    $property = $organization->properties()->create([
+        'name' => 'Sort Court',
+        'slug' => 'sort-court',
+        'status' => 'active',
+        'created_by' => $owner->id,
+    ]);
+    $property->units()->createMany([
+        ['name' => 'Pricy', 'slug' => 'pricy', 'status' => 'vacant', 'monthly_rent' => 90000, 'created_by' => $owner->id],
+        ['name' => 'Cheap', 'slug' => 'cheap', 'status' => 'vacant', 'monthly_rent' => 15000, 'created_by' => $owner->id],
+    ]);
+
+    $this->actingAs($owner)
+        ->get(route('guest.home', ['sort' => 'cheapest']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('units.data.0.name', 'Cheap')
+            ->where('units.data.1.name', 'Pricy')
+        );
+});
