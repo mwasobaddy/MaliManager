@@ -13,6 +13,7 @@ use App\Services\DashboardService;
 use App\Services\PropertyService;
 use App\Services\StaffService;
 use App\Support\AuthLanding;
+use App\Support\SetupProgress;
 use App\Support\TenancyContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -57,12 +58,14 @@ class PropertyController extends Controller
 
         $this->authorizePropertyMutation($request, $organization);
 
-        return Inertia::render('organisation/properties/create', [
+        $props = [
             'organization' => $organization->only('id', 'name', 'slug'),
-            'inSetup' => $request->boolean('setup'),
+            // Limits shown are the effective ones: paid limits inside trial
+            // or subscription, free limits after expiry — so the form never
+            // promises what enforcement will refuse.
             'plan' => [
-                'properties_limit' => $organization->plan?->properties_limit,
-                'units_limit' => $organization->plan?->units_limit,
+                'properties_limit' => $organization->effectivePlan()?->properties_limit,
+                'units_limit' => $organization->effectivePlan()?->units_limit,
             ],
             // The platform-wide catalog, not an organization-scoped one: the
             // catalog is central configuration. Only active types are offered —
@@ -82,7 +85,17 @@ class PropertyController extends Controller
             'canCreateProperty' => ($request->user()->isOwnerOf($organization)
                 || $request->user()->hasSubPermission($organization, SubPermissionKey::PropertyCreate))
                 && $this->canCreateProperty($organization),
-        ]);
+            'setupProgress' => SetupProgress::forOrganization($organization),
+        ];
+
+        // The setup funnel stays inside SetupLayout: the same form renders
+        // under `setup/property` (funnel chrome with the step panel) instead
+        // of `organisation/properties/create` (app sidebar), so adding the
+        // first asset never drops out of the onboarding flow.
+        return Inertia::render(
+            $request->boolean('setup') ? 'setup/property' : 'organisation/properties/create',
+            $props,
+        );
     }
 
     public function store(StorePropertyRequest $request, PropertyService $propertyService): RedirectResponse
@@ -146,14 +159,14 @@ class PropertyController extends Controller
             'year' => $year,
             'month' => $month,
             'plan' => [
-                'units_limit' => $property->organization->plan?->units_limit,
+                'units_limit' => $property->organization->effectivePlan()?->units_limit,
             ],
         ]);
     }
 
     private function canCreateProperty(Organization $organization): bool
     {
-        $limit = $organization->plan?->properties_limit;
+        $limit = $organization->effectivePlan()?->properties_limit;
 
         return $limit === null || $organization->properties()->count() < $limit;
     }

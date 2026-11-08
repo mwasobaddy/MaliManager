@@ -16,6 +16,7 @@ use App\Models\SubRole;
 use App\Services\LandParcelService;
 use App\Services\StaffService;
 use App\Support\AuthLanding;
+use App\Support\SetupProgress;
 use App\Support\TenancyContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -47,15 +48,23 @@ class LandParcelController extends Controller
     public function create(LandParcelFormRequest $request): Response
     {
         $organization = TenancyContext::organization();
-        $parcel = new LandParcel;
 
-        return Inertia::render('organisation/land-parcels/create', [
+        $props = [
             'organization' => $organization->only('id', 'name', 'slug'),
-            'inSetup' => $request->boolean('setup'),
             'managers' => $this->managers($organization),
             'parcel' => null,
             'selected_manager_ids' => [],
-        ]);
+            'setupProgress' => SetupProgress::forOrganization($organization),
+        ];
+
+        // The setup funnel stays inside SetupLayout: the same form renders
+        // under `setup/parcel` (funnel chrome with the step panel) instead
+        // of `organisation/land-parcels/create` (app sidebar), so adding
+        // the first asset never drops out of the onboarding flow.
+        return Inertia::render(
+            $request->boolean('setup') ? 'setup/parcel' : 'organisation/land-parcels/create',
+            $props,
+        );
     }
 
     public function store(StoreLandParcelRequest $request, LandParcelService $service): RedirectResponse
