@@ -63,7 +63,9 @@ class RentArrearsService extends Service
 
         $expected = bcmul($rent, (string) count($dueDates), 2);
         $outstanding = bcsub($expected, number_format((float) $paid, 2, '.', ''), 2);
-        $overdue = bccomp($outstanding, '0', 2) === 1 && $dueDates !== [];
+        // Only active leases can be overdue: ended ones keep their final
+        // balance for display, but nothing is due anymore.
+        $overdue = $lease->isActive() && bccomp($outstanding, '0', 2) === 1 && $dueDates !== [];
 
         $latest = $dueDates === [] ? null : end($dueDates);
 
@@ -71,7 +73,7 @@ class RentArrearsService extends Service
             'lease' => $lease,
             'expected' => $expected,
             'paid' => number_format((float) $paid, 2, '.', ''),
-            'outstanding' => $overdue ? $outstanding : '0.00',
+            'outstanding' => $outstanding,
             'overdue' => $overdue,
             'days_overdue' => $overdue && $latest !== null ? (int) $latest->diffInDays(now()) : 0,
             'latest_due_date' => $latest?->toDateString(),
@@ -115,6 +117,16 @@ class RentArrearsService extends Service
         }
 
         $today = now()->toImmutable()->startOfDay();
+
+        // A lease stops accruing at its end: periods on or past the end
+        // date belong to nobody.
+        $end = $lease->ends_at !== null
+            ? $lease->ends_at->toImmutable()->startOfDay()
+            : null;
+
+        if ($end !== null && $end->lessThan($today)) {
+            $today = $end;
+        }
         $start = $lease->starts_at->toImmutable()->startOfDay();
 
         if ($start->greaterThan($today)) {
@@ -122,7 +134,7 @@ class RentArrearsService extends Service
         }
 
         if (($lease->rent_frequency ?? 'monthly') === 'monthly') {
-            return $this->monthlyDueDates($lease, $start, $today);
+            return $this->monthlyDueDates($lease, $start, $today, $end);
         }
 
         $length = match ($lease->rent_frequency) {
@@ -135,7 +147,7 @@ class RentArrearsService extends Service
         $dates = [];
         $periodStart = $start;
 
-        while (! $periodStart->greaterThan($today)) {
+        while (! $periodStart->greaterThan($today) && ($end === null || $periodStart->lessThan($end))) {
             $dates[] = $periodStart;
             $periodStart = $periodStart->addDays($length);
         }
@@ -146,7 +158,7 @@ class RentArrearsService extends Service
     /**
      * @return list<CarbonImmutable>
      */
-    private function monthlyDueDates(Lease $lease, CarbonImmutable $start, CarbonImmutable $today): array
+    private function monthlyDueDates(Lease $lease, CarbonImmutable $start, CarbonImmutable $today, ?CarbonImmutable $end): array
     {
         $dates = [];
         $cursor = $start->startOfMonth();
@@ -156,7 +168,7 @@ class RentArrearsService extends Service
             $day = min($lease->dueDay(), $cursor->daysInMonth);
             $due = $cursor->setDay($day);
 
-            if (! $due->greaterThan($today) && ! $due->lessThan($start)) {
+            if (! $due->greaterThan($today) && ! $due->lessThan($start) && ($end === null || $due->lessThan($end))) {
                 $dates[] = $due;
             }
 
