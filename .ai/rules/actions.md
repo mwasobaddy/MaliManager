@@ -1,9 +1,11 @@
 ---
 paths:
-  - app/Actions/**
-  - app/Data/**
-  - app/Services/**
-  - app/Http/Controllers/**
+  - 'app/Actions/**'
+  - 'app/Data/**'
+  - 'app/Services/**'
+  - 'app/Http/Controllers/**'
+  - app/Services/NotificationService.php
+  - app/Services/RentArrearsService.php
 ---
 
 # Write logic lives in Actions
@@ -42,3 +44,9 @@ hold queries and aggregates.** See `references/migrating-services-to-actions.md`
 
 Tenancy is ambient. Pass `organizationId` in the DTO rather than letting an Action read the container
 context; keep tenant resolution in policies and middleware.
+
+## Notify via the recipient's channel preference
+Outbound user notifications (billing cron, future rent reminders) go through NotificationService, which routes by the RECIPIENT's users.notification_channel (email|sms) — never the sender's. SMS needs the recipient's phone; without one it falls back to email with a log line. New notifiers call the service; they do not pick channels.
+
+## Only received payments count toward arrears
+Rent balances are expected-vs-paid per lease: pending and refunded payments never reduce a balance, deposits live in their own model, and advance payments count (they cover dues). Money stays decimal via bcmath. The M-Pesa/card integration will write received automatically — no new payment status is needed for gateway money.

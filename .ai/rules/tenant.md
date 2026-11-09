@@ -40,3 +40,6 @@ PropertyController::index (in the has-property group) now also passes `land_parc
 ## Controllers catch Throwable and flash a toast
 
 Tenant write actions wrap mutations in try/catch, Log::error the failure with ids, and return back()->withErrors() so nothing fails silently. Success paths use Inertia::flash('toast', ['type' => 'success', 'message' => ...]) consumed by the use-flash-toast hook; the frontend delete dialog confirms the actor's current password (currentPasswordRules) before POSTing the soft-delete.
+
+## Refresh cached organization columns before gating on them
+TenancyContext::organization() returns stancl's cached relation per PHP process, so a column written by an earlier request in the same process (e.g. plan_confirmed_at set by a central POST, then read by a tenant GET in one test) stays invisible. Gates reading mutated columns must $organization->refresh() first; exists()/count() queries are already fresh and need nothing.
