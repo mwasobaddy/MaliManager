@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers\Tenant;
 
+use App\Actions\Leases\SendBulkRentReminders;
 use App\Actions\Leases\SendRentReminder;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Tenant\EndLeaseRequest;
 use App\Http\Requests\Tenant\LeaseIndexRequest;
+use App\Http\Requests\Tenant\RemindBulkLeasesRequest;
 use App\Http\Requests\Tenant\RemindLeaseRequest;
 use App\Http\Requests\Tenant\RenewalSuggestionRequest;
 use App\Models\Lease;
@@ -72,6 +74,7 @@ class LeaseController extends Controller
             'outstanding' => $balances[$lease->id]['outstanding'] ?? '0.00',
             'is_overdue' => $balances[$lease->id]['overdue'] ?? false,
             'days_overdue' => $balances[$lease->id]['days_overdue'] ?? 0,
+            'last_reminded_ago' => $lease->last_reminded_at?->diffForHumans(),
         ]);
 
         return Inertia::render('organisation/leases/index', [
@@ -110,6 +113,28 @@ class LeaseController extends Controller
         $remind->handle($lease, $request->user());
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Reminder sent.']);
+
+        return back();
+    }
+
+    /**
+     * Nudge several overdue leases at once. Per-lease failures (paid up
+     * since, reminded within 24h) collect as skips in the summary toast
+     * instead of aborting the batch.
+     */
+    public function remindBulk(RemindBulkLeasesRequest $request, Property $property, SendBulkRentReminders $bulk): RedirectResponse
+    {
+        $this->authorizePropertyAccess($request, $property);
+
+        $result = $bulk->handle($property, $request->user(), $request->validated('lease_ids'));
+
+        $sent = count($result['sent']);
+        $skipped = count($result['skipped']);
+
+        Inertia::flash('toast', [
+            'type' => $sent > 0 ? 'success' : 'warning',
+            'message' => "Sent {$sent} reminder".($sent === 1 ? '' : 's').($skipped > 0 ? ", skipped {$skipped}" : '').'.',
+        ]);
 
         return back();
     }

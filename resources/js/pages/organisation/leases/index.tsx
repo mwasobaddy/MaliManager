@@ -8,6 +8,7 @@ import { OverlayFooter } from '@/components/overlay-footer';
 import PasswordInput from '@/components/password-input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     Dialog,
     DialogContent,
@@ -29,6 +30,7 @@ import {
     end as endLease,
     index as leasesIndex,
     remind as remindLease,
+    remindBulk as remindBulkLeases,
     renewalSuggestion,
 } from '@/routes/tenant/leases';
 import { agreement as agreementPrintRoute } from '@/routes/tenant/occupants';
@@ -49,6 +51,7 @@ type LeaseRow = {
     outstanding: string;
     is_overdue: boolean;
     days_overdue: number;
+    last_reminded_ago: string | null;
     has_agreement_text: boolean;
     has_agreement_document: boolean;
 };
@@ -77,6 +80,7 @@ export default function LeasesIndex({ leases, filters }: Props) {
 
     const [status, setStatus] = useState(filters.status);
     const [overdueOnly, setOverdueOnly] = useState(filters.overdue);
+    const [selected, setSelected] = useState<number[]>([]);
     const [endTarget, setEndTarget] = useState<LeaseRow | null>(null);
     const [passwordError, setPasswordError] = useState('');
     const [suggestTarget, setSuggestTarget] = useState<LeaseRow | null>(null);
@@ -149,6 +153,27 @@ export default function LeasesIndex({ leases, filters }: Props) {
         );
     };
 
+    const toggleSelected = (id: number) => {
+        setSelected((prev) =>
+            prev.includes(id)
+                ? prev.filter((selectedId) => selectedId !== id)
+                : [...prev, id],
+        );
+    };
+
+    const sendBulkReminders = () => {
+        router.post(
+            remindBulkLeases({
+                property: context?.property?.slug ?? '',
+            }).url,
+            { lease_ids: selected },
+            {
+                preserveScroll: true,
+                onSuccess: () => setSelected([]),
+            },
+        );
+    };
+
     const applyStatusFilter = (value: string) => {
         const expiring = value === '__expiring';
         const overdue = value === '__overdue';
@@ -197,6 +222,26 @@ export default function LeasesIndex({ leases, filters }: Props) {
                     </Select>
                 </div>
 
+                {canRemind && selected.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-3 rounded-xl border border-input bg-card px-4 py-3">
+                        <p className="text-sm text-muted-foreground">
+                            {selected.length}{' '}
+                            {selected.length === 1 ? 'lease' : 'leases'}{' '}
+                            selected
+                        </p>
+                        <Button size="sm" onClick={sendBulkReminders}>
+                            Send reminders
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setSelected([])}
+                        >
+                            Clear
+                        </Button>
+                    </div>
+                )}
+
                 {leases.data.length === 0 ? (
                     <p className="text-sm text-muted-foreground">
                         No leases found. Assign an occupant to a unit to create
@@ -207,6 +252,13 @@ export default function LeasesIndex({ leases, filters }: Props) {
                         <table className="w-full text-sm">
                             <thead>
                                 <tr className="border-b text-left text-xs tracking-wide text-muted-foreground uppercase">
+                                    {canRemind && (
+                                        <th className="w-8 px-3 py-2">
+                                            <span className="sr-only">
+                                                Select
+                                            </span>
+                                        </th>
+                                    )}
                                     <th className="px-3 py-2">Unit</th>
                                     <th className="px-3 py-2">Occupant</th>
                                     <th className="px-3 py-2">Rent</th>
@@ -225,6 +277,20 @@ export default function LeasesIndex({ leases, filters }: Props) {
                                         key={lease.id}
                                         className="border-b last:border-0"
                                     >
+                                        {canRemind && (
+                                            <td className="px-3 py-2">
+                                                <Checkbox
+                                                    checked={selected.includes(
+                                                        lease.id,
+                                                    )}
+                                                    disabled={!lease.is_overdue}
+                                                    onCheckedChange={() =>
+                                                        toggleSelected(lease.id)
+                                                    }
+                                                    aria-label={`Select ${lease.occupant_name || 'lease'} for reminders`}
+                                                />
+                                            </td>
+                                        )}
                                         <td className="px-3 py-2 font-medium">
                                             {lease.unit_name}
                                         </td>
@@ -274,17 +340,27 @@ export default function LeasesIndex({ leases, filters }: Props) {
                                             <div className="flex justify-end gap-1">
                                                 {canRemind &&
                                                     lease.is_overdue && (
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            onClick={() =>
-                                                                sendReminder(
-                                                                    lease,
-                                                                )
-                                                            }
-                                                        >
-                                                            Remind
-                                                        </Button>
+                                                        <div className="flex flex-col items-end gap-0.5">
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                onClick={() =>
+                                                                    sendReminder(
+                                                                        lease,
+                                                                    )
+                                                                }
+                                                            >
+                                                                Remind
+                                                            </Button>
+                                                            {lease.last_reminded_ago && (
+                                                                <span className="pr-2 text-xs text-muted-foreground">
+                                                                    Reminded{' '}
+                                                                    {
+                                                                        lease.last_reminded_ago
+                                                                    }
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                     )}
                                                 {lease.expiring_soon && (
                                                     <Button

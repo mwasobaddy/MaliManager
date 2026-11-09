@@ -264,6 +264,15 @@ test('an owner can remind an overdue lease on the occupant channel', function ()
     Mail::assertSent(RentReminderMail::class, fn ($mail) => $mail->hasTo('tenant@arrears.test'));
     expect($lease->refresh()->last_reminded_at)->not->toBeNull();
 
+    $index = $this->actingAs($owner)
+        ->get(arrearsTenantUrl($organization, "/{$property->slug}/leases"))
+        ->assertOk();
+
+    $row = $index->viewData('page')['props']['leases']['data'][0];
+
+    expect($row['is_overdue'])->toBeTrue()
+        ->and($row['last_reminded_ago'])->toBeString()->not->toBe('');
+
     // Throttled within 24 hours.
     $this->actingAs($owner)
         ->post(arrearsTenantUrl($organization, "/{$property->slug}/leases/{$lease->id}/remind"))
@@ -354,4 +363,110 @@ test('staff cannot update payment details', function () {
 
     assertErrorToast();
     expect($organization->refresh()->paymentDetails()['paybill_number'])->toBeNull();
+});
+
+test('an owner can send bulk reminders with per-lease skips', function () {
+    Mail::fake();
+    $this->travelTo('2026-11-10');
+
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createArrearsOrganization($owner);
+    [$property, $unitA] = makePropertyWithUnit($organization, $owner);
+    $unitB = $property->units()->create(['name' => 'B2', 'status' => 'vacant', 'created_by' => $owner->id]);
+    $unitC = $property->units()->create(['name' => 'C3', 'status' => 'vacant', 'created_by' => $owner->id]);
+
+    $overdueA = makeLease($organization, $property, $unitA, Person::factory()->create(), ['rent_due_day' => 5]);
+    $overdueB = makeLease($organization, $property, $unitB, Person::factory()->create(), ['rent_due_day' => 5]);
+
+    // Paid up: counts as a skip, not a failure.
+    $paidUp = makeLease($organization, $property, $unitC, Person::factory()->create(), ['rent_due_day' => 5]);
+    $paidUp->payments()->create([
+        'organization_id' => $organization->id,
+        'amount' => 999999, 'currency' => 'KES', 'status' => 'received', 'paid_on' => '2026-11-01',
+    ]);
+
+    $this->actingAs($owner)
+        ->post(arrearsTenantUrl($organization, "/{$property->slug}/leases/remind-bulk"), [
+            'lease_ids' => [$overdueA->id, $overdueB->id, $paidUp->id],
+        ])->assertRedirect();
+
+    Mail::assertSent(RentReminderMail::class, 2);
+    expect($overdueA->refresh()->last_reminded_at)->not->toBeNull()
+        ->and($overdueB->refresh()->last_reminded_at)->not->toBeNull()
+        ->and($paidUp->refresh()->last_reminded_at)->toBeNull();
+});
+
+test('bulk reminders refuse foreign lease ids', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createArrearsOrganization($owner);
+    [$property, $unit] = makePropertyWithUnit($organization, $owner);
+    $lease = makeLease($organization, $property, $unit, Person::factory()->create());
+
+    $other = createArrearsOrganization(User::factory()->create(['onboarded_at' => now()]), 'Other Estates');
+    [$otherProperty, $otherUnit] = makePropertyWithUnit($other, $other->users()->wherePivot('is_owner', true)->first());
+    $foreign = makeLease($other, $otherProperty, $otherUnit, Person::factory()->create());
+
+    $this->actingAs($owner)
+        ->post(arrearsTenantUrl($organization, "/{$property->slug}/leases/remind-bulk"), [
+            'lease_ids' => [$lease->id, $foreign->id],
+        ])->assertRedirect();
+
+    assertErrorToast();
+    expect($lease->refresh()->last_reminded_at)->toBeNull();
+});
+
+test('bulk reminders require a non-empty selection', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createArrearsOrganization($owner);
+    [$property] = makePropertyWithUnit($organization, $owner);
+
+    $this->actingAs($owner)
+        ->post(arrearsTenantUrl($organization, "/{$property->slug}/leases/remind-bulk"), [
+            'lease_ids' => [],
+        ])->assertInvalid('lease_ids');
+});
+
+test('staff without lease permission are redirected from bulk reminders', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createArrearsOrganization($owner);
+    [$property, $unit] = makePropertyWithUnit($organization, $owner);
+    $lease = makeLease($organization, $property, $unit, Person::factory()->create());
+
+    $staff = User::factory()->create(['onboarded_at' => now()]);
+    $organization->users()->attach($staff->id, [
+        'is_owner' => false,
+        'sub_role_id' => $organization->subRoles()->where('slug', 'agent')->first()->id,
+        'status' => 'active',
+    ]);
+
+    $this->actingAs($staff)
+        ->post(arrearsTenantUrl($organization, "/{$property->slug}/leases/remind-bulk"), [
+            'lease_ids' => [$lease->id],
+        ])->assertRedirect();
+
+    assertErrorToast();
+    expect($lease->refresh()->last_reminded_at)->toBeNull();
+});
+
+test('ended leases keep a final balance but are never overdue', function () {
+    $this->travelTo('2026-11-10');
+
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createArrearsOrganization($owner);
+    [$property, $unit] = makePropertyWithUnit($organization, $owner);
+
+    $lease = makeLease($organization, $property, $unit, Person::factory()->create(), [
+        'starts_at' => '2026-08-01',
+        'ends_at' => '2026-09-15',
+        'status' => 'ended',
+        'rent_due_day' => 5,
+    ]);
+
+    $balance = app(RentArrearsService::class)->balanceFor($lease);
+
+    // Aug 5 and Sep 5 only: nothing accrues past the end date. The final
+    // balance still reports, but an ended lease is never overdue.
+    expect($balance['expected'])->toBe('20000.00')
+        ->and($balance['outstanding'])->toBe('20000.00')
+        ->and($balance['overdue'])->toBeFalse();
 });
