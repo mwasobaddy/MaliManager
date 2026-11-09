@@ -19,6 +19,10 @@ return new class extends Migration
             $table->string('name');
             $table->string('email')->unique();
             $table->string('phone')->nullable();
+            // How this user wants to be notified (billing reminders, rent
+            // reminders): email or sms. Chosen during onboarding, editable
+            // in profile settings. Email is the default until SMS lands.
+            $table->string('notification_channel')->default('email');
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password')->nullable();
             $table->text('two_factor_secret')->nullable();

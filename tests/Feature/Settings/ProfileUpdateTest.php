@@ -83,3 +83,16 @@ test('correct password must be provided to delete account', function () {
 
     expect($user->fresh())->not->toBeNull();
 });
+
+test('reminder channel can be changed in profile settings', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->patch(route('profile.update'), [
+            'name' => $user->name,
+            'email' => $user->email,
+            'notification_channel' => 'sms',
+        ])->assertSessionHasNoErrors();
+
+    expect($user->refresh()->notification_channel)->toBe('sms');
+});

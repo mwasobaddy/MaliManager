@@ -18,6 +18,7 @@ trait ProfileValidationRules
         return [
             'name' => $this->nameRules(),
             'email' => $this->emailRules($userId),
+            'notification_channel' => ['sometimes', 'string', Rule::in(['email', 'sms'])],
         ];
     }
 

@@ -1,5 +1,6 @@
 import { Form, Head, usePage } from '@inertiajs/react';
 import { Link } from '@inertiajs/react';
+import { useState } from 'react';
 import ProfileController from '@/actions/App/Http/Controllers/Settings/ProfileController';
 import DeleteUser from '@/components/delete-user';
 import Heading from '@/components/heading';
@@ -7,6 +8,13 @@ import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { edit } from '@/routes/profile';
 import { send } from '@/routes/verification';
 import type { Auth } from '@/types';
@@ -23,6 +31,11 @@ export default function Profile({
     status?: string;
 }) {
     const { auth } = usePage<PageProps>().props;
+    const [channel, setChannel] = useState(
+        typeof auth.user.notification_channel === 'string'
+            ? auth.user.notification_channel
+            : 'email',
+    );
 
     return (
         <>
@@ -34,7 +47,7 @@ export default function Profile({
                 <Heading
                     variant="small"
                     title="Profile"
-                    description="Update your name and email address"
+                    description="Update your name, email address and reminder channel"
                 />
 
                 <Form
@@ -109,6 +122,46 @@ export default function Profile({
                                         )}
                                     </div>
                                 )}
+
+                            <div className="grid gap-2">
+                                <Label htmlFor="notification_channel">
+                                    Reminder channel
+                                </Label>
+
+                                <input
+                                    type="hidden"
+                                    name="notification_channel"
+                                    value={channel}
+                                />
+                                <Select
+                                    value={channel}
+                                    onValueChange={setChannel}
+                                >
+                                    <SelectTrigger
+                                        id="notification_channel"
+                                        className="mt-1 w-full"
+                                    >
+                                        <SelectValue placeholder="How reminders reach you" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="email">
+                                            Email
+                                        </SelectItem>
+                                        <SelectItem value="sms">
+                                            SMS
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <p className="text-xs text-muted-foreground">
+                                    Billing and rent reminders arrive on this
+                                    channel.
+                                </p>
+
+                                <InputError
+                                    className="mt-2"
+                                    message={errors.notification_channel}
+                                />
+                            </div>
 
                             <div className="flex items-center gap-4">
                                 <Button

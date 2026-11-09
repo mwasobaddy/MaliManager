@@ -1,16 +1,20 @@
 <?php
 
+use App\Mail\BillingReminderMail;
 use App\Models\Organization;
 use App\Models\PaymentAttempt;
 use App\Models\Plan;
 use App\Models\User;
 use App\Services\PaystackClient;
+use App\Services\SmsClient;
 use App\Services\TenantService;
 use Botnetdobbs\Mpesa\Contracts\Client;
 use Botnetdobbs\Mpesa\Contracts\Response;
 use Database\Seeders\PlansSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Mail;
 
 uses(RefreshDatabase::class);
 
@@ -560,4 +564,81 @@ test('the billing page shows status to owners and refuses staff', function () {
     $this->actingAs($staff)
         ->get(billingTenantUrl($organization, '/billing'))
         ->assertRedirect(billingTenantUrl($organization, '/properties'));
+});
+
+class FakeSmsClient extends SmsClient
+{
+    /** @var array<int, array{to: string, message: string}> */
+    public array $sent = [];
+
+    public function __construct() {}
+
+    public function send(string $to, string $message): array
+    {
+        $this->sent[] = ['to' => $to, 'message' => $message];
+
+        return ['status' => 'success', 'data' => null];
+    }
+}
+
+function bindFakeSms(): FakeSmsClient
+{
+    $fake = new FakeSmsClient;
+
+    app()->bind(SmsClient::class, fn () => $fake);
+
+    return $fake;
+}
+
+test('billing reminders email owners whose trial is ending', function () {
+    Mail::fake();
+    bindFakeSms();
+
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createBillingOrganization($owner, 'starter');
+    $organization->update(['trial_ends_at' => now()->addDays(2)]);
+
+    Artisan::call('billing:remind');
+
+    Mail::assertSent(BillingReminderMail::class, fn ($mail) => $mail->hasTo($owner->email));
+});
+
+test('billing reminders text owners who prefer sms', function () {
+    Mail::fake();
+    $fake = bindFakeSms();
+
+    $owner = User::factory()->create([
+        'onboarded_at' => now(),
+        'phone' => '+254712345678',
+        'notification_channel' => 'sms',
+    ]);
+    $organization = createBillingOrganization($owner, 'starter');
+    $organization->update(['trial_ends_at' => now()->subDay()]);
+
+    Artisan::call('billing:remind');
+
+    expect($fake->sent)->toHaveCount(1)
+        ->and($fake->sent[0]['to'])->toBe('+254712345678');
+    Mail::assertNotSent(BillingReminderMail::class);
+});
+
+test('billing reminders skip subscribed, free and distant-trial organizations', function () {
+    Mail::fake();
+    $fake = bindFakeSms();
+
+    $subscribed = User::factory()->create(['onboarded_at' => now()]);
+    $subscribedOrg = createBillingOrganization($subscribed, 'starter');
+    $subscribedOrg->update(['subscription_ends_at' => now()->addMonth()]);
+
+    $free = User::factory()->create(['onboarded_at' => now()]);
+    createBillingOrganization($free, 'free');
+
+    $early = User::factory()->create(['onboarded_at' => now()]);
+    $earlyOrg = createBillingOrganization($early, 'starter');
+    $earlyOrg->update(['trial_ends_at' => now()->addDays(20)]);
+
+    Artisan::call('billing:remind');
+
+    Mail::assertNotSent(BillingReminderMail::class);
+    expect($fake->sent)->toBeEmpty();
 });

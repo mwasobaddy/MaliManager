@@ -29,6 +29,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property string $name
  * @property string $email
  * @property string|null $phone
+ * @property string $notification_channel
  * @property string $status
  * @property string|null $provider
  * @property string|null $provider_id
@@ -42,7 +43,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['name', 'email', 'phone', 'password', 'person_id', 'status', 'provider', 'provider_id', 'onboarded_at', 'created_by'])]
+#[Fillable(['name', 'email', 'phone', 'notification_channel', 'password', 'person_id', 'status', 'provider', 'provider_id', 'onboarded_at', 'created_by'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable implements PasskeyUser
 {
@@ -85,6 +86,15 @@ class User extends Authenticatable implements PasskeyUser
             ->using(OrganizationUser::class)
             ->withPivot('sub_role_id', 'is_owner', 'status')
             ->withTimestamps();
+    }
+
+    /**
+     * Whether billing and rent reminders reach this user by SMS rather
+     * than email. Chosen during onboarding, editable in settings.
+     */
+    public function prefersSms(): bool
+    {
+        return $this->notification_channel === 'sms';
     }
 
     /**

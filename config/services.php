@@ -49,4 +49,10 @@ return [
         'secret' => env('PAYSTACK_SECRET_KEY'),
     ],
 
+    'africastalking' => [
+        'username' => env('AT_USERNAME', 'sandbox'),
+        'key' => env('AT_API_KEY'),
+        'sender_id' => env('AT_SENDER_ID'),
+    ],
+
 ];

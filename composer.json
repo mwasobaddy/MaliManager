@@ -10,6 +10,7 @@
     "license": "MIT",
     "require": {
         "php": "^8.3",
+        "africastalking/africastalking": "^3.0",
         "botnetdobbs/laravel-mpesa-sdk": "^2.0",
         "digikraaft/paystack-php": "^2.2",
         "inertiajs/inertia-laravel": "^3.0",
