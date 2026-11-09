@@ -483,10 +483,21 @@ export default function GuestHome({
                         </CardHeader>
                         <CardContent>
                             {savedSearches.length === 0 ? (
-                                <p className="text-sm text-muted-foreground">
-                                    Nothing saved yet. Run a search above and
-                                    give it a name.
-                                </p>
+                                <div className="space-y-2">
+                                    <p className="text-sm text-muted-foreground">
+                                        Nothing saved yet. Run a search above
+                                        and give it a name.
+                                    </p>
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            setOverlayParam('save-search', '1')
+                                        }
+                                        className="text-sm font-medium text-accent-text hover:text-accent-text-hover"
+                                    >
+                                        Save the current search
+                                    </button>
+                                </div>
                             ) : (
                                 <ul className="space-y-2">
                                     {savedSearches.map((search) => (
