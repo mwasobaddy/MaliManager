@@ -31,6 +31,7 @@ class StoreOccupantRequest extends FormRequest
             'lease.starts_at' => ['nullable', 'date'],
             'lease.rent_amount' => ['nullable', 'numeric', 'min:0'],
             'lease.rent_frequency' => ['nullable', 'string', Rule::in(['daily', 'weekly', 'monthly', 'yearly'])],
+            'lease.rent_due_day' => ['nullable', 'integer', 'min:1', 'max:31'],
             'lease.deposit' => ['nullable', 'numeric', 'min:0'],
             'lease.currency' => ['nullable', 'string', 'size:3'],
             'lease.agreement_text' => ['nullable', 'string'],

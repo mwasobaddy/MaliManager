@@ -36,6 +36,7 @@ class LeaseIndexRequest extends FormRequest
         return [
             'status' => ['nullable', Rule::in(['active', 'ended'])],
             'expiring' => ['nullable', 'boolean'],
+            'overdue' => ['nullable', 'boolean'],
         ];
     }
 }

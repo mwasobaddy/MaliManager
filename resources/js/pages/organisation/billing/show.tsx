@@ -12,8 +12,12 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { show } from '@/routes/tenant/billing';
-import { card as payByCard, mpesa as payByMpesa } from '@/routes/tenant/billing';
+import {
+    card as payByCard,
+    mpesa as payByMpesa,
+    paymentDetails,
+    show,
+} from '@/routes/tenant/billing';
 
 type BillingStatus = {
     plan: {
@@ -39,6 +43,12 @@ type Props = {
         slug: string;
     };
     billing: BillingStatus;
+    payment_details: {
+        paybill_number: string | null;
+        account_reference: string | null;
+        till_number: string | null;
+        notes: string | null;
+    };
 };
 
 function formatPrice(price: number, currency: string) {
@@ -48,6 +58,7 @@ function formatPrice(price: number, currency: string) {
 export default function BillingShow({
     organization,
     billing,
+    payment_details,
 }: Props) {
     const [phone, setPhone] = useState('');
     const payable = billing.plan !== null && billing.plan.price > 0;
@@ -114,6 +125,124 @@ export default function BillingShow({
                     </CardContent>
                 </Card>
 
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-base font-medium">
+                            How tenants pay you
+                        </CardTitle>
+                        <CardDescription>
+                            Shown on the tenant rentals page and appended to
+                            rent reminders. Everything optional.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Form
+                            {...paymentDetails.form()}
+                            className="grid gap-4"
+                            options={{ preserveScroll: true }}
+                        >
+                            {({ processing, errors }) => (
+                                <>
+                                    <div className="grid gap-4 md:grid-cols-2">
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="paybill_number">
+                                                M-Pesa paybill number
+                                            </Label>
+                                            <Input
+                                                id="paybill_number"
+                                                name="paybill_number"
+                                                type="text"
+                                                inputMode="numeric"
+                                                autoComplete="off"
+                                                placeholder="522522"
+                                                defaultValue={
+                                                    payment_details.paybill_number ??
+                                                    ''
+                                                }
+                                            />
+                                            <InputError
+                                                message={errors.paybill_number}
+                                            />
+                                        </div>
+
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="account_reference">
+                                                Account reference
+                                            </Label>
+                                            <Input
+                                                id="account_reference"
+                                                name="account_reference"
+                                                type="text"
+                                                autoComplete="off"
+                                                placeholder="UNIT-A1"
+                                                defaultValue={
+                                                    payment_details.account_reference ??
+                                                    ''
+                                                }
+                                            />
+                                            <InputError
+                                                message={
+                                                    errors.account_reference
+                                                }
+                                            />
+                                        </div>
+
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="till_number">
+                                                M-Pesa till number
+                                            </Label>
+                                            <Input
+                                                id="till_number"
+                                                name="till_number"
+                                                type="text"
+                                                inputMode="numeric"
+                                                autoComplete="off"
+                                                placeholder="555666"
+                                                defaultValue={
+                                                    payment_details.till_number ??
+                                                    ''
+                                                }
+                                            />
+                                            <InputError
+                                                message={errors.till_number}
+                                            />
+                                        </div>
+
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="notes">
+                                                Notes for tenants
+                                            </Label>
+                                            <Input
+                                                id="notes"
+                                                name="notes"
+                                                type="text"
+                                                autoComplete="off"
+                                                placeholder="Rent due on the 5th"
+                                                defaultValue={
+                                                    payment_details.notes ?? ''
+                                                }
+                                            />
+                                            <InputError
+                                                message={errors.notes}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <Button
+                                            type="submit"
+                                            disabled={processing}
+                                        >
+                                            {processing
+                                                ? 'Saving…'
+                                                : 'Save payment details'}
+                                        </Button>
+                                    </div>
+                                </>
+                            )}
+                        </Form>
+                    </CardContent>
+                </Card>
+
                 {payable ? (
                     <>
                         <Card>
@@ -130,8 +259,8 @@ export default function BillingShow({
                                 {billing.pending_attempt?.gateway ===
                                 'mpesa' ? (
                                     <p className="text-sm text-muted-foreground">
-                                        A payment request is already on its
-                                        way — check your phone for the M-Pesa
+                                        A payment request is already on its way
+                                        — check your phone for the M-Pesa
                                         prompt.
                                     </p>
                                 ) : (

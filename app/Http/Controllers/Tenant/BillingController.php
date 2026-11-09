@@ -5,9 +5,11 @@ namespace App\Http\Controllers\Tenant;
 use App\Actions\Billing\ConfirmCardPayment;
 use App\Actions\Billing\InitializeCardPayment;
 use App\Actions\Billing\InitiateMpesaPayment;
+use App\Actions\Billing\UpdatePaymentDetails;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Tenant\InitiateCardPaymentRequest;
 use App\Http\Requests\Tenant\InitiateMpesaPaymentRequest;
+use App\Http\Requests\Tenant\UpdatePaymentDetailsRequest;
 use App\Models\Organization;
 use App\Services\BillingService;
 use App\Support\TenancyContext;
@@ -35,6 +37,7 @@ class BillingController extends Controller
         return Inertia::render('organisation/billing/show', [
             'organization' => $organization->only('id', 'name', 'slug'),
             'billing' => $billing->statusFor($organization),
+            'payment_details' => $organization->paymentDetails(),
         ]);
     }
 
@@ -94,6 +97,25 @@ class BillingController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Payment received. Your subscription is active.']);
 
         return redirect()->route('tenant.billing.show');
+    }
+
+    public function updatePaymentDetails(UpdatePaymentDetailsRequest $request): RedirectResponse
+    {
+        $organization = $this->ownedOrganization();
+
+        if ($organization instanceof RedirectResponse) {
+            return $organization;
+        }
+
+        app(UpdatePaymentDetails::class)->handle(
+            $organization,
+            $request->user(),
+            $request->validated(),
+        );
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Payment details updated. Tenants see them on their rentals page.']);
+
+        return back();
     }
 
     /**

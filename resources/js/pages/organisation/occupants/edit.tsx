@@ -59,6 +59,7 @@ type Lease = {
     starts_at: string | null;
     rent_amount: number | null;
     rent_frequency: string | null;
+    rent_due_day: number | null;
     deposit: number | null;
     currency: string | null;
     agreement_text: string | null;
@@ -365,6 +366,34 @@ export default function OccupantEdit({
                                         <InputError
                                             message={
                                                 errors['lease.rent_amount']
+                                            }
+                                        />
+                                    </div>
+
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="lease.rent_due_day">
+                                            Rent due day
+                                        </Label>
+                                        <Input
+                                            id="lease.rent_due_day"
+                                            name="lease[rent_due_day]"
+                                            type="number"
+                                            min="1"
+                                            max="31"
+                                            placeholder="5"
+                                            defaultValue={
+                                                occupant.lease?.rent_due_day ??
+                                                ''
+                                            }
+                                        />
+                                        <p className="text-xs text-muted-foreground">
+                                            Day of the month rent falls due.
+                                            Empty means the lease start
+                                            anniversary.
+                                        </p>
+                                        <InputError
+                                            message={
+                                                errors['lease.rent_due_day']
                                             }
                                         />
                                     </div>

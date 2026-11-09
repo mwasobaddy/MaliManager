@@ -28,6 +28,7 @@ import { page as draftingPage } from '@/routes/tenant/drafting';
 import {
     end as endLease,
     index as leasesIndex,
+    remind as remindLease,
     renewalSuggestion,
 } from '@/routes/tenant/leases';
 import { agreement as agreementPrintRoute } from '@/routes/tenant/occupants';
@@ -45,6 +46,9 @@ type LeaseRow = {
     is_active: boolean;
     property_name?: string | null;
     expiring_soon?: boolean;
+    outstanding: string;
+    is_overdue: boolean;
+    days_overdue: number;
     has_agreement_text: boolean;
     has_agreement_document: boolean;
 };
@@ -56,7 +60,7 @@ type Props = {
         last_page: number;
         links?: unknown;
     };
-    filters: { status: string };
+    filters: { status: string; overdue: boolean };
 };
 
 const statusStyles: Record<string, string> = {
@@ -68,9 +72,11 @@ export default function LeasesIndex({ leases, filters }: Props) {
     const { context } = usePage().props;
     const permissions = context?.permissions ?? [];
     const canEndLease = permissions.includes('lease.delete');
+    const canRemind = permissions.includes('lease.manage');
     const aiEnabled = usePage().props.auth?.ai_enabled ?? false;
 
     const [status, setStatus] = useState(filters.status);
+    const [overdueOnly, setOverdueOnly] = useState(filters.overdue);
     const [endTarget, setEndTarget] = useState<LeaseRow | null>(null);
     const [passwordError, setPasswordError] = useState('');
     const [suggestTarget, setSuggestTarget] = useState<LeaseRow | null>(null);
@@ -132,18 +138,32 @@ export default function LeasesIndex({ leases, filters }: Props) {
         );
     };
 
+    const sendReminder = (lease: LeaseRow) => {
+        router.post(
+            remindLease({
+                property: context?.property?.slug ?? '',
+                lease: lease.id,
+            }).url,
+            {},
+            { preserveScroll: true },
+        );
+    };
+
     const applyStatusFilter = (value: string) => {
         const expiring = value === '__expiring';
+        const overdue = value === '__overdue';
 
-        setStatus(expiring ? 'active' : value);
+        setStatus(expiring || overdue ? 'active' : value);
+        setOverdueOnly(overdue);
 
         router.get(
             leasesIndex.url(
                 { property: context?.property?.slug ?? '' },
                 {
                     query: {
-                        status: expiring ? 'active' : value,
+                        status: expiring || overdue ? 'active' : value,
                         expiring: expiring ? '1' : undefined,
+                        overdue: overdue ? '1' : undefined,
                     },
                 },
             ),
@@ -162,7 +182,7 @@ export default function LeasesIndex({ leases, filters }: Props) {
                         description="Every lease in this property, with printable agreements."
                     />
                     <Select
-                        value={status || 'all'}
+                        value={overdueOnly ? '__overdue' : status || 'all'}
                         onValueChange={applyStatusFilter}
                     >
                         <SelectTrigger className="w-40">
@@ -172,6 +192,7 @@ export default function LeasesIndex({ leases, filters }: Props) {
                             <SelectItem value="all">All statuses</SelectItem>
                             <SelectItem value="active">Active</SelectItem>
                             <SelectItem value="ended">Ended</SelectItem>
+                            <SelectItem value="__overdue">Overdue</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
@@ -189,6 +210,7 @@ export default function LeasesIndex({ leases, filters }: Props) {
                                     <th className="px-3 py-2">Unit</th>
                                     <th className="px-3 py-2">Occupant</th>
                                     <th className="px-3 py-2">Rent</th>
+                                    <th className="px-3 py-2">Balance</th>
                                     <th className="px-3 py-2">Start</th>
                                     <th className="px-3 py-2">End</th>
                                     <th className="px-3 py-2">Status</th>
@@ -214,6 +236,11 @@ export default function LeasesIndex({ leases, filters }: Props) {
                                                 ? `${lease.rent_amount} ${lease.currency ?? ''}`
                                                 : '—'}
                                         </td>
+                                        <td className="px-3 py-2 tabular-nums">
+                                            {lease.outstanding !== '0.00'
+                                                ? `${lease.outstanding} ${lease.currency ?? ''}`
+                                                : '—'}
+                                        </td>
                                         <td className="px-3 py-2">
                                             {lease.starts_at ?? '—'}
                                         </td>
@@ -231,9 +258,34 @@ export default function LeasesIndex({ leases, filters }: Props) {
                                                     Expiring soon
                                                 </Badge>
                                             )}
+                                            {lease.is_overdue && (
+                                                <Badge
+                                                    variant="danger"
+                                                    className="ml-1"
+                                                >
+                                                    Overdue
+                                                    {lease.days_overdue > 0
+                                                        ? ` ${lease.days_overdue}d`
+                                                        : ''}
+                                                </Badge>
+                                            )}
                                         </td>
                                         <td className="px-3 py-2">
                                             <div className="flex justify-end gap-1">
+                                                {canRemind &&
+                                                    lease.is_overdue && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() =>
+                                                                sendReminder(
+                                                                    lease,
+                                                                )
+                                                            }
+                                                        >
+                                                            Remind
+                                                        </Button>
+                                                    )}
                                                 {lease.expiring_soon && (
                                                     <Button
                                                         asChild
@@ -333,20 +385,20 @@ export default function LeasesIndex({ leases, filters }: Props) {
                 )}
 
                 <Pagination
-            currentPage={leases.current_page}
-            lastPage={leases.last_page}
-            label="leases"
-            onChange={(page) =>
-                router.get(
-                    leasesIndex.url(
-                        { property: context?.property?.slug ?? '' },
-                        { query: { status, page } },
-                    ),
-                    {},
-                    { preserveScroll: true },
-                )
-            }
-        />
+                    currentPage={leases.current_page}
+                    lastPage={leases.last_page}
+                    label="leases"
+                    onChange={(page) =>
+                        router.get(
+                            leasesIndex.url(
+                                { property: context?.property?.slug ?? '' },
+                                { query: { status, page } },
+                            ),
+                            {},
+                            { preserveScroll: true },
+                        )
+                    }
+                />
             </div>
 
             <Dialog
@@ -457,10 +509,7 @@ export default function LeasesIndex({ leases, filters }: Props) {
                     )}
 
                     <DialogFooter>
-                        <OverlayFooter
-                            cancelClosesDialog
-                            cancelLabel="Close"
-                        />
+                        <OverlayFooter cancelClosesDialog cancelLabel="Close" />
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

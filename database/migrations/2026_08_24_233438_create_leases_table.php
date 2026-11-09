@@ -30,6 +30,12 @@ return new class extends Migration
             $table->date('ends_at')->nullable();
             $table->decimal('rent_amount', 14, 2)->nullable();
             $table->string('rent_frequency')->nullable()->comment('daily|weekly|monthly|yearly');
+            // Day of month rent falls due (1-31), set by the landlord per
+            // lease. Null means the starts_at anniversary day for monthly
+            // leases; other frequencies use period boundaries instead.
+            $table->unsignedTinyInteger('rent_due_day')->nullable();
+            // Throttle for rent reminders: at most one nudge per lease per day.
+            $table->timestamp('last_reminded_at')->nullable();
             $table->string('currency', 3)->nullable();
             $table->decimal('deposit', 14, 2)->nullable();
             $table->text('agreement_text')->nullable()->comment('In-system composed lease agreement');

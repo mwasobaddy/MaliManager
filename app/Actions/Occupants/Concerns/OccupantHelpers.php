@@ -55,6 +55,7 @@ trait OccupantHelpers
             'starts_at' => $leaseData['starts_at'] ?? now(),
             'rent_amount' => $leaseData['rent_amount'] ?? null,
             'rent_frequency' => $leaseData['rent_frequency'] ?? null,
+            'rent_due_day' => $leaseData['rent_due_day'] ?? null,
             'currency' => $leaseData['currency'] ?? null,
             'deposit' => $leaseData['deposit'] ?? null,
             'agreement_text' => $leaseData['agreement_text'] ?? null,

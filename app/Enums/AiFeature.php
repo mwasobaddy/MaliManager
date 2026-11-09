@@ -13,6 +13,7 @@ enum AiFeature: string
     case ContentDrafting = 'content_drafting';
     case PredictiveFlags = 'predictive_flags';
     case InspectionReports = 'inspection_reports';
+    case RentReminders = 'rent_reminders';
 
     public function label(): string
     {
@@ -22,6 +23,7 @@ enum AiFeature: string
             self::ContentDrafting => 'Content drafting',
             self::PredictiveFlags => 'Predictive flags',
             self::InspectionReports => 'Inspection reports',
+            self::RentReminders => 'Rent reminders',
         };
     }
 

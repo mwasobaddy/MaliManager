@@ -47,6 +47,7 @@ final class OccupantPresenter
             'starts_at' => $lease->starts_at?->toDateString(),
             'rent_amount' => $lease->rent_amount,
             'rent_frequency' => $lease->rent_frequency,
+            'rent_due_day' => $lease->rent_due_day,
             'deposit' => $lease->deposit,
             'currency' => $lease->currency,
             'agreement_text' => $lease->agreement_text,

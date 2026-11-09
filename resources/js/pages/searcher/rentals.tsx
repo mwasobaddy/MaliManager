@@ -29,6 +29,14 @@ type Lease = {
     duration_in_days: number | null;
     total_cost: number | null;
     is_active: boolean;
+    outstanding: string;
+    is_overdue: boolean;
+    payment_details: {
+        paybill_number: string | null;
+        account_reference: string | null;
+        till_number: string | null;
+        notes: string | null;
+    } | null;
 };
 
 type Props = {
@@ -201,7 +209,96 @@ export default function SearcherRentals({ leases }: Props) {
                                                 )}
                                             </p>
                                         </div>
+                                        {lease.is_active && (
+                                            <div className="col-span-2">
+                                                <p className="text-muted-foreground">
+                                                    Balance due
+                                                </p>
+                                                <p className="font-medium tabular-nums">
+                                                    {lease.outstanding !==
+                                                    '0.00' ? (
+                                                        <span className="text-status-danger">
+                                                            {formatMoney(
+                                                                Number(
+                                                                    lease.outstanding,
+                                                                ),
+                                                                lease.currency,
+                                                            )}
+                                                        </span>
+                                                    ) : (
+                                                        'Paid up'
+                                                    )}
+                                                </p>
+                                            </div>
+                                        )}
                                     </div>
+
+                                    {lease.payment_details &&
+                                    (lease.payment_details.paybill_number ||
+                                        lease.payment_details.till_number ||
+                                        lease.payment_details.notes) ? (
+                                        <>
+                                            <Separator />
+                                            <div>
+                                                <p className="mb-1 text-muted-foreground">
+                                                    How to pay
+                                                </p>
+                                                <div className="space-y-1 text-sm">
+                                                    {lease.payment_details
+                                                        .paybill_number && (
+                                                        <p>
+                                                            M-Pesa paybill:{' '}
+                                                            <span className="font-medium tabular-nums">
+                                                                {
+                                                                    lease
+                                                                        .payment_details
+                                                                        .paybill_number
+                                                                }
+                                                            </span>
+                                                            {lease
+                                                                .payment_details
+                                                                .account_reference && (
+                                                                <>
+                                                                    {' '}
+                                                                    · account{' '}
+                                                                    <span className="font-medium">
+                                                                        {
+                                                                            lease
+                                                                                .payment_details
+                                                                                .account_reference
+                                                                        }
+                                                                    </span>
+                                                                </>
+                                                            )}
+                                                        </p>
+                                                    )}
+                                                    {lease.payment_details
+                                                        .till_number && (
+                                                        <p>
+                                                            M-Pesa till:{' '}
+                                                            <span className="font-medium tabular-nums">
+                                                                {
+                                                                    lease
+                                                                        .payment_details
+                                                                        .till_number
+                                                                }
+                                                            </span>
+                                                        </p>
+                                                    )}
+                                                    {lease.payment_details
+                                                        .notes && (
+                                                        <p className="text-muted-foreground">
+                                                            {
+                                                                lease
+                                                                    .payment_details
+                                                                    .notes
+                                                            }
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </>
+                                    ) : null}
 
                                     {lease.agreement_text ? (
                                         <>

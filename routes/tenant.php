@@ -86,6 +86,8 @@ Route::middleware([
         // auth (and is CSRF-exempt in bootstrap/app.php).
         Route::get('/billing', [BillingController::class, 'show'])
             ->name('tenant.billing.show');
+        Route::put('/billing/payment-details', [BillingController::class, 'updatePaymentDetails'])
+            ->name('tenant.billing.payment-details');
         Route::post('/billing/mpesa', [BillingController::class, 'initiateMpesa'])
             ->name('tenant.billing.mpesa');
         Route::post('/billing/card', [BillingController::class, 'initiateCard'])
@@ -187,6 +189,8 @@ Route::middleware([
         Route::middleware('sub-permission:lease.manage')->group(function () {
             Route::get('/{property:slug}/leases', [LeaseController::class, 'index'])
                 ->name('tenant.leases.index');
+            Route::post('/{property:slug}/leases/{lease}/remind', [LeaseController::class, 'remind'])
+                ->name('tenant.leases.remind');
         });
 
         Route::middleware('sub-permission:lease.delete')->group(function () {

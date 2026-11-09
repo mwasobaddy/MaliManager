@@ -2,19 +2,23 @@
 
 namespace App\Support\Ai;
 
+use App\Actions\Leases\SendRentReminder;
 use App\Enums\AiFeature;
 use App\Exceptions\AssistantUnavailableException;
 use App\Models\Inspection;
 use App\Models\Lease;
 use App\Models\MaintenanceRequest;
+use App\Models\Organization;
 use App\Models\User;
 use App\Services\AiRenewalService;
 use App\Services\DraftingService;
 use App\Services\InspectionService;
 use App\Services\MaintenanceTriageService;
+use App\Services\RentArrearsService;
 use Prism\Prism\Facades\Prism;
 use Prism\Prism\Facades\Tool;
 use Prism\Prism\Schema\ArraySchema;
+use Prism\Prism\Schema\BooleanSchema;
 use Prism\Prism\Schema\EnumSchema;
 use Prism\Prism\Schema\NumberSchema;
 use Prism\Prism\Schema\ObjectSchema;
@@ -39,6 +43,7 @@ final class AssistantService
         private MaintenanceTriageService $triage,
         private InspectionService $inspections,
         private AiRenewalService $renewals,
+        private RentArrearsService $arrears,
     ) {}
 
     /**
@@ -250,6 +255,75 @@ final class AssistantService
                     }
 
                     return json_encode($result);
+                }),
+            Tool::as('send_rent_reminders')
+                ->for('Send rent reminders to overdue tenants. DRAFTS by default: lists who would be notified without sending. Pass confirmed=true to actually send on each recipient\'s channel.')
+                ->withObjectParameter('reminder', 'Reminder specification', $this->rentReminderSchema(), [])
+                ->using(function ($reminder) use ($user, $orgId): string {
+                    $reminder = $this->toolPayload($reminder, 'reminder');
+
+                    if (! $this->gateway->canUse($user, AiFeature::RentReminders)) {
+                        return json_encode(['error' => 'Rent reminders are not enabled for your account.']);
+                    }
+
+                    $organization = Organization::query()->find($orgId);
+
+                    if ($organization === null) {
+                        return json_encode(['error' => 'Organization not found.']);
+                    }
+
+                    $sender = app(SendRentReminder::class);
+
+                    $leases = Lease::query()
+                        ->where('organization_id', $orgId)
+                        ->where('status', 'active')
+                        ->whereNull('ends_at')
+                        ->with(['person:id,first_name,last_name', 'unit:id,name', 'property:id,name'])
+                        ->get();
+
+                    $balances = $this->arrears->balancesFor($leases);
+
+                    if (($reminder['confirmed'] ?? false) !== true) {
+                        $recipients = [];
+
+                        foreach ($leases as $lease) {
+                            $balance = $balances[$lease->id] ?? null;
+
+                            if ($balance === null || ! $balance['overdue']) {
+                                continue;
+                            }
+
+                            $recipients[] = [
+                                'lease_id' => $lease->id,
+                                'occupant' => trim(($lease->person?->first_name ?? '').' '.($lease->person?->last_name ?? '')),
+                                'unit' => $lease->unit?->name,
+                                'property' => $lease->property?->name,
+                                'outstanding' => $balance['outstanding'],
+                                'currency' => $lease->currency,
+                                'channel' => $sender->recipientChannel($lease),
+                            ];
+                        }
+
+                        return json_encode([
+                            'draft' => true,
+                            'recipients' => $recipients,
+                            'hint' => 'Re-run with confirmed=true to send these reminders.',
+                        ]);
+                    }
+
+                    $sent = [];
+                    $skipped = [];
+
+                    foreach ($leases as $lease) {
+                        try {
+                            $result = $sender->handle($lease, $user);
+                            $sent[] = $result;
+                        } catch (\DomainException $e) {
+                            $skipped[] = ['lease_id' => $lease->id, 'reason' => $e->getMessage()];
+                        }
+                    }
+
+                    return json_encode(['draft' => false, 'sent' => $sent, 'skipped' => $skipped]);
                 }),
         ];
     }
@@ -472,5 +546,13 @@ final class AssistantService
     private function idSchema(string $name, string $description): array
     {
         return [new NumberSchema($name, $description, false)];
+    }
+
+    /**
+     * @return array<int, Schema>
+     */
+    private function rentReminderSchema(): array
+    {
+        return [new BooleanSchema('confirmed', 'Send the reminders for real. Omit or false to only list who would be notified.', true)];
     }
 }

@@ -298,6 +298,30 @@ export default function OccupantCreate({
                                     </div>
 
                                     <div className="grid gap-2">
+                                        <Label htmlFor="lease.rent_due_day">
+                                            Rent due day
+                                        </Label>
+                                        <Input
+                                            id="lease.rent_due_day"
+                                            name="lease[rent_due_day]"
+                                            type="number"
+                                            min="1"
+                                            max="31"
+                                            placeholder="5"
+                                        />
+                                        <p className="text-xs text-muted-foreground">
+                                            Day of the month rent falls due.
+                                            Empty means the lease start
+                                            anniversary.
+                                        </p>
+                                        <InputError
+                                            message={
+                                                errors['lease.rent_due_day']
+                                            }
+                                        />
+                                    </div>
+
+                                    <div className="grid gap-2">
                                         <Label htmlFor="lease.deposit">
                                             Deposit
                                         </Label>

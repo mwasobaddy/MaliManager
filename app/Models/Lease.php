@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
@@ -29,10 +30,12 @@ use Spatie\MediaLibrary\InteractsWithMedia;
  * @property Carbon|null $ends_at
  * @property float|null $rent_amount
  * @property string|null $rent_frequency
+ * @property int|null $rent_due_day
  * @property string|null $currency
  * @property float|null $deposit
  * @property string|null $agreement_text
  * @property string $status
+ * @property Carbon|null $last_reminded_at
  */
 class Lease extends Model implements HasMedia
 {
@@ -62,10 +65,12 @@ class Lease extends Model implements HasMedia
         'ends_at',
         'rent_amount',
         'rent_frequency',
+        'rent_due_day',
         'currency',
         'deposit',
         'agreement_text',
         'status',
+        'last_reminded_at',
         'land_parcel_id',
         'land_parcel_section_id',
         'created_by',
@@ -76,6 +81,8 @@ class Lease extends Model implements HasMedia
         'ends_at' => 'datetime',
         'rent_amount' => 'float',
         'deposit' => 'float',
+        'rent_due_day' => 'integer',
+        'last_reminded_at' => 'datetime',
     ];
 
     public function person(): BelongsTo
@@ -113,6 +120,11 @@ class Lease extends Model implements HasMedia
         return $this->belongsTo(Occupant::class);
     }
 
+    public function payments(): HasMany
+    {
+        return $this->hasMany(Payment::class);
+    }
+
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
@@ -121,6 +133,21 @@ class Lease extends Model implements HasMedia
     public function isActive(): bool
     {
         return $this->status === 'active' && $this->ends_at === null;
+    }
+
+    /**
+     * Day of the month rent falls due: the landlord's explicit day, else
+     * the starts_at anniversary. Only meaningful for monthly leases;
+     * other frequencies use period boundaries in the arrears service.
+     * Callers clamp to the month length (February has no 30th).
+     */
+    public function dueDay(): int
+    {
+        if ($this->rent_due_day !== null) {
+            return min(31, max(1, $this->rent_due_day));
+        }
+
+        return $this->starts_at ? $this->starts_at->day : 1;
     }
 
     /**
