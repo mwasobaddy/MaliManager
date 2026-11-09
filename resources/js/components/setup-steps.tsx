@@ -1,9 +1,9 @@
 import { Link } from '@inertiajs/react';
-import { Building2, Check, House, Rocket, Users } from 'lucide-react';
+import { BadgeDollarSign, Building2, Check, House, Rocket, Users } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { show as becomeLandlord } from '@/routes/guest/become-landlord';
-import { firstAsset } from '@/routes/onboarding';
+import { firstAsset, plan as planStep } from '@/routes/onboarding';
 import { review, team } from '@/routes/tenant/setup';
 
 export type SetupStep = {
@@ -28,6 +28,7 @@ export type SetupStep = {
 export type SetupProgress = {
     hasOrganization: boolean;
     hasAsset: boolean;
+    hasConfirmedPlan: boolean;
 };
 
 /**
@@ -37,7 +38,7 @@ export type SetupProgress = {
 export const SETUP_STEPS: SetupStep[] = [
     {
         title: 'Set up organization',
-        description: 'Name, currency and plan',
+        description: 'Name and currency',
         icon: Building2,
         skippable: false,
     },
@@ -45,6 +46,12 @@ export const SETUP_STEPS: SetupStep[] = [
         title: 'Add your first asset',
         description: 'A building or a land parcel',
         icon: House,
+        skippable: false,
+    },
+    {
+        title: 'Pick your plan',
+        description: 'First month free',
+        icon: BadgeDollarSign,
         skippable: false,
     },
     {
@@ -70,6 +77,8 @@ function isStepComplete(
             return progress.hasOrganization;
         case 2:
             return progress.hasAsset;
+        case 3:
+            return progress.hasConfirmedPlan;
         default:
             return true;
     }
@@ -113,6 +122,8 @@ function setupStepHref(stepNumber: number) {
         case 2:
             return firstAsset();
         case 3:
+            return planStep();
+        case 4:
             return team();
         default:
             return review();
@@ -131,7 +142,7 @@ export function SetupStepTitle({
     className,
 }: {
     stepNumber: number;
-    current: 1 | 2 | 3 | 4;
+    current: 1 | 2 | 3 | 4 | 5;
     progress: SetupProgress;
     className?: string;
 }) {
@@ -178,7 +189,7 @@ export function SetupSteps({
     current,
     progress,
 }: {
-    current: 1 | 2 | 3 | 4;
+    current: 1 | 2 | 3 | 4 | 5;
     progress: SetupProgress;
 }) {
     return (

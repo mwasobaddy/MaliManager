@@ -21,7 +21,6 @@ test('guest becomes a landlord with an organization and tenancy', function () {
         ->post(route('guest.become-landlord'), [
             'organization_name' => 'Sunset Apartments',
             'currency' => 'KES',
-            'plan_slug' => 'free',
         ])->assertRedirect('http://sunset-apartments.malimanager.test/setup/first-asset');
 
     $user->refresh();
@@ -51,16 +50,20 @@ test('landlord upgrade honours the public listing opt-in', function () {
     expect(Organization::where('name', 'Open Estates')->first()->settings['list_publicly'])->toBeTrue();
 });
 
-test('landlord upgrade requires a plan', function () {
+test('landlord upgrade starts on the free plan; the paid choice moved to Plan & trial', function () {
     $user = User::factory()->create(['onboarded_at' => now()]);
 
     $this->actingAs($user)
         ->post(route('guest.become-landlord'), [
             'organization_name' => 'Sunset Apartments',
             'currency' => 'KES',
-        ])->assertSessionHasErrors('plan_slug');
+        ])->assertRedirect('http://sunset-apartments.malimanager.test/setup/first-asset');
 
-    expect(Organization::count())->toBe(0);
+    $organization = Organization::where('name', 'Sunset Apartments')->firstOrFail();
+
+    expect($organization->plan->slug)->toBe('free')
+        ->and($organization->trial_ends_at)->toBeNull()
+        ->and($organization->plan_confirmed_at)->toBeNull();
 });
 
 test('landlord upgrade rejects a bad currency', function () {

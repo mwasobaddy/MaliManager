@@ -36,16 +36,15 @@ trait OnboardingHelpers
     }
 
     /**
-     * Update the existing organization or provision a brand-new one.
+     * Update the existing organization or provision a brand-new one. New
+     * organizations start on the free plan; the paid plan choice (and its
+     * trial) happens in the Plan & trial funnel step, not here.
      */
     private function resolveOrganization(User $user, ?Organization $organization, BecomeLandlordData $data): Organization
     {
-        $plan = Plan::where('slug', $data->planSlug)->firstOrFail();
-
         if ($organization) {
             $organization->update([
                 'name' => $data->organizationName,
-                'plan_id' => $plan->id,
                 'settings' => array_merge($organization->settings ?? [], [
                     'currency' => $data->currency,
                 ]),
@@ -57,7 +56,7 @@ trait OnboardingHelpers
         $organization = $this->tenantService->createOrganization(
             owner: $user,
             name: $data->organizationName,
-            plan: $plan,
+            plan: Plan::free(),
             email: $user->email,
             phone: $user->phone,
         );

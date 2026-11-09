@@ -42,17 +42,7 @@ function goToPreviousUrl() {
     }
 }
 
-type Plan = {
-    name: string;
-    slug: string;
-    description: string;
-    price: number;
-    currency: string;
-    price_label: string;
-};
-
 type Props = {
-    plans: Plan[];
     setupProgress: SetupProgress;
 };
 
@@ -61,13 +51,13 @@ const currencies = ['KES', 'USD', 'UGX', 'TZS', 'RWF', 'NGN', 'GBP', 'EUR'];
 /**
  * Landlord upgrade: the relocated half of the old signup branch. Everything
  * else about the user is already known, so this asks only for the organization
- * name, the currency, a plan, and whether vacant units should be listed
- * publicly.
+ * name, the currency, and whether vacant units should be listed publicly.
+ * The organization starts on the free plan; plan choice moved to the Plan &
+ * trial funnel step.
  */
-export default function BecomeLandlord({ plans, setupProgress }: Props) {
+export default function BecomeLandlord({ setupProgress }: Props) {
     const [currency, setCurrency] = useState('KES');
     const [listPublicly, setListPublicly] = useState(false);
-    const [planSlug, setPlanSlug] = useState(plans[0]?.slug ?? '');
 
     return (
         <>
@@ -199,67 +189,10 @@ export default function BecomeLandlord({ plans, setupProgress }: Props) {
                                     </CardContent>
                                 </Card>
 
-                                <Card>
-                                    <CardHeader>
-                                        <CardTitle className="text-base font-medium">
-                                            Plan
-                                        </CardTitle>
-                                        <CardDescription>
-                                            You can change this later.
-                                        </CardDescription>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <input
-                                            type="hidden"
-                                            name="plan_slug"
-                                            value={planSlug}
-                                        />
-                                        <div
-                                            className="grid gap-3"
-                                            role="radiogroup"
-                                            aria-label="Plan"
-                                        >
-                                            {plans.map((plan) => (
-                                                <button
-                                                    key={plan.slug}
-                                                    type="button"
-                                                    role="radio"
-                                                    aria-checked={
-                                                        planSlug === plan.slug
-                                                    }
-                                                    onClick={() =>
-                                                        setPlanSlug(plan.slug)
-                                                    }
-                                                    className={`rounded-lg border p-4 text-left transition-colors ${
-                                                        planSlug === plan.slug
-                                                            ? 'border-primary bg-primary/5'
-                                                            : 'border-input hover:bg-muted'
-                                                    }`}
-                                                >
-                                                    <div className="flex items-center justify-between">
-                                                        <span className="font-medium">
-                                                            {plan.name}
-                                                        </span>
-                                                        <span className="text-sm text-muted-foreground">
-                                                            {plan.price_label}
-                                                        </span>
-                                                    </div>
-                                                    <p className="mt-1 text-sm text-muted-foreground">
-                                                        {plan.description}
-                                                    </p>
-                                                </button>
-                                            ))}
-                                        </div>
-                                        <InputError
-                                            message={errors.plan_slug}
-                                        />
-                                    </CardContent>
-                                </Card>
-
                                 <Button
                                     type="submit"
                                     className="w-full"
-                                    disabled={processing || planSlug === ''}
+                                    disabled={processing}
                                 >
                                     {processing && <Spinner />}
                                     Create my organization

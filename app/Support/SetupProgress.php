@@ -16,12 +16,12 @@ use App\Models\Organization;
 class SetupProgress
 {
     /**
-     * @return array{hasOrganization: bool, hasAsset: bool}
+     * @return array{hasOrganization: bool, hasAsset: bool, hasConfirmedPlan: bool}
      */
     public static function forOrganization(?Organization $organization): array
     {
         if ($organization === null) {
-            return ['hasOrganization' => false, 'hasAsset' => false];
+            return ['hasOrganization' => false, 'hasAsset' => false, 'hasConfirmedPlan' => false];
         }
 
         return [
@@ -30,6 +30,7 @@ class SetupProgress
             // parcels as alternatives on the same step.
             'hasAsset' => $organization->properties()->exists()
                 || $organization->landParcels()->exists(),
+            'hasConfirmedPlan' => $organization->plan_confirmed_at !== null,
         ];
     }
 }

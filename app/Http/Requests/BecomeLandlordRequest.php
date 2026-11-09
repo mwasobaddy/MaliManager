@@ -6,11 +6,11 @@ use App\Data\Onboarding\BecomeLandlordData;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * Becoming a landlord: the three things signup deliberately did not ask.
+ * Becoming a landlord: the two things signup deliberately did not ask.
  *
  * Everything else — name, phone, password — is already known from onboarding.
- * Plan choice lives here rather than at signup so it meets the user at the
- * moment of intent, next to what the plan buys them.
+ * The organization starts on the free plan; plan choice moved to the Plan &
+ * trial funnel step, where it meets the user after they have committed.
  */
 class BecomeLandlordRequest extends FormRequest
 {
@@ -28,7 +28,6 @@ class BecomeLandlordRequest extends FormRequest
         return [
             'organization_name' => ['required', 'string', 'max:255'],
             'currency' => ['required', 'string', 'size:3'],
-            'plan_slug' => ['required', 'string', 'exists:plans,slug'],
             'list_publicly' => ['nullable', 'boolean'],
         ];
     }
@@ -38,7 +37,6 @@ class BecomeLandlordRequest extends FormRequest
         return new BecomeLandlordData(
             organizationName: (string) $this->string('organization_name'),
             currency: (string) $this->string('currency'),
-            planSlug: (string) $this->string('plan_slug'),
             listPublicly: $this->boolean('list_publicly'),
         );
     }

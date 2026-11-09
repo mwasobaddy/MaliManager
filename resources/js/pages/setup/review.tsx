@@ -60,12 +60,12 @@ export default function SetupReview({
                         'Everything is in place',
                         'Review your setup, then open your dashboard.',
                     ]}
-                    current={4}
+                    current={5}
                     progress={setupProgress}
                 />
 
                 <div className="col-span-7 space-y-6 lg:col-span-4">
-                    <SetupStepsTopCard current={4} progress={setupProgress} />
+                    <SetupStepsTopCard current={5} progress={setupProgress} />
 
                     <div className="flex items-start justify-between gap-4">
                         <Heading

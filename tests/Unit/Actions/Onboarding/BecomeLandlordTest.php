@@ -26,7 +26,6 @@ function landlordData(array $overrides = []): BecomeLandlordData
     return new BecomeLandlordData(
         organizationName: $overrides['organization_name'] ?? 'Upgrade Estates',
         currency: $overrides['currency'] ?? 'KES',
-        planSlug: $overrides['plan_slug'] ?? 'free',
         listPublicly: $overrides['list_publicly'] ?? false,
     );
 }
@@ -38,6 +37,16 @@ test('the action provisions the organization without the public opt-in by defaul
 
     expect($organization->settings['list_publicly'] ?? false)->toBeFalse()
         ->and($owner->isOwnerOf($organization))->toBeTrue();
+});
+
+test('the action starts every organization on the free plan without a trial', function () {
+    [$owner] = landlordOwner();
+
+    $organization = app(BecomeLandlord::class)->handle($owner, landlordData());
+
+    expect($organization->plan->slug)->toBe('free')
+        ->and($organization->trial_ends_at)->toBeNull()
+        ->and($organization->plan_confirmed_at)->toBeNull();
 });
 
 test('the action applies the public listing opt-in when set', function () {

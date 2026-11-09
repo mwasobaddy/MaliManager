@@ -117,7 +117,7 @@ test('the team step requires a role', function () {
         ])->assertInvalid('sub_role_id');
 });
 
-test('creating the first property inside setup continues to the team step', function () {
+test('creating the first property inside setup continues to the plan step', function () {
     $owner = User::factory()->create(['onboarded_at' => now()]);
     $organization = createSetupOrganization($owner);
 
@@ -130,10 +130,10 @@ test('creating the first property inside setup continues to the team step', func
             'units' => [
                 ['name' => 'A1', 'type' => '1 Bedroom', 'monthly_rent' => 25000],
             ],
-        ])->assertRedirect(setupTenantUrl($organization, '/setup/team'));
+        ])->assertRedirect(setupTenantUrl($organization, '/setup/plan'));
 });
 
-test('creating the first land parcel inside setup continues to the team step', function () {
+test('creating the first land parcel inside setup continues to the plan step', function () {
     $owner = User::factory()->create(['onboarded_at' => now()]);
     $organization = createSetupOrganization($owner);
 
@@ -145,7 +145,7 @@ test('creating the first land parcel inside setup continues to the team step', f
             'available_for_lease' => '0',
             'manager_ids' => [],
             'setup' => '1',
-        ])->assertRedirect(setupTenantUrl($organization, '/setup/team'));
+        ])->assertRedirect(setupTenantUrl($organization, '/setup/plan'));
 });
 
 test('creating outside setup still lands on the property dashboard', function () {
@@ -230,12 +230,70 @@ test('funnel pages report no progress before the organization exists', function 
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('setup/become-landlord')
-            ->where('setupProgress', ['hasOrganization' => false, 'hasAsset' => false])
+            ->where('setupProgress', ['hasOrganization' => false, 'hasAsset' => false, 'hasConfirmedPlan' => false])
         );
 
     $this->actingAs($user)
         ->get(route('onboarding.first-asset'))
         ->assertRedirect(route('guest.become-landlord.show'));
+});
+
+test('the plan step confirms the plan once and moves to the team step', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createSetupOrganization($owner);
+    $organization->properties()->create([
+        'name' => 'Sunset Heights',
+        'slug' => 'sunset-heights',
+        'status' => 'active',
+        'created_by' => $owner->id,
+    ]);
+
+    $this->actingAs($owner)
+        ->get(route('onboarding.plan'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('setup/plan')
+            ->has('plans')
+            ->where('setupProgress.hasConfirmedPlan', false)
+        );
+
+    $this->actingAs($owner)
+        ->post(route('onboarding.plan.store'), [
+            'plan_slug' => 'starter',
+            'notification_channel' => 'sms',
+            'phone' => '+254712345678',
+        ])->assertRedirect(setupTenantUrl($organization, '/setup/team'));
+
+    $organization->refresh();
+
+    expect($organization->plan->slug)->toBe('starter')
+        ->and($organization->trial_ends_at)->not->toBeNull()
+        ->and($organization->plan_confirmed_at)->not->toBeNull()
+        ->and($owner->refresh()->notification_channel)->toBe('sms')
+        ->and($owner->phone)->toBe('+254712345678');
+
+    // Re-confirming never restarts the trial.
+    $trialEnd = $organization->trial_ends_at->copy();
+
+    $this->actingAs($owner)
+        ->post(route('onboarding.plan.store'), [
+            'plan_slug' => 'growth',
+            'notification_channel' => 'email',
+        ])->assertRedirect(setupTenantUrl($organization, '/setup/team'));
+
+    $organization->refresh();
+
+    expect($organization->plan->slug)->toBe('growth')
+        ->and($organization->trial_ends_at->equalTo($trialEnd))->toBeTrue();
+});
+
+test('the plan step needs an asset first, like the steps after it', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createSetupOrganization($owner);
+
+    $this->actingAs($owner)
+        ->get(route('onboarding.plan'))
+        ->assertRedirect(route('onboarding.first-asset'));
 });
 
 test('setup progress flips on once the organization has an asset', function () {
@@ -253,18 +311,29 @@ test('setup progress flips on once the organization has an asset', function () {
         'created_by' => $owner->id,
     ]);
 
+    // Asset alone is not enough anymore: the plan step comes first.
+    $this->actingAs($owner)
+        ->get(setupTenantUrl($organization, '/setup/team'))
+        ->assertRedirect(route('onboarding.plan'));
+
+    $this->actingAs($owner)
+        ->post(route('onboarding.plan.store'), [
+            'plan_slug' => 'free',
+            'notification_channel' => 'email',
+        ])->assertRedirect(setupTenantUrl($organization, '/setup/team'));
+
     $this->actingAs($owner)
         ->get(setupTenantUrl($organization, '/setup/team'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->where('setupProgress', ['hasOrganization' => true, 'hasAsset' => true])
+            ->where('setupProgress', ['hasOrganization' => true, 'hasAsset' => true, 'hasConfirmedPlan' => true])
         );
 
     $this->actingAs($owner)
         ->get(setupTenantUrl($organization, '/setup/review'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->where('setupProgress', ['hasOrganization' => true, 'hasAsset' => true])
+            ->where('setupProgress', ['hasOrganization' => true, 'hasAsset' => true, 'hasConfirmedPlan' => true])
         );
 });
 
@@ -274,9 +343,15 @@ test('a land parcel alone counts as the first asset for setup progress', functio
     LandParcel::factory()->for($organization)->create();
 
     $this->actingAs($owner)
+        ->post(route('onboarding.plan.store'), [
+            'plan_slug' => 'free',
+            'notification_channel' => 'email',
+        ]);
+
+    $this->actingAs($owner)
         ->get(setupTenantUrl($organization, '/setup/team'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->where('setupProgress', ['hasOrganization' => true, 'hasAsset' => true])
+            ->where('setupProgress', ['hasOrganization' => true, 'hasAsset' => true, 'hasConfirmedPlan' => true])
         );
 });

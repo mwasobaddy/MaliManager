@@ -27,7 +27,7 @@ import {
 } from '@/components/ui/select';
 import { review as setupReview } from '@/routes/tenant/setup';
 import { store as storeTeam } from '@/routes/tenant/setup/team';
-import { firstAsset } from '@/routes/onboarding';
+import { plan as planStep } from '@/routes/onboarding';
 
 type SubRole = {
     id: number;
@@ -57,12 +57,12 @@ export default function SetupTeam({
                         'Bring your people with you',
                         'Caretakers and managers get their own logins.',
                     ]}
-                    current={3}
+                    current={4}
                     progress={setupProgress}
                 />
 
                 <div className="col-span-7 space-y-6 lg:col-span-4">
-                    <SetupStepsTopCard current={3} progress={setupProgress} />
+                    <SetupStepsTopCard current={4} progress={setupProgress} />
 
                     <div className="flex items-start justify-between gap-4">
                         <Heading
@@ -71,7 +71,7 @@ export default function SetupTeam({
                             description={`Give ${organization.name} someone to help run it — or skip this step and do it later.`}
                         />
                         <Button asChild variant="outline" size="sm">
-                            <Link href={firstAsset.url()}>
+                            <Link href={planStep.url()}>
                                 <ArrowLeft className="size-4" />
                                 Back
                             </Link>

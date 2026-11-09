@@ -24,6 +24,10 @@ return new class extends Migration
             // tier (or a free plan): limits always resolve to free.
             $table->timestamp('trial_ends_at')->nullable();
             $table->timestamp('subscription_ends_at')->nullable();
+            // When the owner confirmed the plan in the Plan & trial funnel
+            // step. Gates the team and review steps: nothing downstream
+            // runs on an unconfirmed plan.
+            $table->timestamp('plan_confirmed_at')->nullable();
 
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();

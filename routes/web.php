@@ -66,6 +66,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('onboarding.first-asset')
         ->middleware('onboarded');
 
+    Route::get('setup/plan', [OnboardingController::class, 'plan'])
+        ->name('onboarding.plan')
+        ->middleware('onboarded');
+    Route::post('setup/plan', [OnboardingController::class, 'storePlan'])
+        ->name('onboarding.plan.store')
+        ->middleware('onboarded');
+
     // Searchers (and any user with a linked person) can review their own
     // rental history across every organization.
     Route::get('searcher/rentals', [LeaseController::class, 'index'])

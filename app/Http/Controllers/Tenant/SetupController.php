@@ -14,13 +14,14 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Funnel steps 3 and 4: invite the team, then review and launch.
+ * Funnel steps 4 and 5: invite the team, then review and launch.
  *
- * Both require the first asset — an owner who pastes these URLs (or
- * clicks a stale stepper link) without one is sent back to the asset
- * step with an explanation instead of walking an empty funnel. They are
- * also owner-only: staff who wander here are sent to the properties
- * list with an explanation instead of a bare 403.
+ * Both require the first asset and the confirmed plan — an owner who
+ * pastes these URLs (or clicks a stale stepper link) mid-funnel is sent
+ * to the earliest incomplete step with an explanation instead of
+ * walking an empty funnel. They are also owner-only: staff who wander
+ * here are sent to the properties list with an explanation instead of
+ * a bare 403.
  */
 class SetupController extends Controller
 {
@@ -33,6 +34,10 @@ class SetupController extends Controller
         }
 
         if ($redirect = $this->requireAsset($organization)) {
+            return $redirect;
+        }
+
+        if ($redirect = $this->requirePlanChoice($organization)) {
             return $redirect;
         }
 
@@ -73,6 +78,10 @@ class SetupController extends Controller
         }
 
         if ($redirect = $this->requireAsset($organization)) {
+            return $redirect;
+        }
+
+        if ($redirect = $this->requirePlanChoice($organization)) {
             return $redirect;
         }
 
@@ -121,6 +130,26 @@ class SetupController extends Controller
         Inertia::flash('toast', ['type' => 'warning', 'message' => 'Add your first asset to continue setup.']);
 
         return redirect()->to(AuthLanding::for(request()->user(), request()));
+    }
+
+    /**
+     * Steps 4 and 5 build on the confirmed plan. An owner who has not
+     * picked one — a pasted URL, a stale stepper link — goes to the plan
+     * step with an explanation instead of walking an unpaid funnel.
+     *
+     * Reads a refreshed model: the tenant's organization relation is
+     * cached per process, so a confirmation written by an earlier
+     * request in the same process would otherwise stay invisible here.
+     */
+    private function requirePlanChoice(Organization $organization): ?RedirectResponse
+    {
+        if ($organization->refresh()->plan_confirmed_at !== null) {
+            return null;
+        }
+
+        Inertia::flash('toast', ['type' => 'warning', 'message' => 'Choose your plan to continue setup.']);
+
+        return redirect()->route('onboarding.plan');
     }
 
     /**

@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Billing\ChoosePlan;
 use App\Http\Requests\Auth\OnboardingCompleteRequest;
 use App\Http\Requests\Auth\OnboardingRequest;
+use App\Http\Requests\ChoosePlanRequest;
+use App\Models\Plan;
 use App\Services\OnboardingService;
 use App\Support\AuthLanding;
 use App\Support\InertiaRedirect;
@@ -74,5 +77,66 @@ class OnboardingController extends Controller
             ] : null,
             'setupProgress' => SetupProgress::forOrganization($organization),
         ]);
+    }
+
+    /**
+     * Step 3, Plan & trial: confirm the plan (moved out of step 1 so the
+     * choice meets the user after they have committed) with first-month
+     * framing, and pick the reminder channel. Requires the organization
+     * and the first asset, like the steps downstream of it.
+     */
+    public function plan(OnboardingRequest $request): Response|RedirectResponse
+    {
+        $organization = $request->user()
+            ->organizations()
+            ->wherePivot('is_owner', true)
+            ->first();
+
+        if ($organization === null) {
+            Inertia::flash('toast', ['type' => 'warning', 'message' => 'Set up your organization first.']);
+
+            return redirect()->route('guest.become-landlord.show');
+        }
+
+        if (! $organization->properties()->exists() && ! $organization->landParcels()->exists()) {
+            Inertia::flash('toast', ['type' => 'warning', 'message' => 'Add your first asset to continue setup.']);
+
+            return redirect()->route('onboarding.first-asset');
+        }
+
+        return Inertia::render('setup/plan', [
+            'organization' => $organization->only('id', 'name'),
+            'plans' => Plan::where('is_active', true)
+                ->orderBy('sort_order')
+                ->get(['name', 'slug', 'description', 'price', 'currency'])
+                ->map(fn ($plan) => [...$plan->toArray(), 'price_label' => $plan->price === 0 ? 'Free forever' : number_format($plan->price).' '.$plan->currency]),
+            'user' => [
+                'phone' => $request->user()->phone,
+                'notification_channel' => $request->user()->notification_channel ?? 'email',
+            ],
+            'setupProgress' => SetupProgress::forOrganization($organization),
+        ]);
+    }
+
+    public function storePlan(ChoosePlanRequest $request, ChoosePlan $choose): RedirectResponse|\Illuminate\Http\Response
+    {
+        $organization = $request->user()
+            ->organizations()
+            ->wherePivot('is_owner', true)
+            ->firstOrFail();
+
+        $plan = Plan::where('slug', $request->string('plan_slug')->toString())->firstOrFail();
+
+        $choose->handle(
+            $organization,
+            $request->user(),
+            $plan,
+            $request->string('notification_channel')->toString(),
+            $request->string('phone')->toString() ?: null,
+        );
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Plan confirmed. Your first month is free.']);
+
+        return redirect()->to(AuthLanding::setupUrl($organization, $request, 'setup/team'));
     }
 }

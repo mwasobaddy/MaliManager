@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Guest;
 use App\Actions\Onboarding\BecomeLandlord;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\BecomeLandlordRequest;
-use App\Models\Plan;
 use App\Support\AuthLanding;
 use App\Support\InertiaRedirect;
 use App\Support\SetupProgress;
@@ -46,10 +45,6 @@ class LandlordController extends Controller
             ->first();
 
         return Inertia::render('setup/become-landlord', [
-            'plans' => Plan::where('is_active', true)
-                ->orderBy('sort_order')
-                ->get(['name', 'slug', 'description', 'price', 'currency'])
-                ->map(fn ($plan) => [...$plan->toArray(), 'price_label' => $plan->price === 0 ? 'Free forever' : number_format($plan->price).' '.$plan->currency]),
             'setupProgress' => SetupProgress::forOrganization($organization),
         ]);
     }

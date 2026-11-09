@@ -26,6 +26,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property array|null $settings
  * @property CarbonImmutable|null $trial_ends_at
  * @property CarbonImmutable|null $subscription_ends_at
+ * @property CarbonImmutable|null $plan_confirmed_at
  * @property int|null $created_by
  */
 class Organization extends Model
@@ -43,6 +44,7 @@ class Organization extends Model
         'settings',
         'trial_ends_at',
         'subscription_ends_at',
+        'plan_confirmed_at',
         'created_by',
     ];
 
@@ -53,6 +55,7 @@ class Organization extends Model
             'status' => OrganizationStatus::class,
             'trial_ends_at' => 'datetime',
             'subscription_ends_at' => 'datetime',
+            'plan_confirmed_at' => 'datetime',
         ];
     }
 
@@ -153,6 +156,53 @@ class Organization extends Model
     public function paymentAttempts(): HasMany
     {
         return $this->hasMany(PaymentAttempt::class);
+    }
+
+    /**
+     * How tenants pay this organization, set by the owner on the Billing
+     * page. Shown on the tenant rentals page and appended to rent
+     * reminders. All keys optional; an empty set means nothing configured.
+     *
+     * @return array{paybill_number: ?string, account_reference: ?string, till_number: ?string, notes: ?string}
+     */
+    public function paymentDetails(): array
+    {
+        $details = $this->settings['payment_details'] ?? [];
+
+        return [
+            'paybill_number' => $details['paybill_number'] ?? null,
+            'account_reference' => $details['account_reference'] ?? null,
+            'till_number' => $details['till_number'] ?? null,
+            'notes' => $details['notes'] ?? null,
+        ];
+    }
+
+    /**
+     * One-line human summary of the payment details, or null when the
+     * owner configured nothing.
+     */
+    public function paymentDetailsSummary(): ?string
+    {
+        $details = $this->paymentDetails();
+        $parts = [];
+
+        if ($details['paybill_number'] !== null && $details['paybill_number'] !== '') {
+            $account = $details['account_reference'] !== null && $details['account_reference'] !== ''
+                ? ", account {$details['account_reference']}"
+                : '';
+
+            $parts[] = "M-Pesa paybill {$details['paybill_number']}{$account}";
+        }
+
+        if ($details['till_number'] !== null && $details['till_number'] !== '') {
+            $parts[] = "M-Pesa till {$details['till_number']}";
+        }
+
+        if ($details['notes'] !== null && $details['notes'] !== '') {
+            $parts[] = $details['notes'];
+        }
+
+        return $parts === [] ? null : implode('. ', $parts);
     }
 
     public function occupants(): HasMany

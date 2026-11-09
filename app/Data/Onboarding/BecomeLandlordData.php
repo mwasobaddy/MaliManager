@@ -9,7 +9,6 @@ final readonly class BecomeLandlordData
     public function __construct(
         public string $organizationName,
         public string $currency,
-        public string $planSlug,
         public bool $listPublicly = false,
     ) {}
 }

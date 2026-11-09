@@ -17,7 +17,7 @@ function SetupLeftIndicator({
     current,
     progress,
 }: {
-    current: 1 | 2 | 3 | 4;
+    current: 1 | 2 | 3 | 4 | 5;
     progress: SetupProgress;
 }) {
     return (
@@ -105,7 +105,7 @@ export function SetupSidePanel({
     progress,
 }: {
     intro: [string, string];
-    current: 1 | 2 | 3 | 4;
+    current: 1 | 2 | 3 | 4 | 5;
     progress: SetupProgress;
 }) {
     return (
@@ -141,7 +141,7 @@ export function SetupStepsTopCard({
     current,
     progress,
 }: {
-    current: 1 | 2 | 3 | 4;
+    current: 1 | 2 | 3 | 4 | 5;
     progress: SetupProgress;
 }) {
     return (
