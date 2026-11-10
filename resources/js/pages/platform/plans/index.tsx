@@ -4,6 +4,7 @@ import type { ColumnDef, SortingState } from '@tanstack/react-table';
 import { Download, Layers, ListFilter, Pencil, Plus, Search, Trash2, Upload } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActionIconButton } from '@/components/action-icon-button';
+import ConfirmDeleteOverlay from '@/components/confirm-delete-overlay';
 import { CsvImportSheet, downloadCsv } from '@/components/csv-actions';
 import { CsvExportSheet } from '@/components/csv-export-sheet';
 import { DataTable } from '@/components/data-table';
@@ -105,12 +106,13 @@ export default function PlansIndex({
 
     // One row sheet with switchable content rather than a sheet per action:
     // stacking Radix modals fights over the focus trap and double-dims the page.
-    //
-    // `confirm-delete` is a fourth mode rather than a separate second overlay:
-    // the first Delete press only asks whether you mean it, and the password
-    // prompt appears inside the same sheet once you have said yes.
-    type RowMode = 'view' | 'edit' | 'delete' | 'confirm-delete';
-    const rowMode = (query.get('mode') as RowMode | null) ?? 'view';
+    type RowMode = 'view' | 'edit';
+    const requestedMode = query.get('mode');
+    const rowMode: RowMode = requestedMode === 'edit' ? 'edit' : 'view';
+    // Delete is a Modal, not a third mode of the row sheet. A destructive gate
+    // needs the centred backdrop that blocks the rest of the page, and the
+    // sheet's footer is not the place for a password field.
+    const isDeleteOpen = requestedMode === 'delete' && isViewOpen;
     const isCreateOpen = query.get('create') === '1';
     const isImportOpen = query.get('import') === '1';
     const isExportOpen = query.get('export') === '1';
@@ -223,6 +225,12 @@ export default function PlansIndex({
     function openRow(plan: PlanRow, mode: RowMode) {
         setOverlayParam('mode', mode, {
             replace: mode === 'view',
+            keep: { plan: String(plan.id) },
+        });
+    }
+
+    function openDelete(plan: PlanRow) {
+        setOverlayParam('mode', 'delete', {
             keep: { plan: String(plan.id) },
         });
     }
@@ -448,7 +456,7 @@ export default function PlansIndex({
                                     icon={<Trash2 />}
                                     label={`Delete ${plan.name}`}
                                     color="danger"
-                                    onClick={() => openRow(plan, 'delete')}
+                                    onClick={() => openDelete(plan)}
                                 />
                             )}
                         </div>
@@ -590,9 +598,9 @@ export default function PlansIndex({
                 />
             </div>
 
-            {/* The row sheet: view, edit and delete share one overlay. */}
+            {/* The row sheet: view and edit share one overlay; delete is a modal. */}
             <ResponsiveOverlay
-                open={isViewOpen && viewedPlan !== undefined}
+                open={isViewOpen && viewedPlan !== undefined && !isDeleteOpen}
                 onOpenChange={(open) => {
                     if (!open) {
                         closeRowSheet();
@@ -602,40 +610,12 @@ export default function PlansIndex({
                 description={
                     !viewedPlan
                         ? 'This plan is not on the current page of results.'
-                        : rowMode === 'delete'
-                          ? 'This soft-deletes the tier. Existing organizations keep it.'
-                          : rowMode === 'edit'
-                            ? 'Update pricing, limits and enabled features.'
-                            : 'Details for this plan.'
+                        : rowMode === 'edit'
+                          ? 'Update pricing, limits and enabled features.'
+                          : 'Details for this plan.'
                 }
                 footer={
-                    rowMode === 'delete' && viewedPlan ? (
-                        <OverlayFooter
-                            onCancel={closeRowSheet}
-                            actions={[
-                                {
-                                    label: 'Continue to delete',
-                                    tone: 'danger-ghost',
-                                    icon: <Trash2 className="size-4" />,
-                                    onClick: () =>
-                                        setOverlayParam('mode', 'confirm-delete', {
-                                            keep: { plan: String(viewedPlan.id) },
-                                        }),
-                                },
-                            ]}
-                        />
-                    ) : rowMode === 'confirm-delete' && viewedPlan ? (
-                        <OverlayFooter
-                            onCancel={() => openRow(viewedPlan, 'delete')}
-                            actions={[
-                                {
-                                    label: 'Delete plan',
-                                    form: 'plan-delete-form',
-                                    type: 'submit',
-                                },
-                            ]}
-                        />
-                    ) : rowMode === 'edit' && viewedPlan ? (
+                    rowMode === 'edit' && viewedPlan ? (
                         <OverlayFooter
                             onCancel={closeRowSheet}
                             actions={[
@@ -648,6 +628,7 @@ export default function PlansIndex({
                         />
                     ) : (
                         <OverlayFooter
+                            onCancel={closeRowSheet}
                             actions={[
                                 {
                                     label: 'Edit',
@@ -657,6 +638,14 @@ export default function PlansIndex({
                                         viewedPlan &&
                                         openRow(viewedPlan, 'edit'),
                                     ...(canEdit ? {} : { disabled: true }),
+                                },
+                                {
+                                    label: 'Delete',
+                                    tone: 'danger-ghost',
+                                    icon: <Trash2 className="size-4" />,
+                                    onClick: () =>
+                                        viewedPlan && openDelete(viewedPlan),
+                                    ...(canDelete ? {} : { disabled: true }),
                                 },
                             ]}
                         />
@@ -674,54 +663,35 @@ export default function PlansIndex({
                         >
                             <PlanFormFields plan={viewedPlan} errors={errors} />
                         </Form>
-                    ) : rowMode === 'delete' ? (
-                        <p className="text-sm">
+                    ) : (
+                        <PlanDetail plan={viewedPlan} />
+                    ))}
+            </ResponsiveOverlay>
+
+            {canDelete && viewedPlan && (
+                <ConfirmDeleteOverlay
+                    open={isDeleteOpen}
+                    onOpenChange={(open) => {
+                        if (!open) {
+                            closeRowSheet();
+                        }
+                    }}
+                    action={planRoutes.destroy(viewedPlan.id).url}
+                    title={`Delete ${viewedPlan.name}?`}
+                    description={
+                        <>
                             Deleting{' '}
                             <span className="font-medium">
                                 {viewedPlan.name}
                             </span>{' '}
                             takes it off sale, so no new organization can be
                             put on it. Organizations already on it are
-                            unaffected and the tier can be restored.
-                        </p>
-                    ) : rowMode === 'confirm-delete' ? (
-                        <Form
-                            id="plan-delete-form"
-                            method="delete"
-                            action={planRoutes.destroy(viewedPlan.id)}
-                            onSuccess={() => closeRowSheet()}
-                            className="grid gap-3"
-                        >
-                            <p className="text-sm">
-                                This soft-deletes{' '}
-                                <span className="font-medium">
-                                    {viewedPlan.name}
-                                </span>
-                                . Confirm with your password to continue.
-                            </p>
-
-                            <div className="grid gap-2">
-                                <Label htmlFor="delete-password">
-                                    Confirm with your password
-                                </Label>
-                                <Input
-                                    id="delete-password"
-                                    name="password"
-                                    type="password"
-                                    autoComplete="current-password"
-                                    required
-                                />
-                                {errors.password && (
-                                    <p className="text-xs text-destructive">
-                                        {errors.password}
-                                    </p>
-                                )}
-                            </div>
-                        </Form>
-                    ) : (
-                        <PlanDetail plan={viewedPlan} />
-                    ))}
-            </ResponsiveOverlay>
+                            unaffected and the tier can be restored. Confirm
+                            with your password — this cannot be undone.
+                        </>
+                    }
+                />
+            )}
 
             <ResponsiveOverlay
                 open={isCreateOpen}

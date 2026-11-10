@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActionIconButton } from '@/components/action-icon-button';
+import ConfirmDeleteOverlay from '@/components/confirm-delete-overlay';
 import { CsvImportSheet, downloadCsv } from '@/components/csv-actions';
 import { CsvExportSheet } from '@/components/csv-export-sheet';
 import { DataTable } from '@/components/data-table';
@@ -122,8 +123,13 @@ export default function SubscriptionPaymentsIndex({
     // `confirm-delete` is a fourth mode rather than a separate second overlay:
     // the first Delete press only asks whether you mean it, and the password
     // prompt appears inside the same sheet once you have said yes.
-    type RowMode = 'view' | 'edit' | 'delete' | 'confirm-delete';
-    const rowMode = (query.get('mode') as RowMode | null) ?? 'view';
+    type RowMode = 'view' | 'edit';
+    const requestedMode = query.get('mode');
+    const rowMode: RowMode = requestedMode === 'edit' ? 'edit' : 'view';
+    // Delete is a Modal, not a third mode of the row sheet. A destructive gate
+    // needs the centred backdrop that blocks the rest of the page, and the
+    // sheet's footer is not the place for a password field.
+    const isDeleteOpen = requestedMode === 'delete' && isViewOpen;
     const isCreateOpen = query.get('create') === '1';
     const isImportOpen = query.get('import') === '1';
     const isExportOpen = query.get('export') === '1';
@@ -213,6 +219,12 @@ export default function SubscriptionPaymentsIndex({
     function openRow(payment: PaymentRow, mode: RowMode) {
         setOverlayParam('mode', mode, {
             replace: mode === 'view',
+            keep: { payment: String(payment.id) },
+        });
+    }
+
+    function openDelete(payment: PaymentRow) {
+        setOverlayParam('mode', 'delete', {
             keep: { payment: String(payment.id) },
         });
     }
@@ -441,7 +453,7 @@ export default function SubscriptionPaymentsIndex({
                                         payment.reference ?? payment.id
                                     }`}
                                     color="danger"
-                                    onClick={() => openRow(payment, 'delete')}
+                                    onClick={() => openDelete(payment)}
                                 />
                             )}
                         </div>
@@ -584,9 +596,9 @@ export default function SubscriptionPaymentsIndex({
                 />
             </div>
 
-            {/* The row sheet: view, edit, delete and confirm share one overlay. */}
+            {/* The row sheet: view and edit share one overlay; delete is a modal. */}
             <ResponsiveOverlay
-                open={isViewOpen && viewedPayment !== undefined}
+                open={isViewOpen && viewedPayment !== undefined && !isDeleteOpen}
                 onOpenChange={(open) => {
                     if (!open) {
                         closeRowSheet();
@@ -598,46 +610,12 @@ export default function SubscriptionPaymentsIndex({
                 description={
                     !viewedPayment
                         ? 'This payment is not on the current page of results.'
-                        : rowMode === 'delete'
-                          ? 'This soft-deletes the record. The audit trail is kept.'
-                          : rowMode === 'confirm-delete'
-                            ? 'Confirm with your password.'
-                            : rowMode === 'edit'
-                              ? 'Update the amount, period or reference.'
-                              : 'Details for this payment.'
+                        : rowMode === 'edit'
+                          ? 'Update the amount, period or reference.'
+                          : 'Details for this payment.'
                 }
                 footer={
-                    rowMode === 'delete' && viewedPayment ? (
-                        <OverlayFooter
-                            onCancel={closeRowSheet}
-                            actions={[
-                                {
-                                    label: 'Continue to delete',
-                                    tone: 'danger-ghost',
-                                    icon: <Trash2 className="size-4" />,
-                                    onClick: () =>
-                                        setOverlayParam('mode', 'confirm-delete', {
-                                            keep: {
-                                                payment: String(
-                                                    viewedPayment.id,
-                                                ),
-                                            },
-                                        }),
-                                },
-                            ]}
-                        />
-                    ) : rowMode === 'confirm-delete' && viewedPayment ? (
-                        <OverlayFooter
-                            onCancel={() => openRow(viewedPayment, 'delete')}
-                            actions={[
-                                {
-                                    label: 'Delete payment',
-                                    form: 'payment-delete-form',
-                                    type: 'submit',
-                                },
-                            ]}
-                        />
-                    ) : rowMode === 'edit' && viewedPayment ? (
+                    rowMode === 'edit' && viewedPayment ? (
                         <OverlayFooter
                             onCancel={closeRowSheet}
                             actions={[
@@ -650,6 +628,7 @@ export default function SubscriptionPaymentsIndex({
                         />
                     ) : (
                         <OverlayFooter
+                            onCancel={closeRowSheet}
                             actions={[
                                 {
                                     label: 'Edit',
@@ -659,6 +638,15 @@ export default function SubscriptionPaymentsIndex({
                                         viewedPayment &&
                                         openRow(viewedPayment, 'edit'),
                                     ...(canEdit ? {} : { disabled: true }),
+                                },
+                                {
+                                    label: 'Delete',
+                                    tone: 'danger-ghost',
+                                    icon: <Trash2 className="size-4" />,
+                                    onClick: () =>
+                                        viewedPayment &&
+                                        openDelete(viewedPayment),
+                                    ...(canDelete ? {} : { disabled: true }),
                                 },
                             ]}
                         />
@@ -683,8 +671,25 @@ export default function SubscriptionPaymentsIndex({
                                 errors={errors}
                             />
                         </Form>
-                    ) : rowMode === 'delete' ? (
-                        <p className="text-sm">
+                    ) : (
+                        <PaymentDetail payment={viewedPayment} />
+                    ))}
+            </ResponsiveOverlay>
+
+            {canDelete && viewedPayment && (
+                <ConfirmDeleteOverlay
+                    open={isDeleteOpen}
+                    onOpenChange={(open) => {
+                        if (!open) {
+                            closeRowSheet();
+                        }
+                    }}
+                    action={
+                        subscriptionPaymentRoutes.destroy(viewedPayment.id).url
+                    }
+                    title={`Delete this payment?`}
+                    description={
+                        <>
                             Deleting this payment removes{' '}
                             <span className="font-medium">
                                 {viewedPayment.currency}{' '}
@@ -695,46 +700,13 @@ export default function SubscriptionPaymentsIndex({
                                 {viewedPayment.organization?.name ??
                                     'an unlinked organization'}
                             </span>
-                            . It drops out of the revenue figures. The record is
-                            kept, so it can be restored.
-                        </p>
-                    ) : rowMode === 'confirm-delete' ? (
-                        <Form
-                            id="payment-delete-form"
-                            method="delete"
-                            action={subscriptionPaymentRoutes.destroy(
-                                viewedPayment.id,
-                            )}
-                            onSuccess={() => closeRowSheet()}
-                            className="grid gap-3"
-                        >
-                            <p className="text-sm">
-                                This soft-deletes the payment. Confirm with your
-                                password to continue.
-                            </p>
-
-                            <div className="grid gap-2">
-                                <Label htmlFor="delete-password">
-                                    Confirm with your password
-                                </Label>
-                                <Input
-                                    id="delete-password"
-                                    name="password"
-                                    type="password"
-                                    autoComplete="current-password"
-                                    required
-                                />
-                                {errors.password && (
-                                    <p className="text-xs text-destructive">
-                                        {errors.password}
-                                    </p>
-                                )}
-                            </div>
-                        </Form>
-                    ) : (
-                        <PaymentDetail payment={viewedPayment} />
-                    ))}
-            </ResponsiveOverlay>
+                            . It drops out of the revenue figures. The record
+                            is kept, so it can be restored. Confirm with your
+                            password — this cannot be undone.
+                        </>
+                    }
+                />
+            )}
 
             <ResponsiveOverlay
                 open={isCreateOpen}

@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActionIconButton } from '@/components/action-icon-button';
+import ConfirmDeleteOverlay from '@/components/confirm-delete-overlay';
 import { CsvImportSheet, downloadCsv } from '@/components/csv-actions';
 import { CsvExportSheet } from '@/components/csv-export-sheet';
 import { DataTable } from '@/components/data-table';
@@ -110,8 +111,19 @@ export default function RolesIndex({
 
     // One sheet per row action rather than a sheet per action: stacking Radix
     // modals fights over the focus trap and double-dims the page.
-    type RowMode = 'view' | 'edit' | 'deactivate' | 'delete';
-    const rowMode = (query.get('mode') as RowMode | null) ?? 'view';
+    type RowMode = 'view' | 'edit' | 'deactivate';
+    const requestedMode = query.get('mode');
+    const rowMode: RowMode =
+        requestedMode === 'edit'
+            ? 'edit'
+            : requestedMode === 'deactivate'
+              ? 'deactivate'
+              : 'view';
+    // Delete is a Modal, not a fourth mode of the row sheet. A destructive gate
+    // needs the centred backdrop that blocks the rest of the page, and the
+    // sheet's footer is not the place for a password field. `isViewOpen` is
+    // declared just below; the flag reads it at render time.
+    const isDeleteOpen = requestedMode === 'delete';
     const isViewOpen = query.get('role') !== null;
     const isCreateOpen = query.get('create') === '1';
     const isFiltersOpen =
@@ -216,6 +228,12 @@ export default function RolesIndex({
 
     function openRow(role: RoleRow, mode: RowMode) {
         setOverlayParam('mode', mode, { keep: { role: String(role.id) } });
+    }
+
+    function openDelete(role: RoleRow) {
+        setOverlayParam('mode', 'delete', {
+            keep: { role: String(role.id) },
+        });
     }
 
     function applySorting(next: SortingState) {
@@ -434,9 +452,7 @@ export default function RolesIndex({
                                         label={`Delete ${role.name}`}
                                         color="danger"
                                         disabled={!canDelete}
-                                        onClick={() =>
-                                            openRow(role, 'delete')
-                                        }
+                                        onClick={() => openDelete(role)}
                                     />
                                 </>
                             )}
@@ -616,7 +632,7 @@ export default function RolesIndex({
             </ResponsiveOverlay>
 
             <ResponsiveOverlay
-                open={isViewOpen && viewedRole !== undefined}
+                open={isViewOpen && viewedRole !== undefined && !isDeleteOpen}
                 onOpenChange={(open) => {
                     if (!open) {
                         closeRowSheet();
@@ -628,11 +644,9 @@ export default function RolesIndex({
                         ? 'This role is not on the current page of results.'
                         : rowMode === 'edit'
                           ? 'Assign or revoke the platform-wide permissions granted to this role.'
-                          : rowMode === 'delete'
-                            ? 'This permanently removes the role.'
-                            : rowMode === 'deactivate'
-                              ? 'Users holding this role move to searcher.'
-                              : 'Details for this role.'
+                          : rowMode === 'deactivate'
+                            ? 'Users holding this role move to searcher.'
+                            : 'Details for this role.'
                 }
                 footer={
                     rowMode === 'edit' && viewedRole ? (
@@ -642,19 +656,6 @@ export default function RolesIndex({
                                 {
                                     label: 'Save permissions',
                                     form: 'role-permissions-form',
-                                    type: 'submit',
-                                },
-                            ]}
-                        />
-                    ) : rowMode === 'delete' && viewedRole ? (
-                        <OverlayFooter
-                            onCancel={closeRowSheet}
-                            actions={[
-                                {
-                                    label: 'Delete role',
-                                    tone: 'danger',
-                                    icon: <Trash2 className="size-4" />,
-                                    form: 'role-delete-form',
                                     type: 'submit',
                                 },
                             ]}
@@ -676,6 +677,7 @@ export default function RolesIndex({
                         />
                     ) : viewedRole ? (
                         <OverlayFooter
+                            onCancel={closeRowSheet}
                             actions={[
                                 {
                                     label: 'Edit',
@@ -710,10 +712,7 @@ export default function RolesIndex({
                                                   <Trash2 className="size-4" />
                                               ),
                                               onClick: () =>
-                                                  openRow(
-                                                      viewedRole,
-                                                      'delete',
-                                                  ),
+                                                  openDelete(viewedRole),
                                               ...(canDelete
                                                   ? {}
                                                   : { disabled: true }),
@@ -790,46 +789,31 @@ export default function RolesIndex({
                         </Form>
                     ))}
 
-                {viewedRole && rowMode === 'delete' && (
-                    <Form
-                        id="role-delete-form"
-                        method="delete"
-                        action={roleRoutes.destroy({ role: viewedRole.id })}
-                        onSuccess={() =>
-                            setOverlayParam(
-                                'mode',
-                                null,
-                                {
-                                    replace: true,
-                                },
-                            )
+            </ResponsiveOverlay>
+
+            {canDelete && viewedRole && (
+                <ConfirmDeleteOverlay
+                    open={isDeleteOpen}
+                    onOpenChange={(open) => {
+                        if (!open) {
+                            closeRowSheet();
                         }
-                        className="grid gap-3"
-                    >
-                        <p className="text-sm">
+                    }}
+                    action={
+                        roleRoutes.destroy({ role: viewedRole.id }).url
+                    }
+                    title={`Delete ${viewedRole.label}?`}
+                    description={
+                        <>
                             This permanently removes{' '}
                             <strong>{viewedRole.label}</strong> and revokes its
                             permissions. {viewedRole.users_count} user(s)
-                            holding it move to <strong>searcher</strong>. It
-                            cannot be undone.
-                        </p>
-
-                        <div className="grid gap-2">
-                            <Label htmlFor="role-delete-password">
-                                Confirm with your password
-                            </Label>
-                            <Input
-                                id="role-delete-password"
-                                name="password"
-                                type="password"
-                                autoComplete="current-password"
-                                required
-                            />
-                            <FieldError message={errors.password} />
-                        </div>
-                    </Form>
-                )}
-            </ResponsiveOverlay>
+                            holding it move to <strong>searcher</strong>.
+                            Confirm with your password — it cannot be undone.
+                        </>
+                    }
+                />
+            )}
 
             <ResponsiveOverlay
                 open={isFiltersOpen}

@@ -1,5 +1,7 @@
 import { Head, router } from '@inertiajs/react';
 import { Printer, Sparkles, Trash2 } from 'lucide-react';
+import { useState } from 'react';
+import ConfirmDeleteOverlay from '@/components/confirm-delete-overlay';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
 import {
@@ -36,6 +38,8 @@ const conditionStyles: Record<string, string> = {
 };
 
 export default function InspectionShow({ propertySlug, inspection }: Props) {
+    const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+
     const generate = () =>
         router.post(
             reportRoute({ property: propertySlug, inspection: inspection.id })
@@ -70,16 +74,7 @@ export default function InspectionShow({ propertySlug, inspection }: Props) {
                         <Button
                             variant="ghost"
                             className="text-status-danger print:hidden"
-                            onClick={() =>
-                                confirm('Delete this inspection?') &&
-                                router.delete(
-                                    destroyInspection({
-                                        property: propertySlug,
-                                        inspection: inspection.id,
-                                    }).url,
-                                    { preserveScroll: true },
-                                )
-                            }
+                            onClick={() => setIsDeleteOpen(true)}
                         >
                             <Trash2 className="size-4" />
                             Delete
@@ -193,6 +188,19 @@ export default function InspectionShow({ propertySlug, inspection }: Props) {
                     </p>
                 )}
             </div>
+
+            <ConfirmDeleteOverlay
+                open={isDeleteOpen}
+                onOpenChange={setIsDeleteOpen}
+                action={
+                    destroyInspection({
+                        property: propertySlug,
+                        inspection: inspection.id,
+                    }).url
+                }
+                title={`Delete “${inspection.title}”?`}
+                description="The inspection, its photos and any generated report are removed. Confirm with your password — this cannot be undone."
+            />
         </>
     );
 }

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Tenant;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Tenant\DestroyInspectionRequest;
 use App\Http\Requests\Tenant\InspectionAccessRequest;
 use App\Http\Requests\Tenant\StoreInspectionRequest;
 use App\Models\Inspection;
@@ -80,6 +81,7 @@ class InspectionController extends Controller
         abort_if($inspection->property_id !== $property->id, 403);
 
         return Inertia::render('organisation/inspections/show', [
+            'propertySlug' => $property->slug,
             'inspection' => [
                 'id' => $inspection->id,
                 'title' => $inspection->title,
@@ -121,7 +123,7 @@ class InspectionController extends Controller
      * Soft-delete an inspection. The photo files stay on disk, so a mistaken
      * delete can be recovered; `InspectionService::softDelete` owns the write.
      */
-    public function destroy(InspectionAccessRequest $request, Property $property, Inspection $inspection, InspectionService $service): RedirectResponse
+    public function destroy(DestroyInspectionRequest $request, Property $property, Inspection $inspection, InspectionService $service): RedirectResponse
     {
         $this->authorize($request, $property);
         abort_if($inspection->property_id !== $property->id, 403);

@@ -158,3 +158,89 @@ test('staff without inspection.manage cannot create inspections', function () {
 
     expect(Inspection::count())->toBe(0);
 });
+
+test('inspection show page exposes the property slug for its route actions', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = inspectionOrg($owner);
+    $property = inspectionProperty($organization, $owner);
+
+    $unit = $property->units()->create([
+        'name' => 'A1',
+        'status' => 'occupied',
+        'created_by' => $owner->id,
+    ]);
+
+    $inspection = Inspection::create([
+        'organization_id' => $organization->id,
+        'property_id' => $property->id,
+        'unit_id' => $unit->id,
+        'title' => 'Move-in check',
+        'inspection_date' => now()->toDateString(),
+        'created_by' => $owner->id,
+    ]);
+
+    $this->actingAs($owner)
+        ->get(inspectionUrl($organization, "/sunset-heights/inspections/{$inspection->id}"))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('organisation/inspections/show')
+            ->where('propertySlug', 'sunset-heights'));
+});
+
+test('deleting an inspection requires the current password', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = inspectionOrg($owner);
+    $property = inspectionProperty($organization, $owner);
+
+    $unit = $property->units()->create([
+        'name' => 'A1',
+        'status' => 'occupied',
+        'created_by' => $owner->id,
+    ]);
+
+    $inspection = Inspection::create([
+        'organization_id' => $organization->id,
+        'property_id' => $property->id,
+        'unit_id' => $unit->id,
+        'title' => 'Move-in check',
+        'inspection_date' => now()->toDateString(),
+        'created_by' => $owner->id,
+    ]);
+
+    $this->actingAs($owner)
+        ->delete(inspectionUrl($organization, "/sunset-heights/inspections/{$inspection->id}"))
+        ->assertRedirect()
+        ->assertInvalid('password');
+
+    expect(Inspection::find($inspection->id))->not->toBeNull();
+});
+
+test('deleting an inspection with the password soft-deletes it', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = inspectionOrg($owner);
+    $property = inspectionProperty($organization, $owner);
+
+    $unit = $property->units()->create([
+        'name' => 'A1',
+        'status' => 'occupied',
+        'created_by' => $owner->id,
+    ]);
+
+    $inspection = Inspection::create([
+        'organization_id' => $organization->id,
+        'property_id' => $property->id,
+        'unit_id' => $unit->id,
+        'title' => 'Move-in check',
+        'inspection_date' => now()->toDateString(),
+        'created_by' => $owner->id,
+    ]);
+
+    $this->actingAs($owner)
+        ->delete(inspectionUrl($organization, "/sunset-heights/inspections/{$inspection->id}"), [
+            'password' => 'password',
+        ])
+        ->assertRedirect();
+
+    expect(Inspection::find($inspection->id))->toBeNull()
+        ->and(Inspection::withTrashed()->find($inspection->id))->not->toBeNull();
+});

@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActionIconButton } from '@/components/action-icon-button';
+import ConfirmDeleteOverlay from '@/components/confirm-delete-overlay';
 import { CsvImportSheet, downloadCsv } from '@/components/csv-actions';
 import { CsvExportSheet } from '@/components/csv-export-sheet';
 import { DataTable } from '@/components/data-table';
@@ -148,8 +149,13 @@ export default function OrganizationsIndex({
 
     // One row sheet with switchable content rather than a sheet per action:
     // stacking Radix modals fights over the focus trap and double-dims the page.
-    type RowMode = 'view' | 'edit' | 'delete';
-    const rowMode = (query.get('mode') as RowMode | null) ?? 'view';
+    type RowMode = 'view' | 'edit';
+    const requestedMode = query.get('mode');
+    const rowMode: RowMode = requestedMode === 'edit' ? 'edit' : 'view';
+    // Delete is a Modal, not a third mode of the row sheet. A destructive gate
+    // needs the centred backdrop that blocks the rest of the page, and the
+    // sheet's footer is not the place for a password field.
+    const isDeleteOpen = requestedMode === 'delete' && isViewOpen;
     const isCreateOpen = query.get('create') === '1';
 
     /**
@@ -286,6 +292,12 @@ export default function OrganizationsIndex({
     function openRow(organization: OrganizationRow, mode: RowMode) {
         setOverlayParam('mode', mode, {
             replace: mode === 'view',
+            keep: { organization: String(organization.id) },
+        });
+    }
+
+    function openDelete(organization: OrganizationRow) {
+        setOverlayParam('mode', 'delete', {
             keep: { organization: String(organization.id) },
         });
     }
@@ -530,9 +542,7 @@ export default function OrganizationsIndex({
                                     icon={<Trash2 />}
                                     label={`Delete ${organization.name}`}
                                     color="danger"
-                                    onClick={() =>
-                                        openRow(organization, 'delete')
-                                    }
+                                    onClick={() => openDelete(organization)}
                                 />
                             )}
                         </div>
@@ -674,25 +684,19 @@ export default function OrganizationsIndex({
             </div>
 
             <ResponsiveOverlay
-                open={isViewOpen}
+                open={isViewOpen && !isDeleteOpen}
                 onOpenChange={(open) => {
                     if (!open) {
                         closeRowSheet();
                     }
                 }}
-                title={
-                    rowMode === 'delete'
-                        ? `Delete ${viewedOrganization?.name ?? ''}?`
-                        : (viewedOrganization?.name ?? 'Organization')
-                }
+                title={viewedOrganization?.name ?? 'Organization'}
                 description={
                     !viewedOrganization
                         ? 'This organization is not on the current page of results.'
                         : rowMode === 'edit'
                           ? 'Update this organization.'
-                          : rowMode === 'delete'
-                            ? 'Confirm with your password to continue.'
-                            : 'Details for this organization.'
+                          : 'Details for this organization.'
                 }
                 footer={
                     rowMode === 'edit' && viewedOrganization ? (
@@ -706,21 +710,9 @@ export default function OrganizationsIndex({
                                 },
                             ]}
                         />
-                    ) : rowMode === 'delete' && viewedOrganization ? (
-                        <OverlayFooter
-                            onCancel={closeRowSheet}
-                            actions={[
-                                {
-                                    label: 'Delete organization',
-                                    tone: 'danger',
-                                    icon: <Trash2 className="size-4" />,
-                                    form: 'organization-delete-form',
-                                    type: 'submit',
-                                },
-                            ]}
-                        />
                     ) : viewedOrganization ? (
                         <OverlayFooter
+                            onCancel={closeRowSheet}
                             actions={[
                                 {
                                     label: 'Edit',
@@ -735,7 +727,7 @@ export default function OrganizationsIndex({
                                     tone: 'danger-ghost',
                                     icon: <Trash2 className="size-4" />,
                                     onClick: () =>
-                                        openRow(viewedOrganization, 'delete'),
+                                        openDelete(viewedOrganization),
                                     ...(canDelete ? {} : { disabled: true }),
                                 },
                             ]}
@@ -764,44 +756,31 @@ export default function OrganizationsIndex({
                         />
                     </Form>
                 )}
+            </ResponsiveOverlay>
 
-                {viewedOrganization && rowMode === 'delete' && (
-                    <Form
-                        id="organization-delete-form"
-                        method="delete"
-                        action={orgRoutes.destroy(viewedOrganization.id)}
-                        onSuccess={() => closeRowSheet()}
-                        className="grid gap-3"
-                    >
-                        <p className="text-sm">
+            {canDelete && viewedOrganization && (
+                <ConfirmDeleteOverlay
+                    open={isDeleteOpen}
+                    onOpenChange={(open) => {
+                        if (!open) {
+                            closeRowSheet();
+                        }
+                    }}
+                    action={orgRoutes.destroy(viewedOrganization.id).url}
+                    title={`Delete ${viewedOrganization.name}?`}
+                    description={
+                        <>
                             This soft-deletes{' '}
                             <span className="font-medium">
                                 {viewedOrganization.name}
                             </span>
                             . Its tenant, members and records are kept, so it
-                            can be restored.
-                        </p>
-
-                        <div className="grid gap-2">
-                            <Label htmlFor="delete-password">
-                                Confirm with your password
-                            </Label>
-                            <Input
-                                id="delete-password"
-                                name="password"
-                                type="password"
-                                autoComplete="current-password"
-                                required
-                            />
-                            {errors.password && (
-                                <p className="text-xs text-destructive">
-                                    {errors.password}
-                                </p>
-                            )}
-                        </div>
-                    </Form>
-                )}
-            </ResponsiveOverlay>
+                            can be restored. Confirm with your password — this
+                            cannot be undone.
+                        </>
+                    }
+                />
+            )}
 
             <ResponsiveOverlay
                 open={isCreateOpen}

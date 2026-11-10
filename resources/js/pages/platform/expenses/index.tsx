@@ -4,6 +4,7 @@ import type { ColumnDef, SortingState } from '@tanstack/react-table';
 import { Download, ListFilter, Pencil, Plus, Receipt, Search, Trash2, Upload } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActionIconButton } from '@/components/action-icon-button';
+import ConfirmDeleteOverlay from '@/components/confirm-delete-overlay';
 import { CsvImportSheet, downloadCsv } from '@/components/csv-actions';
 import { CsvExportSheet } from '@/components/csv-export-sheet';
 import { DataTable } from '@/components/data-table';
@@ -108,8 +109,13 @@ export default function PlatformExpensesIndex({
     // `confirm-delete` is a fourth mode rather than a separate second overlay:
     // the first Delete press only asks whether you mean it, and the password
     // prompt appears inside the same sheet once you have said yes.
-    type RowMode = 'view' | 'edit' | 'delete' | 'confirm-delete';
-    const rowMode = (query.get('mode') as RowMode | null) ?? 'view';
+    type RowMode = 'view' | 'edit';
+    const requestedMode = query.get('mode');
+    const rowMode: RowMode = requestedMode === 'edit' ? 'edit' : 'view';
+    // Delete is a Modal, not a third mode of the row sheet. A destructive gate
+    // needs the centred backdrop that blocks the rest of the page, and the
+    // sheet's footer is not the place for a password field.
+    const isDeleteOpen = requestedMode === 'delete' && isViewOpen;
     const isCreateOpen = query.get('create') === '1';
     const isImportOpen = query.get('import') === '1';
     const isExportOpen = query.get('export') === '1';
@@ -202,6 +208,12 @@ export default function PlatformExpensesIndex({
     function openRow(expense: ExpenseRow, mode: RowMode) {
         setOverlayParam('mode', mode, {
             replace: mode === 'view',
+            keep: { expense: String(expense.id) },
+        });
+    }
+
+    function openDelete(expense: ExpenseRow) {
+        setOverlayParam('mode', 'delete', {
             keep: { expense: String(expense.id) },
         });
     }
@@ -389,7 +401,7 @@ export default function PlatformExpensesIndex({
                                         expense.category
                                     }`}
                                     color="danger"
-                                    onClick={() => openRow(expense, 'delete')}
+                                    onClick={() => openDelete(expense)}
                                 />
                             )}
                         </div>
@@ -530,9 +542,9 @@ export default function PlatformExpensesIndex({
                 />
             </div>
 
-            {/* The row sheet: view, edit, delete and confirm share one overlay. */}
+            {/* The row sheet: view and edit share one overlay; delete is a modal. */}
             <ResponsiveOverlay
-                open={isViewOpen && viewedExpense !== undefined}
+                open={isViewOpen && viewedExpense !== undefined && !isDeleteOpen}
                 onOpenChange={(open) => {
                     if (!open) {
                         closeRowSheet();
@@ -546,46 +558,12 @@ export default function PlatformExpensesIndex({
                 description={
                     !viewedExpense
                         ? 'This expense is not on the current page of results.'
-                        : rowMode === 'delete'
-                          ? 'This soft-deletes the record. The audit trail is kept.'
-                          : rowMode === 'confirm-delete'
-                            ? 'Confirm with your password.'
-                            : rowMode === 'edit'
-                              ? 'Update the amount, category or vendor.'
-                              : 'Details for this expense.'
+                        : rowMode === 'edit'
+                          ? 'Update the amount, category or vendor.'
+                          : 'Details for this expense.'
                 }
                 footer={
-                    rowMode === 'delete' && viewedExpense ? (
-                        <OverlayFooter
-                            onCancel={closeRowSheet}
-                            actions={[
-                                {
-                                    label: 'Continue to delete',
-                                    tone: 'danger-ghost',
-                                    icon: <Trash2 className="size-4" />,
-                                    onClick: () =>
-                                        setOverlayParam('mode', 'confirm-delete', {
-                                            keep: {
-                                                expense: String(
-                                                    viewedExpense.id,
-                                                ),
-                                            },
-                                        }),
-                                },
-                            ]}
-                        />
-                    ) : rowMode === 'confirm-delete' && viewedExpense ? (
-                        <OverlayFooter
-                            onCancel={() => openRow(viewedExpense, 'delete')}
-                            actions={[
-                                {
-                                    label: 'Delete expense',
-                                    form: 'expense-delete-form',
-                                    type: 'submit',
-                                },
-                            ]}
-                        />
-                    ) : rowMode === 'edit' && viewedExpense ? (
+                    rowMode === 'edit' && viewedExpense ? (
                         <OverlayFooter
                             onCancel={closeRowSheet}
                             actions={[
@@ -598,6 +576,7 @@ export default function PlatformExpensesIndex({
                         />
                     ) : (
                         <OverlayFooter
+                            onCancel={closeRowSheet}
                             actions={[
                                 {
                                     label: 'Edit',
@@ -607,6 +586,15 @@ export default function PlatformExpensesIndex({
                                         viewedExpense &&
                                         openRow(viewedExpense, 'edit'),
                                     ...(canEdit ? {} : { disabled: true }),
+                                },
+                                {
+                                    label: 'Delete',
+                                    tone: 'danger-ghost',
+                                    icon: <Trash2 className="size-4" />,
+                                    onClick: () =>
+                                        viewedExpense &&
+                                        openDelete(viewedExpense),
+                                    ...(canDelete ? {} : { disabled: true }),
                                 },
                             ]}
                         />
@@ -628,8 +616,23 @@ export default function PlatformExpensesIndex({
                                 errors={errors}
                             />
                         </Form>
-                    ) : rowMode === 'delete' ? (
-                        <p className="text-sm">
+                    ) : (
+                        <ExpenseDetail expense={viewedExpense} />
+                    ))}
+            </ResponsiveOverlay>
+
+            {canDelete && viewedExpense && (
+                <ConfirmDeleteOverlay
+                    open={isDeleteOpen}
+                    onOpenChange={(open) => {
+                        if (!open) {
+                            closeRowSheet();
+                        }
+                    }}
+                    action={expenseRoutes.destroy(viewedExpense.id).url}
+                    title={`Delete this expense?`}
+                    description={
+                        <>
                             Deleting this expense removes{' '}
                             <span className="font-medium">
                                 {viewedExpense.currency}{' '}
@@ -647,44 +650,13 @@ export default function PlatformExpensesIndex({
                             ) : (
                                 ''
                             )}
-                            . It drops out of the totals. The record is kept, so
-                            it can be restored.
-                        </p>
-                    ) : rowMode === 'confirm-delete' ? (
-                        <Form
-                            id="expense-delete-form"
-                            method="delete"
-                            action={expenseRoutes.destroy(viewedExpense.id)}
-                            onSuccess={() => closeRowSheet()}
-                            className="grid gap-3"
-                        >
-                            <p className="text-sm">
-                                This soft-deletes the expense. Confirm with your
-                                password to continue.
-                            </p>
-
-                            <div className="grid gap-2">
-                                <Label htmlFor="delete-password">
-                                    Confirm with your password
-                                </Label>
-                                <Input
-                                    id="delete-password"
-                                    name="password"
-                                    type="password"
-                                    autoComplete="current-password"
-                                    required
-                                />
-                                {errors.password && (
-                                    <p className="text-xs text-destructive">
-                                        {errors.password}
-                                    </p>
-                                )}
-                            </div>
-                        </Form>
-                    ) : (
-                        <ExpenseDetail expense={viewedExpense} />
-                    ))}
-            </ResponsiveOverlay>
+                            . It drops out of the totals. The record is kept,
+                            so it can be restored. Confirm with your password —
+                            this cannot be undone.
+                        </>
+                    }
+                />
+            )}
 
             <ResponsiveOverlay
                 open={isCreateOpen}
