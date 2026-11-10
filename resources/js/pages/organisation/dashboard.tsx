@@ -1,4 +1,4 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { CalendarClock, TriangleAlert, Wrench } from 'lucide-react';
 import { useState } from 'react';
 import type { ComboPoint } from '@/components/dashboard/combo-chart';
@@ -115,6 +115,7 @@ export default function OrganizationDashboard({
     const [filterMonth, setFilterMonth] = useState<string>(
         month ? String(month) : '',
     );
+    const pageUrl = usePage().url.split('?')[0];
     const updateFilters = (newYear: string, newMonth: string) => {
         setFilterYear(newYear);
         setFilterMonth(newMonth);
@@ -129,7 +130,7 @@ export default function OrganizationDashboard({
             params.month = newMonth;
         }
 
-        router.get(window.location.pathname, params, {
+        router.get(pageUrl, params, {
             preserveState: true,
             replace: true,
         });
@@ -156,7 +157,7 @@ export default function OrganizationDashboard({
                             }
                         >
                             <SelectTrigger
-                                className="w-[100px]"
+                                className="min-w-[100px]"
                                 aria-label="Filter by year"
                             >
                                 <SelectValue placeholder="All years" />
@@ -173,17 +174,17 @@ export default function OrganizationDashboard({
                         <Select
                             value={filterMonth}
                             onValueChange={(value) =>
-                                updateFilters(filterYear, value)
+                                updateFilters(filterYear, value === 'all' ? '' : value)
                             }
                         >
                             <SelectTrigger
-                                className="w-[110px]"
+                                className="min-w-[110px]"
                                 aria-label="Filter by month"
                             >
                                 <SelectValue placeholder="All months" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="">All months</SelectItem>
+                                <SelectItem value="all">All months</SelectItem>
                                 {MONTHS.map((name, index) => (
                                     <SelectItem
                                         key={index}

@@ -279,13 +279,11 @@ export function AppSidebar() {
                         : []),
                     ...(canManageMaintenance
                         ? [
-                              dropdown('Maintenance', Wrench, [
-                                  item(
-                                      'All requests',
-                                      maintenanceIndex(),
-                                      Wrench,
-                                  ),
-                              ]),
+                              item(
+                                  'Maintenance',
+                                  maintenanceIndex(),
+                                  Wrench,
+                              ),
                           ]
                         : []),
                 ],
@@ -398,13 +396,11 @@ export function AppSidebar() {
                         : []),
                     ...(canManageMaintenance
                         ? [
-                              dropdown('Maintenance', Wrench, [
-                                  item(
-                                      'All requests',
-                                      maintenanceIndex(),
-                                      Wrench,
-                                  ),
-                              ]),
+                              item(
+                                  'Maintenance',
+                                  maintenanceIndex(),
+                                  Wrench,
+                              ),
                           ]
                         : []),
                     ...(canViewReports

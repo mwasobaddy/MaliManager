@@ -53,11 +53,14 @@ function StatPill({ item }: { item: StatItem }) {
     const baseStyles =
         'inline-flex items-center gap-2 rounded-lg border border-border-strong px-3 py-2 text-sm font-medium transition-colors hover:border-brand-primary/30';
 
-    // Two brand colours at full opacity. A tint washed out on the card
-    // surface behind them, so the fill has to carry the colour on its own.
+    // Quiet tints, never full fills: a row of solid pills competes like
+    // CTAs (§5 60-30-10). Colour lives in the value figure; the label stays
+    // muted so normal states stay quiet and real exceptions can shout.
     const variantStyles = {
-        primary: 'bg-brand-primary text-primary-foreground border-brand-primary',
-        accent: 'bg-brand-accent text-brand-accent-foreground border-brand-accent',
+        primary:
+            'bg-brand-primary-100 text-primary-text border-brand-primary/25',
+        accent:
+            'bg-brand-accent-100 text-accent-on-tint border-brand-accent/25',
     };
 
     const variantClass = variantStyles[item.variant ?? 'primary'];

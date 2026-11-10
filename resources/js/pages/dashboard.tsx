@@ -199,14 +199,22 @@ export default function Dashboard(props: Props) {
     const permissions = (page.props.auth?.permissions ?? []) as string[];
     const availableYears = props.available_years ?? [];
 
-    const visibleTabs = TABS.filter((tab) =>
-        permissions.includes(tab.permission),
+    const visibleTabs = TABS.filter(
+        (tab) =>
+            permissions.includes(tab.permission) &&
+            props[tab.key] !== null &&
+            props[tab.key] !== undefined,
     );
 
-    const params = new URLSearchParams(window.location.search);
-    const urlTab = params.get('tab') as TabKey | null;
-    const urlYear = params.get('year');
-    const urlMonth = params.get('month');
+    const pageUrl = page.url.split('?')[0];
+    const pageQuery = (() => {
+        const index = page.url.indexOf('?');
+
+        return new URLSearchParams(index === -1 ? '' : page.url.slice(index));
+    })();
+    const urlTab = pageQuery.get('tab') as TabKey | null;
+    const urlYear = pageQuery.get('year');
+    const urlMonth = pageQuery.get('month');
 
     const initialTab =
         urlTab && visibleTabs.some((tab) => tab.key === urlTab)
@@ -232,7 +240,7 @@ export default function Dashboard(props: Props) {
             params.month = filterMonth;
         }
 
-        router.get(window.location.pathname, params, {
+        router.get(pageUrl, params, {
             preserveState: true,
             replace: true,
         });
@@ -252,7 +260,7 @@ export default function Dashboard(props: Props) {
             params.month = month;
         }
 
-        router.get(window.location.pathname, params, {
+        router.get(pageUrl, params, {
             preserveState: true,
             replace: true,
         });
@@ -299,7 +307,7 @@ export default function Dashboard(props: Props) {
                                     }
                                 >
                                     <SelectTrigger
-                                        className="w-[100px]"
+                                        className="min-w-[100px]"
                                         aria-label="Filter by year"
                                     >
                                         <SelectValue placeholder="All years" />
@@ -319,11 +327,11 @@ export default function Dashboard(props: Props) {
                                 <Select
                                     value={filterMonth}
                                     onValueChange={(value) =>
-                                        updateFilters(filterYear, value)
+                                        updateFilters(filterYear, value === 'all' ? '' : value)
                                     }
                                 >
                                     <SelectTrigger
-                                        className="w-[110px]"
+                                        className="min-w-[110px]"
                                         aria-label="Filter by month"
                                     >
                                         <SelectValue placeholder="All months" />

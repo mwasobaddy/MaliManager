@@ -445,7 +445,7 @@ export default function Welcome() {
                                 className={`${revealClasses} font-display max-w-xl text-[2.35rem] leading-[1.1] font-semibold tracking-tight text-foreground sm:text-5xl lg:text-[3.4rem]`}
                                 style={{ animationDelay: '0.1s' }}
                             >
-                                Every property. Every tenant. One dashboard.
+                                Every property in Kenya. Every tenant. One dashboard.
                             </h1>
 
                             <p
@@ -471,7 +471,7 @@ export default function Welcome() {
                                     href="#features"
                                     className={accentCta}
                                 >
-                                    Watch a 2-Minute Demo
+                                    See how it works
                                 </Link>
                             </div>
 
@@ -986,17 +986,17 @@ export default function Welcome() {
                             <div>
                                 <p className="mb-4 text-sm font-medium text-foreground">Company</p>
                                 <ul className="space-y-2.5 text-sm text-muted-foreground">
-                                    <li className="hover:text-foreground">About</li>
-                                    <li className="hover:text-foreground">Careers</li>
-                                    <li className="hover:text-foreground">Contact</li>
+                                    <li>About</li>
+                                    <li>Careers</li>
+                                    <li>Contact</li>
                                 </ul>
                             </div>
 
                             <div>
                                 <p className="mb-4 text-sm font-medium text-foreground">Legal</p>
                                 <ul className="space-y-2.5 text-sm text-muted-foreground">
-                                    <li className="hover:text-foreground">Privacy</li>
-                                    <li className="hover:text-foreground">Terms</li>
+                                    <li>Privacy</li>
+                                    <li>Terms</li>
                                 </ul>
                             </div>
                         </div>
@@ -1005,35 +1005,6 @@ export default function Welcome() {
                             <p className="text-sm text-muted-foreground">
                                 © 2026 MaliManager. All rights reserved.
                             </p>
-                            <div className="flex items-center gap-4">
-                                <Link
-                                    href="#"
-                                    aria-label="X / Twitter"
-                                    className="text-muted-foreground transition-colors hover:text-foreground"
-                                >
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                                        <path d="M18.9 2H22l-7.6 8.7L23.3 22h-7l-5.5-6.9L4.5 22H1.4l8.1-9.3L1 2h7.2l5 6.3L18.9 2zm-1.2 18h1.7L7.4 4H5.6l12.1 16z" />
-                                    </svg>
-                                </Link>
-                                <Link
-                                    href="#"
-                                    aria-label="LinkedIn"
-                                    className="text-muted-foreground transition-colors hover:text-foreground"
-                                >
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                                        <path d="M4.98 3.5a2.5 2.5 0 11.02 5 2.5 2.5 0 01-.02-5zM3 8.98h4v12H3v-12zm7 0h3.83v1.64h.05c.53-.99 1.83-2.04 3.77-2.04 4.03 0 4.78 2.66 4.78 6.11v6.29h-4v-5.58c0-1.33-.02-3.04-1.85-3.04-1.86 0-2.14 1.45-2.14 2.94v5.68h-4v-12z" />
-                                    </svg>
-                                </Link>
-                                <Link
-                                    href="#"
-                                    aria-label="Facebook"
-                                    className="text-muted-foreground transition-colors hover:text-foreground"
-                                >
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                                        <path d="M13.5 22v-8.5H16l.4-3.3h-2.9V8.2c0-1 .3-1.6 1.7-1.6h1.8V3.6C16.6 3.4 15.6 3.3 14.4 3.3c-2.6 0-4.4 1.6-4.4 4.5v2.4H7.5v3.3H10V22h3.5z" />
-                                    </svg>
-                                </Link>
-                            </div>
                         </div>
                     </div>
                 </footer>

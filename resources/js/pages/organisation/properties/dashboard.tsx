@@ -1,4 +1,4 @@
-import { Form, Head, Link, router } from '@inertiajs/react';
+import { Form, Head, Link, router, usePage } from '@inertiajs/react';
 import { Building2, DoorOpen, Plus } from 'lucide-react';
 import { useState } from 'react';
 import {
@@ -125,6 +125,7 @@ export default function PropertiesDashboard({
     const [filterMonth, setFilterMonth] = useState<string>(
         month ? String(month) : '',
     );
+    const pageUrl = usePage().url.split('?')[0];
     const atUnitLimit =
         plan.units_limit !== null && units.length >= plan.units_limit;
 
@@ -142,7 +143,7 @@ export default function PropertiesDashboard({
             params.month = newMonth;
         }
 
-        router.get(window.location.pathname, params, {
+        router.get(pageUrl, params, {
             preserveState: true,
             replace: true,
         });
@@ -159,7 +160,11 @@ export default function PropertiesDashboard({
                             variant="small"
                             level="h1"
                             title={property.name}
-                            description={`${property.city ?? 'No city set'}${property.address ? ` · ${property.address}` : ''}`}
+                            description={
+                                [property.city, property.address]
+                                    .filter(Boolean)
+                                    .join(' · ') || undefined
+                            }
                         />
                         <Badge
                             variant={
@@ -183,7 +188,7 @@ export default function PropertiesDashboard({
                             }
                         >
                             <SelectTrigger
-                                className="w-[100px]"
+                                className="min-w-[100px]"
                                 aria-label="Filter by year"
                             >
                                 <SelectValue placeholder="All years" />
@@ -200,17 +205,17 @@ export default function PropertiesDashboard({
                         <Select
                             value={filterMonth}
                             onValueChange={(value) =>
-                                updateFilters(filterYear, value)
+                                updateFilters(filterYear, value === 'all' ? '' : value)
                             }
                         >
                             <SelectTrigger
-                                className="w-[110px]"
+                                className="min-w-[110px]"
                                 aria-label="Filter by month"
                             >
                                 <SelectValue placeholder="All months" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="">All months</SelectItem>
+                                <SelectItem value="all">All months</SelectItem>
                                 {MONTHS.map((name, index) => (
                                     <SelectItem
                                         key={index}
