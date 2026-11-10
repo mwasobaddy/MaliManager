@@ -46,7 +46,11 @@ class OccupantSeeder extends Seeder
                     ['name' => $unitName],
                     ['slug' => Str::slug($unitName.'-'.$organization->slug)] +
                     [
-                        'status' => 'occupied',
+                        // Start vacant: assigning an occupant flips the unit
+                        // to occupied via the lease lifecycle, and move-out
+                        // flips it back. Seeding occupied here would disagree
+                        // with the leases the seeder itself creates below.
+                        'status' => 'vacant',
                         'type' => '1 Bedroom',
                         'monthly_rent' => 25000,
                         'deposit' => 25000,

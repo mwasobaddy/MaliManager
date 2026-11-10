@@ -18,6 +18,10 @@ class TerminateLeaseOccupant extends Service
                 'status' => 'ended',
             ]);
 
+            if ($lease->unit_id !== null) {
+                $this->refreshUnitStatus($lease->unit_id);
+            }
+
             $this->stripOccupantRoleIfNoActiveLeases($lease->person);
         });
     }

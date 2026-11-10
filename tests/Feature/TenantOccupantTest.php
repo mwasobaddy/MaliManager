@@ -815,3 +815,72 @@ test('agreement placeholders are merged from lease data on the print page', func
                 // Unknown tokens are left intact so authors spot typos.
                 && str_contains($html, '{{landlord_unknown_token}}')));
 });
+
+test('assigning a unit marks it occupied', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createOccupantOrganization($owner);
+    $property = createProperty($organization, $owner, 'sunset-heights');
+    $unit = $property->units()->create([
+        'name' => 'A1',
+        'status' => 'vacant',
+        'created_by' => $owner->id,
+    ]);
+
+    addOccupant($organization, $owner, $property, [], [$unit->id]);
+
+    expect($unit->refresh()->status)->toBe('occupied');
+});
+
+test('moving out marks the unit vacant again', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createOccupantOrganization($owner);
+    $property = createProperty($organization, $owner, 'sunset-heights');
+    $unit = $property->units()->create([
+        'name' => 'A1',
+        'status' => 'vacant',
+        'created_by' => $owner->id,
+    ]);
+
+    $occupant = addOccupant($organization, $owner, $property, [], [$unit->id]);
+
+    app(OccupantService::class)->moveOut($occupant, $property, $owner);
+
+    expect($unit->refresh()->status)->toBe('vacant');
+});
+
+test('terminating a lease marks the unit vacant again', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createOccupantOrganization($owner);
+    $property = createProperty($organization, $owner, 'sunset-heights');
+    $unit = $property->units()->create([
+        'name' => 'A1',
+        'status' => 'vacant',
+        'created_by' => $owner->id,
+    ]);
+
+    addOccupant($organization, $owner, $property, [], [$unit->id]);
+
+    $lease = Lease::where('unit_id', $unit->id)->where('status', 'active')->firstOrFail();
+    app(OccupantService::class)->terminateLease($lease);
+
+    expect($unit->refresh()->status)->toBe('vacant');
+});
+
+test('leasing never overwrites a maintenance flag', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createOccupantOrganization($owner);
+    $property = createProperty($organization, $owner, 'sunset-heights');
+    $unit = $property->units()->create([
+        'name' => 'A1',
+        'status' => 'maintenance',
+        'created_by' => $owner->id,
+    ]);
+
+    $occupant = addOccupant($organization, $owner, $property, [], [$unit->id]);
+
+    expect($unit->refresh()->status)->toBe('maintenance');
+
+    app(OccupantService::class)->moveOut($occupant, $property, $owner);
+
+    expect($unit->refresh()->status)->toBe('maintenance');
+});

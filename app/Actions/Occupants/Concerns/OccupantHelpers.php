@@ -26,6 +26,29 @@ trait OccupantHelpers
                 'ends_at' => now(),
                 'status' => 'ended',
             ]);
+
+        $this->refreshUnitStatus($unitId);
+    }
+
+    /**
+     * Keep the unit's occupancy flag truthful: occupied while any active
+     * open-ended lease points at it, vacant otherwise. Units in maintenance
+     * are left alone — a repair state is set by staff, not by leasing.
+     */
+    private function refreshUnitStatus(int $unitId): void
+    {
+        $unit = Unit::find($unitId);
+
+        if (! $unit || ! in_array($unit->status, ['vacant', 'occupied'], true)) {
+            return;
+        }
+
+        $occupied = Lease::where('unit_id', $unitId)
+            ->where('status', 'active')
+            ->whereNull('ends_at')
+            ->exists();
+
+        $unit->fill(['status' => $occupied ? 'occupied' : 'vacant'])->save();
     }
 
     /**
@@ -64,6 +87,8 @@ trait OccupantHelpers
         ]);
 
         $lease->save();
+
+        $this->refreshUnitStatus($unitId);
     }
 
     /**
