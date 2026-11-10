@@ -38,7 +38,7 @@ export default function OccupantAgreement({
                 {agreementHtml ? (
                     // Sanitized server-side on save; placeholders merged from lease data.
                     <article
-                        className="prose prose-sm max-w-none text-black"
+                        className="prose prose-sm max-w-none text-foreground print:text-black"
                         dangerouslySetInnerHTML={{ __html: agreementHtml }}
                     />
                 ) : (

@@ -3,6 +3,7 @@ import { FileSearch, Plus } from 'lucide-react';
 import Heading from '@/components/heading';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Empty } from '@/components/ui/empty';
 import { create as createInspectionRoute } from '@/routes/tenant/inspections';
 
 type InspectionRow = {
@@ -26,6 +27,7 @@ export default function InspectionsIndex({ propertySlug, inspections }: Props) {
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                     <Heading
+                        level="h1"
                         title="Inspections"
                         description="Unit walkthroughs with photo-based AI condition reports."
                     />
@@ -42,9 +44,11 @@ export default function InspectionsIndex({ propertySlug, inspections }: Props) {
                 </div>
 
                 {inspections.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                        No inspections yet.
-                    </p>
+                    <Empty
+                        icon={<FileSearch className="size-4" />}
+                        title="No inspections yet"
+                        description="Start a walkthrough to generate a photo-based condition report."
+                    />
                 ) : (
                     <table className="w-full text-sm">
                         <thead>

@@ -67,6 +67,7 @@ export default function ExpensesIndex({
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                     <Heading
+                        level="h1"
                         title="Expenses"
                         description="Maintenance, renovation and other costs across your assets."
                     />
@@ -192,23 +193,28 @@ export default function ExpensesIndex({
                 )}
 
                 <Pagination
-            currentPage={expenses.current_page}
-            lastPage={expenses.last_page}
-            label="expenses"
-            onChange={(page) =>
-                router.get(
-                    expensesIndexRoute.url({
-                        query: {
-                            page,
-                            category: category === 'all' ? '' : category,
-                        },
-                    }),
-                    {},
-                    { preserveScroll: true },
-                )
-            }
-        />
+                    currentPage={expenses.current_page}
+                    lastPage={expenses.last_page}
+                    label="expenses"
+                    onChange={(page) =>
+                        router.get(
+                            expensesIndexRoute.url({
+                                query: {
+                                    page,
+                                    category:
+                                        category === 'all' ? '' : category,
+                                },
+                            }),
+                            {},
+                            { preserveScroll: true },
+                        )
+                    }
+                />
             </div>
         </>
     );
 }
+
+ExpensesIndex.layout = {
+    breadcrumbs: [{ title: 'Expenses' }],
+};

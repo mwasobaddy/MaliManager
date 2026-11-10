@@ -3,6 +3,7 @@ import { Check, HandCoins, X } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useState } from 'react';
 import Heading from '@/components/heading';
+import InputError from '@/components/input-error';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -95,6 +96,7 @@ export default function DepositRefunds({ refunds, leases, filters }: Props) {
 
             <div className="space-y-6 p-4 md:p-6">
                 <Heading
+                    level="h1"
                     title="Deposit refunds"
                     description="Return a deposit to an occupant. Money leaving the organization needs an approval before it is paid."
                 />
@@ -140,16 +142,14 @@ export default function DepositRefunds({ refunds, leases, filters }: Props) {
                                         </SelectContent>
                                     </Select>
                                     {selectedLease && (
-                                        <p className="text-muted-foreground text-xs">
+                                        <p className="text-xs text-muted-foreground">
                                             Deposit held:{' '}
                                             {selectedLease.deposit.toLocaleString()}
                                         </p>
                                     )}
                                     {form.errors.lease_id && (
-                                        <p className="text-status-danger text-sm">
-                                            {form.errors.lease_id}
-                                        </p>
-                                    )}
+                                            <InputError message={form.errors.lease_id} />
+                                        )}
                                 </div>
 
                                 <div className="space-y-2">
@@ -170,10 +170,8 @@ export default function DepositRefunds({ refunds, leases, filters }: Props) {
                                         aria-invalid={!!form.errors.amount}
                                     />
                                     {form.errors.amount && (
-                                        <p className="text-status-danger text-sm">
-                                            {form.errors.amount}
-                                        </p>
-                                    )}
+                                            <InputError message={form.errors.amount} />
+                                        )}
                                 </div>
 
                                 <div className="space-y-2">
@@ -192,10 +190,8 @@ export default function DepositRefunds({ refunds, leases, filters }: Props) {
                                         aria-invalid={!!form.errors.reason}
                                     />
                                     {form.errors.reason && (
-                                        <p className="text-status-danger text-sm">
-                                            {form.errors.reason}
-                                        </p>
-                                    )}
+                                            <InputError message={form.errors.reason} />
+                                        )}
                                 </div>
 
                                 <Button
@@ -259,7 +255,7 @@ export default function DepositRefunds({ refunds, leases, filters }: Props) {
                                 <div className="overflow-x-auto">
                                     <table className="w-full border-collapse text-sm">
                                         <thead>
-                                            <tr className="border-border-strong border-b">
+                                            <tr className="border-b border-border-strong">
                                                 {[
                                                     'Occupant',
                                                     'Amount',
@@ -270,7 +266,7 @@ export default function DepositRefunds({ refunds, leases, filters }: Props) {
                                                     <th
                                                         key={heading}
                                                         scope="col"
-                                                        className="text-muted-foreground bg-bg-base px-3 py-2 text-left text-xs font-medium tracking-wide uppercase last:text-right"
+                                                        className="bg-bg-base px-3 py-2 text-left text-xs font-medium tracking-wide text-muted-foreground uppercase last:text-right"
                                                     >
                                                         {heading}
                                                     </th>
@@ -281,14 +277,14 @@ export default function DepositRefunds({ refunds, leases, filters }: Props) {
                                             {refunds.data.map((refund) => (
                                                 <tr
                                                     key={refund.id}
-                                                    className="border-border/60 hover:bg-bg-base border-b last:border-b-0"
+                                                    className="border-b border-border/60 last:border-b-0 hover:bg-bg-base"
                                                 >
                                                     <td className="px-3 py-2">
                                                         <div>
                                                             {refund.tenant_name ??
                                                                 '—'}
                                                         </div>
-                                                        <div className="text-muted-foreground max-w-72 truncate text-xs">
+                                                        <div className="max-w-72 truncate text-xs text-muted-foreground">
                                                             {refund.reason}
                                                         </div>
                                                     </td>
@@ -302,10 +298,12 @@ export default function DepositRefunds({ refunds, leases, filters }: Props) {
                                                                 refund.status_variant
                                                             }
                                                         >
-                                                            {refund.status_label}
+                                                            {
+                                                                refund.status_label
+                                                            }
                                                         </Badge>
                                                     </td>
-                                                    <td className="text-muted-foreground px-3 py-2">
+                                                    <td className="px-3 py-2 text-muted-foreground">
                                                         {refund.requester_name ??
                                                             '—'}
                                                     </td>
@@ -318,7 +316,7 @@ export default function DepositRefunds({ refunds, leases, filters }: Props) {
                                                                         type="button"
                                                                         variant="ghost"
                                                                         size="sm"
-                                                                        className="text-status-success gap-1"
+                                                                        className="gap-1 text-status-success"
                                                                         disabled={
                                                                             deciding ===
                                                                             refund.id
@@ -337,7 +335,7 @@ export default function DepositRefunds({ refunds, leases, filters }: Props) {
                                                                         type="button"
                                                                         variant="ghost"
                                                                         size="sm"
-                                                                        className="text-status-danger gap-1"
+                                                                        className="gap-1 text-status-danger"
                                                                         disabled={
                                                                             deciding ===
                                                                             refund.id
@@ -354,7 +352,7 @@ export default function DepositRefunds({ refunds, leases, filters }: Props) {
                                                                     </Button>
                                                                 </>
                                                             ) : (
-                                                                <span className="text-muted-foreground text-xs">
+                                                                <span className="text-xs text-muted-foreground">
                                                                     {refund.decider_name
                                                                         ? `by ${refund.decider_name}`
                                                                         : '—'}

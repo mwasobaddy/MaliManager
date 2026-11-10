@@ -1,10 +1,14 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { usePage } from '@inertiajs/react';
 import { Wrench } from 'lucide-react';
+import { useState } from 'react';
 import ConfirmDeleteOverlay from '@/components/confirm-delete-overlay';
 import Heading from '@/components/heading';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Empty } from '@/components/ui/empty';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Pagination } from '@/components/ui/pagination';
 import {
     Select,
@@ -76,6 +80,21 @@ export default function MaintenanceIndex({
     );
     const isDeleteOpen = query.get('mode') === 'delete' && !!deleteTarget;
 
+    // Resolving asks for notes inline instead of a native prompt: the notes
+    // are part of the record, so they get a labelled field with validation.
+    const [resolvingId, setResolvingId] = useState<number | null>(null);
+    const [resolutionNotes, setResolutionNotes] = useState('');
+
+    function submitResolve(item: RequestRow) {
+        router.put(
+            `/maintenance/${item.id}`,
+            { status: 'resolved', resolution_notes: resolutionNotes },
+            { preserveScroll: true },
+        );
+        setResolvingId(null);
+        setResolutionNotes('');
+    }
+
     const setFilter = (key: 'status' | 'priority', value: string) => {
         router.get(
             routesIndexUrl(),
@@ -107,6 +126,7 @@ export default function MaintenanceIndex({
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                     <Heading
+                        level="h1"
                         title="Maintenance"
                         description="Requests raised by occupants and staff across your properties."
                     />
@@ -155,9 +175,11 @@ export default function MaintenanceIndex({
                 </div>
 
                 {requests.data.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                        No maintenance requests found.
-                    </p>
+                    <Empty
+                        icon={<Wrench className="size-4" />}
+                        title="No maintenance requests found"
+                        description="Occupants and staff can raise requests from their maintenance pages."
+                    />
                 ) : (
                     <div className="space-y-3">
                         {requests.data.map((item) => (
@@ -259,18 +281,25 @@ export default function MaintenanceIndex({
                                                                 return;
                                                             }
 
+                                                            if (
+                                                                value ===
+                                                                'resolved'
+                                                            ) {
+                                                                setResolvingId(
+                                                                    item.id,
+                                                                );
+                                                                setResolutionNotes(
+                                                                    item.resolution_notes ??
+                                                                        '',
+                                                                );
+
+                                                                return;
+                                                            }
+
                                                             router.put(
                                                                 `/maintenance/${item.id}`,
                                                                 {
                                                                     status: value,
-                                                                    resolution_notes:
-                                                                        value ===
-                                                                        'resolved'
-                                                                            ? (window.prompt(
-                                                                                  'Resolution notes:',
-                                                                              ) ??
-                                                                              '')
-                                                                            : undefined,
                                                                 },
                                                                 {
                                                                     preserveScroll: true,
@@ -352,23 +381,68 @@ export default function MaintenanceIndex({
                                             )}
                                     </div>
                                 </div>
+
+                                {resolvingId === item.id && (
+                                    <form
+                                        className="mt-3 flex flex-col gap-2 border-t border-border pt-3 sm:flex-row sm:items-end"
+                                        onSubmit={(event) => {
+                                            event.preventDefault();
+                                            submitResolve(item);
+                                        }}
+                                    >
+                                        <div className="grid flex-1 gap-1.5">
+                                            <Label
+                                                htmlFor={`resolution-notes-${item.id}`}
+                                            >
+                                                Resolution notes
+                                            </Label>
+                                            <Input
+                                                id={`resolution-notes-${item.id}`}
+                                                value={resolutionNotes}
+                                                onChange={(event) =>
+                                                    setResolutionNotes(
+                                                        event.target.value,
+                                                    )
+                                                }
+                                                placeholder="What was done to fix it?"
+                                                autoFocus
+                                            />
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <Button
+                                                type="button"
+                                                variant="shadcndefault"
+                                                size="sm"
+                                                onClick={() => {
+                                                    setResolvingId(null);
+                                                    setResolutionNotes('');
+                                                }}
+                                            >
+                                                Cancel
+                                            </Button>
+                                            <Button type="submit" size="sm">
+                                                Resolve
+                                            </Button>
+                                        </div>
+                                    </form>
+                                )}
                             </div>
                         ))}
                     </div>
                 )}
 
                 <Pagination
-            currentPage={requests.current_page}
-            lastPage={requests.last_page}
-            label="requests"
-            onChange={(page) =>
-                router.get(
-                    routesIndexUrl(),
-                    { page },
-                    { preserveScroll: true },
-                )
-            }
-        />
+                    currentPage={requests.current_page}
+                    lastPage={requests.last_page}
+                    label="requests"
+                    onChange={(page) =>
+                        router.get(
+                            routesIndexUrl(),
+                            { page },
+                            { preserveScroll: true },
+                        )
+                    }
+                />
 
                 {canDelete && deleteTarget && (
                     <ConfirmDeleteOverlay
@@ -390,3 +464,7 @@ export default function MaintenanceIndex({
         </>
     );
 }
+
+MaintenanceIndex.layout = {
+    breadcrumbs: [{ title: 'Maintenance' }],
+};

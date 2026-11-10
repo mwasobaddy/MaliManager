@@ -1,6 +1,8 @@
 import { Form, Head, Link, router } from '@inertiajs/react';
 import { FileText, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { ActionIconButton } from '@/components/action-icon-button';
+import ConfirmDeleteOverlay from '@/components/confirm-delete-overlay';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import { OverlayFooter } from '@/components/overlay-footer';
@@ -115,6 +117,7 @@ export default function LandParcelShow({
 }: Props) {
     const passwordInput = useRef<HTMLInputElement>(null);
     const [addSection, setAddSection] = useState(false);
+    const [deleteSectionId, setDeleteSectionId] = useState<number | null>(null);
     const [leaseSectionId, setLeaseSectionId] = useState<number | null>(null);
     const [agreementHtml, setAgreementHtml] = useState<string | null>(null);
 
@@ -136,6 +139,7 @@ export default function LandParcelShow({
             <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-4">
                 <div className="flex items-center justify-between gap-4">
                     <Heading
+                        level="h1"
                         variant="small"
                         title={parcel.name}
                         description={`${organization.name} land parcel`}
@@ -291,32 +295,32 @@ export default function LandParcelShow({
                                                     Status
                                                 </Label>
                                                 <Select
-    name="status"
-    defaultValue="vacant"
->
-    <SelectTrigger
-        id="section-status"
-    >
-        <SelectValue />
-    </SelectTrigger>
-    <SelectContent>
-        <SelectItem
-            value={"vacant"}
-        >
-            Vacant
-        </SelectItem>
-        <SelectItem
-            value={"leased"}
-        >
-            Leased
-        </SelectItem>
-        <SelectItem
-            value={"maintenance"}
-        >
-            Maintenance
-        </SelectItem>
-    </SelectContent>
-</Select>
+                                                    name="status"
+                                                    defaultValue="vacant"
+                                                >
+                                                    <SelectTrigger id="section-status">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem
+                                                            value={'vacant'}
+                                                        >
+                                                            Vacant
+                                                        </SelectItem>
+                                                        <SelectItem
+                                                            value={'leased'}
+                                                        >
+                                                            Leased
+                                                        </SelectItem>
+                                                        <SelectItem
+                                                            value={
+                                                                'maintenance'
+                                                            }
+                                                        >
+                                                            Maintenance
+                                                        </SelectItem>
+                                                    </SelectContent>
+                                                </Select>
                                                 <InputError
                                                     message={errors.status}
                                                 />
@@ -400,27 +404,16 @@ export default function LandParcelShow({
                                                         </Button>
                                                     )}
                                                     {canManageSections && (
-                                                        <Form
-                                                            {...destroySection.form(
-                                                                {
-                                                                    land_parcel:
-                                                                        parcel.slug,
-                                                                    land_parcel_section:
-                                                                        section.id,
-                                                                },
-                                                            )}
-                                                            options={{
-                                                                preserveScroll: true,
-                                                            }}
-                                                        >
-                                                            <Button
-                                                                size="sm"
-                                                                variant="ghost"
-                                                                type="submit"
-                                                            >
-                                                                <Trash2 className="size-4" />
-                                                            </Button>
-                                                        </Form>
+                                                        <ActionIconButton
+                                                            icon={<Trash2 />}
+                                                            label={`Delete section ${section.name}`}
+                                                            color="danger"
+                                                            onClick={() =>
+                                                                setDeleteSectionId(
+                                                                    section.id,
+                                                                )
+                                                            }
+                                                        />
                                                     )}
                                                 </div>
                                             </div>
@@ -784,6 +777,25 @@ export default function LandParcelShow({
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {canManageSections && deleteSectionId !== null && (
+                <ConfirmDeleteOverlay
+                    open={deleteSectionId !== null}
+                    onOpenChange={(open) => {
+                        if (!open) {
+                            setDeleteSectionId(null);
+                        }
+                    }}
+                    action={
+                        destroySection({
+                            land_parcel: parcel.slug,
+                            land_parcel_section: deleteSectionId,
+                        }).url
+                    }
+                    title={`Delete section ${sections.find((section) => section.id === deleteSectionId)?.name ?? ''}?`}
+                    description="The section is removed and can no longer be leased. Confirm with your password — this cannot be undone."
+                />
+            )}
         </>
     );
 }

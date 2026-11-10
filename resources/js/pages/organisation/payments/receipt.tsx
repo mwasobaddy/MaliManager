@@ -64,7 +64,7 @@ export default function PaymentReceipt({
                     </button>
                 </div>
 
-                <article className="prose prose-sm max-w-none text-black spacing-js">
+                <article className="prose prose-sm max-w-none text-foreground print:text-black">
                     <header className="mb-8">
                         <div className="grid grid-cols-2 gap-4 mb-4">
                             <div>
@@ -98,7 +98,7 @@ export default function PaymentReceipt({
                             </div>
                         </div>
 
-                        {periodStart || periodEnd && (
+                        {(periodStart || periodEnd) && (
                             <div className="mt-4 pt-4 border-t">
                                 <p className="text-sm text-muted-foreground">Rent period</p>
                                 <p className="font-medium">

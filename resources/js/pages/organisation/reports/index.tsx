@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Empty } from '@/components/ui/empty';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -99,6 +101,7 @@ export default function ReportsIndex({ types }: Props) {
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                     <Heading
+                        level="h1"
                         title="Reports"
                         description="Portfolio datasets with date filtering and exports."
                     />
@@ -188,13 +191,16 @@ export default function ReportsIndex({ types }: Props) {
 
                 <Card>
                     {loading || !report ? (
-                        <p className="p-4 text-sm text-muted-foreground">
-                            Loading…
-                        </p>
+                        <div className="space-y-2 p-4" aria-hidden="true">
+                            <Skeleton className="h-5 w-2/3" />
+                            <Skeleton className="h-4 w-full" />
+                            <Skeleton className="h-4 w-5/6" />
+                        </div>
                     ) : report.rows.length === 0 ? (
-                        <p className="p-4 text-sm text-muted-foreground">
-                            No data for this range.
-                        </p>
+                        <Empty
+                            title="No data for this range"
+                            description="Try widening the date range or picking another dataset."
+                        />
                     ) : (
                         <>
                             {Object.keys(report.summary).length > 0 && (

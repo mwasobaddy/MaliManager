@@ -107,6 +107,7 @@ export default function AiSettings({
             <Head title="AI settings" />
             <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-4">
                 <Heading
+                    level="h1"
                     variant="small"
                     title="AI settings"
                     description="Bring your own LLM API key. Members you allow can use AI features with your key — usage is logged."
@@ -118,7 +119,7 @@ export default function AiSettings({
                     </CardHeader>
                     <CardContent className="grid gap-4 md:grid-cols-2">
                         <div className="grid gap-2">
-                            <Label>Provider</Label>
+                            <Label htmlFor="ai-provider">Provider</Label>
                             <Select
                                 value={provider}
                                 onValueChange={(v) => {
@@ -127,7 +128,7 @@ export default function AiSettings({
                                     setBaseUrl(defaultBaseUrls[v] ?? '');
                                 }}
                             >
-                                <SelectTrigger>
+                                <SelectTrigger id="ai-provider">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -250,10 +251,10 @@ export default function AiSettings({
                             </div>
                         </div>
 
-                        <div className="md:col-span-2">
-                            <Label className="mb-2 block">
+                        <fieldset className="md:col-span-2">
+                            <legend className="mb-2 block text-sm font-medium">
                                 Enabled features
-                            </Label>
+                            </legend>
                             <div className="grid gap-2 sm:grid-cols-2">
                                 {features.map((feature) => (
                                     <label
@@ -272,7 +273,7 @@ export default function AiSettings({
                                     </label>
                                 ))}
                             </div>
-                        </div>
+                        </fieldset>
                     </CardContent>
                 </Card>
 
@@ -364,7 +365,6 @@ export default function AiSettings({
                                 </tbody>
                             </table>
                         )}
-                        <InputError message="" />
                     </CardContent>
                 </Card>
 
