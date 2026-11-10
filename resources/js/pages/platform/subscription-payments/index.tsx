@@ -261,7 +261,10 @@ export default function SubscriptionPaymentsIndex({
     const needsOptions = isCreateOpen || rowMode === 'edit';
 
     useEffect(() => {
-        if (needsOptions && (organizations === undefined || plans === undefined)) {
+        if (
+            needsOptions &&
+            (organizations === undefined || plans === undefined)
+        ) {
             router.reload({ only: ['organizations', 'plans'] });
         }
     }, [needsOptions, organizations, plans]);
@@ -371,7 +374,7 @@ export default function SubscriptionPaymentsIndex({
                 header: 'Amount',
                 meta: { align: 'right' },
                 cell: ({ row }) => (
-                    <span className="block whitespace-nowrap text-right font-medium tabular-nums">
+                    <span className="block text-right font-medium whitespace-nowrap tabular-nums">
                         {row.original.currency}{' '}
                         {row.original.amount.toLocaleString()}
                     </span>
@@ -379,6 +382,7 @@ export default function SubscriptionPaymentsIndex({
             },
             {
                 id: 'received_on',
+                meta: { hideBelow: 'md' },
                 accessorKey: 'received_on',
                 header: 'Received',
                 cell: ({ row }) => (
@@ -389,6 +393,7 @@ export default function SubscriptionPaymentsIndex({
             },
             {
                 id: 'method',
+                meta: { hideBelow: 'md' },
                 accessorKey: 'method',
                 header: 'Method',
                 cell: ({ row }) =>
@@ -407,6 +412,7 @@ export default function SubscriptionPaymentsIndex({
                 // Free text from a payment gateway — unbounded length and often
                 // noise, so it truncates and keeps the full value on hover.
                 id: 'reference',
+                meta: { hideBelow: 'md' },
                 accessorKey: 'reference',
                 header: 'Reference',
                 cell: ({ row }) =>
@@ -464,7 +470,15 @@ export default function SubscriptionPaymentsIndex({
 
         return cells;
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [canEdit, canDelete, filters.search, filters.from, filters.to, sort.column, sort.direction]);
+    }, [
+        canEdit,
+        canDelete,
+        filters.search,
+        filters.from,
+        filters.to,
+        sort.column,
+        sort.direction,
+    ]);
 
     const sorting = useMemo<SortingState>(
         () =>
@@ -483,14 +497,15 @@ export default function SubscriptionPaymentsIndex({
             sort: sort.column ?? '',
             direction: sort.direction,
             scope,
-            ...(scope === 'page'
-                ? { page: payments.current_page }
-                : {}),
+            ...(scope === 'page' ? { page: payments.current_page } : {}),
         };
     }
 
     function runExport(scope: 'all' | 'page') {
-        downloadCsv(subscriptionPaymentRoutes.exportMethod().url, exportParams(scope));
+        downloadCsv(
+            subscriptionPaymentRoutes.exportMethod().url,
+            exportParams(scope),
+        );
         setOverlayParam('export', null, { replace: true });
     }
 
@@ -500,6 +515,7 @@ export default function SubscriptionPaymentsIndex({
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
                 <div className="flex items-center justify-between gap-3">
                     <Heading
+                        level="h1"
                         title="Subscription payments"
                         description="Income received from organizations for their subscriptions."
                     />
@@ -559,17 +575,15 @@ export default function SubscriptionPaymentsIndex({
                             <ActionIconButton
                                 icon={<Upload />}
                                 label="Import from CSV"
-                                color="teal"
-                                onClick={() =>
-                                    setOverlayParam('import', '1')
-                                }
+                                color="default"
+                                onClick={() => setOverlayParam('import', '1')}
                             />
                         )}
                         {canExport && (
                             <ActionIconButton
                                 icon={<Download />}
                                 label="Export"
-                                color="teal"
+                                color="default"
                                 onClick={() => setOverlayParam('export', '1')}
                             />
                         )}
@@ -598,15 +612,15 @@ export default function SubscriptionPaymentsIndex({
 
             {/* The row sheet: view and edit share one overlay; delete is a modal. */}
             <ResponsiveOverlay
-                open={isViewOpen && viewedPayment !== undefined && !isDeleteOpen}
+                open={
+                    isViewOpen && viewedPayment !== undefined && !isDeleteOpen
+                }
                 onOpenChange={(open) => {
                     if (!open) {
                         closeRowSheet();
                     }
                 }}
-                title={
-                    viewedPayment?.organization?.name ?? 'Payment'
-                }
+                title={viewedPayment?.organization?.name ?? 'Payment'}
                 description={
                     !viewedPayment
                         ? 'This payment is not on the current page of results.'
@@ -700,8 +714,8 @@ export default function SubscriptionPaymentsIndex({
                                 {viewedPayment.organization?.name ??
                                     'an unlinked organization'}
                             </span>
-                            . It drops out of the revenue figures. The record
-                            is kept, so it can be restored. Confirm with your
+                            . It drops out of the revenue figures. The record is
+                            kept, so it can be restored. Confirm with your
                             password — this cannot be undone.
                         </>
                     }
@@ -790,8 +804,8 @@ export default function SubscriptionPaymentsIndex({
                  * suits a small, fixed set — see the users filters.
                  */}
                 <div className="grid gap-4 py-2">
-                    <div className="grid gap-2">
-                        <Label>Received</Label>
+                    <fieldset className="grid gap-2">
+                        <legend className="text-sm font-medium">Received</legend>
                         <div className="grid grid-cols-2 gap-3">
                             <div className="grid gap-2">
                                 <Label
@@ -858,7 +872,7 @@ export default function SubscriptionPaymentsIndex({
                                 )}
                             </div>
                         </div>
-                    </div>
+                    </fieldset>
 
                     <div className="grid gap-2">
                         <Label htmlFor="filter-search">Search</Label>
@@ -881,7 +895,9 @@ export default function SubscriptionPaymentsIndex({
 
             <CsvExportSheet
                 open={isExportOpen}
-                onClose={() => setOverlayParam('export', null, { replace: true })}
+                onClose={() =>
+                    setOverlayParam('export', null, { replace: true })
+                }
                 canExport={canExport}
                 total={payments.total}
                 pageCount={payments.data.length}
@@ -892,13 +908,22 @@ export default function SubscriptionPaymentsIndex({
 
             <CsvImportSheet
                 open={isImportOpen}
-                onClose={() => setOverlayParam('import', null, { replace: true })}
+                onClose={() =>
+                    setOverlayParam('import', null, { replace: true })
+                }
                 route={subscriptionPaymentRoutes.importMethod}
                 idPrefix="subscription-payments"
                 title="Import subscription payments"
                 description="Upload a CSV to create payment records."
-                required={["Amount", "Received On"]}
-                optional={["Currency", "Organization", "Plan", "Method", "Reference", "Notes"]}
+                required={['Amount', 'Received On']}
+                optional={[
+                    'Currency',
+                    'Organization',
+                    'Plan',
+                    'Method',
+                    'Reference',
+                    'Notes',
+                ]}
                 canImport={canImport}
                 buttonLabel="Import payments"
             />
@@ -919,7 +944,7 @@ function PaymentDetail({ payment }: { payment: PaymentRow }) {
     return (
         <div className="grid gap-4 py-2">
             <div className="flex items-center gap-3">
-                <span className="text-muted-foreground flex items-center gap-2 text-sm">
+                <span className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Receipt className="size-4" />
                     {payment.received_on}
                 </span>
@@ -930,10 +955,7 @@ function PaymentDetail({ payment }: { payment: PaymentRow }) {
 
             <dl className="grid gap-3 text-sm">
                 {[
-                    [
-                        'Organization',
-                        payment.organization?.name ?? 'Unlinked',
-                    ],
+                    ['Organization', payment.organization?.name ?? 'Unlinked'],
                     ['Plan', payment.plan?.name ?? '—'],
                     ['Method', payment.method ?? '—'],
                     ['Reference', payment.reference ?? '—'],
@@ -953,7 +975,7 @@ function PaymentDetail({ payment }: { payment: PaymentRow }) {
             {payment.notes && (
                 <div className="grid gap-2">
                     <div className="text-sm font-medium">Notes</div>
-                    <p className="text-muted-foreground text-sm whitespace-pre-wrap">
+                    <p className="text-sm whitespace-pre-wrap text-muted-foreground">
                         {payment.notes}
                     </p>
                 </div>
@@ -1000,29 +1022,39 @@ function PaymentFormFields({
 
     return (
         <div className="grid gap-3 py-2">
-            <div className="grid gap-2">
-                <Label htmlFor="payment-amount">Amount</Label>
+            <fieldset className="grid gap-2">
+                <legend className="text-sm font-medium">Amount</legend>
                 <div className="grid grid-cols-[1fr_6rem] gap-3">
-                    <Input
-                        id="payment-amount"
-                        name="amount"
-                        type="number"
-                        step="0.01"
-                        min={0}
-                        defaultValue={String(payment?.amount ?? '')}
-                        required
-                    />
-                    <Input
-                        name="currency"
-                        maxLength={3}
-                        defaultValue={payment?.currency ?? 'KES'}
-                        aria-label="Currency"
-                        required
-                    />
+                    <div className="grid gap-2">
+                        <Label htmlFor="payment-amount" className="sr-only">
+                            Amount
+                        </Label>
+                        <Input
+                            id="payment-amount"
+                            name="amount"
+                            type="number"
+                            step="0.01"
+                            min={0}
+                            defaultValue={String(payment?.amount ?? '')}
+                            required
+                        />
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor="payment-currency" className="sr-only">
+                            Currency
+                        </Label>
+                        <Input
+                            id="payment-currency"
+                            name="currency"
+                            maxLength={3}
+                            defaultValue={payment?.currency ?? 'KES'}
+                            required
+                        />
+                    </div>
                 </div>
                 <FieldError message={errors.amount} />
                 <FieldError message={errors.currency} />
-            </div>
+            </fieldset>
 
             <div className="grid gap-2">
                 <Label htmlFor="payment-received_on">Received on</Label>
@@ -1090,10 +1122,7 @@ function PaymentFormFields({
                         />
                     ) : (
                         <>
-                            <Select
-                                value={planId}
-                                onValueChange={setPlanId}
-                            >
+                            <Select value={planId} onValueChange={setPlanId}>
                                 <SelectTrigger id="payment-plan_id">
                                     <SelectValue placeholder="Not linked" />
                                 </SelectTrigger>
@@ -1144,9 +1173,7 @@ function PaymentFormFields({
 
             <div className="grid gap-2 sm:grid-cols-2">
                 <div className="grid gap-2">
-                    <Label htmlFor="payment-period_start">
-                        Period start
-                    </Label>
+                    <Label htmlFor="payment-period_start">Period start</Label>
                     <Input
                         id="payment-period_start"
                         name="period_start"

@@ -1,7 +1,16 @@
 import { Head, router } from '@inertiajs/react';
 import { Form, usePage } from '@inertiajs/react';
 import type { ColumnDef, SortingState } from '@tanstack/react-table';
-import { Download, ListFilter, Pencil, Plus, Receipt, Search, Trash2, Upload } from 'lucide-react';
+import {
+    Download,
+    ListFilter,
+    Pencil,
+    Plus,
+    Receipt,
+    Search,
+    Trash2,
+    Upload,
+} from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActionIconButton } from '@/components/action-icon-button';
 import ConfirmDeleteOverlay from '@/components/confirm-delete-overlay';
@@ -325,7 +334,7 @@ export default function PlatformExpensesIndex({
                 header: 'Amount',
                 meta: { align: 'right' },
                 cell: ({ row }) => (
-                    <span className="block whitespace-nowrap text-right font-medium tabular-nums">
+                    <span className="block text-right font-medium whitespace-nowrap tabular-nums">
                         {row.original.currency}{' '}
                         {row.original.amount.toLocaleString()}
                     </span>
@@ -333,6 +342,7 @@ export default function PlatformExpensesIndex({
             },
             {
                 id: 'vendor_name',
+                meta: { hideBelow: 'md' },
                 accessorKey: 'vendor_name',
                 header: 'Vendor',
                 cell: ({ row }) =>
@@ -351,6 +361,7 @@ export default function PlatformExpensesIndex({
                 // Free text with no useful ordering — a sort header here would be
                 // a lie. The tooltip carries the whole note.
                 id: 'notes',
+                meta: { hideBelow: 'md' },
                 accessorKey: 'notes',
                 header: 'Notes',
                 enableSorting: false,
@@ -412,7 +423,16 @@ export default function PlatformExpensesIndex({
 
         return cells;
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [canEdit, canDelete, filters.search, filters.category, filters.from, filters.to, sort.column, sort.direction]);
+    }, [
+        canEdit,
+        canDelete,
+        filters.search,
+        filters.category,
+        filters.from,
+        filters.to,
+        sort.column,
+        sort.direction,
+    ]);
 
     const sorting = useMemo<SortingState>(
         () =>
@@ -429,9 +449,7 @@ export default function PlatformExpensesIndex({
             sort: sort.column ?? '',
             direction: sort.direction,
             scope,
-            ...(scope === 'page'
-                ? { page: expenses.current_page }
-                : {}),
+            ...(scope === 'page' ? { page: expenses.current_page } : {}),
         };
     }
 
@@ -446,6 +464,7 @@ export default function PlatformExpensesIndex({
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
                 <div className="flex items-center justify-between gap-3">
                     <Heading
+                        level="h1"
                         title="Platform expenses"
                         description="Operating costs tracked separately from tenant asset expenses."
                     />
@@ -505,17 +524,15 @@ export default function PlatformExpensesIndex({
                             <ActionIconButton
                                 icon={<Upload />}
                                 label="Import from CSV"
-                                color="teal"
-                                onClick={() =>
-                                    setOverlayParam('import', '1')
-                                }
+                                color="default"
+                                onClick={() => setOverlayParam('import', '1')}
                             />
                         )}
                         {canExport && (
                             <ActionIconButton
                                 icon={<Download />}
                                 label="Export"
-                                color="teal"
+                                color="default"
                                 onClick={() => setOverlayParam('export', '1')}
                             />
                         )}
@@ -544,7 +561,9 @@ export default function PlatformExpensesIndex({
 
             {/* The row sheet: view and edit share one overlay; delete is a modal. */}
             <ResponsiveOverlay
-                open={isViewOpen && viewedExpense !== undefined && !isDeleteOpen}
+                open={
+                    isViewOpen && viewedExpense !== undefined && !isDeleteOpen
+                }
                 onOpenChange={(open) => {
                     if (!open) {
                         closeRowSheet();
@@ -650,8 +669,8 @@ export default function PlatformExpensesIndex({
                             ) : (
                                 ''
                             )}
-                            . It drops out of the totals. The record is kept,
-                            so it can be restored. Confirm with your password —
+                            . It drops out of the totals. The record is kept, so
+                            it can be restored. Confirm with your password —
                             this cannot be undone.
                         </>
                     }
@@ -734,8 +753,8 @@ export default function PlatformExpensesIndex({
                 }
             >
                 <div className="grid gap-4 py-2">
-                    <div className="grid gap-2">
-                        <Label>Category</Label>
+                    <fieldset className="grid gap-2">
+                        <legend className="text-sm font-medium">Category</legend>
                         {/* A fixed set of six that the `category` rule validates
                             against, so a radio group is honest here — and with
                             this much room every option is visible at once,
@@ -781,16 +800,15 @@ export default function PlatformExpensesIndex({
                                         htmlFor={`filter-category-${category}`}
                                         className="cursor-pointer capitalize"
                                     >
-                                        {CATEGORY_LABELS[category] ??
-                                            category}
+                                        {CATEGORY_LABELS[category] ?? category}
                                     </Label>
                                 </div>
                             ))}
                         </RadioGroup>
-                    </div>
+                    </fieldset>
 
-                    <div className="grid gap-2">
-                        <Label>Spent between</Label>
+                    <fieldset className="grid gap-2">
+                        <legend className="text-sm font-medium">Spent between</legend>
                         <div className="grid grid-cols-2 gap-3">
                             <div className="grid gap-2">
                                 <Label
@@ -843,7 +861,7 @@ export default function PlatformExpensesIndex({
                                 />
                             </div>
                         </div>
-                    </div>
+                    </fieldset>
 
                     <div className="grid gap-2">
                         <Label htmlFor="filter-search">Search</Label>
@@ -866,7 +884,9 @@ export default function PlatformExpensesIndex({
 
             <CsvExportSheet
                 open={isExportOpen}
-                onClose={() => setOverlayParam('export', null, { replace: true })}
+                onClose={() =>
+                    setOverlayParam('export', null, { replace: true })
+                }
                 canExport={canExport}
                 total={expenses.total}
                 pageCount={expenses.data.length}
@@ -877,13 +897,15 @@ export default function PlatformExpensesIndex({
 
             <CsvImportSheet
                 open={isImportOpen}
-                onClose={() => setOverlayParam('import', null, { replace: true })}
+                onClose={() =>
+                    setOverlayParam('import', null, { replace: true })
+                }
                 route={expenseRoutes.importMethod}
                 idPrefix="expenses"
                 title="Import expenses"
                 description="Upload a CSV to create expense records."
-                required={["Category", "Amount", "Spent On"]}
-                optional={["Currency", "Vendor Name", "Notes"]}
+                required={['Category', 'Amount', 'Spent On']}
+                optional={['Currency', 'Vendor Name', 'Notes']}
                 canImport={canImport}
                 buttonLabel="Import expenses"
             />
@@ -904,7 +926,7 @@ function ExpenseDetail({ expense }: { expense: ExpenseRow }) {
     return (
         <div className="grid gap-4 py-2">
             <div className="flex items-center gap-3">
-                <span className="text-muted-foreground flex items-center gap-2 text-sm">
+                <span className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Receipt className="size-4" />
                     {expense.spent_on}
                 </span>
@@ -934,7 +956,7 @@ function ExpenseDetail({ expense }: { expense: ExpenseRow }) {
             {expense.notes && (
                 <div className="grid gap-2">
                     <div className="text-sm font-medium">Notes</div>
-                    <p className="text-muted-foreground text-sm whitespace-pre-wrap">
+                    <p className="text-sm whitespace-pre-wrap text-muted-foreground">
                         {expense.notes}
                     </p>
                 </div>
@@ -966,29 +988,39 @@ function ExpenseFormFields({
 
     return (
         <div className="grid gap-3 py-2">
-            <div className="grid gap-2">
-                <Label htmlFor="expense-amount">Amount</Label>
+            <fieldset className="grid gap-2">
+                <legend className="text-sm font-medium">Amount</legend>
                 <div className="grid grid-cols-[1fr_6rem] gap-3">
-                    <Input
-                        id="expense-amount"
-                        name="amount"
-                        type="number"
-                        step="0.01"
-                        min={0}
-                        defaultValue={String(expense?.amount ?? '')}
-                        required
-                    />
-                    <Input
-                        name="currency"
-                        maxLength={3}
-                        defaultValue={expense?.currency ?? 'KES'}
-                        aria-label="Currency"
-                        required
-                    />
+                    <div className="grid gap-2">
+                        <Label htmlFor="expense-amount" className="sr-only">
+                            Amount
+                        </Label>
+                        <Input
+                            id="expense-amount"
+                            name="amount"
+                            type="number"
+                            step="0.01"
+                            min={0}
+                            defaultValue={String(expense?.amount ?? '')}
+                            required
+                        />
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor="expense-currency" className="sr-only">
+                            Currency
+                        </Label>
+                        <Input
+                            id="expense-currency"
+                            name="currency"
+                            maxLength={3}
+                            defaultValue={expense?.currency ?? 'KES'}
+                            required
+                        />
+                    </div>
                 </div>
                 <FieldError message={errors.amount} />
                 <FieldError message={errors.currency} />
-            </div>
+            </fieldset>
 
             <div className="grid gap-2">
                 <Label htmlFor="expense-spent_on">Spent on</Label>
