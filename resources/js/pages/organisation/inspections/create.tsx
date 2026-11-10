@@ -51,6 +51,7 @@ export default function InspectionCreate({ units }: Props) {
 
             <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-4">
                 <Heading
+                    level="h1"
                     variant="small"
                     title="New inspection"
                     description="Upload walkthrough photos — AI generates the condition report."
@@ -122,7 +123,7 @@ export default function InspectionCreate({ units }: Props) {
                             <Textarea
                                 id="notes"
                                 rows={3}
-                                                                placeholder="Anything you noticed during the walkthrough."
+                                placeholder="Anything you noticed during the walkthrough."
                                 value={form.data.notes}
                                 onChange={(e) =>
                                     form.setData('notes', e.target.value)

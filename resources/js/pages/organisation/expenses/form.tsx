@@ -118,6 +118,7 @@ export default function ExpenseForm({ expense, targets }: Props) {
 
             <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-4">
                 <Heading
+                    level="h1"
                     variant="small"
                     title={expense ? 'Edit expense' : 'Record expense'}
                     description="Costs against a property or land parcel — repairs, renovation, cleaning and more."
@@ -296,7 +297,7 @@ export default function ExpenseForm({ expense, targets }: Props) {
                             <Textarea
                                 id="notes"
                                 rows={3}
-                                                                value={form.data.notes}
+                                value={form.data.notes}
                                 onChange={(e) =>
                                     form.setData('notes', e.target.value)
                                 }

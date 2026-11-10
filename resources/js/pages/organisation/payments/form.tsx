@@ -83,6 +83,7 @@ export default function PaymentForm({ payment, leases }: Props) {
 
             <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-4">
                 <Heading
+                    level="h1"
                     variant="small"
                     title={payment ? 'Edit payment' : 'Record payment'}
                     description="Rent payment against a lease — amount, method, period and receipt."
@@ -187,25 +188,28 @@ export default function PaymentForm({ payment, leases }: Props) {
                             <Label>Method</Label>
                             <Select
                                 value={form.data.method}
-                                onValueChange={(v) =>
-                                    form.setData('method', v)
-                                }
+                                onValueChange={(v) => form.setData('method', v)}
                             >
                                 <SelectTrigger>
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {['cash', 'mpesa', 'bank', 'cheque', 'card', 'other'].map(
-                                        (m) => (
-                                            <SelectItem
-                                                key={m}
-                                                value={m}
-                                                className="capitalize"
-                                            >
-                                                {m}
-                                            </SelectItem>
-                                        ),
-                                    )}
+                                    {[
+                                        'cash',
+                                        'mpesa',
+                                        'bank',
+                                        'cheque',
+                                        'card',
+                                        'other',
+                                    ].map((m) => (
+                                        <SelectItem
+                                            key={m}
+                                            value={m}
+                                            className="capitalize"
+                                        >
+                                            {m}
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                             <InputError message={form.errors.method} />
@@ -226,23 +230,23 @@ export default function PaymentForm({ payment, leases }: Props) {
                             <Label>Status</Label>
                             <Select
                                 value={form.data.status}
-                                onValueChange={(v) =>
-                                    form.setData('status', v)
-                                }
+                                onValueChange={(v) => form.setData('status', v)}
                             >
                                 <SelectTrigger>
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {['received', 'pending', 'refunded'].map((s) => (
-                                        <SelectItem
-                                            key={s}
-                                            value={s}
-                                            className="capitalize"
-                                        >
-                                            {s}
-                                        </SelectItem>
-                                    ))}
+                                    {['received', 'pending', 'refunded'].map(
+                                        (s) => (
+                                            <SelectItem
+                                                key={s}
+                                                value={s}
+                                                className="capitalize"
+                                            >
+                                                {s}
+                                            </SelectItem>
+                                        ),
+                                    )}
                                 </SelectContent>
                             </Select>
                             <InputError message={form.errors.status} />
@@ -252,7 +256,7 @@ export default function PaymentForm({ payment, leases }: Props) {
                             <Label>Notes</Label>
                             <Textarea
                                 rows={3}
-                                                                value={form.data.notes}
+                                value={form.data.notes}
                                 onChange={(e) =>
                                     form.setData('notes', e.target.value)
                                 }

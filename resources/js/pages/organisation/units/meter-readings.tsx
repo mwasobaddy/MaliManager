@@ -101,6 +101,7 @@ export default function MeterReadings({
 
             <div className="space-y-6 p-4 md:p-6">
                 <Heading
+                    level="h1"
                     title="Meter readings"
                     description="Record utility consumption for a unit. Consumption is calculated from the previous reading."
                 />
@@ -127,9 +128,7 @@ export default function MeterReadings({
                                     >
                                         <SelectTrigger
                                             id="unit_id"
-                                            aria-invalid={
-                                                !!form.errors.unit_id
-                                            }
+                                            aria-invalid={!!form.errors.unit_id}
                                         >
                                             <SelectValue placeholder="Choose a unit" />
                                         </SelectTrigger>
@@ -145,7 +144,7 @@ export default function MeterReadings({
                                         </SelectContent>
                                     </Select>
                                     {form.errors.unit_id && (
-                                        <p className="text-status-danger text-sm">
+                                        <p className="text-sm text-status-danger">
                                             {form.errors.unit_id}
                                         </p>
                                     )}
@@ -164,9 +163,7 @@ export default function MeterReadings({
                                     >
                                         <SelectTrigger
                                             id="utility"
-                                            aria-invalid={
-                                                !!form.errors.utility
-                                            }
+                                            aria-invalid={!!form.errors.utility}
                                         >
                                             <SelectValue placeholder="Choose a utility" />
                                         </SelectTrigger>
@@ -183,7 +180,7 @@ export default function MeterReadings({
                                         </SelectContent>
                                     </Select>
                                     {form.errors.utility && (
-                                        <p className="text-status-danger text-sm">
+                                        <p className="text-sm text-status-danger">
                                             {form.errors.utility}
                                         </p>
                                     )}
@@ -191,9 +188,7 @@ export default function MeterReadings({
 
                                 <div className="grid grid-cols-2 gap-3">
                                     <div className="space-y-2">
-                                        <Label htmlFor="reading">
-                                            Reading
-                                        </Label>
+                                        <Label htmlFor="reading">Reading</Label>
                                         <Input
                                             id="reading"
                                             type="number"
@@ -207,29 +202,23 @@ export default function MeterReadings({
                                                     event.target.value,
                                                 )
                                             }
-                                            aria-invalid={
-                                                !!form.errors.reading
-                                            }
+                                            aria-invalid={!!form.errors.reading}
                                         />
                                         {form.errors.reading && (
-                                            <p className="text-status-danger text-sm">
+                                            <p className="text-sm text-status-danger">
                                                 {form.errors.reading}
                                             </p>
                                         )}
                                     </div>
 
                                     <div className="space-y-2">
-                                        <Label htmlFor="read_on">
-                                            Read on
-                                        </Label>
+                                        <Label htmlFor="read_on">Read on</Label>
                                         <Input
                                             id="read_on"
                                             type="date"
-                                            max={
-                                                new Date()
-                                                    .toISOString()
-                                                    .slice(0, 10)
-                                            }
+                                            max={new Date()
+                                                .toISOString()
+                                                .slice(0, 10)}
                                             value={form.data.read_on}
                                             onChange={(event) =>
                                                 form.setData(
@@ -240,7 +229,7 @@ export default function MeterReadings({
                                             aria-invalid={!!form.errors.read_on}
                                         />
                                         {form.errors.read_on && (
-                                            <p className="text-status-danger text-sm">
+                                            <p className="text-sm text-status-danger">
                                                 {form.errors.read_on}
                                             </p>
                                         )}
@@ -250,7 +239,7 @@ export default function MeterReadings({
                                 <div className="space-y-2">
                                     <Label htmlFor="notes">
                                         Notes{' '}
-                                        <span className="text-muted-foreground font-normal">
+                                        <span className="font-normal text-muted-foreground">
                                             (optional)
                                         </span>
                                     </Label>
@@ -267,7 +256,7 @@ export default function MeterReadings({
                                         aria-invalid={!!form.errors.notes}
                                     />
                                     {form.errors.notes && (
-                                        <p className="text-status-danger text-sm">
+                                        <p className="text-sm text-status-danger">
                                             {form.errors.notes}
                                         </p>
                                     )}
@@ -363,7 +352,7 @@ export default function MeterReadings({
                                 <div className="overflow-x-auto">
                                     <table className="w-full border-collapse text-sm">
                                         <thead>
-                                            <tr className="border-border-strong border-b">
+                                            <tr className="border-b border-border-strong">
                                                 {[
                                                     'Unit',
                                                     'Utility',
@@ -375,7 +364,7 @@ export default function MeterReadings({
                                                     <th
                                                         key={heading}
                                                         scope="col"
-                                                        className="text-muted-foreground bg-bg-base px-3 py-2 text-left text-xs font-medium tracking-wide uppercase"
+                                                        className="bg-bg-base px-3 py-2 text-left text-xs font-medium tracking-wide text-muted-foreground uppercase"
                                                     >
                                                         {heading}
                                                     </th>
@@ -386,7 +375,7 @@ export default function MeterReadings({
                                             {readings.data.map((reading) => (
                                                 <tr
                                                     key={reading.id}
-                                                    className="border-border/60 hover:bg-bg-base border-b last:border-b-0"
+                                                    className="border-b border-border/60 last:border-b-0 hover:bg-bg-base"
                                                 >
                                                     <td className="px-3 py-2">
                                                         {reading.unit_name ??
@@ -420,7 +409,7 @@ export default function MeterReadings({
                                                     <td className="px-3 py-2">
                                                         {reading.read_on}
                                                     </td>
-                                                    <td className="text-muted-foreground px-3 py-2">
+                                                    <td className="px-3 py-2 text-muted-foreground">
                                                         {reading.recorder_name ??
                                                             '—'}
                                                     </td>

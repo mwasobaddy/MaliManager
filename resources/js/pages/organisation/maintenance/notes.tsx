@@ -69,7 +69,7 @@ export default function MaintenanceNotes({
                 <div>
                     <Link
                         href="/maintenance"
-                        className="text-muted-foreground hover:text-accent-text inline-flex items-center gap-1.5 text-sm"
+                        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-accent-text"
                     >
                         <ArrowLeft className="size-4" aria-hidden />
                         Back to maintenance
@@ -77,6 +77,7 @@ export default function MaintenanceNotes({
                 </div>
 
                 <Heading
+                    level="h1"
                     title={request.title}
                     description={
                         request.unit_name
@@ -116,7 +117,7 @@ export default function MaintenanceNotes({
                                     placeholder="What happened, and what is next?"
                                 />
                                 {form.errors.body && (
-                                    <p className="text-status-danger text-sm">
+                                    <p className="text-sm text-status-danger">
                                         {form.errors.body}
                                     </p>
                                 )}
@@ -157,7 +158,7 @@ export default function MaintenanceNotes({
                                         </SelectContent>
                                     </Select>
                                     {form.errors.visibility && (
-                                        <p className="text-status-danger text-sm">
+                                        <p className="text-sm text-status-danger">
                                             {form.errors.visibility}
                                         </p>
                                     )}
@@ -197,7 +198,7 @@ export default function MaintenanceNotes({
                                 {notes.map((note) => (
                                     <li
                                         key={note.id}
-                                        className="border-border/60 border-b pb-4 last:border-b-0 last:pb-0"
+                                        className="border-b border-border/60 pb-4 last:border-b-0 last:pb-0"
                                     >
                                         <div className="mb-1 flex flex-wrap items-center gap-2">
                                             <span className="text-sm font-medium">
@@ -206,8 +207,7 @@ export default function MaintenanceNotes({
                                             </span>
                                             <Badge
                                                 variant={
-                                                    note.visibility ===
-                                                    'shared'
+                                                    note.visibility === 'shared'
                                                         ? 'accent'
                                                         : 'neutral'
                                                 }
@@ -215,7 +215,7 @@ export default function MaintenanceNotes({
                                                 {note.visibility_label}
                                             </Badge>
                                             {note.created_at && (
-                                                <span className="text-muted-foreground text-xs">
+                                                <span className="text-xs text-muted-foreground">
                                                     {new Date(
                                                         note.created_at,
                                                     ).toLocaleString()}

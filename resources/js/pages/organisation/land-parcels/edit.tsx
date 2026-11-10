@@ -106,6 +106,7 @@ export default function LandParcelEdit({
             <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-4">
                 <div className="flex items-center justify-between gap-4">
                     <Heading
+                        level="h1"
                         variant="small"
                         title={`Edit ${parcel.name}`}
                         description={`Update ${organization.name} parcel details.`}
@@ -313,11 +314,11 @@ export default function LandParcelEdit({
                                         Notes (optional)
                                     </Label>
                                     <Textarea
-id="notes"
+                                        id="notes"
                                         name="notes"
                                         rows={3}
                                         defaultValue={parcel.notes ?? ''}
-/>
+                                    />
                                     <InputError message={errors.notes} />
                                 </div>
 

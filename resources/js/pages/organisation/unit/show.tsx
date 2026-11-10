@@ -38,11 +38,12 @@ export default function UnitShow({ unit }: Props) {
                 <div className="flex items-center justify-between gap-3">
                     <div>
                         <Heading
+                            level="h1"
                             title={`Unit ${unit.name}`}
                             description="Photos and letting details for this unit."
                         />
                         {unit.property.slug && (
-                            <p className="text-muted-foreground mt-1 flex items-center gap-1.5 text-sm">
+                            <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
                                 <Building2 className="size-4 shrink-0" />
                                 {unit.property.name}
                             </p>
@@ -50,7 +51,7 @@ export default function UnitShow({ unit }: Props) {
                     </div>
                     <Link
                         href={unitsIndex()}
-                        className="text-muted-foreground hover:text-foreground flex items-center gap-1.5 text-sm"
+                        className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
                     >
                         <ArrowLeft className="size-4" />
                         All units
@@ -80,9 +81,8 @@ export default function UnitShow({ unit }: Props) {
                         <h2 className="font-medium">
                             Photos ({unit.photos.length})
                         </h2>
-                        <p className="text-muted-foreground mt-1 text-xs">
-                            Stored at
-                            {' '}
+                        <p className="mt-1 text-xs text-muted-foreground">
+                            Stored at{' '}
                             <code>
                                 {'{organization}/{property}/{unit}/photos'}
                             </code>
@@ -91,7 +91,7 @@ export default function UnitShow({ unit }: Props) {
                     </div>
 
                     {unit.photos.length === 0 ? (
-                        <div className="text-muted-foreground flex items-center gap-2 p-8 text-sm">
+                        <div className="flex items-center gap-2 p-8 text-sm text-muted-foreground">
                             <ImageOff className="size-4 shrink-0" />
                             No photos yet. Add them when creating the unit.
                         </div>

@@ -87,6 +87,7 @@ export default function AgreementTemplateForm({
 
             <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-4">
                 <Heading
+                    level="h1"
                     variant="small"
                     title={
                         template

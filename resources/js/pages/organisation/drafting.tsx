@@ -137,6 +137,7 @@ export default function Drafting({ enabled }: Props) {
             <Head title="AI drafting" />
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
                 <Heading
+                    level="h1"
                     variant="small"
                     title="AI drafting"
                     description="Generate tenant letters and listing descriptions. Copy the result — nothing is sent automatically."
