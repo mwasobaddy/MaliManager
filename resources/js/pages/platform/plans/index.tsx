@@ -1,10 +1,20 @@
 import { Head, router } from '@inertiajs/react';
 import { Form, usePage } from '@inertiajs/react';
 import type { ColumnDef, SortingState } from '@tanstack/react-table';
-import { Download, Layers, ListFilter, Pencil, Plus, Search, Trash2, Upload } from 'lucide-react';
+import {
+    Download,
+    Layers,
+    ListFilter,
+    Pencil,
+    Plus,
+    Search,
+    Trash2,
+    Upload,
+} from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActionIconButton } from '@/components/action-icon-button';
 import ConfirmDeleteOverlay from '@/components/confirm-delete-overlay';
+import ConfirmDialog from '@/components/confirm-dialog';
 import { CsvImportSheet, downloadCsv } from '@/components/csv-actions';
 import { CsvExportSheet } from '@/components/csv-export-sheet';
 import { DataTable } from '@/components/data-table';
@@ -84,6 +94,7 @@ export default function PlansIndex({
     const errors = (page.props.errors ?? {}) as Record<string, string>;
 
     const [isTableLoading, setIsTableLoading] = useState(false);
+    const [statusTarget, setStatusTarget] = useState<PlanRow | null>(null);
 
     // Read query params off Inertia's page.url, NOT window.location. Inertia
     // pushes history *after* React renders, so window.location is stale during
@@ -192,6 +203,7 @@ export default function PlansIndex({
     }
 
     function setStatus(plan: PlanRow, isActive: boolean) {
+        setStatusTarget(null);
         router.patch(
             planRoutes.status(plan.id),
             { is_active: isActive },
@@ -201,7 +213,10 @@ export default function PlansIndex({
                 onSuccess: () => {
                     // Keep the status filter honest: if you deactivate while
                     // filtering by "active", the row no longer belongs.
-                    if (filters.status && (filters.status === 'active') !== isActive) {
+                    if (
+                        filters.status &&
+                        (filters.status === 'active') !== isActive
+                    ) {
                         refetchTable(
                             {
                                 search: filters.search,
@@ -303,7 +318,10 @@ export default function PlansIndex({
 
     /** Spoken description of the active filters, for the export sheet. */
     const activeFilterSummary =
-        [filters.search ? 'the search' : '', filters.status ? 'the status filter' : '']
+        [
+            filters.search ? 'the search' : '',
+            filters.status ? 'the status filter' : '',
+        ]
             .filter(Boolean)
             .join(' and ') || null;
 
@@ -333,7 +351,7 @@ export default function PlansIndex({
                 header: 'Price',
                 meta: { align: 'right' },
                 cell: ({ row }) => (
-                    <span className="block whitespace-nowrap text-right tabular-nums">
+                    <span className="block text-right whitespace-nowrap tabular-nums">
                         {row.original.currency}{' '}
                         {row.original.price.toLocaleString()}
                     </span>
@@ -343,15 +361,22 @@ export default function PlansIndex({
                 // Two numbers in one cell, so there is no single column to sort
                 // on and a sort header here would be a lie.
                 id: 'limits',
+                meta: { hideBelow: 'md' },
                 header: 'Limits',
                 enableSorting: false,
                 cell: ({ row }) => (
-                    <div className="whitespace-nowrap text-xs">
+                    <div className="text-xs whitespace-nowrap">
                         <div>
-                            {row.original.properties_limit ?? '∞'} properties
+                            {row.original.properties_limit ?? '∞'}{' '}
+                            {row.original.properties_limit === 1
+                                ? 'property'
+                                : 'properties'}
                         </div>
                         <div className="text-muted-foreground">
-                            {row.original.units_limit ?? '∞'} units
+                            {row.original.units_limit ?? '∞'}{' '}
+                            {row.original.units_limit === 1
+                                ? 'unit'
+                                : 'units'}
                         </div>
                     </div>
                 ),
@@ -360,6 +385,7 @@ export default function PlansIndex({
                 // A count with no useful ordering, and the full list would wrap
                 // the row. The tooltip carries every feature.
                 id: 'features',
+                meta: { hideBelow: 'md' },
                 header: 'Features',
                 enableSorting: false,
                 cell: ({ row }) => {
@@ -383,9 +409,9 @@ export default function PlansIndex({
             },
             {
                 id: 'organizations',
+                meta: { align: 'right', hideBelow: 'md' },
                 accessorKey: 'organizations_count',
                 header: 'Organizations',
-                meta: { align: 'right' },
                 cell: ({ row }) => (
                     <span className="block text-right tabular-nums">
                         {row.original.organizations_count}
@@ -408,7 +434,9 @@ export default function PlansIndex({
                                     ? STATUS_TONES.active
                                     : STATUS_TONES.inactive
                             }
-                            label={row.original.is_active ? 'Active' : 'Inactive'}
+                            label={
+                                row.original.is_active ? 'Active' : 'Inactive'
+                            }
                         />
                     </div>
                 ),
@@ -438,9 +466,7 @@ export default function PlansIndex({
                                     // so it reads as a warning rather than a
                                     // danger the way a suspended user does.
                                     inactiveTone="warning"
-                                    onClick={() =>
-                                        setStatus(plan, !plan.is_active)
-                                    }
+                                    onClick={() => setStatusTarget(plan)}
                                 />
                             )}
                             {canEdit && (
@@ -467,7 +493,14 @@ export default function PlansIndex({
 
         return cells;
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [canEdit, canDelete, filters.search, filters.status, sort.column, sort.direction]);
+    }, [
+        canEdit,
+        canDelete,
+        filters.search,
+        filters.status,
+        sort.column,
+        sort.direction,
+    ]);
 
     const sorting = useMemo<SortingState>(
         () =>
@@ -485,9 +518,7 @@ export default function PlansIndex({
             sort: sort.column ?? '',
             direction: sort.direction,
             scope,
-            ...(scope === 'page'
-                ? { page: plans.current_page }
-                : {}),
+            ...(scope === 'page' ? { page: plans.current_page } : {}),
         };
     }
 
@@ -502,6 +533,7 @@ export default function PlansIndex({
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
                 <div className="flex items-center justify-between gap-3">
                     <Heading
+                        level="h1"
                         title="Plans"
                         description="Subscription tiers and their limits."
                     />
@@ -561,17 +593,15 @@ export default function PlansIndex({
                             <ActionIconButton
                                 icon={<Upload />}
                                 label="Import from CSV"
-                                color="teal"
-                                onClick={() =>
-                                    setOverlayParam('import', '1')
-                                }
+                                color="default"
+                                onClick={() => setOverlayParam('import', '1')}
                             />
                         )}
                         {canExport && (
                             <ActionIconButton
                                 icon={<Download />}
                                 label="Export"
-                                color="teal"
+                                color="default"
                                 onClick={() => setOverlayParam('export', '1')}
                             />
                         )}
@@ -684,11 +714,39 @@ export default function PlansIndex({
                             <span className="font-medium">
                                 {viewedPlan.name}
                             </span>{' '}
-                            takes it off sale, so no new organization can be
-                            put on it. Organizations already on it are
-                            unaffected and the tier can be restored. Confirm
-                            with your password — this cannot be undone.
+                            takes it off sale, so no new organization can be put
+                            on it. Organizations already on it are unaffected
+                            and the tier can be restored. Confirm with your
+                            password — this cannot be undone.
                         </>
+                    }
+                />
+            )}
+
+            {canEdit && (
+                <ConfirmDialog
+                    open={statusTarget !== null}
+                    onOpenChange={(open) => {
+                        if (!open) {
+                            setStatusTarget(null);
+                        }
+                    }}
+                    title={
+                        statusTarget?.is_active
+                            ? `Deactivate ${statusTarget?.name ?? ''}?`
+                            : `Reactivate ${statusTarget?.name ?? ''}?`
+                    }
+                    description={
+                        statusTarget?.is_active
+                            ? 'The tier comes off sale; organizations already on it are unaffected.'
+                            : 'The tier goes back on sale for new organizations.'
+                    }
+                    confirmLabel={
+                        statusTarget?.is_active ? 'Deactivate' : 'Reactivate'
+                    }
+                    onConfirm={() =>
+                        statusTarget &&
+                        setStatus(statusTarget, !statusTarget.is_active)
                     }
                 />
             )}
@@ -764,8 +822,8 @@ export default function PlansIndex({
                 }
             >
                 <div className="grid gap-4 py-2">
-                    <div className="grid gap-2">
-                        <Label>Status</Label>
+                    <fieldset className="grid gap-2">
+                        <legend className="text-sm font-medium">Status</legend>
                         {/* Radix Select reserves the empty value for its
                             placeholder, so "Any status" is not expressible as
                             an item. Three options is also fewer taps than
@@ -776,8 +834,7 @@ export default function PlansIndex({
                                 refetchTable(
                                     {
                                         search: filters.search,
-                                        status:
-                                            value === 'any' ? '' : value,
+                                        status: value === 'any' ? '' : value,
                                         sort: sort.column ?? '',
                                         direction: sort.direction,
                                         filters: '1',
@@ -809,7 +866,7 @@ export default function PlansIndex({
                                 </div>
                             ))}
                         </RadioGroup>
-                    </div>
+                    </fieldset>
 
                     <div className="grid gap-2">
                         <Label htmlFor="filter-search">Search</Label>
@@ -832,7 +889,9 @@ export default function PlansIndex({
 
             <CsvExportSheet
                 open={isExportOpen}
-                onClose={() => setOverlayParam('export', null, { replace: true })}
+                onClose={() =>
+                    setOverlayParam('export', null, { replace: true })
+                }
                 canExport={canExport}
                 total={plans.total}
                 pageCount={plans.data.length}
@@ -843,13 +902,23 @@ export default function PlansIndex({
 
             <CsvImportSheet
                 open={isImportOpen}
-                onClose={() => setOverlayParam('import', null, { replace: true })}
+                onClose={() =>
+                    setOverlayParam('import', null, { replace: true })
+                }
                 route={planRoutes.importMethod}
                 idPrefix="plans"
                 title="Import plans"
                 description="Upload a CSV to create plan records."
-                required={["Name", "Slug", "Price"]}
-                optional={["Description", "Currency", "Properties Limit", "Units Limit", "Features (pipe-separated)", "Sort Order", "Active"]}
+                required={['Name', 'Slug', 'Price']}
+                optional={[
+                    'Description',
+                    'Currency',
+                    'Properties Limit',
+                    'Units Limit',
+                    'Features (pipe-separated)',
+                    'Sort Order',
+                    'Active',
+                ]}
                 canImport={canImport}
                 buttonLabel="Import plans"
             />
@@ -885,7 +954,10 @@ function PlanDetail({ plan }: { plan: PlanRow }) {
             <dl className="grid gap-3 text-sm">
                 {[
                     ['Slug', plan.slug],
-                    ['Price', `${plan.currency} ${plan.price.toLocaleString()}`],
+                    [
+                        'Price',
+                        `${plan.currency} ${plan.price.toLocaleString()}`,
+                    ],
                     [
                         'Properties limit',
                         plan.properties_limit === null
@@ -899,10 +971,7 @@ function PlanDetail({ plan }: { plan: PlanRow }) {
                             : String(plan.units_limit),
                     ],
                     ['Sort order', String(plan.sort_order)],
-                    [
-                        'Organizations',
-                        String(plan.organizations_count),
-                    ],
+                    ['Organizations', String(plan.organizations_count)],
                     ['Status', plan.is_active ? 'Active' : 'Inactive'],
                 ].map(([label, value]) => (
                     <div
@@ -922,7 +991,7 @@ function PlanDetail({ plan }: { plan: PlanRow }) {
                         None listed.
                     </p>
                 ) : (
-                    <ul className="text-muted-foreground grid gap-1 text-sm">
+                    <ul className="grid gap-1 text-sm text-muted-foreground">
                         {plan.features.map((feature) => (
                             <li key={feature}>{feature}</li>
                         ))}
@@ -932,7 +1001,7 @@ function PlanDetail({ plan }: { plan: PlanRow }) {
 
             <div className="grid gap-2">
                 <div className="text-sm font-medium">Capabilities</div>
-                <ul className="text-muted-foreground grid gap-1 text-sm">
+                <ul className="grid gap-1 text-sm text-muted-foreground">
                     {flags.map(([label, enabled]) => (
                         <li key={label}>
                             {label}: {enabled ? 'yes' : 'no'}
@@ -1110,9 +1179,7 @@ function PlanFormFields({
                     id="plan-features"
                     rows={4}
                     value={featuresText}
-                    onChange={(event) =>
-                        setFeaturesText(event.target.value)
-                    }
+                    onChange={(event) => setFeaturesText(event.target.value)}
                     placeholder={'SMS alerts\nPriority support'}
                 />
                 {featureLines.map((feature, index) => (

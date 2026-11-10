@@ -16,6 +16,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActionIconButton } from '@/components/action-icon-button';
 import ConfirmDeleteOverlay from '@/components/confirm-delete-overlay';
+import ConfirmDialog from '@/components/confirm-dialog';
 import { CsvImportSheet, downloadCsv } from '@/components/csv-actions';
 import { CsvExportSheet } from '@/components/csv-export-sheet';
 import { DataTable } from '@/components/data-table';
@@ -30,10 +31,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Pagination } from '@/components/ui/pagination';
-import {
-    RadioGroup,
-    RadioGroupItem,
-} from '@/components/ui/radio-group';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
     Select,
     SelectContent,
@@ -101,6 +99,8 @@ export default function OrganizationsIndex({
     owners,
 }: Props) {
     const [isTableLoading, setIsTableLoading] = useState(false);
+    const [statusTarget, setStatusTarget] =
+        useState<OrganizationRow | null>(null);
     const page = usePage();
     const permissions = (page.props.auth?.permissions ?? []) as string[];
     const canCreate = permissions.includes('organization.create');
@@ -255,6 +255,7 @@ export default function OrganizationsIndex({
         organization: OrganizationRow,
         status: 'active' | 'suspended',
     ) {
+        setStatusTarget(null);
         router.patch(
             orgRoutes.status(organization.id),
             { status },
@@ -415,6 +416,7 @@ export default function OrganizationsIndex({
                 accessorKey: 'domain',
                 header: 'Domain',
                 enableSorting: false,
+                meta: { hideBelow: 'md' },
                 cell: ({ row }) => {
                     const domain = row.original.domain;
 
@@ -439,7 +441,7 @@ export default function OrganizationsIndex({
                 id: 'members',
                 accessorKey: 'users_count',
                 header: 'Members',
-                meta: { align: 'right' },
+                meta: { align: 'right', hideBelow: 'md' },
                 cell: ({ row }) => (
                     <span className="block text-right tabular-nums">
                         {row.original.users_count}
@@ -455,17 +457,17 @@ export default function OrganizationsIndex({
                     const organization = row.original;
 
                     return (
-                    // Reports state only. The control that changes it is the
-                    // Power toggle in the action cell, so this column never
-                    // looks editable and the two are not confused.
-                    <div className="flex items-center justify-center">
-                        <StatusIcon
-                            tone={
-                                STATUS_TONES[organization.status] ?? 'muted'
-                            }
-                            label={organization.status_label}
-                        />
-                    </div>
+                        // Reports state only. The control that changes it is the
+                        // Power toggle in the action cell, so this column never
+                        // looks editable and the two are not confused.
+                        <div className="flex items-center justify-center">
+                            <StatusIcon
+                                tone={
+                                    STATUS_TONES[organization.status] ?? 'muted'
+                                }
+                                label={organization.status_label}
+                            />
+                        </div>
                     );
                 },
             },
@@ -517,13 +519,7 @@ export default function OrganizationsIndex({
                                     activeLabel={`Suspend ${organization.name}`}
                                     inactiveLabel={`Reactivate ${organization.name}`}
                                     onClick={() =>
-                                        setStatus(
-                                            organization,
-                                            organization.status ===
-                                                'suspended'
-                                                ? 'active'
-                                                : 'suspended',
-                                        )
+                                        setStatusTarget(organization)
                                     }
                                 />
                             )}
@@ -584,7 +580,7 @@ export default function OrganizationsIndex({
                  */}
                 <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0 flex-1">
-                        <Heading title="Organization management" />
+                        <Heading level="h1" title="Organization management" />
                         <p className="mt-1 text-sm text-muted-foreground">
                             Create and manage organizations, their plans and
                             tenancy.
@@ -643,7 +639,7 @@ export default function OrganizationsIndex({
                             <ActionIconButton
                                 icon={<Upload />}
                                 label="Import from CSV"
-                                color="teal"
+                                color="default"
                                 onClick={() => setOverlayParam('import', '1')}
                             />
                         )}
@@ -651,7 +647,7 @@ export default function OrganizationsIndex({
                             <ActionIconButton
                                 icon={<Download />}
                                 label="Export"
-                                color="teal"
+                                color="default"
                                 onClick={() => setOverlayParam('export', '1')}
                             />
                         )}
@@ -782,6 +778,41 @@ export default function OrganizationsIndex({
                 />
             )}
 
+            {canEdit && (
+                <ConfirmDialog
+                    open={statusTarget !== null}
+                    onOpenChange={(open) => {
+                        if (!open) {
+                            setStatusTarget(null);
+                        }
+                    }}
+                    title={
+                        statusTarget?.status === 'suspended'
+                            ? `Reactivate ${statusTarget?.name ?? ''}?`
+                            : `Suspend ${statusTarget?.name ?? ''}?`
+                    }
+                    description={
+                        statusTarget?.status === 'suspended'
+                            ? 'They will be able to sign in again.'
+                            : 'Their members will be signed out of every device and unable to access the platform until reactivated.'
+                    }
+                    confirmLabel={
+                        statusTarget?.status === 'suspended'
+                            ? 'Reactivate'
+                            : 'Suspend'
+                    }
+                    onConfirm={() =>
+                        statusTarget &&
+                        setStatus(
+                            statusTarget,
+                            statusTarget.status === 'suspended'
+                                ? 'active'
+                                : 'suspended',
+                        )
+                    }
+                />
+            )}
+
             <ResponsiveOverlay
                 open={isCreateOpen}
                 onOpenChange={(open) => {
@@ -886,7 +917,7 @@ export default function OrganizationsIndex({
                             ) : (
                                 <div
                                     id="create-owner-user"
-                                    className="border-input text-muted-foreground flex h-9 w-full items-center rounded-md border bg-transparent px-3 text-sm"
+                                    className="flex h-9 w-full items-center rounded-md border border-input bg-transparent px-3 text-sm text-muted-foreground"
                                 >
                                     Loading owners…
                                 </div>
@@ -946,10 +977,11 @@ export default function OrganizationsIndex({
                 </Form>
             </ResponsiveOverlay>
 
-
             <CsvExportSheet
                 open={isExportOpen}
-                onClose={() => setOverlayParam('export', null, { replace: true })}
+                onClose={() =>
+                    setOverlayParam('export', null, { replace: true })
+                }
                 canExport={canExport}
                 total={organizations.total}
                 pageCount={organizations.data.length}
@@ -960,7 +992,9 @@ export default function OrganizationsIndex({
 
             <CsvImportSheet
                 open={isImportOpen}
-                onClose={() => setOverlayParam('import', null, { replace: true })}
+                onClose={() =>
+                    setOverlayParam('import', null, { replace: true })
+                }
                 route={orgRoutes.importMethod}
                 idPrefix="organizations"
                 title="Import organizations"
@@ -970,9 +1004,6 @@ export default function OrganizationsIndex({
                 canImport={canImport}
                 buttonLabel="Import"
             />
-
-
-
 
             <ResponsiveOverlay
                 open={isFiltersOpen}
@@ -1171,7 +1202,9 @@ function OrganizationFormFields({
                 <Label htmlFor={`${idPrefix}-plan`}>Plan</Label>
                 <Select
                     name="plan_id"
-                    defaultValue={String(organization?.plan_id ?? plans[0]?.id ?? '')}
+                    defaultValue={String(
+                        organization?.plan_id ?? plans[0]?.id ?? '',
+                    )}
                 >
                     <SelectTrigger id={`${idPrefix}-plan`}>
                         <SelectValue />
@@ -1199,9 +1232,7 @@ function OrganizationFormFields({
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="active">Active</SelectItem>
-                            <SelectItem value="suspended">
-                                Suspended
-                            </SelectItem>
+                            <SelectItem value="suspended">Suspended</SelectItem>
                         </SelectContent>
                     </Select>
                     <FieldError message={errors.status} />
