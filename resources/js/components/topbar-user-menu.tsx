@@ -25,7 +25,7 @@ export function TopbarUserMenu() {
                 <Button
                     variant="ghost"
                     className="size-10 rounded-full p-1"
-                    aria-label="Account menu"
+                    aria-label={`Account menu, ${getInitials(user.name ?? '')}`}
                 >
                     <Avatar className="size-8 overflow-hidden rounded-full">
                         <AvatarImage src={user.avatar} alt="" />

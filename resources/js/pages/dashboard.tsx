@@ -199,11 +199,24 @@ export default function Dashboard(props: Props) {
     const permissions = (page.props.auth?.permissions ?? []) as string[];
     const availableYears = props.available_years ?? [];
 
+    const hasRentals = (key: TabKey): boolean => {
+        if (key !== 'searcher' && key !== 'occupant') {
+            return true;
+        }
+
+        const stats = props[key] as { leases_count?: number } | null;
+
+        return (stats?.leases_count ?? 0) > 0;
+    };
+
     const visibleTabs = TABS.filter(
         (tab) =>
             permissions.includes(tab.permission) &&
             props[tab.key] !== null &&
-            props[tab.key] !== undefined,
+            props[tab.key] !== undefined &&
+            // A rentals tab with no leases on record is noise: admins hold
+            // every metric permission but rarely rent anything themselves.
+            hasRentals(tab.key),
     );
 
     const pageUrl = page.url.split('?')[0];
@@ -331,7 +344,7 @@ export default function Dashboard(props: Props) {
                                     }
                                 >
                                     <SelectTrigger
-                                        className="min-w-[110px]"
+                                        className="min-w-[128px]"
                                         aria-label="Filter by month"
                                     >
                                         <SelectValue placeholder="All months" />

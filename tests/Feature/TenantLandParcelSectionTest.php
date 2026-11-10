@@ -63,10 +63,30 @@ test('owner can remove a section', function () {
     ]);
 
     $this->actingAs($owner)
-        ->delete(parcelUrl($organization, "/land-parcels/{$parcel->slug}/sections/{$section->id}"))
+        ->delete(parcelUrl($organization, "/land-parcels/{$parcel->slug}/sections/{$section->id}"), [
+            'password' => 'password',
+        ])
         ->assertRedirect(parcelUrl($organization, "/land-parcels/{$parcel->slug}"));
 
     expect(LandParcelSection::find($section->id))->toBeNull();
+});
+
+test('removing a section without the password is refused', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = sectionOrg($owner);
+    $parcel = sectionParcel($organization, $owner);
+    $section = $parcel->sections()->create([
+        'name' => 'Block A',
+        'status' => 'vacant',
+        'created_by' => $owner->id,
+    ]);
+
+    $this->actingAs($owner)
+        ->delete(parcelUrl($organization, "/land-parcels/{$parcel->slug}/sections/{$section->id}"))
+        ->assertRedirect()
+        ->assertInvalid('password');
+
+    expect(LandParcelSection::find($section->id))->not->toBeNull();
 });
 
 test('parcel show includes sections and permission flags', function () {

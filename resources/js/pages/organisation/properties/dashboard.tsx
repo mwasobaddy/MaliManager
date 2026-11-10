@@ -209,7 +209,7 @@ export default function PropertiesDashboard({
                             }
                         >
                             <SelectTrigger
-                                className="min-w-[110px]"
+                                className="min-w-[128px]"
                                 aria-label="Filter by month"
                             >
                                 <SelectValue placeholder="All months" />

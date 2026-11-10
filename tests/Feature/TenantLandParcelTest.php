@@ -201,38 +201,3 @@ test('land parcel page resolves to org context with ai enabled when org has a cr
             return true;
         });
 });
-
-test('deleting a land parcel section requires the current password', function () {
-    $owner = User::factory()->create(['onboarded_at' => now()]);
-    $organization = createLandParcelOrganization($owner);
-    $parcel = createParcel($organization, $owner);
-    $section = $parcel->sections()->create([
-        'name' => 'Block A',
-        'created_by' => $owner->id,
-    ]);
-
-    $this->actingAs($owner)
-        ->delete(parcelTenantUrl($organization, "/land-parcels/{$parcel->slug}/sections/{$section->id}"))
-        ->assertRedirect()
-        ->assertInvalid('password');
-
-    expect(\App\Models\LandParcelSection::find($section->id))->not->toBeNull();
-});
-
-test('deleting a land parcel section with the password removes it', function () {
-    $owner = User::factory()->create(['onboarded_at' => now()]);
-    $organization = createLandParcelOrganization($owner);
-    $parcel = createParcel($organization, $owner);
-    $section = $parcel->sections()->create([
-        'name' => 'Block A',
-        'created_by' => $owner->id,
-    ]);
-
-    $this->actingAs($owner)
-        ->delete(parcelTenantUrl($organization, "/land-parcels/{$parcel->slug}/sections/{$section->id}"), [
-            'password' => 'password',
-        ])
-        ->assertRedirect();
-
-    expect(\App\Models\LandParcelSection::find($section->id))->toBeNull();
-});

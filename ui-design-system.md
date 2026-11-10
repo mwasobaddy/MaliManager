@@ -266,7 +266,7 @@ Cards use a top‑down sheen to feel lit from above:
 
 **Pagination** — Buttons ghost; Current page `--brand-primary-600` bg white; Hover `--border-strong`; Disabled `opacity .4`.
 
-**Sidebar** — **Background `--brand-secondary` (Espresso).** Logo mark top in `--brand-primary` (terracotta), wordmark `--text`→ linen `#EAE6DF` on espresso (≈10.8:1). Nav items: default text linen `#EAE6DF`/muted, hover `--brand-secondary-700` bg; **Active item = terracotta tint background (`--sidebar-accent`) + white text + medium weight** — no left border (kept calm/clean; the tint + icon is sufficient differentiation and avoids a boxy look). Section labels `--text-muted`. Footer user chip = Avatar + linen text. Collapsed mode keeps icon + tinted active background. (See §2.2 for dark espresso.)
+**Sidebar** — **Background `--brand-secondary` (Espresso).** Logo mark top in `--brand-primary` (terracotta), wordmark `--text`→ linen `#EAE6DF` on espresso (≈10.8:1). Nav items: default text linen `#EAE6DF`/muted, hover `--brand-secondary-700` bg; **Active item = terracotta tint background (`--sidebar-accent`) + white text + medium weight + 2px `--brand-primary` left indicator** (the tint + icon carry the state; the indicator reinforces it at a glance without a boxy outline). Section labels `--text-muted`. Footer user chip = Avatar + linen text. Collapsed mode keeps icon + tinted active background. (See §2.2 for dark espresso.)
 
 **Tabs** — Tab strip border‑bottom `--border`; Active tab `--text` + 2px `--brand-primary` underline; Hover `--text-muted`; Disabled `opacity .4`.
 
