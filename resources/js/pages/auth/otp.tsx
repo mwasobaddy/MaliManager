@@ -1,8 +1,13 @@
 import { Form, Head, Link } from '@inertiajs/react';
+import { REGEXP_ONLY_DIGITS } from 'input-otp';
 import { useState } from 'react';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import {
+    InputOTP,
+    InputOTPGroup,
+    InputOTPSlot,
+} from '@/components/ui/input-otp';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { login } from '@/routes';
@@ -33,27 +38,34 @@ export default function Otp({ email, status }: Props) {
                         <>
                             <div className="grid gap-2">
                                 <Label htmlFor="code">One-time code</Label>
-                                <Input
-                                    id="code"
-                                    name="code"
-                                    type="text"
-                                    inputMode="numeric"
-                                    autoComplete="one-time-code"
-                                    required
-                                    autoFocus
-                                    maxLength={6}
-                                    value={code}
-                                    onChange={(e) =>
-                                        setCode(
-                                            e.target.value.replace(
-                                                /[^0-9]/g,
-                                                '',
-                                            ),
-                                        )
-                                    }
-                                    placeholder="123456"
-                                    className="text-center text-lg tracking-widest"
-                                />
+                                <div className="flex justify-center">
+                                    <InputOTP
+                                        id="code"
+                                        name="code"
+                                        maxLength={6}
+                                        value={code}
+                                        onChange={(value) =>
+                                            setCode(
+                                                value.replace(/[^0-9]/g, ''),
+                                            )
+                                        }
+                                        disabled={processing}
+                                        pattern={REGEXP_ONLY_DIGITS}
+                                        autoFocus
+                                    >
+                                        <InputOTPGroup>
+                                            {Array.from(
+                                                { length: 6 },
+                                                (_, index) => (
+                                                    <InputOTPSlot
+                                                        key={index}
+                                                        index={index}
+                                                    />
+                                                ),
+                                            )}
+                                        </InputOTPGroup>
+                                    </InputOTP>
+                                </div>
                                 {code.length > 0 && code.length < 6 ? (
                                     <p
                                         className="text-sm text-destructive"
@@ -80,7 +92,7 @@ export default function Otp({ email, status }: Props) {
                 </Form>
 
                 {status && (
-                    <div className="text-center text-status-success text-sm font-medium">
+                    <div className="text-center text-sm font-medium text-status-success">
                         {status}
                     </div>
                 )}

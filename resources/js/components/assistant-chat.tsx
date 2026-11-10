@@ -287,11 +287,13 @@ export function AssistantChat({
                         onChange={(e) => setQuestion(e.target.value)}
                         placeholder={placeholder ?? 'Ask a question…'}
                         disabled={busy}
+                        aria-label={placeholder ?? 'Ask a question'}
                     />
                     <Button
                         type="submit"
                         size="icon"
                         disabled={busy || !question.trim()}
+                        aria-label="Send message"
                     >
                         <Send className="size-4" />
                     </Button>

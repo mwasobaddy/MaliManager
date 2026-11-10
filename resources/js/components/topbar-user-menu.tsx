@@ -28,8 +28,11 @@ export function TopbarUserMenu() {
                     aria-label="Account menu"
                 >
                     <Avatar className="size-8 overflow-hidden rounded-full">
-                        <AvatarImage src={user.avatar} alt={user.name} />
-                        <AvatarFallback className="rounded-full">
+                        <AvatarImage src={user.avatar} alt="" />
+                        <AvatarFallback
+                            className="rounded-full"
+                            aria-hidden="true"
+                        >
                             {getInitials(user.name ?? '')}
                         </AvatarFallback>
                     </Avatar>

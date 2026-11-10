@@ -63,15 +63,15 @@ export default function AdminDashboard({ organizations }: Props) {
                                             <CardTitle>
                                                 {organization.name}
                                             </CardTitle>
-                                            <Badge variant="secondary">
+                                            <Badge variant="primary">
                                                 {organization.plan ?? 'No plan'}
                                             </Badge>
                                             <Badge
                                                 variant={
                                                     organization.status ===
                                                     'active'
-                                                        ? 'default'
-                                                        : 'secondary'
+                                                        ? 'success'
+                                                        : 'neutral'
                                                 }
                                             >
                                                 {organization.status}

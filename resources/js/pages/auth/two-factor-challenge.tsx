@@ -1,9 +1,11 @@
 import { Form, Head, setLayoutProps } from '@inertiajs/react';
 import { REGEXP_ONLY_DIGITS } from 'input-otp';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import InputError from '@/components/input-error';
+import TextLink from '@/components/text-link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
     InputOTP,
     InputOTPGroup,
@@ -38,10 +40,12 @@ export default function TwoFactorChallenge() {
         };
     }, [showRecoveryInput]);
 
-    setLayoutProps({
-        title: authConfigContent.title,
-        description: authConfigContent.description,
-    });
+    useEffect(() => {
+        setLayoutProps({
+            title: authConfigContent.title,
+            description: authConfigContent.description,
+        });
+    }, [authConfigContent]);
 
     const toggleRecoveryMode = (clearErrors: () => void): void => {
         setShowRecoveryInput(!showRecoveryInput);
@@ -64,13 +68,19 @@ export default function TwoFactorChallenge() {
                         <>
                             {showRecoveryInput ? (
                                 <>
-                                    <Input
-                                        name="recovery_code"
-                                        type="text"
-                                        placeholder="Enter recovery code"
-                                        autoFocus={showRecoveryInput}
-                                        required
-                                    />
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="recovery_code">
+                                            Recovery code
+                                        </Label>
+                                        <Input
+                                            id="recovery_code"
+                                            name="recovery_code"
+                                            type="text"
+                                            placeholder="Enter recovery code"
+                                            autoFocus={showRecoveryInput}
+                                            required
+                                        />
+                                    </div>
                                     <InputError
                                         message={errors.recovery_code}
                                     />
@@ -114,15 +124,15 @@ export default function TwoFactorChallenge() {
 
                             <div className="text-center text-sm text-muted-foreground">
                                 <span>or you can </span>
-                                <button
-                                    type="button"
-                                    className="cursor-pointer text-foreground underline decoration-neutral-300 underline-offset-4 transition-colors duration-300 ease-out hover:decoration-current! dark:decoration-neutral-500"
-                                    onClick={() =>
-                                        toggleRecoveryMode(clearErrors)
-                                    }
+                                <TextLink
+                                    href="#"
+                                    onClick={(event) => {
+                                        event.preventDefault();
+                                        toggleRecoveryMode(clearErrors);
+                                    }}
                                 >
                                     {authConfigContent.toggleText}
-                                </button>
+                                </TextLink>
                             </div>
                         </>
                     )}

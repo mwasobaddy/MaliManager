@@ -3,8 +3,8 @@ import {
     SETUP_STEPS,
     SetupStepTitle,
     SetupSteps,
-    type SetupProgress,
 } from '@/components/setup-steps';
+import type { SetupProgress } from '@/components/setup-steps';
 import { cn } from '@/lib/utils';
 
 /**
@@ -120,7 +120,7 @@ export function SetupSidePanel({
                     </div>
                 </div>
                 <div>
-                    <h2 className="mb-0 text-xl font-bold">Welcome, aboard!</h2>
+                    <h2 className="mb-0 text-xl font-bold">Welcome aboard!</h2>
                     <p className="text-muted-foreground">{intro[0]}</p>
                     <p className="text-muted-foreground">{intro[1]}</p>
                 </div>

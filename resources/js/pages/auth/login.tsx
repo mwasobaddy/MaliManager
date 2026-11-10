@@ -39,9 +39,9 @@ export default function Login({ status }: Props) {
                 </a>
             </Button>
 
-            <div className="relative text-center text-sm my-6">
-                <span className="border-border absolute inset-x-0 top-1/2 border-t" />
-                <span className="bg-card text-muted-foreground relative z-10 px-3">
+            <div className="relative my-6 text-center text-sm">
+                <span className="absolute inset-x-0 top-1/2 border-t border-border" />
+                <span className="relative z-10 bg-card px-3 text-muted-foreground">
                     Or continue with email
                 </span>
             </div>
@@ -64,9 +64,17 @@ export default function Login({ status }: Props) {
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     onBlur={() => setTouched(true)}
+                                    aria-invalid={touched && !emailValid}
+                                    aria-describedby={
+                                        touched && !emailValid
+                                            ? 'email-hint'
+                                            : undefined
+                                    }
                                 />
                                 {touched && !emailValid ? (
                                     <p
+                                        id="email-hint"
+                                        role="alert"
                                         className="text-sm text-destructive"
                                         data-test="email-invalid"
                                     >
@@ -93,12 +101,12 @@ export default function Login({ status }: Props) {
             </Form>
 
             {status && (
-                <div className="text-status-success mb-4 text-center text-sm font-medium">
+                <div className="mb-4 text-center text-sm font-medium text-status-success">
                     {status}
                 </div>
             )}
 
-            <p className="text-center text-sm text-muted-foreground mt-2">
+            <p className="mt-2 text-center text-sm text-muted-foreground">
                 We'll email you a one-time code to sign in.
             </p>
         </>

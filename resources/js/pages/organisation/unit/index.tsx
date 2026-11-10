@@ -8,6 +8,8 @@ import { DataTable } from '@/components/data-table';
 import Heading from '@/components/heading';
 import { OverlayFooter } from '@/components/overlay-footer';
 import { ResponsiveOverlay } from '@/components/responsive-overlay';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -129,7 +131,11 @@ export default function UnitsIndex({ units, properties }: Props) {
                 status: filters.status,
                 property: filters.property,
                 sort: first?.id ?? '',
-                direction: first ? (first.desc ? 'desc' : 'asc') : sort.direction,
+                direction: first
+                    ? first.desc
+                        ? 'desc'
+                        : 'asc'
+                    : sort.direction,
             },
             { replace: true },
         );
@@ -204,7 +210,7 @@ export default function UnitsIndex({ units, properties }: Props) {
                 header: 'Unit',
                 cell: ({ row }) => (
                     <div className="flex items-center gap-3">
-                        <div className="bg-muted flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-md">
+                        <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted">
                             {row.original.thumbnail ? (
                                 <img
                                     src={row.original.thumbnail}
@@ -213,14 +219,14 @@ export default function UnitsIndex({ units, properties }: Props) {
                                     className="size-full object-cover"
                                 />
                             ) : (
-                                <ImageOff className="text-muted-foreground size-4" />
+                                <ImageOff className="size-4 text-muted-foreground" />
                             )}
                         </div>
                         <div className="min-w-0">
                             <div className="font-medium">
                                 {row.original.name}
                             </div>
-                            <div className="text-muted-foreground truncate text-xs">
+                            <div className="truncate text-xs text-muted-foreground">
                                 {row.original.type ?? '—'}
                             </div>
                         </div>
@@ -233,7 +239,7 @@ export default function UnitsIndex({ units, properties }: Props) {
                 enableSorting: false,
                 cell: ({ row }) => (
                     <span className="flex items-center gap-1.5 text-xs">
-                        <Building2 className="text-muted-foreground size-3.5 shrink-0" />
+                        <Building2 className="size-3.5 shrink-0 text-muted-foreground" />
                         {row.original.property.name ?? '—'}
                     </span>
                 ),
@@ -253,9 +259,18 @@ export default function UnitsIndex({ units, properties }: Props) {
                 accessorKey: 'status',
                 header: 'Status',
                 cell: ({ row }) => (
-                    <span className="text-xs capitalize">
+                    <Badge
+                        variant={
+                            row.original.status === 'occupied'
+                                ? 'success'
+                                : row.original.status === 'maintenance'
+                                  ? 'warning'
+                                  : 'neutral'
+                        }
+                        className="text-xs capitalize"
+                    >
                         {row.original.status}
-                    </span>
+                    </Badge>
                 ),
             },
             {
@@ -278,6 +293,7 @@ export default function UnitsIndex({ units, properties }: Props) {
 
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
                 <Heading
+                    level="h1"
                     title="Units"
                     description="Every rentable unit across your properties, with the photos attached to each."
                 />
@@ -368,9 +384,7 @@ export default function UnitsIndex({ units, properties }: Props) {
             >
                 <div className="grid gap-4 py-2">
                     <fieldset className="space-y-3">
-                        <legend className="text-sm font-medium">
-                            Status
-                        </legend>
+                        <legend className="text-sm font-medium">Status</legend>
                         <RadioGroup
                             value={filters.status || 'all'}
                             onValueChange={(value) =>
@@ -410,19 +424,18 @@ export default function UnitsIndex({ units, properties }: Props) {
 
                     <div className="grid gap-2">
                         <Label htmlFor="unit-property">Property</Label>
-                        <Input
+                        <Button
                             id="unit-property"
-                            type="text"
-                            readOnly
-                            placeholder={
+                            type="button"
+                            variant="outline"
+                            className="justify-start font-normal"
+                            aria-label={
                                 filters.property
-                                    ? (properties.find(
-                                          (p) =>
-                                              String(p.id) === filters.property,
-                                      )?.name ?? '')
-                                    : 'Any property'
+                                    ? `Property filter: ${properties.find((p) => String(p.id) === filters.property)?.name ?? ''}. Activate to clear.`
+                                    : 'Property filter: any property.'
                             }
                             onClick={() =>
+                                filters.property &&
                                 refetchTable({
                                     search: filters.search,
                                     status: filters.status,
@@ -432,8 +445,14 @@ export default function UnitsIndex({ units, properties }: Props) {
                                     filters: '1',
                                 })
                             }
-                        />
-                        <p className="text-muted-foreground text-xs">
+                        >
+                            {filters.property
+                                ? (properties.find(
+                                      (p) => String(p.id) === filters.property,
+                                  )?.name ?? '')
+                                : 'Any property'}
+                        </Button>
+                        <p className="text-xs text-muted-foreground">
                             Pick a property from the filter list below.
                         </p>
                     </div>
@@ -460,9 +479,7 @@ export default function UnitsIndex({ units, properties }: Props) {
                                                     filters.property ===
                                                     String(property.id)
                                                         ? ''
-                                                        : String(
-                                                              property.id,
-                                                          ),
+                                                        : String(property.id),
                                                 sort: sort.column ?? '',
                                                 direction: sort.direction,
                                                 filters: '1',

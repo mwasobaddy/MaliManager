@@ -27,5 +27,6 @@ export default function Suspended() {
 
 Suspended.layout = {
     title: 'Account suspended',
-    description: 'You have been signed out.',
+    description:
+        'Contact your administrator if you believe this is an error.',
 };
