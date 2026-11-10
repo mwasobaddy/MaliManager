@@ -28,6 +28,7 @@ class RentReminderMail extends Mailable
     {
         return new Content(
             view: 'email.rent-reminder',
+            text: 'email.rent-reminder-text',
         );
     }
 }

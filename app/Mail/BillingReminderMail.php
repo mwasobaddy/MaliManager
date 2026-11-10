@@ -29,6 +29,7 @@ class BillingReminderMail extends Mailable
     {
         return new Content(
             view: 'email.billing-reminder',
+            text: 'email.billing-reminder-text',
         );
     }
 }

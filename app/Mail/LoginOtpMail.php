@@ -25,6 +25,7 @@ class LoginOtpMail extends Mailable
     {
         return new Content(
             view: 'email.login-otp',
+            text: 'email.login-otp-text',
         );
     }
 }
