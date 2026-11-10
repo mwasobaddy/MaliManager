@@ -37,7 +37,10 @@ class SearchService
         'properties' => ['model' => Property::class, 'columns' => ['name', 'slug', 'address_line_1', 'city'], 'label' => 'name', 'subtitle' => 'slug'],
         'land_parcels' => ['model' => LandParcel::class, 'columns' => ['name', 'slug', 'parcel_number', 'code'], 'label' => 'name', 'subtitle' => 'slug'],
         'units' => ['model' => Unit::class, 'columns' => ['name', 'unit_number'], 'label' => 'name', 'subtitle' => 'unit_number'],
-        'occupants' => ['model' => Occupant::class, 'columns' => ['name', 'email', 'phone'], 'label' => 'name', 'subtitle' => 'email'],
+        // Occupants carry no identity columns of their own (name/email live on
+        // the linked person) — queryType() and toResult() branch for them
+        // explicitly; the entry below only satisfies the config shape.
+        'occupants' => ['model' => Occupant::class, 'columns' => [], 'label' => 'name', 'subtitle' => 'email'],
         'leases' => ['model' => Lease::class, 'columns' => ['reference_number', 'status', 'notes'], 'label' => 'reference_number', 'subtitle' => 'status'],
         'maintenance' => ['model' => MaintenanceRequest::class, 'columns' => ['title', 'description', 'reference'], 'label' => 'title', 'subtitle' => 'reference'],
     ];
@@ -132,6 +135,19 @@ class SearchService
         $model = new ($config['model'])();
         $table = $model->getTable();
 
+        // Occupant identity lives on the linked person, not the occupants
+        // table — match against the person's name, email and phone.
+        if ($key === 'occupants') {
+            return $model->newQuery()->select("{$table}.*")
+                ->when($orgIds !== null, fn ($q) => $q->whereIn("{$table}.organization_id", $orgIds))
+                ->whereHas('person', function ($q) use ($term) {
+                    $q->where('first_name', 'like', $term)
+                        ->orWhere('last_name', 'like', $term)
+                        ->orWhere('email', 'like', $term)
+                        ->orWhere('phone', 'like', $term);
+                });
+        }
+
         $columns = array_values(array_intersect(
             Schema::getColumnListing($table),
             $config['columns'],
@@ -162,7 +178,7 @@ class SearchService
     {
         match ($key) {
             'land_parcels', 'units', 'leases', 'maintenance' => $items->load('property'),
-            'occupants' => $items->load('units.property'),
+            'occupants' => $items->load(['units.property', 'person']),
             default => null,
         };
     }
@@ -170,6 +186,18 @@ class SearchService
     private function toResult(string $key, Model $model, bool $isCentral): array
     {
         $config = self::SEARCHABLE[$key];
+
+        if ($key === 'occupants' && $model instanceof Occupant) {
+            $name = trim(($model->person?->first_name ?? '').' '.($model->person?->last_name ?? ''));
+
+            return [
+                'id' => $model->getKey(),
+                'type' => $key,
+                'title' => $name !== '' ? $name : (string) $model->getKey(),
+                'subtitle' => $model->person?->email,
+                'url' => $this->urlFor($key, $model, $isCentral),
+            ];
+        }
 
         return [
             'id' => $model->getKey(),

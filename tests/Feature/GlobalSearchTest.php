@@ -4,6 +4,7 @@ use App\Models\Organization;
 use App\Models\Plan;
 use App\Models\Property;
 use App\Models\User;
+use App\Services\OccupantService;
 use App\Services\TenantService;
 use Database\Seeders\PlansSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
@@ -135,4 +136,39 @@ test('search requires a query of at least two characters', function () {
         ->actingAs($admin)
         ->getJson(route('search', ['q' => 'a']))
         ->assertStatus(422);
+});
+
+test('occupant results show the person name and email', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = makeOrganization($owner, 'Renter Org');
+    $property = $organization->properties()->create([
+        'name' => 'Sunset Heights',
+        'slug' => 'sunset-heights',
+        'status' => 'active',
+        'created_by' => $owner->id,
+    ]);
+    $unit = $property->units()->create([
+        'name' => 'A1',
+        'status' => 'occupied',
+        'created_by' => $owner->id,
+    ]);
+
+    app(OccupantService::class)->create($organization, $property, $owner, [
+        'first_name' => 'Quirina',
+        'last_name' => 'Renter',
+        'email' => 'quirina.renter@example.test',
+        'status' => 'active',
+        'unit_ids' => [$unit->id],
+    ]);
+
+    $response = $this
+        ->actingAs($owner)
+        ->get(tenantSearchUrl($organization, 'Quirina'))
+        ->assertOk();
+
+    $occupants = $response->json('results.occupants');
+
+    expect($occupants)->toHaveCount(1)
+        ->and($occupants[0]['title'])->toBe('Quirina Renter')
+        ->and($occupants[0]['subtitle'])->toBe('quirina.renter@example.test');
 });
