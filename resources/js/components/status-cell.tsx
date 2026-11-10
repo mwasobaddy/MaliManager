@@ -95,8 +95,10 @@ export function StatusIcon({
  * `-bg` pair to tint a chip against; `StatusIcon` uses the flat token instead.
  */
 const TOGGLE_TONE_CLASSES = {
-    success: 'bg-muted text-muted-foreground hover:bg-status-success-bg hover:text-status-success focus-visible:ring-status-success/30',
-    warning: 'bg-muted text-muted-foreground hover:bg-status-warning-bg hover:text-status-warning focus-visible:ring-status-warning/30',
+    success:
+        'bg-muted text-muted-foreground hover:bg-status-success-bg hover:text-status-success focus-visible:ring-status-success/30',
+    warning:
+        'bg-muted text-muted-foreground hover:bg-status-warning-bg hover:text-status-warning focus-visible:ring-status-warning/30',
     danger: 'bg-muted text-muted-foreground hover:bg-status-danger-bg hover:text-status-danger focus-visible:ring-status-danger/30',
 } satisfies Record<Exclude<StatusTone, 'info' | 'muted'>, string>;
 
@@ -142,7 +144,9 @@ export function StatusPowerToggle({
     return (
         <ActionIconButton
             color="default"
-            className={TOGGLE_TONE_CLASSES[isActive ? activeTone : inactiveTone]}
+            className={
+                TOGGLE_TONE_CLASSES[isActive ? activeTone : inactiveTone]
+            }
             icon={isActive ? <Power /> : <PowerOff />}
             label={isActive ? activeLabel : inactiveLabel}
             tooltipSide="top"

@@ -205,7 +205,10 @@ export default function PropertiesDashboard({
                         <Select
                             value={filterMonth}
                             onValueChange={(value) =>
-                                updateFilters(filterYear, value === 'all' ? '' : value)
+                                updateFilters(
+                                    filterYear,
+                                    value === 'all' ? '' : value,
+                                )
                             }
                         >
                             <SelectTrigger

@@ -31,8 +31,8 @@ export default function DeleteUser() {
              * from `--status-danger` — this is the one screen where the
              * warning colour must be unambiguous, so it should be the token.
              */}
-            <div className="border-status-danger/30 bg-status-danger-bg space-y-4 rounded-lg border p-4">
-                <div className="text-status-danger-fg relative space-y-0.5">
+            <div className="space-y-4 rounded-lg border border-status-danger/30 bg-status-danger-bg p-4">
+                <div className="relative space-y-0.5 text-status-danger-fg">
                     <p className="font-medium">Warning</p>
                     <p className="text-sm">
                         Please proceed with caution, this cannot be undone.
@@ -90,9 +90,7 @@ export default function DeleteUser() {
                                     </div>
 
                                     <OverlayFooter
-                                        onCancel={() =>
-                                            resetAndClearErrors()
-                                        }
+                                        onCancel={() => resetAndClearErrors()}
                                         actions={[
                                             {
                                                 label: 'Delete account',

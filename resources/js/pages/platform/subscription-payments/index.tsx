@@ -805,7 +805,9 @@ export default function SubscriptionPaymentsIndex({
                  */}
                 <div className="grid gap-4 py-2">
                     <fieldset className="grid gap-2">
-                        <legend className="text-sm font-medium">Received</legend>
+                        <legend className="text-sm font-medium">
+                            Received
+                        </legend>
                         <div className="grid grid-cols-2 gap-3">
                             <div className="grid gap-2">
                                 <Label

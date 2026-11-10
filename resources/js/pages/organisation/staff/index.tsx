@@ -124,8 +124,7 @@ export default function StaffIndex({
     // click, so the options also load on mount when a form sheet is open.
     useEffect(() => {
         if (
-            (query.get('create') === '1' ||
-                query.get('mode') === 'edit') &&
+            (query.get('create') === '1' || query.get('mode') === 'edit') &&
             (sub_roles === undefined || properties === undefined)
         ) {
             router.reload({ only: ['sub_roles', 'properties'] });

@@ -140,14 +140,17 @@ export default function AuditIndex({
                                     <SelectTrigger id="audit-event">
                                         <SelectValue placeholder="Any action" />
                                     </SelectTrigger>
-                                <SelectContent>
-                                    {options.events.map((event) => (
-                                        <SelectItem key={event} value={event}>
-                                            {event}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                                    <SelectContent>
+                                        {options.events.map((event) => (
+                                            <SelectItem
+                                                key={event}
+                                                value={event}
+                                            >
+                                                {event}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
                             <div className="grid gap-1.5">
                                 <Label htmlFor="audit-resource">Resource</Label>
@@ -160,16 +163,16 @@ export default function AuditIndex({
                                     <SelectTrigger id="audit-resource">
                                         <SelectValue placeholder="Any resource" />
                                     </SelectTrigger>
-                                <SelectContent>
-                                    {Object.entries(options.subjectTypes).map(
-                                        ([type, label]) => (
+                                    <SelectContent>
+                                        {Object.entries(
+                                            options.subjectTypes,
+                                        ).map(([type, label]) => (
                                             <SelectItem key={type} value={type}>
                                                 {label}
                                             </SelectItem>
-                                        ),
-                                    )}
-                                </SelectContent>
-                            </Select>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
                             <div className="grid gap-1.5">
                                 <Label htmlFor="audit-date-from">From</Label>
@@ -178,7 +181,10 @@ export default function AuditIndex({
                                     type="date"
                                     value={form.data.date_from}
                                     onChange={(e) =>
-                                        form.setData('date_from', e.target.value)
+                                        form.setData(
+                                            'date_from',
+                                            e.target.value,
+                                        )
                                     }
                                 />
                             </div>

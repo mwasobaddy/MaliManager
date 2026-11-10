@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils';
  * button in a header that already has other controls.
  */
 const iconChipVariants = cva(
-    'inline-flex size-9 coarse:size-11 items-center justify-center rounded-lg transition-colors',
+    'inline-flex size-9 items-center justify-center rounded-lg transition-colors coarse:size-11',
     {
         variants: {
             color: {
@@ -98,31 +98,37 @@ export function LabelledIconButton({
                     {icon}
                 </span>
             </span>
-            <span className={cn('line-clamp-2 text-center', labelToneVariants({ color }))}>
+            <span
+                className={cn(
+                    'line-clamp-2 text-center',
+                    labelToneVariants({ color }),
+                )}
+            >
                 {label}
             </span>
         </>
     );
 
     const classes = cn(
-        'group focus-visible:ring-ring inline-flex w-full max-w-24 flex-col items-center justify-center gap-1.5 rounded-lg px-1 py-1.5 transition-colors focus-visible:ring-[3px] focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50',
+        'group inline-flex w-full max-w-24 flex-col items-center justify-center gap-1.5 rounded-lg px-1 py-1.5 transition-colors focus-visible:ring-[3px] focus-visible:ring-ring focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50',
         className,
     );
 
-    const trigger = href && !disabled ? (
-        <Link href={href} className={classes}>
-            {content}
-        </Link>
-    ) : (
-        <button
-            type={type}
-            onClick={onClick}
-            disabled={disabled}
-            className={classes}
-        >
-            {content}
-        </button>
-    );
+    const trigger =
+        href && !disabled ? (
+            <Link href={href} className={classes}>
+                {content}
+            </Link>
+        ) : (
+            <button
+                type={type}
+                onClick={onClick}
+                disabled={disabled}
+                className={classes}
+            >
+                {content}
+            </button>
+        );
 
     return (
         <Tooltip>

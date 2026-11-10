@@ -547,7 +547,12 @@ export default function RichTextEditor({
         if (url === '') {
             editor.chain().focus().extendMarkRange('link').unsetLink().run();
         } else {
-            editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
+            editor
+                .chain()
+                .focus()
+                .extendMarkRange('link')
+                .setLink({ href: url })
+                .run();
         }
 
         setLinkEditing(false);

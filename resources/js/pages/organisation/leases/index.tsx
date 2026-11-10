@@ -1,6 +1,13 @@
 import { Head, router } from '@inertiajs/react';
 import { usePage } from '@inertiajs/react';
-import { FileText, Power, Printer, ScrollText, Send, Sparkles } from 'lucide-react';
+import {
+    FileText,
+    Power,
+    Printer,
+    ScrollText,
+    Send,
+    Sparkles,
+} from 'lucide-react';
 import { useRef, useState } from 'react';
 import { ActionIconButton } from '@/components/action-icon-button';
 import Heading from '@/components/heading';
@@ -91,8 +98,7 @@ export default function LeasesIndex({ leases, filters }: Props) {
         Number.isFinite(dialogLeaseId) && dialogLeaseId > 0
             ? (leases.data.find((lease) => lease.id === dialogLeaseId) ?? null)
             : null;
-    const endTarget =
-        query.get('dialog') === 'end-lease' ? dialogLease : null;
+    const endTarget = query.get('dialog') === 'end-lease' ? dialogLease : null;
     const suggestTarget =
         query.get('dialog') === 'suggest' ? dialogLease : null;
     const [suggestion, setSuggestion] = useState<{

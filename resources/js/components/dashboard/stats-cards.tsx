@@ -48,8 +48,6 @@ export function StatsCards({ label, summary, items }: StatsCardsProps) {
 }
 
 function StatPill({ item }: { item: StatItem }) {
-
-
     const baseStyles =
         'inline-flex items-center gap-2 rounded-lg border border-border-strong px-3 py-2 text-sm font-medium transition-colors hover:border-brand-primary/30';
 
@@ -59,20 +57,15 @@ function StatPill({ item }: { item: StatItem }) {
     const variantStyles = {
         primary:
             'bg-brand-primary-100 text-primary-text border-brand-primary/25',
-        accent:
-            'bg-brand-accent-100 text-accent-on-tint border-brand-accent/25',
+        accent: 'bg-brand-accent-100 text-accent-on-tint border-brand-accent/25',
     };
 
     const variantClass = variantStyles[item.variant ?? 'primary'];
 
     return (
         <span className={`${baseStyles} ${variantClass}`}>
-            <span className="font-normal opacity-90">
-                {item.label}
-            </span>
-            <span className="font-bold tabular-nums">
-                {item.value}
-            </span>
+            <span className="font-normal opacity-90">{item.label}</span>
+            <span className="font-bold tabular-nums">{item.value}</span>
         </span>
     );
 }

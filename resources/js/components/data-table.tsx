@@ -3,11 +3,7 @@ import {
     getCoreRowModel,
     useReactTable,
 } from '@tanstack/react-table';
-import type {
-    ColumnDef,
-    RowData,
-    SortingState,
-} from '@tanstack/react-table';
+import type { ColumnDef, RowData, SortingState } from '@tanstack/react-table';
 import { ArrowDown, ArrowUp, ChevronsUpDown } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useLayoutEffect, useRef, useState } from 'react';
@@ -127,13 +123,12 @@ export function DataTable<TData>({
                     {table.getHeaderGroups().map((headerGroup) => (
                         <tr
                             key={headerGroup.id}
-                            className="border-border-strong border-b"
+                            className="border-b border-border-strong"
                         >
                             {headerGroup.headers.map((header) => {
                                 const sortable =
                                     header.column.columnDef.enableSorting !==
-                                    false &&
-                                    header.column.getCanSort();
+                                        false && header.column.getCanSort();
 
                                 const sorted = header.column.getIsSorted();
 
@@ -168,7 +163,7 @@ export function DataTable<TData>({
                                                   : 'none'
                                         }
                                         className={cn(
-                                            'text-muted-foreground bg-bg-base sticky top-0 z-10 px-3 py-2 text-xs font-medium tracking-wide uppercase',
+                                            'sticky top-0 z-10 bg-bg-base px-3 py-2 text-xs font-medium tracking-wide text-muted-foreground uppercase',
                                             alignClass,
                                             responsiveClass,
                                         )}
@@ -177,10 +172,11 @@ export function DataTable<TData>({
                                             <button
                                                 type="button"
                                                 onClick={header.column.getToggleSortingHandler()}
-                                                className="hover:text-foreground focus-visible:ring-ring inline-flex items-center gap-1.5 rounded transition-colors focus-visible:ring-[3px] focus-visible:outline-none"
+                                                className="inline-flex items-center gap-1.5 rounded transition-colors hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring focus-visible:outline-none"
                                             >
                                                 {flexRender(
-                                                    header.column.columnDef.header,
+                                                    header.column.columnDef
+                                                        .header,
                                                     header.getContext(),
                                                 )}
                                                 {sorted === 'asc' ? (
@@ -188,9 +184,9 @@ export function DataTable<TData>({
                                                        wayfinding, so accent —
                                                        not the terracotta that
                                                        means "you did this". */
-                                                    <ArrowUp className="text-accent-text size-3.5" />
+                                                    <ArrowUp className="size-3.5 text-accent-text" />
                                                 ) : sorted === 'desc' ? (
-                                                    <ArrowDown className="text-accent-text size-3.5" />
+                                                    <ArrowDown className="size-3.5 text-accent-text" />
                                                 ) : (
                                                     <ChevronsUpDown className="size-3.5 opacity-40" />
                                                 )}
@@ -214,7 +210,7 @@ export function DataTable<TData>({
                         }).map((_, rowIndex) => (
                             <tr
                                 key={`skeleton-${rowIndex}`}
-                                className="border-border/60 border-b last:border-b-0"
+                                className="border-b border-border/60 last:border-b-0"
                                 // Pin the row to the measured height of a real
                                 // row. Without it the single 4px bar leaves a
                                 // ~32px row against a 53px real one, which
@@ -227,8 +223,7 @@ export function DataTable<TData>({
                                 aria-hidden="true"
                             >
                                 {columns.map((column, cellIndex) => {
-                                    const align =
-                                        column.meta?.align ?? 'left';
+                                    const align = column.meta?.align ?? 'left';
 
                                     return (
                                         <td
@@ -269,10 +264,7 @@ export function DataTable<TData>({
                         ))
                     ) : table.getRowModel().rows.length === 0 ? (
                         <tr>
-                            <td
-                                colSpan={columns.length}
-                                className="px-3"
-                            >
+                            <td colSpan={columns.length} className="px-3">
                                 {empty}
                             </td>
                         </tr>
@@ -317,9 +309,9 @@ export function DataTable<TData>({
                                         : undefined
                                 }
                                 className={cn(
-                                    'hover:bg-bg-base border-border/60 border-b transition-colors last:border-b-0',
+                                    'border-b border-border/60 transition-colors last:border-b-0 hover:bg-bg-base',
                                     onRowClick &&
-                                        'cursor-pointer focus-visible:bg-bg-base focus-visible:ring-ring focus-visible:ring-[3px] focus-visible:outline-none',
+                                        'cursor-pointer focus-visible:bg-bg-base focus-visible:ring-[3px] focus-visible:ring-ring focus-visible:outline-none',
                                 )}
                             >
                                 {row.getVisibleCells().map((cell) => {
@@ -328,25 +320,25 @@ export function DataTable<TData>({
                                         'left';
 
                                     return (
-                                    <td
-                                        key={cell.id}
-                                        className={cn(
-                                            'px-3 py-2 coarse:py-3 text-sm',
-                                            cellAlign === 'right'
-                                                ? 'text-right'
-                                                : cellAlign === 'center'
-                                                  ? 'text-center'
-                                                  : 'text-left',
-                                            cell.column.columnDef.meta
-                                                ?.hideBelow === 'md' &&
-                                                'hidden md:table-cell',
-                                        )}
-                                    >
-                                        {flexRender(
-                                            cell.column.columnDef.cell,
-                                            cell.getContext(),
-                                        )}
-                                    </td>
+                                        <td
+                                            key={cell.id}
+                                            className={cn(
+                                                'px-3 py-2 text-sm coarse:py-3',
+                                                cellAlign === 'right'
+                                                    ? 'text-right'
+                                                    : cellAlign === 'center'
+                                                      ? 'text-center'
+                                                      : 'text-left',
+                                                cell.column.columnDef.meta
+                                                    ?.hideBelow === 'md' &&
+                                                    'hidden md:table-cell',
+                                            )}
+                                        >
+                                            {flexRender(
+                                                cell.column.columnDef.cell,
+                                                cell.getContext(),
+                                            )}
+                                        </td>
                                     );
                                 })}
                             </tr>

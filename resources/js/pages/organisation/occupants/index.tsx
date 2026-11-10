@@ -154,9 +154,8 @@ export default function OccupantsIndex({
         isMoveOutOpen &&
         (focusedOccupant?.id === viewedOccupantId
             ? focusedOccupant
-            : (occupants.find(
-                  (occupant) => occupant.id === viewedOccupantId,
-              ) ?? null));
+            : (occupants.find((occupant) => occupant.id === viewedOccupantId) ??
+              null));
 
     const formOptionsLoaded =
         units !== undefined &&
@@ -740,18 +739,16 @@ export default function OccupantsIndex({
                                     idPrefix="edit"
                                     propertyName={property.name}
                                     defaults={{
-                                        first_name:
-                                            focusedOccupant.first_name,
+                                        first_name: focusedOccupant.first_name,
                                         last_name: focusedOccupant.last_name,
                                         email: focusedOccupant.email,
                                         phone: focusedOccupant.phone,
                                         national_id:
                                             focusedOccupant.national_id,
                                         status: focusedOccupant.status,
-                                        unit_ids:
-                                            focusedOccupant.units.map(
-                                                (unit) => unit.id,
-                                            ),
+                                        unit_ids: focusedOccupant.units.map(
+                                            (unit) => unit.id,
+                                        ),
                                         lease: focusedOccupant.lease
                                             ? {
                                                   starts_at:
@@ -803,45 +800,47 @@ export default function OccupantsIndex({
                 </ResponsiveOverlay>
             )}
 
-            {canEdit && moveOutTarget && moveOutTarget.status !== 'moved_out' && (
-                <Dialog
-                    open={isMoveOutOpen}
-                    onOpenChange={(open) => !open && closeSheets()}
-                >
-                    <DialogContent>
-                        <DialogTitle>
-                            Move {moveOutTarget.first_name}{' '}
-                            {moveOutTarget.last_name ?? ''} out?
-                        </DialogTitle>
-                        <DialogDescription>
-                            This ends their active lease(s) — kept for their
-                            rental history — and frees their units. The renter
-                            reverts to a searcher.
-                        </DialogDescription>
-                        <Form
-                            {...moveOutOccupant.form({
-                                property: property.slug,
-                                occupant: moveOutTarget.id,
-                            })}
-                            options={{ preserveScroll: true }}
-                            className="space-y-6"
-                        >
-                            <DialogFooter>
-                                <OverlayFooter
-                                    cancelClosesDialog
-                                    actions={[
-                                        {
-                                            label: 'Move out',
-                                            tone: 'danger',
-                                            type: 'submit',
-                                        },
-                                    ]}
-                                />
-                            </DialogFooter>
-                        </Form>
-                    </DialogContent>
-                </Dialog>
-            )}
+            {canEdit &&
+                moveOutTarget &&
+                moveOutTarget.status !== 'moved_out' && (
+                    <Dialog
+                        open={isMoveOutOpen}
+                        onOpenChange={(open) => !open && closeSheets()}
+                    >
+                        <DialogContent>
+                            <DialogTitle>
+                                Move {moveOutTarget.first_name}{' '}
+                                {moveOutTarget.last_name ?? ''} out?
+                            </DialogTitle>
+                            <DialogDescription>
+                                This ends their active lease(s) — kept for their
+                                rental history — and frees their units. The
+                                renter reverts to a searcher.
+                            </DialogDescription>
+                            <Form
+                                {...moveOutOccupant.form({
+                                    property: property.slug,
+                                    occupant: moveOutTarget.id,
+                                })}
+                                options={{ preserveScroll: true }}
+                                className="space-y-6"
+                            >
+                                <DialogFooter>
+                                    <OverlayFooter
+                                        cancelClosesDialog
+                                        actions={[
+                                            {
+                                                label: 'Move out',
+                                                tone: 'danger',
+                                                type: 'submit',
+                                            },
+                                        ]}
+                                    />
+                                </DialogFooter>
+                            </Form>
+                        </DialogContent>
+                    </Dialog>
+                )}
         </>
     );
 }

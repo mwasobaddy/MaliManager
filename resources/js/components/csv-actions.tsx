@@ -48,7 +48,10 @@ export function CsvImportSheet({
 }: ImportSheetProps) {
     const [errors, setErrors] = useState<ImportError[]>([]);
     const page = usePage();
-    const validationErrors = (page.props.errors ?? {}) as Record<string, string>;
+    const validationErrors = (page.props.errors ?? {}) as Record<
+        string,
+        string
+    >;
 
     if (!canImport) {
         return null;
@@ -65,12 +68,7 @@ export function CsvImportSheet({
             }}
             title={title}
             description={description}
-            footer={
-                <OverlayFooter
-                    onCancel={onClose}
-                    cancelLabel="Close"
-                />
-            }
+            footer={<OverlayFooter onCancel={onClose} cancelLabel="Close" />}
         >
             <Form
                 method="post"
@@ -78,11 +76,12 @@ export function CsvImportSheet({
                 encType="multipart/form-data"
                 onSuccess={(response) => {
                     // Flash rides on the page object itself, not `props`.
-                    const reported = (
-                        response as unknown as {
-                            flash?: { importErrors?: ImportError[] };
-                        }
-                    ).flash?.importErrors ?? [];
+                    const reported =
+                        (
+                            response as unknown as {
+                                flash?: { importErrors?: ImportError[] };
+                            }
+                        ).flash?.importErrors ?? [];
 
                     setErrors(reported);
 
@@ -94,62 +93,63 @@ export function CsvImportSheet({
             >
                 {({ processing }) => (
                     <>
-                <div className="border-border-strong bg-background space-y-1 rounded-lg border p-3 text-xs">
-                    <div className="font-medium">Required columns</div>
-                    <div className="text-muted-foreground mt-1">
-                        {required.join(', ')}
-                    </div>
-                    {optional.length > 0 && (
-                        <>
-                            <div className="font-medium mt-3">Optional</div>
-                            <div className="text-muted-foreground">
-                                {optional.join(', ')}
+                        <div className="space-y-1 rounded-lg border border-border-strong bg-background p-3 text-xs">
+                            <div className="font-medium">Required columns</div>
+                            <div className="mt-1 text-muted-foreground">
+                                {required.join(', ')}
                             </div>
-                        </>
-                    )}
-                </div>
-
-                <Input
-                    id={`${idPrefix}-import-file`}
-                    name="file"
-                    type="file"
-                    accept=".csv,text/csv,text/plain"
-                    aria-label="CSV file"
-                />
-
-                {validationErrors.file && (
-                    <p className="text-destructive text-xs">
-                        {validationErrors.file}
-                    </p>
-                )}
-
-                {errors.length > 0 && (
-                    <div
-                        role="status"
-                        className="border-destructive/40 bg-destructive/5 space-y-1 rounded-lg border p-3"
-                    >
-                        <div className="text-destructive text-xs font-medium">
-                            {errors.length}{' '}
-                            {errors.length === 1 ? 'row was' : 'rows were'}{' '}
-                            skipped
+                            {optional.length > 0 && (
+                                <>
+                                    <div className="mt-3 font-medium">
+                                        Optional
+                                    </div>
+                                    <div className="text-muted-foreground">
+                                        {optional.join(', ')}
+                                    </div>
+                                </>
+                            )}
                         </div>
-                        <ul className="text-muted-foreground space-y-1 text-xs">
-                            {errors.map((problem, index) => (
-                                <li key={`${problem.row}-${index}`}>
-                                    {problem.message}
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-                )}
 
-                <Button
-                    type="submit"
-                    disabled={processing}
-                >
-                    <Upload className="mr-2 size-4" />
-                    {processing ? 'Importing…' : buttonLabel}
-                </Button>
+                        <Input
+                            id={`${idPrefix}-import-file`}
+                            name="file"
+                            type="file"
+                            accept=".csv,text/csv,text/plain"
+                            aria-label="CSV file"
+                        />
+
+                        {validationErrors.file && (
+                            <p className="text-xs text-destructive">
+                                {validationErrors.file}
+                            </p>
+                        )}
+
+                        {errors.length > 0 && (
+                            <div
+                                role="status"
+                                className="space-y-1 rounded-lg border border-destructive/40 bg-destructive/5 p-3"
+                            >
+                                <div className="text-xs font-medium text-destructive">
+                                    {errors.length}{' '}
+                                    {errors.length === 1
+                                        ? 'row was'
+                                        : 'rows were'}{' '}
+                                    skipped
+                                </div>
+                                <ul className="space-y-1 text-xs text-muted-foreground">
+                                    {errors.map((problem, index) => (
+                                        <li key={`${problem.row}-${index}`}>
+                                            {problem.message}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+
+                        <Button type="submit" disabled={processing}>
+                            <Upload className="mr-2 size-4" />
+                            {processing ? 'Importing…' : buttonLabel}
+                        </Button>
                     </>
                 )}
             </Form>

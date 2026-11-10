@@ -133,7 +133,9 @@ const accentCta =
     'inline-flex items-center justify-center rounded-full border border-brand-accent px-5 py-2.5 font-medium transition-colors hover:border-accent-text-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring text-accent-text hover:text-accent-text-hover';
 
 const prefersReducedMotion = (): boolean =>
-    typeof window === 'undefined' ? false : window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    typeof window === 'undefined'
+        ? false
+        : window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 function formatPlanPrice(plan: PlanTier): string {
     if (Number(plan.price) <= 0) {
@@ -156,8 +158,14 @@ function formatPlanLimits(plan: PlanTier): string {
     return `${properties} · ${units}`;
 }
 
-function formatStatValue(value: number, format: 'plain' | 'comma', suffix: string): string {
-    return (format === 'comma' ? value.toLocaleString() : String(value)) + suffix;
+function formatStatValue(
+    value: number,
+    format: 'plain' | 'comma',
+    suffix: string,
+): string {
+    return (
+        (format === 'comma' ? value.toLocaleString() : String(value)) + suffix
+    );
 }
 
 type AnimatedStatProps = {
@@ -166,10 +174,16 @@ type AnimatedStatProps = {
     format?: 'plain' | 'comma';
 };
 
-function AnimatedStat({ value, suffix = '', format = 'plain' }: AnimatedStatProps) {
+function AnimatedStat({
+    value,
+    suffix = '',
+    format = 'plain',
+}: AnimatedStatProps) {
     const [reducedMotion] = useState(() => prefersReducedMotion());
     const [display, setDisplay] = useState(() =>
-        reducedMotion ? formatStatValue(value, format, suffix) : formatStatValue(0, format, suffix),
+        reducedMotion
+            ? formatStatValue(value, format, suffix)
+            : formatStatValue(0, format, suffix),
     );
 
     useEffect(() => {
@@ -185,7 +199,9 @@ function AnimatedStat({ value, suffix = '', format = 'plain' }: AnimatedStatProp
             const progress = Math.min((now - startTime) / duration, 1);
             const eased = 1 - Math.pow(1 - progress, 3);
 
-            setDisplay(formatStatValue(Math.round(value * eased), format, suffix));
+            setDisplay(
+                formatStatValue(Math.round(value * eased), format, suffix),
+            );
 
             if (progress < 1) {
                 frame = requestAnimationFrame(tick);
@@ -267,8 +283,12 @@ function BrandMark() {
                 <AppLogoIcon />
             </span>
             <span className="font-semibold tracking-tight">
-                <span className="text-2xl md:text-3xl font-semibold tracking-tight text-brand-primary-600">Mali</span>
-                <span className="text-2xl md:text-3xl font-semibold tracking-tight text-brand-accent">Manager</span>
+                <span className="text-2xl font-semibold tracking-tight text-brand-primary-600 md:text-3xl">
+                    Mali
+                </span>
+                <span className="text-2xl font-semibold tracking-tight text-brand-accent md:text-3xl">
+                    Manager
+                </span>
             </span>
         </span>
     );
@@ -299,7 +319,9 @@ const revealClasses = 'animate-fade-in-up motion-reduce:animate-none';
 export default function Welcome() {
     const { name, auth, plans, featuredPlan } = usePage<SharedProps>().props;
     const [menuOpen, setMenuOpen] = useState(false);
-    const [portalView, setPortalView] = useState<'landlord' | 'tenant'>('landlord');
+    const [portalView, setPortalView] = useState<'landlord' | 'tenant'>(
+        'landlord',
+    );
     const [openFaq, setOpenFaq] = useState<number | null>(null);
 
     const primaryHref = auth.user ? dashboard().url : login().url;
@@ -339,10 +361,16 @@ export default function Welcome() {
                                 </Link>
                             ) : (
                                 <>
-                                    <Link href={login().url} className={accentCta}>
+                                    <Link
+                                        href={login().url}
+                                        className={accentCta}
+                                    >
                                         Log In
                                     </Link>
-                                    <Link href={login().url} className={primaryCta}>
+                                    <Link
+                                        href={login().url}
+                                        className={primaryCta}
+                                    >
                                         Get Started
                                     </Link>
                                 </>
@@ -358,7 +386,12 @@ export default function Welcome() {
                             className="p-2 text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring md:hidden"
                         >
                             {menuOpen ? (
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                <svg
+                                    width="24"
+                                    height="24"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                >
                                     <path
                                         d="M6 6l12 12M18 6L6 18"
                                         stroke="currentColor"
@@ -367,7 +400,12 @@ export default function Welcome() {
                                     />
                                 </svg>
                             ) : (
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                <svg
+                                    width="24"
+                                    height="24"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                >
                                     <path
                                         d="M3 6h18M3 12h18M3 18h18"
                                         stroke="currentColor"
@@ -427,7 +465,10 @@ export default function Welcome() {
                 </header>
 
                 {/* ============ HERO ============ */}
-                <section id="top" className="grid-texture relative overflow-hidden">
+                <section
+                    id="top"
+                    className="grid-texture relative overflow-hidden"
+                >
                     <div className="glow-orb absolute -top-40 -left-40 size-[520px] rounded-full bg-primary/15 blur-[90px] dark:bg-primary/20" />
                     <div className="absolute top-40 right-0 size-[420px] rounded-full bg-brand-accent/15 blur-[90px] dark:bg-brand-accent/20" />
 
@@ -442,19 +483,21 @@ export default function Welcome() {
                             </div>
 
                             <h1
-                                className={`${revealClasses} font-display max-w-xl text-[2.35rem] leading-[1.1] font-semibold tracking-tight text-foreground sm:text-5xl lg:text-[3.4rem]`}
+                                className={`${revealClasses} max-w-xl font-display text-[2.35rem] leading-[1.1] font-semibold tracking-tight text-foreground sm:text-5xl lg:text-[3.4rem]`}
                                 style={{ animationDelay: '0.1s' }}
                             >
-                                Every property in Kenya. Every tenant. One dashboard.
+                                Every property in Kenya. Every tenant. One
+                                dashboard.
                             </h1>
 
                             <p
                                 className={`${revealClasses} mt-6 max-w-md text-lg leading-relaxed text-muted-foreground`}
                                 style={{ animationDelay: '0.15s' }}
                             >
-                                MaliManager gives landlords and property managers a single, real-time
-                                view across every unit — rent collected through M-Pesa, leases, and
-                                maintenance, all in one place.
+                                MaliManager gives landlords and property
+                                managers a single, real-time view across every
+                                unit — rent collected through M-Pesa, leases,
+                                and maintenance, all in one place.
                             </p>
 
                             <div
@@ -465,12 +508,11 @@ export default function Welcome() {
                                     href={primaryHref}
                                     className="inline-flex items-center justify-center rounded-full bg-primary px-6 py-3.5 font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                                 >
-                                    {auth.user ? 'Open Dashboard' : 'Get Started Free'}
+                                    {auth.user
+                                        ? 'Open Dashboard'
+                                        : 'Get Started Free'}
                                 </Link>
-                                <Link
-                                    href="#features"
-                                    className={accentCta}
-                                >
+                                <Link href="#features" className={accentCta}>
                                     See how it works
                                 </Link>
                             </div>
@@ -486,7 +528,10 @@ export default function Welcome() {
                         </div>
 
                         {/* Dashboard mock */}
-                        <div className={`${revealClasses} relative`} style={{ animationDelay: '0.3s' }}>
+                        <div
+                            className={`${revealClasses} relative`}
+                            style={{ animationDelay: '0.3s' }}
+                        >
                             <div className="absolute -inset-3 rounded-[2rem] bg-gradient-to-br from-primary/15 to-transparent blur-xl" />
                             <div className="relative rounded-3xl border border-border bg-card p-5 shadow-2xl shadow-foreground/10 sm:p-6">
                                 <div className="mb-5 flex items-center justify-between">
@@ -509,7 +554,10 @@ export default function Welcome() {
                                             Occupancy
                                         </p>
                                         <p className="text-2xl font-semibold text-foreground">
-                                            <AnimatedStat value={94} suffix="%" />
+                                            <AnimatedStat
+                                                value={94}
+                                                suffix="%"
+                                            />
                                         </p>
                                     </div>
                                     <div className="rounded-2xl border border-border bg-muted p-4">
@@ -532,7 +580,11 @@ export default function Welcome() {
                                         </span>
                                     </div>
                                     <p className="text-2xl font-semibold text-foreground">
-                                        KES <AnimatedStat value={2438000} format="comma" />
+                                        KES{' '}
+                                        <AnimatedStat
+                                            value={2438000}
+                                            format="comma"
+                                        />
                                     </p>
                                     <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-border">
                                         <div
@@ -555,7 +607,9 @@ export default function Welcome() {
                                                 via M-Pesa STK Push
                                             </p>
                                         </div>
-                                        <p className="font-medium text-foreground">KES 28,000</p>
+                                        <p className="font-medium text-foreground">
+                                            KES 28,000
+                                        </p>
                                     </div>
                                     <div className="flex items-center justify-between border-t border-border py-2 text-sm">
                                         <div>
@@ -566,7 +620,9 @@ export default function Welcome() {
                                                 via M-Pesa STK Push
                                             </p>
                                         </div>
-                                        <p className="font-medium text-foreground">KES 32,500</p>
+                                        <p className="font-medium text-foreground">
+                                            KES 32,500
+                                        </p>
                                     </div>
                                 </div>
                             </div>
@@ -575,15 +631,18 @@ export default function Welcome() {
                 </section>
 
                 {/* ============ FEATURES ============ */}
-                <section id="features" className="border-t border-border py-20 lg:py-28">
+                <section
+                    id="features"
+                    className="border-t border-border py-20 lg:py-28"
+                >
                     <div className="mx-auto max-w-7xl px-6 lg:px-10">
                         <div className="mb-14 max-w-lg">
                             <h2 className="font-display text-3xl font-semibold tracking-tight text-foreground lg:text-4xl">
                                 Built around how Kenyan landlords actually work
                             </h2>
                             <p className="mt-4 leading-relaxed text-muted-foreground">
-                                Three tools that replace the spreadsheet, the WhatsApp group, and the
-                                notebook of receipts.
+                                Three tools that replace the spreadsheet, the
+                                WhatsApp group, and the notebook of receipts.
                             </p>
                         </div>
 
@@ -591,12 +650,14 @@ export default function Welcome() {
                             {features.map((feature, index) => (
                                 <div
                                     key={feature.title}
-                                    className="rounded-2xl border border-border border-l-2 border-l-primary bg-card p-7"
+                                    className="rounded-2xl border border-l-2 border-border border-l-primary bg-card p-7"
                                 >
                                     <div className="mb-6 flex size-11 items-center justify-center rounded-xl bg-primary/10">
-                                        <FeatureIcon kind={index as 0 | 1 | 2} />
+                                        <FeatureIcon
+                                            kind={index as 0 | 1 | 2}
+                                        />
                                     </div>
-                                    <h3 className="font-display mb-2.5 text-lg font-semibold text-foreground">
+                                    <h3 className="mb-2.5 font-display text-lg font-semibold text-foreground">
                                         {feature.title}
                                     </h3>
                                     <p className="text-[15px] leading-relaxed text-muted-foreground">
@@ -616,8 +677,9 @@ export default function Welcome() {
                                 One app, two experiences
                             </h2>
                             <p className="mt-4 leading-relaxed text-muted-foreground">
-                                Landlords see the whole portfolio. Tenants see exactly what matters to
-                                them. Nobody has to dig for information.
+                                Landlords see the whole portfolio. Tenants see
+                                exactly what matters to them. Nobody has to dig
+                                for information.
                             </p>
                         </div>
 
@@ -666,7 +728,10 @@ export default function Welcome() {
                                     key="landlord"
                                 >
                                     {landlordView.map((item) => (
-                                        <li key={item.title} className="flex gap-3.5">
+                                        <li
+                                            key={item.title}
+                                            className="flex gap-3.5"
+                                        >
                                             <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-primary" />
                                             <div>
                                                 <p className="font-medium text-foreground">
@@ -688,7 +753,10 @@ export default function Welcome() {
                                     key="tenant"
                                 >
                                     {tenantView.map((item) => (
-                                        <li key={item.title} className="flex gap-3.5">
+                                        <li
+                                            key={item.title}
+                                            className="flex gap-3.5"
+                                        >
                                             <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-primary" />
                                             <div>
                                                 <p className="font-medium text-foreground">
@@ -764,7 +832,9 @@ export default function Welcome() {
                                         <p className="text-sm text-foreground">
                                             Leaking tap — kitchen
                                         </p>
-                                        <p className="text-xs text-brand-accent">In progress</p>
+                                        <p className="text-xs text-brand-accent">
+                                            In progress
+                                        </p>
                                     </div>
                                 </div>
                             )}
@@ -773,7 +843,10 @@ export default function Welcome() {
                 </section>
 
                 {/* ============ TESTIMONIALS ============ */}
-                <section id="testimonials" className="border-t border-border py-20 lg:py-28">
+                <section
+                    id="testimonials"
+                    className="border-t border-border py-20 lg:py-28"
+                >
                     <div className="mx-auto max-w-7xl px-6 lg:px-10">
                         <div className="mb-14 max-w-lg">
                             <h2 className="font-display text-3xl font-semibold tracking-tight text-foreground lg:text-4xl">
@@ -803,14 +876,18 @@ export default function Welcome() {
                 </section>
 
                 {/* ============ PRICING ============ */}
-                <section id="pricing" className="border-t border-border bg-muted/40 py-20 lg:py-28">
+                <section
+                    id="pricing"
+                    className="border-t border-border bg-muted/40 py-20 lg:py-28"
+                >
                     <div className="mx-auto max-w-7xl px-6 lg:px-10">
                         <div className="mb-14 max-w-lg">
                             <h2 className="font-display text-3xl font-semibold tracking-tight text-foreground lg:text-4xl">
                                 Priced by portfolio, not by promise
                             </h2>
                             <p className="mt-4 leading-relaxed text-muted-foreground">
-                                Start free. Upgrade when you add units, not on a timer.
+                                Start free. Upgrade when you add units, not on a
+                                timer.
                             </p>
                         </div>
 
@@ -839,7 +916,7 @@ export default function Welcome() {
                                         <p className="mb-5 text-sm text-muted-foreground">
                                             {formatPlanLimits(tier)}
                                         </p>
-                                        <p className="mb-6 font-semibold text-3xl text-foreground">
+                                        <p className="mb-6 text-3xl font-semibold text-foreground">
                                             {price}
                                             {price !== 'Free' && (
                                                 <span className="text-base font-normal text-muted-foreground">
@@ -870,9 +947,12 @@ export default function Welcome() {
                 </section>
 
                 {/* ============ FAQ ============ */}
-                <section id="faq" className="border-t border-border py-20 lg:py-28">
+                <section
+                    id="faq"
+                    className="border-t border-border py-20 lg:py-28"
+                >
                     <div className="mx-auto max-w-3xl px-6 lg:px-10">
-                        <h2 className="font-display mb-10 text-3xl font-semibold tracking-tight text-foreground lg:text-4xl">
+                        <h2 className="mb-10 font-display text-3xl font-semibold tracking-tight text-foreground lg:text-4xl">
                             Questions, answered
                         </h2>
 
@@ -891,13 +971,19 @@ export default function Welcome() {
                                     >
                                         <button
                                             type="button"
-                                            onClick={() => setOpenFaq(isOpen ? null : index)}
+                                            onClick={() =>
+                                                setOpenFaq(
+                                                    isOpen ? null : index,
+                                                )
+                                            }
                                             aria-expanded={isOpen}
                                             className="flex w-full items-center justify-between px-6 py-5 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                                         >
                                             <span
                                                 className={`font-medium ${
-                                                    isOpen ? 'text-primary' : 'text-foreground'
+                                                    isOpen
+                                                        ? 'text-primary'
+                                                        : 'text-foreground'
                                                 }`}
                                             >
                                                 {faq.question}
@@ -912,7 +998,9 @@ export default function Welcome() {
                                         </button>
                                         <div
                                             className={`grid transition-[grid-template-rows] duration-300 ${
-                                                isOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
+                                                isOpen
+                                                    ? 'grid-rows-[1fr]'
+                                                    : 'grid-rows-[0fr]'
                                             }`}
                                         >
                                             <div className="overflow-hidden">
@@ -933,11 +1021,12 @@ export default function Welcome() {
                 {/* ============ CTA STRIP ============ */}
                 <section className="border-t border-border py-20">
                     <div className="mx-auto max-w-4xl px-6 text-center lg:px-10">
-                        <h2 className="font-display mb-5 text-3xl font-semibold tracking-tight text-foreground lg:text-4xl">
+                        <h2 className="mb-5 font-display text-3xl font-semibold tracking-tight text-foreground lg:text-4xl">
                             Run your portfolio from your phone, starting today
                         </h2>
                         <p className="mx-auto mb-8 max-w-md text-muted-foreground">
-                            No card required to start. Set up your first property in under a day.
+                            No card required to start. Set up your first
+                            property in under a day.
                         </p>
                         <Link
                             href={primaryHref}
@@ -957,26 +1046,37 @@ export default function Welcome() {
                                     <BrandMark />
                                 </div>
                                 <p className="max-w-xs text-sm leading-relaxed text-muted-foreground">
-                                    Property management built for Kenyan landlords, caretakers, and
-                                    estate managers.
+                                    Property management built for Kenyan
+                                    landlords, caretakers, and estate managers.
                                 </p>
                             </div>
 
                             <div>
-                                <p className="mb-4 text-sm font-medium text-foreground">Product</p>
+                                <p className="mb-4 text-sm font-medium text-foreground">
+                                    Product
+                                </p>
                                 <ul className="space-y-2.5 text-sm text-muted-foreground">
                                     <li>
-                                        <Link href="#features" className="transition-colors hover:text-foreground">
+                                        <Link
+                                            href="#features"
+                                            className="transition-colors hover:text-foreground"
+                                        >
                                             Features
                                         </Link>
                                     </li>
                                     <li>
-                                        <Link href="#pricing" className="transition-colors hover:text-foreground">
+                                        <Link
+                                            href="#pricing"
+                                            className="transition-colors hover:text-foreground"
+                                        >
                                             Pricing
                                         </Link>
                                     </li>
                                     <li>
-                                        <Link href="#faq" className="transition-colors hover:text-foreground">
+                                        <Link
+                                            href="#faq"
+                                            className="transition-colors hover:text-foreground"
+                                        >
                                             FAQ
                                         </Link>
                                     </li>
@@ -984,7 +1084,9 @@ export default function Welcome() {
                             </div>
 
                             <div>
-                                <p className="mb-4 text-sm font-medium text-foreground">Company</p>
+                                <p className="mb-4 text-sm font-medium text-foreground">
+                                    Company
+                                </p>
                                 <ul className="space-y-2.5 text-sm text-muted-foreground">
                                     <li>About</li>
                                     <li>Careers</li>
@@ -993,7 +1095,9 @@ export default function Welcome() {
                             </div>
 
                             <div>
-                                <p className="mb-4 text-sm font-medium text-foreground">Legal</p>
+                                <p className="mb-4 text-sm font-medium text-foreground">
+                                    Legal
+                                </p>
                                 <ul className="space-y-2.5 text-sm text-muted-foreground">
                                     <li>Privacy</li>
                                     <li>Terms</li>

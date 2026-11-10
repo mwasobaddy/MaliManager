@@ -99,8 +99,9 @@ export default function OrganizationsIndex({
     owners,
 }: Props) {
     const [isTableLoading, setIsTableLoading] = useState(false);
-    const [statusTarget, setStatusTarget] =
-        useState<OrganizationRow | null>(null);
+    const [statusTarget, setStatusTarget] = useState<OrganizationRow | null>(
+        null,
+    );
     const page = usePage();
     const permissions = (page.props.auth?.permissions ?? []) as string[];
     const canCreate = permissions.includes('organization.create');

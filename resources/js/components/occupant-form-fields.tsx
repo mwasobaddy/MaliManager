@@ -90,19 +90,14 @@ export default function OccupantFormFields({
     leaseSectionHint = "Capture the rental terms. These power the renter's rental history.",
     defaults = {},
 }: Props) {
-    const templateList = [
-        ...templates.property,
-        ...templates.organization,
-    ];
+    const templateList = [...templates.property, ...templates.organization];
     const [selectedTemplateId, setSelectedTemplateId] = useState('');
     const [status, setStatus] = useState(defaults.status ?? 'active');
     const [unitIds, setUnitIds] = useState<number[]>(defaults.unit_ids ?? []);
     const [rentFrequency, setRentFrequency] = useState(
         defaults.lease?.rent_frequency ?? 'monthly',
     );
-    const [currency, setCurrency] = useState(
-        defaults.lease?.currency ?? 'KES',
-    );
+    const [currency, setCurrency] = useState(defaults.lease?.currency ?? 'KES');
     const [agreementText, setAgreementText] = useState(
         defaults.lease?.agreement_text ?? '<p></p>',
     );
@@ -127,9 +122,7 @@ export default function OccupantFormFields({
         <>
             <div className="grid gap-6 md:grid-cols-2">
                 <div className="grid gap-2">
-                    <Label htmlFor={`${idPrefix}-first_name`}>
-                        First name
-                    </Label>
+                    <Label htmlFor={`${idPrefix}-first_name`}>First name</Label>
                     <Input
                         id={`${idPrefix}-first_name`}
                         name="first_name"
@@ -274,9 +267,7 @@ export default function OccupantFormFields({
                                 ))}
                             </SelectContent>
                         </Select>
-                        <InputError
-                            message={errors['lease.rent_frequency']}
-                        />
+                        <InputError message={errors['lease.rent_frequency']} />
                     </div>
 
                     <div className="grid gap-2">
@@ -292,9 +283,7 @@ export default function OccupantFormFields({
                             placeholder="25000"
                             defaultValue={lease.rent_amount ?? ''}
                         />
-                        <InputError
-                            message={errors['lease.rent_amount']}
-                        />
+                        <InputError message={errors['lease.rent_amount']} />
                     </div>
 
                     <div className="grid gap-2">
@@ -314,9 +303,7 @@ export default function OccupantFormFields({
                             Day of the month rent falls due. Empty means the
                             lease start anniversary.
                         </p>
-                        <InputError
-                            message={errors['lease.rent_due_day']}
-                        />
+                        <InputError message={errors['lease.rent_due_day']} />
                     </div>
 
                     <div className="grid gap-2">
@@ -473,15 +460,11 @@ export default function OccupantFormFields({
                                 accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                             />
                             <InputError
-                                message={
-                                    errors['lease.agreement_document']
-                                }
+                                message={errors['lease.agreement_document']}
                             />
                         </div>
 
-                        <InputError
-                            message={errors['lease.agreement_text']}
-                        />
+                        <InputError message={errors['lease.agreement_text']} />
                     </div>
                 </div>
             </div>

@@ -148,8 +148,10 @@ export default function DepositRefunds({ refunds, leases, filters }: Props) {
                                         </p>
                                     )}
                                     {form.errors.lease_id && (
-                                            <InputError message={form.errors.lease_id} />
-                                        )}
+                                        <InputError
+                                            message={form.errors.lease_id}
+                                        />
+                                    )}
                                 </div>
 
                                 <div className="space-y-2">
@@ -170,8 +172,10 @@ export default function DepositRefunds({ refunds, leases, filters }: Props) {
                                         aria-invalid={!!form.errors.amount}
                                     />
                                     {form.errors.amount && (
-                                            <InputError message={form.errors.amount} />
-                                        )}
+                                        <InputError
+                                            message={form.errors.amount}
+                                        />
+                                    )}
                                 </div>
 
                                 <div className="space-y-2">
@@ -190,8 +194,10 @@ export default function DepositRefunds({ refunds, leases, filters }: Props) {
                                         aria-invalid={!!form.errors.reason}
                                     />
                                     {form.errors.reason && (
-                                            <InputError message={form.errors.reason} />
-                                        )}
+                                        <InputError
+                                            message={form.errors.reason}
+                                        />
+                                    )}
                                 </div>
 
                                 <Button

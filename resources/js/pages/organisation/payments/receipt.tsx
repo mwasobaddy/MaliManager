@@ -39,11 +39,12 @@ export default function PaymentReceipt({
         .map((part: string) => part.charAt(0).toUpperCase() + part.slice(1))
         .join(' ');
 
-    const statusColor = status === 'received'
-        ? 'bg-status-success-bg text-status-success-fg'
-        : status === 'pending'
-            ? 'bg-status-warning-bg text-status-warning-fg'
-            : 'bg-status-danger-bg text-status-danger-fg';
+    const statusColor =
+        status === 'received'
+            ? 'bg-status-success-bg text-status-success-fg'
+            : status === 'pending'
+              ? 'bg-status-warning-bg text-status-warning-fg'
+              : 'bg-status-danger-bg text-status-danger-fg';
 
     return (
         <>
@@ -66,20 +67,28 @@ export default function PaymentReceipt({
 
                 <article className="prose prose-sm max-w-none text-foreground print:text-black">
                     <header className="mb-8">
-                        <div className="grid grid-cols-2 gap-4 mb-4">
+                        <div className="mb-4 grid grid-cols-2 gap-4">
                             <div>
-                                <p className="text-sm text-muted-foreground">Tenant</p>
+                                <p className="text-sm text-muted-foreground">
+                                    Tenant
+                                </p>
                                 <p className="font-medium">{tenantName}</p>
                             </div>
                             {propertyName && (
                                 <div>
-                                    <p className="text-sm text-muted-foreground">Property</p>
-                                    <p className="font-medium">{propertyName}</p>
+                                    <p className="text-sm text-muted-foreground">
+                                        Property
+                                    </p>
+                                    <p className="font-medium">
+                                        {propertyName}
+                                    </p>
                                 </div>
                             )}
                             {unitName && (
                                 <div>
-                                    <p className="text-sm text-muted-foreground">Unit</p>
+                                    <p className="text-sm text-muted-foreground">
+                                        Unit
+                                    </p>
                                     <p className="font-medium">{unitName}</p>
                                 </div>
                             )}
@@ -87,11 +96,17 @@ export default function PaymentReceipt({
 
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <p className="text-sm text-muted-foreground">Amount</p>
-                                <p className="font-medium text-2xl">{formatMoney(amount, currency)}</p>
+                                <p className="text-sm text-muted-foreground">
+                                    Amount
+                                </p>
+                                <p className="text-2xl font-medium">
+                                    {formatMoney(amount, currency)}
+                                </p>
                             </div>
                             <div>
-                                <p className="text-sm text-muted-foreground">Status</p>
+                                <p className="text-sm text-muted-foreground">
+                                    Status
+                                </p>
                                 <p className={`font-medium ${statusColor}`}>
                                     {status}
                                 </p>
@@ -99,8 +114,10 @@ export default function PaymentReceipt({
                         </div>
 
                         {(periodStart || periodEnd) && (
-                            <div className="mt-4 pt-4 border-t">
-                                <p className="text-sm text-muted-foreground">Rent period</p>
+                            <div className="mt-4 border-t pt-4">
+                                <p className="text-sm text-muted-foreground">
+                                    Rent period
+                                </p>
                                 <p className="font-medium">
                                     {periodStart ? periodStart : ''}
                                     {periodStart && periodEnd ? ' - ' : ''}
@@ -110,22 +127,28 @@ export default function PaymentReceipt({
                         )}
 
                         {reference && (
-                            <div className="mt-4 pt-4 border-t">
-                                <p className="text-sm text-muted-foreground">Reference</p>
+                            <div className="mt-4 border-t pt-4">
+                                <p className="text-sm text-muted-foreground">
+                                    Reference
+                                </p>
                                 <p className="font-medium">{reference}</p>
                             </div>
                         )}
 
                         {method && (
-                            <div className="mt-4 pt-4 border-t">
-                                <p className="text-sm text-muted-foreground">Payment method</p>
+                            <div className="mt-4 border-t pt-4">
+                                <p className="text-sm text-muted-foreground">
+                                    Payment method
+                                </p>
                                 <p className="font-medium">{methodLabel}</p>
                             </div>
                         )}
 
                         {notes && (
-                            <div className="mt-4 pt-4 border-t">
-                                <p className="text-sm text-muted-foreground">Notes</p>
+                            <div className="mt-4 border-t pt-4">
+                                <p className="text-sm text-muted-foreground">
+                                    Notes
+                                </p>
                                 <p>{notes}</p>
                             </div>
                         )}

@@ -754,7 +754,9 @@ export default function PlatformExpensesIndex({
             >
                 <div className="grid gap-4 py-2">
                     <fieldset className="grid gap-2">
-                        <legend className="text-sm font-medium">Category</legend>
+                        <legend className="text-sm font-medium">
+                            Category
+                        </legend>
                         {/* A fixed set of six that the `category` rule validates
                             against, so a radio group is honest here — and with
                             this much room every option is visible at once,
@@ -808,7 +810,9 @@ export default function PlatformExpensesIndex({
                     </fieldset>
 
                     <fieldset className="grid gap-2">
-                        <legend className="text-sm font-medium">Spent between</legend>
+                        <legend className="text-sm font-medium">
+                            Spent between
+                        </legend>
                         <div className="grid grid-cols-2 gap-3">
                             <div className="grid gap-2">
                                 <Label

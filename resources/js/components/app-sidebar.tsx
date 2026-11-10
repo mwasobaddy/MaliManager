@@ -278,13 +278,7 @@ export function AppSidebar() {
                         ? [item('Payments', paymentsIndex(), Banknote)]
                         : []),
                     ...(canManageMaintenance
-                        ? [
-                              item(
-                                  'Maintenance',
-                                  maintenanceIndex(),
-                                  Wrench,
-                              ),
-                          ]
+                        ? [item('Maintenance', maintenanceIndex(), Wrench)]
                         : []),
                 ],
             },
@@ -395,13 +389,7 @@ export function AppSidebar() {
                           ]
                         : []),
                     ...(canManageMaintenance
-                        ? [
-                              item(
-                                  'Maintenance',
-                                  maintenanceIndex(),
-                                  Wrench,
-                              ),
-                          ]
+                        ? [item('Maintenance', maintenanceIndex(), Wrench)]
                         : []),
                     ...(canViewReports
                         ? [item('Reports', reportsNavIndex(), BarChart3)]

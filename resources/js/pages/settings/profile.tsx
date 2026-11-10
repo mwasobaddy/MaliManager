@@ -103,10 +103,7 @@ export default function Profile({
                                     <div>
                                         <p className="-mt-4 text-sm text-muted-foreground">
                                             Your email address is unverified.{' '}
-                                            <TextLink
-                                                href={send()}
-                                                as="button"
-                                            >
+                                            <TextLink href={send()} as="button">
                                                 Click here to re-send the
                                                 verification email.
                                             </TextLink>
@@ -114,7 +111,7 @@ export default function Profile({
 
                                         {status ===
                                             'verification-link-sent' && (
-                                            <div className="text-status-success mt-2 text-sm font-medium">
+                                            <div className="mt-2 text-sm font-medium text-status-success">
                                                 A new verification link has been
                                                 sent to your email address.
                                             </div>
@@ -146,9 +143,7 @@ export default function Profile({
                                         <SelectItem value="email">
                                             Email
                                         </SelectItem>
-                                        <SelectItem value="sms">
-                                            SMS
-                                        </SelectItem>
+                                        <SelectItem value="sms">SMS</SelectItem>
                                     </SelectContent>
                                 </Select>
                                 <p className="text-xs text-muted-foreground">

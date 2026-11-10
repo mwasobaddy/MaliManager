@@ -111,7 +111,10 @@ export function GlobalSearch() {
      */
     React.useEffect(() => {
         const onShortcut = (event: KeyboardEvent) => {
-            if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+            if (
+                (event.metaKey || event.ctrlKey) &&
+                event.key.toLowerCase() === 'k'
+            ) {
                 event.preventDefault();
                 setOpen(true);
             }
@@ -225,7 +228,7 @@ export function GlobalSearch() {
                 <Button
                     variant="ghost"
                     size="sm"
-                    className="group text-muted-foreground hover:text-foreground h-9 cursor-pointer gap-2 px-2 coarse:h-11"
+                    className="group h-9 cursor-pointer gap-2 px-2 text-muted-foreground hover:text-foreground coarse:h-11"
                     aria-label="Search (Command K)"
                 >
                     <Search className="!size-5 opacity-80 group-hover:opacity-100" />
@@ -323,7 +326,7 @@ export function GlobalSearch() {
                                                         : 'hover:bg-muted',
                                                 )}
                                             >
-                                                <Icon className="text-accent-text size-4 shrink-0" />
+                                                <Icon className="size-4 shrink-0 text-accent-text" />
                                                 <span className="flex-1 truncate">
                                                     {item.title}
                                                 </span>

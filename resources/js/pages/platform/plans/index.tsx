@@ -374,9 +374,7 @@ export default function PlansIndex({
                         </div>
                         <div className="text-muted-foreground">
                             {row.original.units_limit ?? '∞'}{' '}
-                            {row.original.units_limit === 1
-                                ? 'unit'
-                                : 'units'}
+                            {row.original.units_limit === 1 ? 'unit' : 'units'}
                         </div>
                     </div>
                 ),
