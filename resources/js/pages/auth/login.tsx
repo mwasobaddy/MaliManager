@@ -32,19 +32,14 @@ export default function Login({ status }: Props) {
             <PasskeyVerify />
             */}
 
-            <a href={googleRedirect.url('google')} className="w-full">
-                <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full"
-                    tabIndex={0}
-                >
+            <Button variant="outline" className="w-full" asChild>
+                <a href={googleRedirect.url('google')}>
                     <GoogleIcon />
                     Continue with Google
-                </Button>
-            </a>
+                </a>
+            </Button>
 
-            <div className="relative text-center text-sm">
+            <div className="relative text-center text-sm my-6">
                 <span className="border-border absolute inset-x-0 top-1/2 border-t" />
                 <span className="bg-card text-muted-foreground relative z-10 px-3">
                     Or continue with email
@@ -103,7 +98,7 @@ export default function Login({ status }: Props) {
                 </div>
             )}
 
-            <p className="text-center text-sm text-muted-foreground">
+            <p className="text-center text-sm text-muted-foreground mt-2">
                 We'll email you a one-time code to sign in.
             </p>
         </>
