@@ -25,6 +25,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { formatMoney } from '@/lib/format-money';
 import { page as draftingPage } from '@/routes/tenant/drafting';
 import {
     end as endLease,
@@ -298,13 +299,17 @@ export default function LeasesIndex({ leases, filters }: Props) {
                                             {lease.occupant_name}
                                         </td>
                                         <td className="px-3 py-2">
-                                            {lease.rent_amount
-                                                ? `${lease.rent_amount} ${lease.currency ?? ''}`
-                                                : '—'}
+                                            {formatMoney(
+                                                lease.rent_amount,
+                                                lease.currency,
+                                            )}
                                         </td>
                                         <td className="px-3 py-2 tabular-nums">
                                             {lease.outstanding !== '0.00'
-                                                ? `${lease.outstanding} ${lease.currency ?? ''}`
+                                                ? formatMoney(
+                                                      lease.outstanding,
+                                                      lease.currency,
+                                                  )
                                                 : '—'}
                                         </td>
                                         <td className="px-3 py-2">
@@ -534,7 +539,11 @@ export default function LeasesIndex({ leases, filters }: Props) {
                     <DialogDescription>
                         Unit {suggestTarget?.unit_name}, ends{' '}
                         {suggestTarget?.ends_at}. Current rent:{' '}
-                        {suggestTarget?.rent_amount} {suggestTarget?.currency}.
+                        {formatMoney(
+                            suggestTarget?.rent_amount ?? null,
+                            suggestTarget?.currency,
+                        )}
+                        .
                     </DialogDescription>
 
                     {suggestBusy ? (
@@ -544,8 +553,10 @@ export default function LeasesIndex({ leases, filters }: Props) {
                     ) : suggestion ? (
                         <div className="space-y-3">
                             <p className="text-2xl font-semibold tabular-nums">
-                                {suggestion.suggested_rent}{' '}
-                                {suggestTarget?.currency}
+                                {formatMoney(
+                                    suggestion.suggested_rent,
+                                    suggestTarget?.currency,
+                                )}
                                 <span className="ml-1 text-sm font-normal text-muted-foreground">
                                     / month
                                 </span>

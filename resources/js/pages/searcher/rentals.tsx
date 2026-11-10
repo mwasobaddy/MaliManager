@@ -12,6 +12,7 @@ import {
     CardTitle,
 } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { formatMoney } from '@/lib/format-money';
 
 type Lease = {
     id: number;
@@ -49,23 +50,6 @@ const frequencyLabel: Record<string, string> = {
     monthly: 'per month',
     yearly: 'per year',
 };
-
-function formatMoney(amount: number | null, currency: string | null): string {
-    if (amount === null) {
-        return '—';
-    }
-
-    const code = currency ?? '';
-
-    try {
-        return new Intl.NumberFormat('en-KE', {
-            style: 'currency',
-            currency: code || 'KES',
-        }).format(amount);
-    } catch {
-        return `${code} ${amount.toLocaleString()}`;
-    }
-}
 
 export default function SearcherRentals({ leases }: Props) {
     const [tab, setTab] = useState<'current' | 'history'>('current');

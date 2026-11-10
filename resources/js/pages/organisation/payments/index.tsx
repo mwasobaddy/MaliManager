@@ -11,6 +11,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { formatMoney } from '@/lib/format-money';
 import {
     index as paymentsIndexRoute,
     create as paymentsCreateRoute,
@@ -133,7 +134,10 @@ export default function PaymentsIndex({
                                             {payment.unit_name ?? '—'}
                                         </td>
                                         <td className="px-3 py-2 tabular-nums">
-                                            {payment.amount} {payment.currency}
+                                            {formatMoney(
+                                                payment.amount,
+                                                payment.currency,
+                                            )}
                                         </td>
                                         <td className="px-3 py-2">
                                             {payment.paid_on}

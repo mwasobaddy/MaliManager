@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { formatMoney } from '@/lib/format-money';
 import {
     card as payByCard,
     mpesa as payByMpesa,
@@ -51,10 +52,6 @@ type Props = {
     };
 };
 
-function formatPrice(price: number, currency: string) {
-    return `${price.toLocaleString()} ${currency} / month`;
-}
-
 export default function BillingShow({
     organization,
     billing,
@@ -93,10 +90,11 @@ export default function BillingShow({
                                     Price
                                 </span>
                                 <span className="font-medium tabular-nums">
-                                    {formatPrice(
+                                    {formatMoney(
                                         billing.plan.price,
                                         billing.plan.currency,
-                                    )}
+                                    )}{' '}
+                                    / month
                                 </span>
                             </div>
                         )}
@@ -299,7 +297,7 @@ export default function BillingShow({
                                                     >
                                                         {processing
                                                             ? 'Sending…'
-                                                            : `Pay ${formatPrice(billing.plan!.price, billing.plan!.currency)}`}
+                                                            : `Pay ${formatMoney(billing.plan!.price, billing.plan!.currency)}`}
                                                     </Button>
                                                 </div>
                                             </>
@@ -337,7 +335,7 @@ export default function BillingShow({
                                         >
                                             {processing
                                                 ? 'Starting…'
-                                                : `Pay ${formatPrice(billing.plan!.price, billing.plan!.currency)} with card`}
+                                                : `Pay ${formatMoney(billing.plan!.price, billing.plan!.currency)} with card`}
                                         </Button>
                                     )}
                                 </Form>

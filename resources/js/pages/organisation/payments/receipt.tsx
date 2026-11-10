@@ -1,5 +1,6 @@
 import { Head } from '@inertiajs/react';
 import { Printer } from 'lucide-react';
+import { formatMoney } from '@/lib/format-money';
 
 type Props = {
     tenantName: string;
@@ -87,7 +88,7 @@ export default function PaymentReceipt({
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <p className="text-sm text-muted-foreground">Amount</p>
-                                <p className="font-medium text-2xl">{amount} {currency}</p>
+                                <p className="font-medium text-2xl">{formatMoney(amount, currency)}</p>
                             </div>
                             <div>
                                 <p className="text-sm text-muted-foreground">Status</p>

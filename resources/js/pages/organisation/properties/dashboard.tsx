@@ -489,9 +489,10 @@ export default function PropertiesDashboard({
                                         <div className="flex items-center gap-3">
                                             {unit.monthly_rent !== null && (
                                                 <p className="text-sm font-medium">
-                                                    {Number(
+                                                    {formatMoney(
                                                         unit.monthly_rent,
-                                                    ).toLocaleString()}
+                                                        organization.currency,
+                                                    )}
                                                 </p>
                                             )}
                                             <Badge
