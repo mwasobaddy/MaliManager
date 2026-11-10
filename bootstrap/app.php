@@ -64,6 +64,17 @@ return Application::configure(basePath: dirname(__DIR__))
                     : redirect()->route('dashboard');
             };
 
+            // Address-bar navigation to a missing URL gets a branded 404 with
+            // the real status code. Branded 403/429/500 for full-page loads
+            // live alongside their branches below; Inertia visits always keep
+            // the toast-and-back behaviour so live app state is never swapped
+            // for an error page.
+            if (! $request->header('X-Inertia') && $e instanceof HttpException && $e->getStatusCode() === 404) {
+                return Inertia::render('errors/404')
+                    ->toResponse($request)
+                    ->setStatusCode(404);
+            }
+
             // Domain-rule failures thrown by services surface as a toast.
             if ($e instanceof DomainException) {
                 return $toastBack($e->getMessage());
@@ -92,6 +103,15 @@ return Application::configure(basePath: dirname(__DIR__))
                         : redirect()->route('dashboard');
                 }
 
+                // Full-page loads outside debug (real users, not tests and not
+                // Inertia visits) get the branded page with its actions
+                // instead of a disorienting bounce to the dashboard.
+                if (! $request->header('X-Inertia') && ! config('app.debug')) {
+                    return Inertia::render('errors/403')
+                        ->toResponse($request)
+                        ->setStatusCode(403);
+                }
+
                 return $toastBack(
                     $e->getMessage() !== ''
                         ? $e->getMessage()
@@ -100,14 +120,31 @@ return Application::configure(basePath: dirname(__DIR__))
             }
 
             // Custom aborts carrying a user-facing message (e.g. self-delete
-            // guards) become toasts as well; framework pages like 404/429
-            // remain real responses. ValidationException is not an
+            // guards) become toasts as well. ValidationException is not an
             // HttpException and keeps rendering inline form errors.
             if ($e instanceof HttpException && $e->getStatusCode() === 422 && $e->getMessage() !== '') {
                 return $toastBack($e->getMessage());
             }
 
+            // Throttled full-page loads outside debug get the branded page,
+            // keeping the server's Retry-After so clients still back off.
+            if ($e instanceof HttpException && $e->getStatusCode() === 429
+                && ! $request->header('X-Inertia') && ! config('app.debug')) {
+                return Inertia::render('errors/429')
+                    ->toResponse($request)
+                    ->setStatusCode(429)
+                    ->header('Retry-After', (string) ($e->getHeaders()['Retry-After'] ?? '60'));
+            }
+
             if ($response->getStatusCode() === 500 && ! config('app.debug')) {
+                // Full-page loads get the branded page; Inertia visits keep
+                // the toast so live app state is never swapped for an error.
+                if (! $request->header('X-Inertia')) {
+                    return Inertia::render('errors/500')
+                        ->toResponse($request)
+                        ->setStatusCode(500);
+                }
+
                 Inertia::flash('toast', [
                     'type' => 'error',
                     'message' => 'Something went wrong. Please try again.',

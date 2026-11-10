@@ -17,6 +17,7 @@ createInertiaApp({
             case name === 'tenant/occupants/agreement':
             case name === 'tenant/reports/print':
             case name === 'tenant/inspections/show':
+            case name.startsWith('errors/'):
                 return null;
             case name.startsWith('setup/'):
                 return SetupLayout;
