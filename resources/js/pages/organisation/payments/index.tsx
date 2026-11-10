@@ -1,8 +1,10 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { Pencil, Plus, Printer } from 'lucide-react';
+import { Pencil, Plus, Printer, Receipt } from 'lucide-react';
 import { useState } from 'react';
 import Heading from '@/components/heading';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Empty } from '@/components/ui/empty';
 import { Pagination } from '@/components/ui/pagination';
 import {
     Select,
@@ -41,10 +43,7 @@ type Props = {
     statuses: string[];
 };
 
-export default function PaymentsIndex({
-    payments,
-    statuses,
-}: Props) {
+export default function PaymentsIndex({ payments, statuses }: Props) {
     const [status, setStatus] = useState('');
 
     const applyFilter = (value: string) => {
@@ -62,6 +61,7 @@ export default function PaymentsIndex({
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                     <Heading
+                        level="h1"
                         title="Payments"
                         description="Rent payments recorded against leases."
                     />
@@ -98,9 +98,11 @@ export default function PaymentsIndex({
                 </div>
 
                 {payments.data.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                        No payments recorded yet.
-                    </p>
+                    <Empty
+                        icon={<Receipt className="size-4" />}
+                        title="No payments recorded yet"
+                        description="Recorded rent payments will appear here."
+                    />
                 ) : (
                     <div className="overflow-x-auto rounded-xl border border-input">
                         <table className="w-full text-sm">
@@ -111,11 +113,21 @@ export default function PaymentsIndex({
                                     <th className="px-3 py-2">Unit</th>
                                     <th className="px-3 py-2">Amount</th>
                                     <th className="px-3 py-2">Date</th>
-                                    <th className="px-3 py-2 text-right">Method</th>
-                                    <th className="px-3 py-2 text-right">Reference</th>
-                                    <th className="px-3 py-2 text-right">Receipt</th>
-                                    <th className="px-3 py-2 text-right">Status</th>
-                                    <th className="px-3 py-2 text-right">Edit</th>
+                                    <th className="px-3 py-2 text-right">
+                                        Method
+                                    </th>
+                                    <th className="px-3 py-2 text-right">
+                                        Reference
+                                    </th>
+                                    <th className="px-3 py-2 text-right">
+                                        Receipt
+                                    </th>
+                                    <th className="px-3 py-2 text-right">
+                                        Status
+                                    </th>
+                                    <th className="px-3 py-2 text-right">
+                                        Edit
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -150,7 +162,11 @@ export default function PaymentsIndex({
                                         </td>
                                         <td className="px-3 py-2 text-right">
                                             <a
-                                                href={paymentsShowRoute({ payment: payment.id }).url}
+                                                href={
+                                                    paymentsShowRoute({
+                                                        payment: payment.id,
+                                                    }).url
+                                                }
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="inline-flex text-primary"
@@ -160,17 +176,20 @@ export default function PaymentsIndex({
                                             </a>
                                         </td>
                                         <td className="px-3 py-2 text-right">
-                                            <span
-                                                className={`inline-flex rounded-md px-2 py-1 text-xs font-medium ${
-                                                    payment.status === 'received'
-                                                        ? 'bg-status-success-bg text-status-success-fg'
-                                                        : payment.status === 'pending'
-                                                            ? 'bg-status-warning-bg text-status-warning-fg'
-                                                            : 'bg-status-danger-bg text-status-danger-fg'
-                                                }`}
+                                            <Badge
+                                                variant={
+                                                    payment.status ===
+                                                    'received'
+                                                        ? 'success'
+                                                        : payment.status ===
+                                                            'pending'
+                                                          ? 'warning'
+                                                          : 'danger'
+                                                }
+                                                className="capitalize"
                                             >
                                                 {payment.status}
-                                            </span>
+                                            </Badge>
                                         </td>
                                         <td className="px-3 py-2 text-right">
                                             <Button
@@ -179,7 +198,11 @@ export default function PaymentsIndex({
                                                 size="sm"
                                             >
                                                 <Link
-                                                    href={paymentsEditRoute({ payment: payment.id }).url}
+                                                    href={
+                                                        paymentsEditRoute({
+                                                            payment: payment.id,
+                                                        }).url
+                                                    }
                                                     aria-label={`Edit payment for ${payment.tenant_name}`}
                                                 >
                                                     <Pencil className="size-4" />
@@ -194,20 +217,20 @@ export default function PaymentsIndex({
                 )}
 
                 <Pagination
-            currentPage={payments.current_page}
-            lastPage={payments.last_page}
-            label="payments"
-            onChange={(page) =>
-                router.get(
-                    paymentsIndexRoute().url,
-                    {
-                        page,
-                        status: status === '' ? undefined : status,
-                    },
-                    { preserveScroll: true },
-                )
-            }
-        />
+                    currentPage={payments.current_page}
+                    lastPage={payments.last_page}
+                    label="payments"
+                    onChange={(page) =>
+                        router.get(
+                            paymentsIndexRoute().url,
+                            {
+                                page,
+                                status: status === '' ? undefined : status,
+                            },
+                            { preserveScroll: true },
+                        )
+                    }
+                />
             </div>
         </>
     );

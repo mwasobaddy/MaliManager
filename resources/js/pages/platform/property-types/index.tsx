@@ -21,6 +21,7 @@ import Heading from '@/components/heading';
 import { LabelledIconButton } from '@/components/labelled-icon-button';
 import { OverlayFooter } from '@/components/overlay-footer';
 import { ResponsiveOverlay } from '@/components/responsive-overlay';
+import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -320,19 +321,20 @@ export default function PropertyTypesIndex({
                 accessorKey: 'category',
                 header: 'Category',
                 cell: ({ row }) => (
-                    <span
-                        className={
+                    <Badge
+                        variant={
                             row.original.category === 'commercial'
-                                ? 'text-xs font-medium text-status-info'
-                                : 'text-xs font-medium text-status-success'
+                                ? 'info'
+                                : 'success'
                         }
                     >
                         {row.original.category_label}
-                    </span>
+                    </Badge>
                 ),
             },
             {
                 id: 'properties_count',
+                meta: { hideBelow: 'md' },
                 accessorKey: 'properties_count',
                 header: 'In use',
                 cell: ({ row }) => (
@@ -389,6 +391,7 @@ export default function PropertyTypesIndex({
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
                 <div className="flex items-center justify-between gap-3">
                     <Heading
+                        level="h1"
                         title="Property types"
                         description="The labels you can apply to a property, grouped as residential or commercial."
                     />
@@ -440,7 +443,7 @@ export default function PropertyTypesIndex({
                             <ActionIconButton
                                 icon={<Upload />}
                                 label="Import from CSV"
-                                color="teal"
+                                color="default"
                                 onClick={() => setOverlayParam('import', '1')}
                             />
                         )}
@@ -448,7 +451,7 @@ export default function PropertyTypesIndex({
                             <ActionIconButton
                                 icon={<Download />}
                                 label="Export"
-                                color="teal"
+                                color="default"
                                 onClick={() => setOverlayParam('export', '1')}
                             />
                         )}
@@ -543,6 +546,7 @@ export default function PropertyTypesIndex({
                         />
                     ) : viewedType ? (
                         <OverlayFooter
+                            onCancel={closeRowSheet}
                             actions={[
                                 {
                                     label: 'Edit',

@@ -1,7 +1,8 @@
 import { Head, router } from '@inertiajs/react';
 import { usePage } from '@inertiajs/react';
-import { Printer, Sparkles } from 'lucide-react';
+import { FileText, Power, Printer, ScrollText, Send, Sparkles } from 'lucide-react';
 import { useRef, useState } from 'react';
+import { ActionIconButton } from '@/components/action-icon-button';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import { OverlayFooter } from '@/components/overlay-footer';
@@ -16,6 +17,7 @@ import {
     DialogFooter,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { Empty } from '@/components/ui/empty';
 import { Label } from '@/components/ui/label';
 import { Pagination } from '@/components/ui/pagination';
 import {
@@ -25,6 +27,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { useOverlayParam } from '@/hooks/use-overlay-param';
 import { formatMoney } from '@/lib/format-money';
 import { page as draftingPage } from '@/routes/tenant/drafting';
 import {
@@ -67,11 +70,6 @@ type Props = {
     filters: { status: string; overdue: boolean };
 };
 
-const statusStyles: Record<string, string> = {
-    active: 'bg-status-success-bg text-status-success-fg',
-    ended: 'bg-status-neutral-bg text-status-neutral-fg',
-};
-
 export default function LeasesIndex({ leases, filters }: Props) {
     const { context } = usePage().props;
     const permissions = context?.permissions ?? [];
@@ -82,14 +80,40 @@ export default function LeasesIndex({ leases, filters }: Props) {
     const [status, setStatus] = useState(filters.status);
     const [overdueOnly, setOverdueOnly] = useState(filters.overdue);
     const [selected, setSelected] = useState<number[]>([]);
-    const [endTarget, setEndTarget] = useState<LeaseRow | null>(null);
     const [passwordError, setPasswordError] = useState('');
-    const [suggestTarget, setSuggestTarget] = useState<LeaseRow | null>(null);
+    const { query, setOverlayParam } = useOverlayParam();
+
+    // Both dialogs are addressed by the URL so they survive reloads and Back
+    // closes them — never useState. The row may sit on another page, so fall
+    // back to null rather than a stale row.
+    const dialogLeaseId = Number(query.get('lease'));
+    const dialogLease =
+        Number.isFinite(dialogLeaseId) && dialogLeaseId > 0
+            ? (leases.data.find((lease) => lease.id === dialogLeaseId) ?? null)
+            : null;
+    const endTarget =
+        query.get('dialog') === 'end-lease' ? dialogLease : null;
+    const suggestTarget =
+        query.get('dialog') === 'suggest' ? dialogLease : null;
     const [suggestion, setSuggestion] = useState<{
         suggested_rent: number;
         reasoning: string | null;
     } | null>(null);
     const [suggestBusy, setSuggestBusy] = useState(false);
+
+    function openLeaseDialog(lease: LeaseRow, dialog: 'end-lease' | 'suggest') {
+        setPasswordError('');
+        setOverlayParam('dialog', dialog, {
+            keep: { lease: String(lease.id) },
+        });
+    }
+
+    function closeLeaseDialog() {
+        setOverlayParam('dialog', null, {
+            replace: true,
+            keep: { lease: '' },
+        });
+    }
     const passwordInput = useRef<HTMLInputElement>(null);
 
     const fetchSuggestion = () => {
@@ -134,7 +158,7 @@ export default function LeasesIndex({ leases, filters }: Props) {
             { password },
             {
                 preserveScroll: true,
-                onSuccess: () => setEndTarget(null),
+                onSuccess: () => closeLeaseDialog(),
                 onError: (errors) => {
                     setPasswordError(errors.password ?? '');
                     passwordInput.current?.focus();
@@ -204,6 +228,7 @@ export default function LeasesIndex({ leases, filters }: Props) {
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                     <Heading
+                        level="h1"
                         title="Leases"
                         description="Every lease in this property, with printable agreements."
                     />
@@ -244,10 +269,11 @@ export default function LeasesIndex({ leases, filters }: Props) {
                 )}
 
                 {leases.data.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                        No leases found. Assign an occupant to a unit to create
-                        one.
-                    </p>
+                    <Empty
+                        icon={<ScrollText className="size-4" />}
+                        title="No leases found"
+                        description="Assign an occupant to a unit to create one."
+                    />
                 ) : (
                     <div className="overflow-x-auto rounded-xl border border-input">
                         <table className="w-full text-sm">
@@ -319,11 +345,16 @@ export default function LeasesIndex({ leases, filters }: Props) {
                                             {lease.ends_at ?? '—'}
                                         </td>
                                         <td className="px-3 py-2">
-                                            <span
-                                                className={`rounded px-1.5 py-0.5 text-xs capitalize ${statusStyles[lease.status] ?? ''}`}
+                                            <Badge
+                                                variant={
+                                                    lease.status === 'active'
+                                                        ? 'success'
+                                                        : 'neutral'
+                                                }
+                                                className="capitalize"
                                             >
                                                 {lease.status}
-                                            </span>
+                                            </Badge>
                                             {lease.expiring_soon && (
                                                 <Badge className="ml-1 bg-status-warning-bg text-status-warning-fg">
                                                     Expiring soon
@@ -346,17 +377,16 @@ export default function LeasesIndex({ leases, filters }: Props) {
                                                 {canRemind &&
                                                     lease.is_overdue && (
                                                         <div className="flex flex-col items-end gap-0.5">
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="sm"
+                                                            <ActionIconButton
+                                                                icon={<Send />}
+                                                                label={`Remind ${lease.occupant_name ?? 'occupant'} about overdue rent`}
+                                                                color="view"
                                                                 onClick={() =>
                                                                     sendReminder(
                                                                         lease,
                                                                     )
                                                                 }
-                                                            >
-                                                                Remind
-                                                            </Button>
+                                                            />
                                                             {lease.last_reminded_ago && (
                                                                 <span className="pr-2 text-xs text-muted-foreground">
                                                                     Reminded{' '}
@@ -368,11 +398,10 @@ export default function LeasesIndex({ leases, filters }: Props) {
                                                         </div>
                                                     )}
                                                 {lease.expiring_soon && (
-                                                    <Button
+                                                    <ActionIconButton
                                                         asChild
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        data-test={`draft-renewal-${lease.id}`}
+                                                        label="Draft renewal letter"
+                                                        color="edit"
                                                     >
                                                         <a
                                                             href={`${draftingPage().url}?${new URLSearchParams(
@@ -388,18 +417,18 @@ export default function LeasesIndex({ leases, filters }: Props) {
                                                             )}`}
                                                             target="_blank"
                                                             rel="noopener noreferrer"
+                                                            data-test={`draft-renewal-${lease.id}`}
                                                         >
-                                                            Draft renewal
+                                                            <FileText />
                                                         </a>
-                                                    </Button>
+                                                    </ActionIconButton>
                                                 )}
                                                 {(lease.has_agreement_text ||
                                                     lease.has_agreement_document) && (
-                                                    <Button
+                                                    <ActionIconButton
                                                         asChild
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        data-test={`agreement-${lease.id}`}
+                                                        label="View agreement"
+                                                        color="view"
                                                     >
                                                         <a
                                                             href={
@@ -417,44 +446,42 @@ export default function LeasesIndex({ leases, filters }: Props) {
                                                             }
                                                             target="_blank"
                                                             rel="noopener noreferrer"
+                                                            data-test={`agreement-${lease.id}`}
                                                         >
-                                                            <Printer className="size-4" />
-                                                            Agreement
+                                                            <Printer />
                                                         </a>
-                                                    </Button>
+                                                    </ActionIconButton>
                                                 )}
                                                 {lease.expiring_soon &&
                                                     aiEnabled && (
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
+                                                        <ActionIconButton
+                                                            icon={<Sparkles />}
+                                                            label="Suggest renewal rent"
+                                                            color="brand"
                                                             onClick={() => {
-                                                                setSuggestTarget(
+                                                                openLeaseDialog(
                                                                     lease,
+                                                                    'suggest',
                                                                 );
                                                                 setSuggestion(
                                                                     null,
                                                                 );
                                                             }}
-                                                        >
-                                                            <Sparkles className="size-4" />
-                                                            Suggest rent
-                                                        </Button>
+                                                        />
                                                     )}
                                                 {canEndLease &&
                                                     lease.is_active && (
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            className="text-status-danger"
+                                                        <ActionIconButton
+                                                            icon={<Power />}
+                                                            label={`End lease for ${lease.occupant_name ?? 'occupant'}`}
+                                                            color="danger"
                                                             onClick={() =>
-                                                                setEndTarget(
+                                                                openLeaseDialog(
                                                                     lease,
+                                                                    'end-lease',
                                                                 )
                                                             }
-                                                        >
-                                                            End lease
-                                                        </Button>
+                                                        />
                                                     )}
                                             </div>
                                         </td>
@@ -484,7 +511,7 @@ export default function LeasesIndex({ leases, filters }: Props) {
 
             <Dialog
                 open={endTarget !== null}
-                onOpenChange={(open) => !open && setEndTarget(null)}
+                onOpenChange={(open) => !open && closeLeaseDialog()}
             >
                 <DialogContent>
                     <DialogTitle>
@@ -530,7 +557,7 @@ export default function LeasesIndex({ leases, filters }: Props) {
 
             <Dialog
                 open={suggestTarget !== null}
-                onOpenChange={(open) => !open && setSuggestTarget(null)}
+                onOpenChange={(open) => !open && closeLeaseDialog()}
             >
                 <DialogContent>
                     <DialogTitle>

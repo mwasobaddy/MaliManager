@@ -25,6 +25,7 @@ import { OverlayFooter } from '@/components/overlay-footer';
 import { ResponsiveOverlay } from '@/components/responsive-overlay';
 import { StatusIcon } from '@/components/status-cell';
 import type { StatusTone } from '@/components/status-cell';
+import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -352,14 +353,10 @@ export default function RolesIndex({
                                 {row.original.label}
                             </span>
                             {row.original.is_protected && (
-                                <span className="text-muted-foreground rounded border px-1.5 py-0.5 text-[10px] uppercase tracking-wide">
-                                    Built-in
-                                </span>
+                                <Badge variant="neutral">Built-in</Badge>
                             )}
                             {!row.original.is_active && (
-                                <span className="text-muted-foreground rounded border px-1.5 py-0.5 text-[10px] uppercase tracking-wide">
-                                    Inactive
-                                </span>
+                                <Badge variant="warning">Inactive</Badge>
                             )}
                         </span>
                     </div>
@@ -367,6 +364,7 @@ export default function RolesIndex({
             },
             {
                 id: 'permissions',
+                meta: { hideBelow: 'md' },
                 accessorKey: 'permissions_count',
                 header: 'Central permissions',
                 cell: ({ row }) =>
@@ -390,6 +388,7 @@ export default function RolesIndex({
             },
             {
                 id: 'users',
+                meta: { hideBelow: 'md' },
                 accessorKey: 'users_count',
                 header: 'Users',
                 cell: ({ row }) => (
@@ -441,7 +440,9 @@ export default function RolesIndex({
                                                 ? `Deactivate ${role.name}`
                                                 : `Activate ${role.name}`
                                         }
-                                        color={role.is_active ? 'danger' : 'view'}
+                                        color={
+                                            role.is_active ? 'danger' : 'view'
+                                        }
                                         disabled={!canEdit}
                                         onClick={() =>
                                             openRow(role, 'deactivate')
@@ -479,6 +480,7 @@ export default function RolesIndex({
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
                 <div className="flex items-center justify-between gap-3">
                     <Heading
+                        level="h1"
                         title="Roles"
                         description="Platform-wide roles and the central permissions assigned to them."
                     />
@@ -524,7 +526,7 @@ export default function RolesIndex({
                             <ActionIconButton
                                 icon={<Upload />}
                                 label="Import from CSV"
-                                color="teal"
+                                color="default"
                                 onClick={() => setOverlayParam('import', '1')}
                             />
                         )}
@@ -532,7 +534,7 @@ export default function RolesIndex({
                             <ActionIconButton
                                 icon={<Download />}
                                 label="Export"
-                                color="teal"
+                                color="default"
                                 onClick={() => setOverlayParam('export', '1')}
                             />
                         )}
@@ -558,7 +560,7 @@ export default function RolesIndex({
                     onChange={changePage}
                 />
 
-                <p className="text-muted-foreground flex items-center gap-2 text-xs">
+                <p className="flex items-center gap-2 text-xs text-muted-foreground">
                     <UsersRound className="size-4 shrink-0" />
                     <span>
                         Assign a role to a person from the{' '}
@@ -615,7 +617,7 @@ export default function RolesIndex({
                             placeholder="billing-manager"
                             required
                         />
-                        <p className="text-muted-foreground text-xs">
+                        <p className="text-xs text-muted-foreground">
                             Lowercase words separated by hyphens. The name is
                             what code and CSV imports refer to.
                         </p>
@@ -683,8 +685,7 @@ export default function RolesIndex({
                                     label: 'Edit',
                                     tone: 'secondary',
                                     icon: <Pencil className="size-4" />,
-                                    onClick: () =>
-                                        openRow(viewedRole, 'edit'),
+                                    onClick: () => openRow(viewedRole, 'edit'),
                                     ...(canEdit ? {} : { disabled: true }),
                                 },
                                 ...(viewedRole.is_protected
@@ -695,7 +696,9 @@ export default function RolesIndex({
                                                   ? 'Deactivate'
                                                   : 'Activate',
                                               tone: 'danger-ghost' as const,
-                                              icon: <Power className="size-4" />,
+                                              icon: (
+                                                  <Power className="size-4" />
+                                              ),
                                               onClick: () =>
                                                   openRow(
                                                       viewedRole,
@@ -780,15 +783,14 @@ export default function RolesIndex({
                                     </>
                                 ) : (
                                     <>
-                                        <strong>{viewedRole.label}</strong>{' '}
-                                        can be assigned again. Users moved to
+                                        <strong>{viewedRole.label}</strong> can
+                                        be assigned again. Users moved to
                                         searcher are not restored.
                                     </>
                                 )}
                             </p>
                         </Form>
                     ))}
-
             </ResponsiveOverlay>
 
             {canDelete && viewedRole && (
@@ -799,9 +801,7 @@ export default function RolesIndex({
                             closeRowSheet();
                         }
                     }}
-                    action={
-                        roleRoutes.destroy({ role: viewedRole.id }).url
-                    }
+                    action={roleRoutes.destroy({ role: viewedRole.id }).url}
                     title={`Delete ${viewedRole.label}?`}
                     description={
                         <>
@@ -945,7 +945,9 @@ export default function RolesIndex({
 
             <CsvExportSheet
                 open={isExportOpen}
-                onClose={() => setOverlayParam('export', null, { replace: true })}
+                onClose={() =>
+                    setOverlayParam('export', null, { replace: true })
+                }
                 canExport={canExport}
                 total={roles.total}
                 pageCount={roles.data.length}
@@ -956,7 +958,9 @@ export default function RolesIndex({
 
             <CsvImportSheet
                 open={isImportOpen}
-                onClose={() => setOverlayParam('import', null, { replace: true })}
+                onClose={() =>
+                    setOverlayParam('import', null, { replace: true })
+                }
                 route={roleRoutes.importMethod}
                 idPrefix="roles"
                 title="Import roles"
@@ -1048,8 +1052,7 @@ function PermissionChecklist({
                                 setSelected((previous) =>
                                     previous.includes(permission.value)
                                         ? previous.filter(
-                                              (p) =>
-                                                  p !== permission.value,
+                                              (p) => p !== permission.value,
                                           )
                                         : [...previous, permission.value],
                                 )

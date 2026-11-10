@@ -1,11 +1,18 @@
 import {
     CircleCheck,
-    CirclePause,
+    CircleDashed,
+    Info,
+    OctagonX,
     Power,
     PowerOff,
     TriangleAlert,
 } from 'lucide-react';
 import { ActionIconButton } from '@/components/action-icon-button';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
 export type StatusTone = 'success' | 'warning' | 'danger' | 'info' | 'muted';
@@ -46,23 +53,30 @@ export function StatusIcon({
         tone === 'success'
             ? CircleCheck
             : tone === 'warning'
-              ? CirclePause
+              ? TriangleAlert
               : tone === 'danger'
-                ? TriangleAlert
-                : CirclePause;
+                ? OctagonX
+                : tone === 'info'
+                  ? Info
+                  : CircleDashed;
 
     return (
-        <span
-            aria-label={label}
-            role="img"
-            className={cn(
-                'inline-flex size-6 items-center justify-center',
-                toneClasses[tone],
-                className,
-            )}
-        >
-            <Icon className="size-4" aria-hidden />
-        </span>
+        <Tooltip>
+            <TooltipTrigger asChild>
+                <span
+                    aria-label={label}
+                    role="img"
+                    className={cn(
+                        'inline-flex size-6 items-center justify-center',
+                        toneClasses[tone],
+                        className,
+                    )}
+                >
+                    <Icon className="size-4" aria-hidden />
+                </span>
+            </TooltipTrigger>
+            <TooltipContent side="top">{label}</TooltipContent>
+        </Tooltip>
     );
 }
 
