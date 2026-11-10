@@ -1,6 +1,8 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Form } from '@inertiajs/react';
 import {
     FileText,
+    LogOut,
     Mail,
     Pencil,
     Phone,
@@ -8,10 +10,13 @@ import {
     Trash2,
     Users,
 } from 'lucide-react';
+import { useEffect } from 'react';
 import ConfirmDeleteOverlay from '@/components/confirm-delete-overlay';
 import Heading from '@/components/heading';
+import OccupantFormFields from '@/components/occupant-form-fields';
 import { OverlayFooter } from '@/components/overlay-footer';
 import { ResponsiveOverlay } from '@/components/responsive-overlay';
+import type { TemplateToken } from '@/components/rich-text-editor';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,14 +26,24 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import { Spinner } from '@/components/ui/spinner';
 import { useOverlayParam } from '@/hooks/use-overlay-param';
 import {
     agreement as occupantAgreement,
-    create as createOccupant,
     destroy as destroyOccupant,
-    edit as editOccupant,
+    moveOut as moveOutOccupant,
     show as showOccupant,
+    store as storeOccupant,
+    update as updateOccupant,
 } from '@/routes/tenant/occupants';
+import { index as propertiesIndex } from '@/routes/tenant/properties';
 
 type Property = {
     id: number;
@@ -47,8 +62,10 @@ type Lease = {
     starts_at: string | null;
     rent_amount: string | null;
     rent_frequency: string | null;
+    rent_due_day: number | null;
     deposit: string | null;
     currency: string | null;
+    agreement_text: string | null;
     agreement_document_name: string | null;
     agreement_document_url: string | null;
 };
@@ -69,16 +86,31 @@ type Occupant = {
     lease?: Lease | null;
 };
 
+type AgreementTemplateOption = {
+    id: number;
+    name: string;
+    body_html: string;
+};
+
 type Props = {
     property: Property;
     occupants: Occupant[];
     focusedOccupant: Occupant | null;
+    units?: Unit[];
+    templates?: {
+        property: AgreementTemplateOption[];
+        organization: AgreementTemplateOption[];
+    };
+    availableTokens?: TemplateToken[];
 };
 
 export default function OccupantsIndex({
     property,
     occupants,
     focusedOccupant,
+    units,
+    templates,
+    availableTokens,
 }: Props) {
     const { context } = usePage().props;
     const permissions = context?.permissions ?? [];
@@ -107,6 +139,80 @@ export default function OccupantsIndex({
           null)
         : null;
 
+    const isCreateOpen = query.get('create') === '1';
+
+    // Edit resolves like view; the sheet needs the full lease, which only
+    // the server-fetched record carries.
+    const isEditOpen =
+        query.get('mode') === 'edit' &&
+        viewedOccupantId > 0 &&
+        focusedOccupant?.id === viewedOccupantId;
+
+    const isMoveOutOpen =
+        query.get('mode') === 'move-out' && viewedOccupantId > 0;
+    const moveOutTarget =
+        isMoveOutOpen &&
+        (focusedOccupant?.id === viewedOccupantId
+            ? focusedOccupant
+            : (occupants.find(
+                  (occupant) => occupant.id === viewedOccupantId,
+              ) ?? null));
+
+    const formOptionsLoaded =
+        units !== undefined &&
+        templates !== undefined &&
+        availableTokens !== undefined;
+
+    // Direct links (?create=1, shared URLs) open the sheet without a button
+    // click, so the options also load on mount when a form sheet is open.
+    useEffect(() => {
+        if ((isCreateOpen || isEditOpen) && !formOptionsLoaded) {
+            router.reload({
+                only: ['units', 'templates', 'availableTokens'],
+            });
+        }
+    }, [isCreateOpen, isEditOpen, formOptionsLoaded]);
+
+    // The unit list, template library and tokens are heavy enough to skip
+    // until a form sheet actually opens.
+    function ensureFormOptions() {
+        if (!formOptionsLoaded) {
+            router.reload({
+                only: ['units', 'templates', 'availableTokens'],
+            });
+        }
+    }
+
+    function openCreate() {
+        ensureFormOptions();
+        setOverlayParam('create', '1', {
+            only: ['occupants', 'units', 'templates', 'availableTokens'],
+        });
+    }
+
+    function openEdit(occupant: Occupant) {
+        ensureFormOptions();
+        setOverlayParam('mode', 'edit', {
+            only: ['occupants', 'focusedOccupant'],
+            keep: { occupant: String(occupant.id) },
+        });
+    }
+
+    function openMoveOut(occupant: Occupant) {
+        setOverlayParam('mode', 'move-out', {
+            only: ['occupants', 'focusedOccupant'],
+            keep: { occupant: String(occupant.id) },
+        });
+    }
+
+    function closeSheets() {
+        setOverlayParam('mode', null, {
+            replace: true,
+            only: ['occupants'],
+            keep: { occupant: '', create: '' },
+        });
+    }
+
     function closeView() {
         setOverlayParam('mode', null, {
             replace: true,
@@ -127,16 +233,15 @@ export default function OccupantsIndex({
             <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-4">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                     <Heading
+                        level="h1"
                         variant="small"
                         title={`${property.name} occupants`}
                         description="The people renting units in this property."
                     />
                     {canCreate && (
-                        <Button asChild>
-                            <Link href={createOccupant(property.slug)}>
-                                <Plus className="size-4" />
-                                Add occupant
-                            </Link>
+                        <Button type="button" onClick={openCreate}>
+                            <Plus className="size-4" />
+                            Add occupant
                         </Button>
                     )}
                 </div>
@@ -151,10 +256,12 @@ export default function OccupantsIndex({
                                 unit.
                             </p>
                             {canCreate && (
-                                <Button asChild className="mt-6">
-                                    <Link href={createOccupant(property.slug)}>
-                                        Add your first occupant
-                                    </Link>
+                                <Button
+                                    type="button"
+                                    className="mt-6"
+                                    onClick={openCreate}
+                                >
+                                    Add your first occupant
                                 </Button>
                             )}
                         </CardContent>
@@ -238,22 +345,33 @@ export default function OccupantsIndex({
                                         <div className="flex gap-2 pt-1">
                                             {canEdit && (
                                                 <Button
-                                                    asChild
+                                                    type="button"
                                                     variant="outline"
                                                     size="sm"
+                                                    onClick={() =>
+                                                        openEdit(occupant)
+                                                    }
                                                 >
-                                                    <Link
-                                                        href={editOccupant({
-                                                            property:
-                                                                property.slug,
-                                                            occupant:
-                                                                occupant.id,
-                                                        })}
-                                                    >
-                                                        Edit
-                                                    </Link>
+                                                    Edit
                                                 </Button>
                                             )}
+                                            {canEdit &&
+                                                occupant.status !==
+                                                    'moved_out' && (
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() =>
+                                                            openMoveOut(
+                                                                occupant,
+                                                            )
+                                                        }
+                                                    >
+                                                        <LogOut className="size-4" />
+                                                        Move out
+                                                    </Button>
+                                                )}
                                             {canDelete && (
                                                 <Button
                                                     type="button"
@@ -332,15 +450,24 @@ export default function OccupantsIndex({
                                               icon: (
                                                   <Pencil className="size-4" />
                                               ),
-                                              onClick: () =>
-                                                  router.visit(
-                                                      editOccupant({
-                                                          property:
-                                                              property.slug,
-                                                          occupant:
-                                                              viewedOccupant.id,
-                                                      }).url,
-                                                  ),
+                                              onClick: () => {
+                                                  ensureFormOptions();
+                                                  setOverlayParam(
+                                                      'mode',
+                                                      'edit',
+                                                      {
+                                                          only: [
+                                                              'occupants',
+                                                              'focusedOccupant',
+                                                          ],
+                                                          keep: {
+                                                              occupant: String(
+                                                                  viewedOccupant.id,
+                                                              ),
+                                                          },
+                                                      },
+                                                  );
+                                              },
                                           },
                                       ]
                                     : []),
@@ -511,6 +638,210 @@ export default function OccupantsIndex({
                     description="Their units are released and the occupant record is removed. Confirm with your password — this cannot be undone from the interface."
                 />
             )}
+
+            {canCreate && (
+                <ResponsiveOverlay
+                    open={isCreateOpen}
+                    onOpenChange={(open) => {
+                        if (!open) {
+                            closeSheets();
+                        }
+                    }}
+                    title="Add an occupant"
+                    description={`Assign someone to a unit in ${property.name}.`}
+                    footer={
+                        <OverlayFooter
+                            onCancel={closeSheets}
+                            actions={[
+                                {
+                                    label: 'Add occupant',
+                                    form: 'occupant-create-form',
+                                    type: 'submit',
+                                },
+                            ]}
+                        />
+                    }
+                >
+                    {units === undefined ||
+                    templates === undefined ||
+                    availableTokens === undefined ? (
+                        <div className="flex justify-center py-8">
+                            <Spinner />
+                        </div>
+                    ) : (
+                        <Form
+                            id="occupant-create-form"
+                            {...storeOccupant.form(property.slug)}
+                            onSuccess={() => closeSheets()}
+                            className="space-y-6"
+                        >
+                            {({ errors }) => (
+                                <OccupantFormFields
+                                    units={units}
+                                    templates={templates}
+                                    availableTokens={availableTokens}
+                                    errors={errors}
+                                    idPrefix="create"
+                                    propertyName={property.name}
+                                />
+                            )}
+                        </Form>
+                    )}
+                </ResponsiveOverlay>
+            )}
+
+            {canEdit && focusedOccupant && (
+                <ResponsiveOverlay
+                    open={isEditOpen}
+                    onOpenChange={(open) => {
+                        if (!open) {
+                            closeSheets();
+                        }
+                    }}
+                    title={`Edit ${focusedOccupant.first_name} ${focusedOccupant.last_name ?? ''}`.trim()}
+                    description={`Update ${property.name} occupant details and unit assignments.`}
+                    footer={
+                        <OverlayFooter
+                            onCancel={closeSheets}
+                            actions={[
+                                {
+                                    label: 'Save changes',
+                                    form: 'occupant-edit-form',
+                                    type: 'submit',
+                                },
+                            ]}
+                        />
+                    }
+                >
+                    {units === undefined ||
+                    templates === undefined ||
+                    availableTokens === undefined ? (
+                        <div className="flex justify-center py-8">
+                            <Spinner />
+                        </div>
+                    ) : (
+                        <Form
+                            key={focusedOccupant.id}
+                            id="occupant-edit-form"
+                            {...updateOccupant.form({
+                                property: property.slug,
+                                occupant: focusedOccupant.id,
+                            })}
+                            onSuccess={() => closeSheets()}
+                            className="space-y-6"
+                        >
+                            {({ errors }) => (
+                                <OccupantFormFields
+                                    key={focusedOccupant.id}
+                                    units={units}
+                                    templates={templates}
+                                    availableTokens={availableTokens}
+                                    errors={errors}
+                                    idPrefix="edit"
+                                    propertyName={property.name}
+                                    defaults={{
+                                        first_name:
+                                            focusedOccupant.first_name,
+                                        last_name: focusedOccupant.last_name,
+                                        email: focusedOccupant.email,
+                                        phone: focusedOccupant.phone,
+                                        national_id:
+                                            focusedOccupant.national_id,
+                                        status: focusedOccupant.status,
+                                        unit_ids:
+                                            focusedOccupant.units.map(
+                                                (unit) => unit.id,
+                                            ),
+                                        lease: focusedOccupant.lease
+                                            ? {
+                                                  starts_at:
+                                                      focusedOccupant.lease
+                                                          .starts_at,
+                                                  rent_amount:
+                                                      focusedOccupant.lease
+                                                          .rent_amount !== null
+                                                          ? Number(
+                                                                focusedOccupant
+                                                                    .lease
+                                                                    .rent_amount,
+                                                            )
+                                                          : null,
+                                                  rent_frequency:
+                                                      focusedOccupant.lease
+                                                          .rent_frequency,
+                                                  rent_due_day:
+                                                      focusedOccupant.lease
+                                                          .rent_due_day,
+                                                  deposit:
+                                                      focusedOccupant.lease
+                                                          .deposit !== null
+                                                          ? Number(
+                                                                focusedOccupant
+                                                                    .lease
+                                                                    .deposit,
+                                                            )
+                                                          : null,
+                                                  currency:
+                                                      focusedOccupant.lease
+                                                          .currency,
+                                                  agreement_text:
+                                                      focusedOccupant.lease
+                                                          .agreement_text,
+                                                  agreement_document_name:
+                                                      focusedOccupant.lease
+                                                          .agreement_document_name,
+                                                  agreement_document_url:
+                                                      focusedOccupant.lease
+                                                          .agreement_document_url,
+                                              }
+                                            : null,
+                                    }}
+                                />
+                            )}
+                        </Form>
+                    )}
+                </ResponsiveOverlay>
+            )}
+
+            {canEdit && moveOutTarget && moveOutTarget.status !== 'moved_out' && (
+                <Dialog
+                    open={isMoveOutOpen}
+                    onOpenChange={(open) => !open && closeSheets()}
+                >
+                    <DialogContent>
+                        <DialogTitle>
+                            Move {moveOutTarget.first_name}{' '}
+                            {moveOutTarget.last_name ?? ''} out?
+                        </DialogTitle>
+                        <DialogDescription>
+                            This ends their active lease(s) — kept for their
+                            rental history — and frees their units. The renter
+                            reverts to a searcher.
+                        </DialogDescription>
+                        <Form
+                            {...moveOutOccupant.form({
+                                property: property.slug,
+                                occupant: moveOutTarget.id,
+                            })}
+                            options={{ preserveScroll: true }}
+                            className="space-y-6"
+                        >
+                            <DialogFooter>
+                                <OverlayFooter
+                                    cancelClosesDialog
+                                    actions={[
+                                        {
+                                            label: 'Move out',
+                                            tone: 'danger',
+                                            type: 'submit',
+                                        },
+                                    ]}
+                                />
+                            </DialogFooter>
+                        </Form>
+                    </DialogContent>
+                </Dialog>
+            )}
         </>
     );
 }
@@ -519,7 +850,7 @@ OccupantsIndex.layout = {
     breadcrumbs: [
         {
             title: 'Properties',
-            href: '',
+            href: propertiesIndex().url,
         },
         {
             title: 'Occupants',

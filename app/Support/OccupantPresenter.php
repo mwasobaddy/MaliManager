@@ -162,7 +162,10 @@ final class OccupantPresenter
             ...self::present($occupant, $property),
             'gender' => $occupant->person->gender,
             'added_at' => $occupant->created_at?->toDateString(),
-            'lease' => self::leaseSummary($occupant, $property),
+            // The full lease including agreement_text: the edit sheet loads
+            // it into the editor, and the view sheet simply ignores the extra
+            // fields.
+            'lease' => self::activeLease($occupant, $property),
         ];
     }
 

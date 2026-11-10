@@ -235,9 +235,9 @@ test('the view sheet resolves the occupant with their units and lease', function
             ->where('focusedOccupant.email', 'jane.lease@acme.test')
             ->where('focusedOccupant.units.0.id', $unit->id)
             ->where('focusedOccupant.lease.currency', 'KES')
-            // The rendered contract is its own page; the sheet never renders it,
-            // so it must not travel in the payload.
-            ->missing('focusedOccupant.lease.agreement_text'));
+            // The edit sheet loads the agreement into its editor, so the full
+            // text travels with the focused record.
+            ->where('focusedOccupant.lease.agreement_text', '<p>Rent is due</p>'));
 });
 
 test('another property occupant is not resolved into the view sheet', function () {
@@ -883,4 +883,57 @@ test('leasing never overwrites a maintenance flag', function () {
     app(OccupantService::class)->moveOut($occupant, $property, $owner);
 
     expect($unit->refresh()->status)->toBe('maintenance');
+});
+
+test('occupant create and edit are overlays addressed by url', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createOccupantOrganization($owner);
+    $property = createProperty($organization, $owner, 'sunset-heights');
+    $unit = $property->units()->create([
+        'name' => 'Unit A1',
+        'status' => 'vacant',
+        'created_by' => $owner->id,
+    ]);
+    $occupant = addOccupant($organization, $owner, $property, [], [$unit->id]);
+
+    $this->actingAs($owner)
+        ->get(occupantTenantUrl($organization, '/sunset-heights/occupants/create'))
+        ->assertRedirect(occupantTenantUrl($organization, '/sunset-heights/occupants?create=1'));
+
+    $this->actingAs($owner)
+        ->get(occupantTenantUrl($organization, "/sunset-heights/occupants/{$occupant->id}/edit"))
+        ->assertRedirect(occupantTenantUrl(
+            $organization,
+            "/sunset-heights/occupants?mode=edit&occupant={$occupant->id}",
+        ));
+
+    $this->actingAs($owner)
+        ->get(occupantTenantUrl($organization, '/sunset-heights/occupants?create=1'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('organisation/occupants/index')
+            ->missing('units'));
+
+    // The sheet's option lists load on demand, exactly like the platform
+    // reference tables.
+    $this->actingAs($owner)->get(
+        occupantTenantUrl($organization, '/sunset-heights/occupants?create=1'),
+        [
+            'X-Inertia-Partial-Component' => 'organisation/occupants/index',
+            'X-Inertia-Partial-Data' => 'units,templates,availableTokens',
+        ],
+    )->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('units')
+            ->has('templates'));
+
+    $this->actingAs($owner)
+        ->get(occupantTenantUrl(
+            $organization,
+            "/sunset-heights/occupants?mode=edit&occupant={$occupant->id}",
+        ))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('organisation/occupants/index')
+            ->where('focusedOccupant.id', $occupant->id));
 });

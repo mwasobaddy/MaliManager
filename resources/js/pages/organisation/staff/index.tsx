@@ -1,7 +1,12 @@
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
+import { Form } from '@inertiajs/react';
 import { Mail, Phone, Plus, Trash2, UserCog } from 'lucide-react';
+import { useEffect } from 'react';
 import ConfirmDeleteOverlay from '@/components/confirm-delete-overlay';
 import Heading from '@/components/heading';
+import { OverlayFooter } from '@/components/overlay-footer';
+import { ResponsiveOverlay } from '@/components/responsive-overlay';
+import StaffFormFields from '@/components/staff-form-fields';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -11,11 +16,12 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
+import { Spinner } from '@/components/ui/spinner';
 import { useOverlayParam } from '@/hooks/use-overlay-param';
 import {
-    create as createStaff,
     destroy as destroyStaff,
-    edit as editStaff,
+    store as storeStaff,
+    update as updateStaff,
 } from '@/routes/tenant/staff';
 
 type Organization = {
@@ -46,12 +52,30 @@ type StaffMember = {
     properties: Property[];
 };
 
+type FocusedStaff = {
+    id: number;
+    name: string;
+    email: string;
+    phone: string | null;
+    sub_role_id: number | null;
+    property_ids: number[];
+};
+
 type Props = {
     organization: Organization;
     staff: StaffMember[];
+    sub_roles?: SubRole[];
+    properties?: Property[];
+    focusedStaff?: FocusedStaff | null;
 };
 
-export default function StaffIndex({ organization, staff }: Props) {
+export default function StaffIndex({
+    organization,
+    staff,
+    sub_roles,
+    properties,
+    focusedStaff,
+}: Props) {
     const { context } = usePage().props;
     const permissions = context?.permissions ?? [];
     const canCreate = permissions.includes('staff.create');
@@ -66,6 +90,70 @@ export default function StaffIndex({ organization, staff }: Props) {
     const deleteTarget = staff.find((member) => member.id === deleteTargetId);
     const isDeleteOpen = query.get('mode') === 'delete' && !!deleteTarget;
 
+    const isCreateOpen = query.get('create') === '1';
+
+    // Edit resolves from the visible rows, falling back to the server-fetched
+    // row so a shared link to an off-page member still opens.
+    const editTargetId = Number(query.get('staff'));
+    const editRow = staff.find((member) => member.id === editTargetId);
+    const editTarget =
+        editRow !== undefined
+            ? {
+                  id: editRow.id,
+                  name: editRow.name,
+                  email: editRow.email,
+                  phone: editRow.phone,
+                  sub_role_id: editRow.sub_role?.id ?? null,
+                  property_ids: editRow.properties.map(
+                      (property) => property.id,
+                  ),
+              }
+            : focusedStaff?.id === editTargetId
+              ? focusedStaff
+              : undefined;
+    const isEditOpen = query.get('mode') === 'edit' && editTarget !== undefined;
+
+    // The option lists are heavy enough to skip until a sheet actually opens.
+    function ensureFormOptions() {
+        if (sub_roles === undefined || properties === undefined) {
+            router.reload({ only: ['sub_roles', 'properties'] });
+        }
+    }
+
+    // Direct links (?create=1, shared URLs) open the sheet without a button
+    // click, so the options also load on mount when a form sheet is open.
+    useEffect(() => {
+        if (
+            (query.get('create') === '1' ||
+                query.get('mode') === 'edit') &&
+            (sub_roles === undefined || properties === undefined)
+        ) {
+            router.reload({ only: ['sub_roles', 'properties'] });
+        }
+    }, [query, sub_roles, properties]);
+
+    function openCreate() {
+        ensureFormOptions();
+        setOverlayParam('create', '1', {
+            only: ['staff', 'sub_roles', 'properties'],
+        });
+    }
+
+    function openEdit(member: StaffMember) {
+        ensureFormOptions();
+        setOverlayParam('mode', 'edit', {
+            keep: { staff: String(member.id) },
+        });
+    }
+
+    function closeSheets() {
+        setOverlayParam('mode', null, {
+            replace: true,
+            only: ['staff'],
+            keep: { staff: '', create: '' },
+        });
+    }
+
     return (
         <>
             <Head title="Staff" />
@@ -73,16 +161,15 @@ export default function StaffIndex({ organization, staff }: Props) {
             <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-4">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                     <Heading
+                        level="h1"
                         variant="small"
                         title={`${organization.name} staff`}
                         description="Manage the people who run your properties."
                     />
                     {canCreate && (
-                        <Button asChild>
-                            <Link href={createStaff()}>
-                                <Plus className="size-4" />
-                                Add staff
-                            </Link>
+                        <Button type="button" onClick={openCreate}>
+                            <Plus className="size-4" />
+                            Add staff
                         </Button>
                     )}
                 </div>
@@ -97,10 +184,12 @@ export default function StaffIndex({ organization, staff }: Props) {
                                 and roles.
                             </p>
                             {canCreate && (
-                                <Button asChild className="mt-6">
-                                    <Link href={createStaff()}>
-                                        Add your first staff member
-                                    </Link>
+                                <Button
+                                    type="button"
+                                    className="mt-6"
+                                    onClick={openCreate}
+                                >
+                                    Add your first staff member
                                 </Button>
                             )}
                         </CardContent>
@@ -176,17 +265,14 @@ export default function StaffIndex({ organization, staff }: Props) {
                                         <div className="flex gap-2 pt-1">
                                             {canEdit && (
                                                 <Button
-                                                    asChild
+                                                    type="button"
                                                     variant="outline"
                                                     size="sm"
+                                                    onClick={() =>
+                                                        openEdit(member)
+                                                    }
                                                 >
-                                                    <Link
-                                                        href={editStaff(
-                                                            member.id,
-                                                        )}
-                                                    >
-                                                        Edit
-                                                    </Link>
+                                                    Edit
                                                 </Button>
                                             )}
                                             {canDelete && (
@@ -238,6 +324,110 @@ export default function StaffIndex({ organization, staff }: Props) {
                     title={`Remove ${deleteTarget.name}?`}
                     description="They lose access to this organization and its properties immediately. Confirm with your password — this cannot be undone from the interface."
                 />
+            )}
+
+            {canCreate && (
+                <ResponsiveOverlay
+                    open={isCreateOpen}
+                    onOpenChange={(open) => {
+                        if (!open) {
+                            closeSheets();
+                        }
+                    }}
+                    title="Add a staff member"
+                    description={`Give ${organization.name} someone to manage its properties.`}
+                    footer={
+                        <OverlayFooter
+                            onCancel={closeSheets}
+                            actions={[
+                                {
+                                    label: 'Add staff member',
+                                    form: 'staff-create-form',
+                                    type: 'submit',
+                                },
+                            ]}
+                        />
+                    }
+                >
+                    {sub_roles === undefined || properties === undefined ? (
+                        <div className="flex justify-center py-8">
+                            <Spinner />
+                        </div>
+                    ) : (
+                        <Form
+                            id="staff-create-form"
+                            {...storeStaff.form()}
+                            onSuccess={() => closeSheets()}
+                            className="space-y-6"
+                        >
+                            {({ errors }) => (
+                                <StaffFormFields
+                                    sub_roles={sub_roles}
+                                    properties={properties}
+                                    errors={errors}
+                                    idPrefix="create"
+                                    propertiesHint="Select the properties this staff member can manage. They will land directly on a single assigned property after login."
+                                />
+                            )}
+                        </Form>
+                    )}
+                </ResponsiveOverlay>
+            )}
+
+            {canEdit && editTarget && (
+                <ResponsiveOverlay
+                    open={isEditOpen}
+                    onOpenChange={(open) => {
+                        if (!open) {
+                            closeSheets();
+                        }
+                    }}
+                    title={`Edit ${editTarget.name}`}
+                    description={`Update ${organization.name} staff member details and assignments.`}
+                    footer={
+                        <OverlayFooter
+                            onCancel={closeSheets}
+                            actions={[
+                                {
+                                    label: 'Save changes',
+                                    form: 'staff-edit-form',
+                                    type: 'submit',
+                                },
+                            ]}
+                        />
+                    }
+                >
+                    {sub_roles === undefined || properties === undefined ? (
+                        <div className="flex justify-center py-8">
+                            <Spinner />
+                        </div>
+                    ) : (
+                        <Form
+                            key={editTarget.id}
+                            id="staff-edit-form"
+                            {...updateStaff.form(editTarget.id)}
+                            onSuccess={() => closeSheets()}
+                            className="space-y-6"
+                        >
+                            {({ errors }) => (
+                                <StaffFormFields
+                                    key={editTarget.id}
+                                    sub_roles={sub_roles}
+                                    properties={properties}
+                                    errors={errors}
+                                    idPrefix="edit"
+                                    defaults={{
+                                        name: editTarget.name,
+                                        email: editTarget.email,
+                                        phone: editTarget.phone,
+                                        sub_role_id: editTarget.sub_role_id,
+                                        property_ids: editTarget.property_ids,
+                                    }}
+                                />
+                            )}
+                        </Form>
+                    )}
+                </ResponsiveOverlay>
             )}
         </>
     );

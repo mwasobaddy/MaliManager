@@ -12,12 +12,13 @@ use App\Models\User;
 use App\Services\StaffService;
 use App\Support\TenancyContext;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class StaffController extends Controller
 {
-    public function index(StaffService $staffService): Response
+    public function index(Request $request, StaffService $staffService): Response
     {
         $organization = TenancyContext::organization();
 
@@ -42,17 +43,60 @@ class StaffController extends Controller
         return Inertia::render('organisation/staff/index', [
             'organization' => $organization->only('id', 'name', 'slug'),
             'staff' => $staff,
+            // Create and edit are overlays on this page, addressed by query
+            // params — the option lists are only fetched when a sheet opens.
+            'sub_roles' => Inertia::optional(
+                fn () => $staffService->formOptions($organization)['sub_roles'],
+            ),
+            'properties' => Inertia::optional(
+                fn () => $staffService->formOptions($organization)['properties'],
+            ),
+            'focusedStaff' => Inertia::optional(
+                fn () => $this->focusedStaff($request, $organization, $staffService),
+            ),
         ]);
     }
 
-    public function create(StaffService $staffService): Response
+    /**
+     * The staff record addressed by URL for the edit sheet, or null. Mirrors
+     * the membership shape the edit form expects; unknown ids resolve to
+     * nothing and the sheet simply does not open.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function focusedStaff(Request $request, mixed $organization, StaffService $staffService): ?array
     {
-        $organization = TenancyContext::organization();
+        $staffId = $request->integer('staff');
 
-        return Inertia::render('organisation/staff/create', [
-            'organization' => $organization->only('id', 'name', 'slug'),
-            ...$staffService->formOptions($organization),
-        ]);
+        if ($staffId <= 0) {
+            return null;
+        }
+
+        $staff = User::find($staffId);
+
+        if (! $staff) {
+            return null;
+        }
+
+        $membership = $staffService->membership($organization, $staff);
+
+        if (! $membership || $membership->is_owner) {
+            return null;
+        }
+
+        return [
+            'id' => $staff->id,
+            'name' => $staff->name,
+            'email' => $staff->email,
+            'phone' => $staff->phone,
+            'sub_role_id' => $membership->sub_role_id,
+            'property_ids' => $staffService->delegatedPropertyIds($membership),
+        ];
+    }
+
+    public function create(): RedirectResponse
+    {
+        return redirect()->route('tenant.staff.index', ['create' => 1]);
     }
 
     public function store(StoreStaffRequest $request, StaffService $staffService): RedirectResponse
@@ -72,27 +116,11 @@ class StaffController extends Controller
         return redirect()->route('tenant.staff.index');
     }
 
-    public function edit(User $staff, StaffService $staffService): Response
+    public function edit(User $staff): RedirectResponse
     {
-        $organization = TenancyContext::organization();
-
-        $membership = $staffService->membership($organization, $staff);
-
-        if (! $membership) {
-            abort(403);
-        }
-
-        return Inertia::render('organisation/staff/edit', [
-            'organization' => $organization->only('id', 'name', 'slug'),
-            'staff' => [
-                'id' => $staff->id,
-                'name' => $staff->name,
-                'email' => $staff->email,
-                'phone' => $staff->phone,
-                'sub_role_id' => $membership->sub_role_id,
-                'property_ids' => $staffService->delegatedPropertyIds($membership),
-            ],
-            ...$staffService->formOptions($organization),
+        return redirect()->route('tenant.staff.index', [
+            'mode' => 'edit',
+            'staff' => $staff->id,
         ]);
     }
 

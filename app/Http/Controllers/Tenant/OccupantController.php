@@ -44,6 +44,11 @@ class OccupantController extends Controller
             // property, so an id from another property resolves to nothing and
             // the sheet simply does not open.
             'focusedOccupant' => OccupantPresenter::focusedOccupant($request->integer('occupant') ?: null, $property),
+            // Create and edit are overlays on this page too; the unit list,
+            // template library and tokens only load when a sheet opens.
+            'units' => Inertia::optional(fn () => OccupantPresenter::units($property)),
+            'templates' => Inertia::optional(fn () => OccupantPresenter::agreementTemplates($property)),
+            'availableTokens' => Inertia::optional(fn () => LeaseAgreementTemplate::availableTokens()),
         ]);
     }
 
@@ -75,16 +80,11 @@ class OccupantController extends Controller
         ]);
     }
 
-    public function create(OccupantAccessRequest $request, Property $property): Response
+    public function create(Property $property): RedirectResponse
     {
-        $this->authorizePropertyAccess($request, $property);
-
-        return Inertia::render('organisation/occupants/create', [
-            'organization' => TenancyContext::organization()->only('id', 'name', 'slug'),
-            'property' => OccupantPresenter::property($property),
-            'units' => OccupantPresenter::units($property),
-            'templates' => OccupantPresenter::agreementTemplates($property),
-            'availableTokens' => LeaseAgreementTemplate::availableTokens(),
+        return redirect()->route('tenant.occupants.index', [
+            'property' => $property->slug,
+            'create' => 1,
         ]);
     }
 
@@ -106,29 +106,16 @@ class OccupantController extends Controller
         return redirect()->route('tenant.occupants.index', $property);
     }
 
-    public function edit(OccupantAccessRequest $request, Property $property, Occupant $occupant, OccupantService $occupantService): Response
+    public function edit(OccupantAccessRequest $request, Property $property, Occupant $occupant): RedirectResponse
     {
         $this->authorizePropertyAccess($request, $property);
 
         abort_if($occupant->organization_id !== $property->organization_id, 403);
 
-        return Inertia::render('organisation/occupants/edit', [
-            'organization' => TenancyContext::organization()->only('id', 'name', 'slug'),
-            'property' => OccupantPresenter::property($property),
-            'occupant' => [
-                'id' => $occupant->id,
-                'first_name' => $occupant->person->first_name,
-                'last_name' => $occupant->person->last_name,
-                'email' => $occupant->person->email,
-                'phone' => $occupant->person->phone,
-                'national_id' => $occupant->person->national_id,
-                'status' => $occupant->status,
-                'unit_ids' => $occupantService->unitsForProperty($occupant, $property)->pluck('id')->all(),
-                'lease' => OccupantPresenter::activeLease($occupant, $property),
-            ],
-            'units' => OccupantPresenter::units($property),
-            'templates' => OccupantPresenter::agreementTemplates($property),
-            'availableTokens' => LeaseAgreementTemplate::availableTokens(),
+        return redirect()->route('tenant.occupants.index', [
+            'property' => $property->slug,
+            'mode' => 'edit',
+            'occupant' => $occupant->id,
         ]);
     }
 

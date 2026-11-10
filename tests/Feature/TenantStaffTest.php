@@ -364,3 +364,36 @@ test('staff cannot open a property dashboard they are not delegated to', functio
         ->assertRedirect();
     assertErrorToast();
 });
+
+test('staff create and edit are overlays addressed by url', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createStaffOrganization($owner);
+    $staff = addStaffMember($organization, $owner);
+
+    $this->actingAs($owner)
+        ->get(staffTenantUrl($organization, '/staff/create'))
+        ->assertRedirect(staffTenantUrl($organization, '/staff?create=1'));
+
+    $this->actingAs($owner)
+        ->get(staffTenantUrl($organization, "/staff/{$staff->id}/edit"))
+        ->assertRedirect(staffTenantUrl($organization, "/staff?mode=edit&staff={$staff->id}"));
+
+    $this->actingAs($owner)
+        ->get(staffTenantUrl($organization, '/staff?create=1'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->component('organisation/staff/index'));
+
+    $this->actingAs($owner)
+        ->get(
+            staffTenantUrl($organization, "/staff?mode=edit&staff={$staff->id}"),
+            [
+                'X-Inertia-Partial-Component' => 'organisation/staff/index',
+                'X-Inertia-Partial-Data' => 'sub_roles,properties,focusedStaff',
+            ],
+        )
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('sub_roles')
+            ->has('properties')
+            ->where('focusedStaff.id', $staff->id));
+});
