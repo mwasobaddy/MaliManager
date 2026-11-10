@@ -7,20 +7,22 @@ type AuthUser = { name: string };
 type SharedProps = {
     name: string;
     auth: { user: AuthUser | null };
+    plans: PlanTier[];
+    featuredPlan: number | null;
 };
 
 type SectionLink = { label: string; href: string };
 type Feature = { title: string; body: string };
 type PortalItem = { title: string; body: string };
 type Testimonial = { quote: string; author: string; role: string };
-type PricingTier = {
+type PlanTier = {
     name: string;
-    units: string;
-    price: string;
-    priceNote?: string;
-    features: string[];
-    cta: string;
-    featured?: boolean;
+    slug: string;
+    description: string | null;
+    currency: string;
+    price: number;
+    properties_limit: number | null;
+    units_limit: number | null;
 };
 type Faq = { question: string; answer: string };
 
@@ -102,37 +104,6 @@ const testimonials: Testimonial[] = [
     },
 ];
 
-const pricingTiers: PricingTier[] = [
-    {
-        name: 'Starter',
-        units: 'Up to 10 units',
-        price: 'Free',
-        features: ['M-Pesa rent collection', 'Lease & tenant records', 'Single manager login'],
-        cta: 'Get Started',
-    },
-    {
-        name: 'Growth',
-        units: 'Up to 50 units',
-        price: 'KES 4,900',
-        priceNote: '/mo',
-        features: [
-            'Everything in Starter',
-            'Maintenance & expense analytics',
-            'Up to 5 manager logins',
-            'Financial exports',
-        ],
-        cta: 'Get Started',
-        featured: true,
-    },
-    {
-        name: 'Portfolio',
-        units: 'Unlimited units',
-        price: 'Custom',
-        features: ['Everything in Growth', 'Multiple estates & teams', 'Dedicated onboarding'],
-        cta: 'Talk to Us',
-    },
-];
-
 const faqs: Faq[] = [
     {
         question: 'Does MaliManager work with M-Pesa?',
@@ -148,11 +119,11 @@ const faqs: Faq[] = [
     },
     {
         question: 'Can my caretaker or accountant have their own login?',
-        answer: 'Yes. Growth and Portfolio plans support multiple manager logins with different levels of access, so your team sees only what they need.',
+        answer: 'Yes. Paid plans support multiple manager logins with different levels of access, so your team sees only what they need.',
     },
     {
-        question: 'What happens if I outgrow the Starter plan?',
-        answer: 'You upgrade to Growth in a couple of clicks, right from your dashboard. Nothing is exported or migrated — your data just gains more room.',
+        question: 'What happens if I outgrow the Free plan?',
+        answer: 'You upgrade in a couple of clicks, right from your dashboard. Nothing is exported or migrated — your data just gains more room.',
     },
 ];
 
@@ -163,6 +134,27 @@ const accentCta =
 
 const prefersReducedMotion = (): boolean =>
     typeof window === 'undefined' ? false : window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function formatPlanPrice(plan: PlanTier): string {
+    if (Number(plan.price) <= 0) {
+        return 'Free';
+    }
+
+    return `${plan.currency} ${Number(plan.price).toLocaleString('en-KE')}`;
+}
+
+function formatPlanLimits(plan: PlanTier): string {
+    const properties =
+        plan.properties_limit === null
+            ? 'Unlimited properties'
+            : `${plan.properties_limit} ${plan.properties_limit === 1 ? 'property' : 'properties'}`;
+    const units =
+        plan.units_limit === null
+            ? 'unlimited units'
+            : `up to ${plan.units_limit} units`;
+
+    return `${properties} · ${units}`;
+}
 
 function formatStatValue(value: number, format: 'plain' | 'comma', suffix: string): string {
     return (format === 'comma' ? value.toLocaleString() : String(value)) + suffix;
@@ -305,7 +297,7 @@ function Chevron() {
 const revealClasses = 'animate-fade-in-up motion-reduce:animate-none';
 
 export default function Welcome() {
-    const { name, auth } = usePage<SharedProps>().props;
+    const { name, auth, plans, featuredPlan } = usePage<SharedProps>().props;
     const [menuOpen, setMenuOpen] = useState(false);
     const [portalView, setPortalView] = useState<'landlord' | 'tenant'>('landlord');
     const [openFaq, setOpenFaq] = useState<number | null>(null);
@@ -822,52 +814,57 @@ export default function Welcome() {
                             </p>
                         </div>
 
-                        <div className="grid gap-6 md:grid-cols-3">
-                            {pricingTiers.map((tier) => (
-                                <div
-                                    key={tier.name}
-                                    className={`relative flex flex-col rounded-2xl p-7 ${
-                                        tier.featured
-                                            ? 'border-2 border-primary bg-card shadow-xl shadow-foreground/5'
-                                            : 'border border-border bg-card shadow-xl shadow-foreground/5'
-                                    }`}
-                                >
-                                    {tier.featured && (
-                                        <span className="absolute -top-3 left-7 rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">
-                                            Most popular
-                                        </span>
-                                    )}
-                                    <p className="mb-1 text-lg font-semibold text-foreground">
-                                        {tier.name}
-                                    </p>
-                                    <p className="mb-5 text-sm text-muted-foreground">
-                                        {tier.units}
-                                    </p>
-                                    <p className="mb-6 font-semibold text-3xl text-foreground">
-                                        {tier.price}
-                                        {tier.priceNote && (
-                                            <span className="text-base font-normal text-muted-foreground">
-                                                {tier.priceNote}
+                        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+                            {plans.map((tier, tierIndex) => {
+                                const featured = tierIndex === featuredPlan;
+                                const price = formatPlanPrice(tier);
+
+                                return (
+                                    <div
+                                        key={tier.slug}
+                                        className={`relative flex flex-col rounded-2xl p-7 ${
+                                            featured
+                                                ? 'border-2 border-primary bg-card shadow-xl shadow-foreground/5'
+                                                : 'border border-border bg-card shadow-xl shadow-foreground/5'
+                                        }`}
+                                    >
+                                        {featured && (
+                                            <span className="absolute -top-3 left-7 rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">
+                                                Most popular
                                             </span>
                                         )}
-                                    </p>
-                                    <ul className="mb-8 flex-1 space-y-2.5 text-sm text-muted-foreground">
-                                        {tier.features.map((feature) => (
-                                            <li key={feature}>{feature}</li>
-                                        ))}
-                                    </ul>
-                                    <Link
-                                        href={login().url}
-                                        className={
-                                            tier.featured
-                                                ? `${primaryCta} w-full text-center`
-                                                : `${accentCta} w-full text-center`
-                                        }
-                                    >
-                                        {tier.cta}
-                                    </Link>
-                                </div>
-                            ))}
+                                        <p className="mb-1 text-lg font-semibold text-foreground">
+                                            {tier.name}
+                                        </p>
+                                        <p className="mb-5 text-sm text-muted-foreground">
+                                            {formatPlanLimits(tier)}
+                                        </p>
+                                        <p className="mb-6 font-semibold text-3xl text-foreground">
+                                            {price}
+                                            {price !== 'Free' && (
+                                                <span className="text-base font-normal text-muted-foreground">
+                                                    /mo
+                                                </span>
+                                            )}
+                                        </p>
+                                        {tier.description && (
+                                            <p className="mb-8 flex-1 text-sm text-muted-foreground">
+                                                {tier.description}
+                                            </p>
+                                        )}
+                                        <Link
+                                            href={login().url}
+                                            className={
+                                                featured
+                                                    ? `${primaryCta} w-full text-center`
+                                                    : `${accentCta} w-full text-center`
+                                            }
+                                        >
+                                            Get Started
+                                        </Link>
+                                    </div>
+                                );
+                            })}
                         </div>
                     </div>
                 </section>

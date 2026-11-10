@@ -179,3 +179,24 @@ test('the sidebar receives workspaces shared across pages', function () {
             ->where('workspaces.0.url', "http://{$domain}/properties")
         );
 });
+
+test('the landing page prices every active plan from the database', function () {
+    $this->get(route('home'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('welcome')
+            ->has('plans', 4)
+            ->where('plans.0.slug', 'free')
+            ->where('plans.0.price', 0)
+            ->where('plans.1.slug', 'starter')
+            ->where('plans.1.price', 2500)
+            ->where('plans.2.slug', 'growth')
+            ->where('featuredPlan', 2)
+        );
+});
+
+test('unknown urls render the branded 404 page', function () {
+    $this->get('/this-page-does-not-exist')
+        ->assertNotFound()
+        ->assertInertia(fn ($page) => $page->component('errors/404'));
+});
