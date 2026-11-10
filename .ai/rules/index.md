@@ -4,11 +4,12 @@ Before planning or editing, find the row whose globs match the file's path and r
 
 | Applies to | Rule file |
 | --- | --- |
-| app/Actions/**, app/Data/**, app/Services/**, app/Http/Controllers/**, app/Services/NotificationService.php, app/Services/RentArrearsService.php | .ai/rules/actions.md |
+| app/Actions/**, app/Data/**, app/Services/**, app/Http/Controllers/**, app/Services/NotificationService.php, app/Services/RentArrearsService.php, app/Http/Controllers/**/*.php | .ai/rules/actions.md |
 | app/Http/Controllers/Admin/** | .ai/rules/admin.md |
 | app/Support/Ai/AssistantService.php | .ai/rules/ai.md |
 | app/** | .ai/rules/app.md |
 | app/Http/Controllers/Auth/** | .ai/rules/auth.md |
+| bootstrap/app.php | .ai/rules/bootstrap.md |
 | resources/js/components/rich-text-editor.tsx, resources/js/components/property-picker-dialog.tsx, resources/js/components/** | .ai/rules/components.md |
 | config/tenancy.php, config/purifier.php | .ai/rules/config.md |
 | config/tenancy.php, app/Models/**, app/Http/Controllers/Tenant/** | .ai/rules/controllers-tenant.md |

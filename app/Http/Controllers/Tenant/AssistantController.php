@@ -52,7 +52,7 @@ class AssistantController extends BaseAssistantController
 
     protected function assistantView(): string
     {
-        return 'organisation/assistant';
+        return 'organisation/assistant/index';
     }
 
     /**
@@ -76,12 +76,12 @@ class AssistantController extends BaseAssistantController
 
     protected function historyView(): string
     {
-        return 'tenant/assistant/history';
+        return 'organisation/assistant/history';
     }
 
     protected function conversationView(): string
     {
-        return 'tenant/assistant/conversation';
+        return 'organisation/assistant/conversation';
     }
 
     protected function historyRoute(): string

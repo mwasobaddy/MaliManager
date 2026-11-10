@@ -49,7 +49,7 @@ class SearcherAssistantController extends BaseAssistantController
 
     protected function assistantView(): string
     {
-        return 'searcher/assistant';
+        return 'searcher/assistant/index';
     }
 
     /**

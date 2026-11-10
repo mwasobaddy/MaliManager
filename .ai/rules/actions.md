@@ -6,6 +6,7 @@ paths:
   - 'app/Http/Controllers/**'
   - app/Services/NotificationService.php
   - app/Services/RentArrearsService.php
+  - 'app/Http/Controllers/**/*.php'
 ---
 
 # Write logic lives in Actions
@@ -50,3 +51,6 @@ Outbound user notifications (billing cron, future rent reminders) go through Not
 
 ## Only received payments count toward arrears
 Rent balances are expected-vs-paid per lease: pending and refunded payments never reduce a balance, deposits live in their own model, and advance payments count (they cover dues). Money stays decimal via bcmath. The M-Pesa/card integration will write received automatically — no new payment status is needed for gateway money.
+
+## Inertia view names must match page files exactly
+Inertia::render() does no index fallback: 'searcher/assistant' 500s when the file is searcher/assistant/index.tsx. When adding a render target, assert the component in a Feature test (see AssistantViewsTest) — the Vite manifest miss only surfaces at runtime.
