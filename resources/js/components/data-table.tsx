@@ -273,6 +273,37 @@ export function DataTable<TData>({
                                         ? () => onRowClick(row.original)
                                         : undefined
                                 }
+                                // Clickable rows are keyboard-operable: focusable
+                                // with Enter/Space activation. Focus landing on an
+                                // interactive child (button, link, input) is left
+                                // to that control so keys do not double-fire.
+                                tabIndex={onRowClick ? 0 : undefined}
+                                onKeyDown={
+                                    onRowClick
+                                        ? (event) => {
+                                              if (
+                                                  event.key !== 'Enter' &&
+                                                  event.key !== ' '
+                                              ) {
+                                                  return;
+                                              }
+
+                                              const target =
+                                                  event.target as HTMLElement;
+
+                                              if (
+                                                  target.closest(
+                                                      'a,button,input,select,textarea,[role="button"],[role="link"]',
+                                                  )
+                                              ) {
+                                                  return;
+                                              }
+
+                                              event.preventDefault();
+                                              onRowClick(row.original);
+                                          }
+                                        : undefined
+                                }
                                 className={cn(
                                     'hover:bg-bg-base border-border/60 border-b transition-colors last:border-b-0',
                                     onRowClick &&

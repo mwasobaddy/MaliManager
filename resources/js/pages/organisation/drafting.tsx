@@ -1,6 +1,7 @@
 import { Head } from '@inertiajs/react';
 import { Copy, Wand2 } from 'lucide-react';
 import { useState } from 'react';
+import AlertError from '@/components/alert-error';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -86,6 +87,7 @@ export default function Drafting({ enabled }: Props) {
         initial.fields,
     );
     const [draft, setDraft] = useState('');
+    const [error, setError] = useState('');
     const [busy, setBusy] = useState(false);
     const [copied, setCopied] = useState(false);
 
@@ -153,7 +155,7 @@ export default function Drafting({ enabled }: Props) {
                             </CardHeader>
                             <CardContent className="grid gap-4">
                                 <div className="grid gap-2">
-                                    <Label>Type</Label>
+                                    <Label htmlFor="draft-type">Type</Label>
                                     <Select
                                         value={type}
                                         onValueChange={(v) => {
@@ -161,7 +163,7 @@ export default function Drafting({ enabled }: Props) {
                                             setFields({});
                                         }}
                                     >
-                                        <SelectTrigger>
+                                        <SelectTrigger id="draft-type">
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -178,12 +180,12 @@ export default function Drafting({ enabled }: Props) {
                                 </div>
 
                                 <div className="grid gap-2">
-                                    <Label>Tone</Label>
+                                    <Label htmlFor="draft-tone">Tone</Label>
                                     <Select
                                         value={tone}
                                         onValueChange={setTone}
                                     >
-                                        <SelectTrigger>
+                                        <SelectTrigger id="draft-tone">
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -250,6 +252,14 @@ export default function Drafting({ enabled }: Props) {
                                 )}
                             </CardHeader>
                             <CardContent className="min-h-0 flex-1">
+                                {error !== '' && (
+                                    <div className="mb-4">
+                                        <AlertError
+                                            errors={[error]}
+                                            title="Draft failed."
+                                        />
+                                    </div>
+                                )}
                                 {draft ? (
                                     <pre className="font-sans text-sm whitespace-pre-wrap">
                                         {draft}

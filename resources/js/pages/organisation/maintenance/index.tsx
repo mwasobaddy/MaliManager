@@ -1,6 +1,7 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { usePage } from '@inertiajs/react';
 import { Wrench } from 'lucide-react';
+import ConfirmDeleteOverlay from '@/components/confirm-delete-overlay';
 import Heading from '@/components/heading';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -12,6 +13,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { useOverlayParam } from '@/hooks/use-overlay-param';
+import { destroy as destroyRequest } from '@/routes/tenant/maintenance';
 
 type RequestRow = {
     id: number;
@@ -62,6 +65,16 @@ export default function MaintenanceIndex({
         'maintenance.delete',
     );
     const propertySlug = context?.property?.slug ?? '';
+
+    const { query, setOverlayParam } = useOverlayParam();
+
+    // The delete modal builds its DELETE URL from the row, so the id travels
+    // in the URL beside the mode rather than in component state.
+    const deleteTargetId = Number(query.get('request'));
+    const deleteTarget = requests.data.find(
+        (request) => request.id === deleteTargetId,
+    );
+    const isDeleteOpen = query.get('mode') === 'delete' && !!deleteTarget;
 
     const setFilter = (key: 'status' | 'priority', value: string) => {
         router.get(
@@ -301,14 +314,21 @@ export default function MaintenanceIndex({
 
                                         {canDelete && (
                                             <Button
+                                                type="button"
                                                 variant="ghost"
                                                 size="sm"
                                                 className="text-status-danger"
                                                 onClick={() =>
-                                                    router.delete(
-                                                        `/maintenance/${item.id}`,
+                                                    setOverlayParam(
+                                                        'mode',
+                                                        'delete',
                                                         {
-                                                            preserveScroll: true,
+                                                            only: ['requests'],
+                                                            keep: {
+                                                                request: String(
+                                                                    item.id,
+                                                                ),
+                                                            },
                                                         },
                                                     )
                                                 }
@@ -349,6 +369,23 @@ export default function MaintenanceIndex({
                 )
             }
         />
+
+                {canDelete && deleteTarget && (
+                    <ConfirmDeleteOverlay
+                        open={isDeleteOpen}
+                        onOpenChange={(open) =>
+                            !open &&
+                            setOverlayParam('mode', null, {
+                                replace: true,
+                                only: ['requests'],
+                                keep: { request: '' },
+                            })
+                        }
+                        action={destroyRequest(deleteTarget.id).url}
+                        title={`Delete “${deleteTarget.title}”?`}
+                        description="The request and its notes are removed. Confirm with your password — this cannot be undone from the interface."
+                    />
+                )}
             </div>
         </>
     );
