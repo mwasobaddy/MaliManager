@@ -5,12 +5,13 @@ import {
     DropdownMenuContent,
     DropdownMenuLabel,
     DropdownMenuSeparator,
+    DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
 export function Notifications() {
     return (
         <DropdownMenu>
-            <DropdownMenuLabel asChild>
+            <DropdownMenuTrigger asChild>
                 <Button
                     variant="ghost"
                     size="icon"
@@ -19,7 +20,7 @@ export function Notifications() {
                 >
                     <Bell className="!size-5 opacity-80 group-hover:opacity-100" />
                 </Button>
-            </DropdownMenuLabel>
+            </DropdownMenuTrigger>
             <DropdownMenuContent className="w-80" align="end">
                 <DropdownMenuLabel className="font-normal">
                     <p className="text-sm font-medium">Notifications</p>
