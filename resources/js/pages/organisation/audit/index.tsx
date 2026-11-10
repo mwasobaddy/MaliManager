@@ -3,6 +3,8 @@ import { Download, History } from 'lucide-react';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Pagination } from '@/components/ui/pagination';
 import {
     Select,
@@ -11,6 +13,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { formatDateTime } from '@/lib/format-date';
 import {
     exportMethod as auditExport,
     index as auditIndex,
@@ -84,6 +87,7 @@ export default function AuditIndex({
             <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-4">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                     <Heading
+                        level="h1"
                         variant="small"
                         title="Audit log"
                         description="A record of actions taken across your organization."
@@ -101,31 +105,41 @@ export default function AuditIndex({
                 <Card>
                     <CardContent className="space-y-4 py-4">
                         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                            <input
-                                className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-                                placeholder="Search description"
-                                value={form.data.search}
-                                onChange={(e) =>
-                                    form.setData('search', e.target.value)
-                                }
-                            />
-                            <input
-                                className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-                                placeholder="Actor name or email"
-                                value={form.data.actor}
-                                onChange={(e) =>
-                                    form.setData('actor', e.target.value)
-                                }
-                            />
-                            <Select
-                                value={form.data.event}
-                                onValueChange={(value) =>
-                                    form.setData('event', value)
-                                }
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Any action" />
-                                </SelectTrigger>
+                            <div className="grid gap-1.5">
+                                <Label htmlFor="audit-search">
+                                    Description
+                                </Label>
+                                <Input
+                                    id="audit-search"
+                                    placeholder="Search description"
+                                    value={form.data.search}
+                                    onChange={(e) =>
+                                        form.setData('search', e.target.value)
+                                    }
+                                />
+                            </div>
+                            <div className="grid gap-1.5">
+                                <Label htmlFor="audit-actor">Actor</Label>
+                                <Input
+                                    id="audit-actor"
+                                    placeholder="Actor name or email"
+                                    value={form.data.actor}
+                                    onChange={(e) =>
+                                        form.setData('actor', e.target.value)
+                                    }
+                                />
+                            </div>
+                            <div className="grid gap-1.5">
+                                <Label htmlFor="audit-event">Action</Label>
+                                <Select
+                                    value={form.data.event}
+                                    onValueChange={(value) =>
+                                        form.setData('event', value)
+                                    }
+                                >
+                                    <SelectTrigger id="audit-event">
+                                        <SelectValue placeholder="Any action" />
+                                    </SelectTrigger>
                                 <SelectContent>
                                     {options.events.map((event) => (
                                         <SelectItem key={event} value={event}>
@@ -134,41 +148,51 @@ export default function AuditIndex({
                                     ))}
                                 </SelectContent>
                             </Select>
-                            <Select
-                                value={form.data.subject_type}
-                                onValueChange={(value) =>
-                                    form.setData('subject_type', value)
-                                }
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Any resource" />
-                                </SelectTrigger>
+                            </div>
+                            <div className="grid gap-1.5">
+                                <Label htmlFor="audit-resource">Resource</Label>
+                                <Select
+                                    value={form.data.subject_type}
+                                    onValueChange={(value) =>
+                                        form.setData('subject_type', value)
+                                    }
+                                >
+                                    <SelectTrigger id="audit-resource">
+                                        <SelectValue placeholder="Any resource" />
+                                    </SelectTrigger>
                                 <SelectContent>
-                                    {Object.entries(
-                                        options.subjectTypes,
-                                    ).map(([type, label]) => (
-                                        <SelectItem key={type} value={type}>
-                                            {label}
-                                        </SelectItem>
-                                    ))}
+                                    {Object.entries(options.subjectTypes).map(
+                                        ([type, label]) => (
+                                            <SelectItem key={type} value={type}>
+                                                {label}
+                                            </SelectItem>
+                                        ),
+                                    )}
                                 </SelectContent>
                             </Select>
-                            <input
-                                type="date"
-                                className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-                                value={form.data.date_from}
-                                onChange={(e) =>
-                                    form.setData('date_from', e.target.value)
-                                }
-                            />
-                            <input
-                                type="date"
-                                className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-                                value={form.data.date_to}
-                                onChange={(e) =>
-                                    form.setData('date_to', e.target.value)
-                                }
-                            />
+                            </div>
+                            <div className="grid gap-1.5">
+                                <Label htmlFor="audit-date-from">From</Label>
+                                <Input
+                                    id="audit-date-from"
+                                    type="date"
+                                    value={form.data.date_from}
+                                    onChange={(e) =>
+                                        form.setData('date_from', e.target.value)
+                                    }
+                                />
+                            </div>
+                            <div className="grid gap-1.5">
+                                <Label htmlFor="audit-date-to">To</Label>
+                                <Input
+                                    id="audit-date-to"
+                                    type="date"
+                                    value={form.data.date_to}
+                                    onChange={(e) =>
+                                        form.setData('date_to', e.target.value)
+                                    }
+                                />
+                            </div>
                         </div>
                         <div className="flex gap-2">
                             <Button type="button" onClick={submit}>
@@ -230,9 +254,15 @@ export default function AuditIndex({
                                                 className="border-b last:border-0"
                                             >
                                                 <td className="px-3 py-2 whitespace-nowrap text-muted-foreground">
-                                                    {new Date(
-                                                        audit.created_at,
-                                                    ).toLocaleString()}
+                                                    <time
+                                                        dateTime={
+                                                            audit.created_at
+                                                        }
+                                                    >
+                                                        {formatDateTime(
+                                                            audit.created_at,
+                                                        )}
+                                                    </time>
                                                 </td>
                                                 <td className="px-3 py-2">
                                                     {audit.causer ? (

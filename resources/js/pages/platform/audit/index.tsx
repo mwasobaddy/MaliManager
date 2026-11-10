@@ -26,6 +26,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { formatDateTime } from '@/lib/format-date';
 import * as auditRoutes from '@/routes/platform/audit';
 
 type Causer = { id: number; name: string; email: string } | null;
@@ -276,9 +277,12 @@ export default function AdminAuditIndex({
                 accessorKey: 'created_at',
                 header: 'Time',
                 cell: ({ row }) => (
-                    <span className="block whitespace-nowrap text-xs text-muted-foreground tabular-nums">
-                        {new Date(row.original.created_at).toLocaleString()}
-                    </span>
+                    <time
+                        dateTime={row.original.created_at}
+                        className="block text-xs whitespace-nowrap text-muted-foreground tabular-nums"
+                    >
+                        {formatDateTime(row.original.created_at)}
+                    </time>
                 ),
             },
             {
@@ -293,7 +297,7 @@ export default function AdminAuditIndex({
 
                     if (!causer) {
                         return (
-                            <span className="text-muted-foreground flex items-center gap-2 text-xs">
+                            <span className="flex items-center gap-2 text-xs text-muted-foreground">
                                 <Shield className="size-4" />
                                 System
                             </span>
@@ -340,6 +344,7 @@ export default function AdminAuditIndex({
             },
             {
                 id: 'subject',
+                meta: { hideBelow: 'md' },
                 accessorKey: 'subject',
                 header: 'Resource',
                 enableSorting: false,
@@ -362,6 +367,7 @@ export default function AdminAuditIndex({
             },
             {
                 id: 'description',
+                meta: { hideBelow: 'md' },
                 accessorKey: 'description',
                 header: 'Description',
                 enableSorting: false,
@@ -376,11 +382,12 @@ export default function AdminAuditIndex({
             },
             {
                 id: 'ip_address',
+                meta: { hideBelow: 'md' },
                 accessorKey: 'ip_address',
                 header: 'IP',
                 enableSorting: false,
                 cell: ({ row }) => (
-                    <span className="block whitespace-nowrap text-xs text-muted-foreground tabular-nums">
+                    <span className="block text-xs whitespace-nowrap text-muted-foreground tabular-nums">
                         {row.original.ip_address ?? '—'}
                     </span>
                 ),
@@ -406,7 +413,10 @@ export default function AdminAuditIndex({
      * lets the browser download.
      */
     function downloadExport() {
-        const url = new URL(auditRoutes.exportMethod().url, window.location.origin);
+        const url = new URL(
+            auditRoutes.exportMethod().url,
+            window.location.origin,
+        );
 
         for (const [key, value] of Object.entries(currentFilters())) {
             if (value !== '') {
@@ -437,6 +447,7 @@ export default function AdminAuditIndex({
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
                 <div className="flex items-center justify-between gap-3">
                     <Heading
+                        level="h1"
                         title="Audit log"
                         description="Every action across all organizations."
                     />
@@ -485,7 +496,7 @@ export default function AdminAuditIndex({
                             <ActionIconButton
                                 icon={<Download />}
                                 label="Export CSV"
-                                color="teal"
+                                color="default"
                                 onClick={() => setOverlayParam('export', '1')}
                             />
                         )}
@@ -525,9 +536,7 @@ export default function AdminAuditIndex({
                         ? 'This entry is not on the current page of results.'
                         : 'The full record for this action.'
                 }
-                footer={
-                    <OverlayFooter onCancel={closeRowSheet} />
-                }
+                footer={<OverlayFooter onCancel={closeRowSheet} />}
             >
                 {viewedAudit && (
                     <div className="grid gap-4 py-2">
@@ -581,8 +590,10 @@ export default function AdminAuditIndex({
                         </dl>
 
                         <div className="grid gap-2">
-                            <div className="text-sm font-medium">Description</div>
-                            <p className="text-muted-foreground text-sm whitespace-pre-wrap">
+                            <div className="text-sm font-medium">
+                                Description
+                            </div>
+                            <p className="text-sm whitespace-pre-wrap text-muted-foreground">
                                 {viewedAudit.description ?? 'No description.'}
                             </p>
                         </div>
@@ -736,13 +747,13 @@ export default function AdminAuditIndex({
                                     <SelectValue placeholder="Any resource" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {Object.entries(
-                                        options.subjectTypes,
-                                    ).map(([type, text]) => (
-                                        <SelectItem key={type} value={type}>
-                                            {text}
-                                        </SelectItem>
-                                    ))}
+                                    {Object.entries(options.subjectTypes).map(
+                                        ([type, text]) => (
+                                            <SelectItem key={type} value={type}>
+                                                {text}
+                                            </SelectItem>
+                                        ),
+                                    )}
                                 </SelectContent>
                             </Select>
                             <input
@@ -808,8 +819,8 @@ export default function AdminAuditIndex({
                         )}
                     </div>
 
-                    <div className="grid gap-2">
-                        <Label>Date</Label>
+                    <fieldset className="grid gap-2">
+                        <legend className="text-sm font-medium">Date</legend>
                         <div className="grid grid-cols-2 gap-3">
                             <div className="grid gap-2">
                                 <Label
@@ -862,7 +873,7 @@ export default function AdminAuditIndex({
                                 />
                             </div>
                         </div>
-                    </div>
+                    </fieldset>
                 </div>
             </ResponsiveOverlay>
 
@@ -893,9 +904,11 @@ export default function AdminAuditIndex({
                 <div className="space-y-3 py-2 text-sm">
                     <div className="rounded-lg border border-border-strong bg-background p-3">
                         <div className="font-medium">All matching entries</div>
-                        <div className="text-muted-foreground mt-1 text-xs">
+                        <div className="mt-1 text-xs text-muted-foreground">
                             Every audit entry matching the current filters
-                            {Object.values(currentFilters()).some((v) => v !== '')
+                            {Object.values(currentFilters()).some(
+                                (v) => v !== '',
+                            )
                                 ? '.'
                                 : ' (no filters are active).'}{' '}
                             Ignores pagination — {audits.total} entr

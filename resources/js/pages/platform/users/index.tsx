@@ -26,10 +26,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Pagination } from '@/components/ui/pagination';
-import {
-    RadioGroup,
-    RadioGroupItem,
-} from '@/components/ui/radio-group';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
     Select,
     SelectContent,
@@ -124,15 +121,13 @@ export default function UsersIndex({
         return new URLSearchParams(index === -1 ? '' : page.url.slice(index));
     }, [page.url]);
 
-
     const viewedId = Number(query.get('user'));
     const isViewOpen = Number.isFinite(viewedId) && viewedId > 0;
     const viewedUser = isViewOpen
         ? (users.data.find((user) => user.id === viewedId) ?? focusedUser)
         : undefined;
 
-    const rowMode =
-        (query.get('mode') as RowMode | null) ?? 'view';
+    const rowMode = (query.get('mode') as RowMode | null) ?? 'view';
     const isCreateOpen = query.get('create') === '1';
     const isImportOpen = query.get('import') === '1';
     /** Spoken description of the active filters, for the export sheet. */
@@ -357,8 +352,11 @@ export default function UsersIndex({
                                 {row.original.name}
                             </div>
                             {row.original.person && (
-                                <div className="text-muted-foreground truncate text-xs">
-                                    {[row.original.person.first_name, row.original.person.last_name]
+                                <div className="truncate text-xs text-muted-foreground">
+                                    {[
+                                        row.original.person.first_name,
+                                        row.original.person.last_name,
+                                    ]
                                         .filter(Boolean)
                                         .join(' ') || '—'}
                                 </div>
@@ -369,16 +367,16 @@ export default function UsersIndex({
             },
             {
                 id: 'email',
+                meta: { hideBelow: 'md' },
                 accessorKey: 'email',
                 header: 'Email',
                 cell: ({ row }) => (
-                    <span className="block truncate">
-                        {row.original.email}
-                    </span>
+                    <span className="block truncate">{row.original.email}</span>
                 ),
             },
             {
                 id: 'roles',
+                meta: { hideBelow: 'md' },
                 header: 'Roles',
                 enableSorting: false,
                 cell: ({ row }) => (
@@ -435,9 +433,7 @@ export default function UsersIndex({
                                         icon={<Pencil />}
                                         label={`Edit ${user.name}`}
                                         color="edit"
-                                        onClick={() =>
-                                            openRow(user, 'edit')
-                                        }
+                                        onClick={() => openRow(user, 'edit')}
                                     />
                                 </>
                             )}
@@ -464,6 +460,7 @@ export default function UsersIndex({
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
                 <div className="flex items-center justify-between gap-3">
                     <Heading
+                        level="h1"
                         title="User management"
                         description="Create and manage people and their user accounts."
                     />
@@ -473,9 +470,7 @@ export default function UsersIndex({
                             label="New user"
                             tooltip="Create user"
                             color="primary"
-                            onClick={() =>
-                                setOverlayParam('create', '1')
-                            }
+                            onClick={() => setOverlayParam('create', '1')}
                             className="max-w-20 sm:max-w-24"
                         />
                     )}
@@ -526,7 +521,7 @@ export default function UsersIndex({
                             <ActionIconButton
                                 icon={<Upload />}
                                 label="Import from CSV"
-                                color="teal"
+                                color="default"
                                 onClick={() => setOverlayParam('import', '1')}
                             />
                         )}
@@ -534,7 +529,7 @@ export default function UsersIndex({
                             <ActionIconButton
                                 icon={<Download />}
                                 label="Export"
-                                color="teal"
+                                color="default"
                                 onClick={() => setOverlayParam('export', '1')}
                             />
                         )}
@@ -606,6 +601,7 @@ export default function UsersIndex({
                         />
                     ) : (
                         <OverlayFooter
+                            onCancel={closeRowSheet}
                             actions={[
                                 {
                                     label: 'Edit',
@@ -641,7 +637,9 @@ export default function UsersIndex({
             </ResponsiveOverlay>
 
             <ResponsiveOverlay
-                open={query.get('filters') !== null && query.get('filters') !== ''}
+                open={
+                    query.get('filters') !== null && query.get('filters') !== ''
+                }
                 onOpenChange={(open) => {
                     if (!open) {
                         setOverlayParam('filters', null, { replace: true });
@@ -677,8 +675,8 @@ export default function UsersIndex({
                 }
             >
                 <div className="grid gap-4 py-2">
-                    <div className="grid gap-2">
-                        <Label>Status</Label>
+                    <fieldset className="grid gap-2">
+                        <legend className="text-sm font-medium">Status</legend>
                         {/* Same reasoning as the role filter: three options
                             plus "any" is a radio group, not a dropdown. */}
                         <RadioGroup
@@ -704,7 +702,10 @@ export default function UsersIndex({
                                 ['inactive', 'Inactive'],
                                 ['suspended', 'Suspended'],
                             ].map(([value, text]) => (
-                                <div key={value} className="flex items-center gap-2">
+                                <div
+                                    key={value}
+                                    className="flex items-center gap-2"
+                                >
                                     <RadioGroupItem
                                         id={`filter-status-${value}`}
                                         value={value}
@@ -718,10 +719,12 @@ export default function UsersIndex({
                                 </div>
                             ))}
                         </RadioGroup>
-                    </div>
+                    </fieldset>
 
-                    <div className="grid gap-2">
-                        <Label>Platform roles</Label>
+                    <fieldset className="grid gap-2">
+                        <legend className="text-sm font-medium">
+                            Platform roles
+                        </legend>
                         {/* Radix Select reserves the empty value for the
                             placeholder, so "Any role" is not expressible as an
                             item. A RadioGroup has no such reservation. */}
@@ -772,7 +775,7 @@ export default function UsersIndex({
                                 </div>
                             ))}
                         </RadioGroup>
-                    </div>
+                    </fieldset>
 
                     <div className="grid gap-2">
                         <Label htmlFor="filter-search">Search</Label>
@@ -793,10 +796,11 @@ export default function UsersIndex({
                 </div>
             </ResponsiveOverlay>
 
-
             <CsvExportSheet
                 open={isExportOpen}
-                onClose={() => setOverlayParam('export', null, { replace: true })}
+                onClose={() =>
+                    setOverlayParam('export', null, { replace: true })
+                }
                 canExport={canExport}
                 total={users.total}
                 pageCount={users.data.length}
@@ -807,7 +811,9 @@ export default function UsersIndex({
 
             <CsvImportSheet
                 open={isImportOpen}
-                onClose={() => setOverlayParam('import', null, { replace: true })}
+                onClose={() =>
+                    setOverlayParam('import', null, { replace: true })
+                }
                 route={usersRoutes.importMethod}
                 idPrefix="users"
                 title="Import users"
@@ -824,7 +830,6 @@ export default function UsersIndex({
                 canImport={canImport}
                 buttonLabel="Import"
             />
-
 
             <ResponsiveOverlay
                 open={isCreateOpen}
@@ -866,8 +871,6 @@ export default function UsersIndex({
                     />
                 </Form>
             </ResponsiveOverlay>
-
-
 
             <PasswordConfirmDialog
                 open={deleteTarget !== null}
@@ -1013,11 +1016,7 @@ function UserFormFields({
             field as keyof NonNullable<UserRow['person']>
         ] as string | null | undefined;
 
-        return (
-            fromPerson ??
-            (field === 'email' ? user?.email : null) ??
-            ''
-        );
+        return fromPerson ?? (field === 'email' ? user?.email : null) ?? '';
     };
 
     return (
@@ -1039,10 +1038,7 @@ function UserFormFields({
 
             <div className="grid gap-2">
                 <Label htmlFor={`${idPrefix}-status`}>Status</Label>
-                <Select
-                    name="status"
-                    defaultValue={user?.status ?? 'active'}
-                >
+                <Select name="status" defaultValue={user?.status ?? 'active'}>
                     <SelectTrigger id={`${idPrefix}-status`}>
                         <SelectValue />
                     </SelectTrigger>
@@ -1059,11 +1055,16 @@ function UserFormFields({
                 <Label>Platform roles</Label>
                 <RadioGroup
                     name="roles"
-                    defaultValue={user?.roles.map((r) => r.name).join(',') ?? ''}
+                    defaultValue={
+                        user?.roles.map((r) => r.name).join(',') ?? ''
+                    }
                     className="grid gap-2"
                 >
                     {platformRoles.map((role) => (
-                        <div key={role.value} className="flex items-center gap-2">
+                        <div
+                            key={role.value}
+                            className="flex items-center gap-2"
+                        >
                             <RadioGroupItem
                                 id={`${idPrefix}-role-${role.value}`}
                                 value={role.value}
@@ -1086,11 +1087,7 @@ function UserFormFields({
                 <input
                     type="hidden"
                     name="roles[]"
-                    value={
-                        user
-                            ? user.roles.map((r) => r.name).join(',')
-                            : ''
-                    }
+                    value={user ? user.roles.map((r) => r.name).join(',') : ''}
                     readOnly
                 />
                 <FieldError message={errors.roles} />
