@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests\Tenant;
 
+use App\Concerns\PasswordValidationRules;
 use App\Support\TenancyContext;
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -14,6 +16,8 @@ use Illuminate\Foundation\Http\FormRequest;
  */
 class DestroyLandParcelSectionRequest extends FormRequest
 {
+    use PasswordValidationRules;
+
     public function authorize(): bool
     {
         $organization = TenancyContext::organization();
@@ -28,10 +32,12 @@ class DestroyLandParcelSectionRequest extends FormRequest
     }
 
     /**
-     * @return array<string, mixed>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
-        return [];
+        return [
+            'password' => $this->currentPasswordRules(),
+        ];
     }
 }
