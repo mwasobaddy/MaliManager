@@ -15,7 +15,7 @@ export function Notifications() {
                 <Button
                     variant="ghost"
                     size="icon"
-                    className="group h-9 w-9 cursor-pointer"
+                    className="group h-9 w-9 cursor-pointer coarse:h-11 coarse:w-11"
                     aria-label="Notifications"
                 >
                     <Bell className="!size-5 opacity-80 group-hover:opacity-100" />

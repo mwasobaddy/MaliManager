@@ -44,7 +44,9 @@
 | `--status-info`         | `#2B6CB0` | Blue — soft badge bg `#DCEBF8`, text `#1A3E63`                               |
 | `--focus-ring`          | `#C87A53` | Terracotta focus outline (3:1 on surfaces)                                   |
 
-### 2.2 Dark Mode (`.dark` or `[data-theme="dark"]`)
+### 2.2 Dark Mode (`.dark`)
+
+> The `.dark` class on `<html>` is the only dark-mode switch (set by `use-appearance` + the pre-paint script in `app.blade.php`). Nothing writes a `data-theme` attribute, so do not target one.
 
 | Token                   | Hex       | Note                                           |
 | ----------------------- | --------- | ---------------------------------------------- |
@@ -312,7 +314,7 @@ Cards use a top‑down sheen to feel lit from above:
 
 **Spinner** — Stroke `--brand-primary-600` on `--bg-base`; size tokens sm/md/lg; aria‑label.
 
-**Toast** — Fixed corner Card popover; left icon + soft semantic bg; title `--text`, desc `--text-muted`; action link `--brand-primary`; auto‑dismiss 4s, pause on hover; stack gap 8px.
+**Toast** — Fixed corner Card popover; left icon + soft semantic bg; title `--text`, desc `--text-muted`; action link `--brand-primary`; advisory toasts auto-dismiss at 8s, error toasts persist until dismissed (close button always present); stack gap 8px.
 
 ### 4.6 Utilities, Command & Layout Control
 

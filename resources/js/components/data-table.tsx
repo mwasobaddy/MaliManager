@@ -22,6 +22,11 @@ declare module '@tanstack/react-table' {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     interface ColumnMeta<TData extends RowData, TValue> {
         align?: 'left' | 'right' | 'center';
+        /**
+         * Hide the column below a breakpoint so wide tables degrade to one
+         * scroll container on phones instead of sideways scrolling.
+         */
+        hideBelow?: 'md';
     }
 }
 
@@ -145,6 +150,12 @@ export function DataTable<TData>({
                                           ? 'text-center'
                                           : 'text-left';
 
+                                const responsiveClass =
+                                    header.column.columnDef.meta?.hideBelow ===
+                                    'md'
+                                        ? 'hidden md:table-cell'
+                                        : '';
+
                                 return (
                                     <th
                                         key={header.id}
@@ -159,6 +170,7 @@ export function DataTable<TData>({
                                         className={cn(
                                             'text-muted-foreground bg-bg-base sticky top-0 z-10 px-3 py-2 text-xs font-medium tracking-wide uppercase',
                                             alignClass,
+                                            responsiveClass,
                                         )}
                                     >
                                         {header.isPlaceholder ? null : sortable ? (
@@ -325,6 +337,9 @@ export function DataTable<TData>({
                                                 : cellAlign === 'center'
                                                   ? 'text-center'
                                                   : 'text-left',
+                                            cell.column.columnDef.meta
+                                                ?.hideBelow === 'md' &&
+                                                'hidden md:table-cell',
                                         )}
                                     >
                                         {flexRender(

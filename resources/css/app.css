@@ -522,3 +522,33 @@
             linear-gradient(90deg, rgb(234 230 223 / 0.045) 1px, transparent 1px);
     }
 }
+
+/*
+ * Print: receipts, agreements and reports are printed from these pages, so
+ * the stylesheet carries the essentials — repeating table headers, exact
+ * colour for status chips (otherwise they print blank), tabular figures
+ * for money, and a sane page margin. Chrome-only UI stays hidden via the
+ * existing `print:hidden` classes at each call site.
+ */
+@media print {
+    @page {
+        margin: 12mm;
+    }
+
+    thead {
+        display: table-header-group;
+    }
+
+    tr,
+    li {
+        break-inside: avoid;
+    }
+
+    * {
+        print-color-adjust: exact;
+    }
+
+    .tabular-nums {
+        font-variant-numeric: tabular-nums;
+    }
+}

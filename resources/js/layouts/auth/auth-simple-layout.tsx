@@ -91,8 +91,8 @@ export default function AuthSimpleLayout({
 
                         {/* Floating stat cards. */}
                         <div aria-hidden className="relative h-56 shrink-0">
-                            <div className="absolute top-0 left-0 w-[52%] -rotate-3 rounded-xl border bg-card p-4 text-foreground shadow-xl">
-                                <p className="text-[11px] font-medium text-muted-foreground">
+                            <div className="absolute top-0 left-0 w-[52%] -rotate-3 rounded-xl border bg-[#FAF8F5] p-4 text-[#2A2621] shadow-xl">
+                                <p className="text-[11px] font-medium text-[#6B635A]">
                                     Occupancy
                                 </p>
                                 <div className="mt-2 flex items-center gap-3">
@@ -103,7 +103,7 @@ export default function AuthSimpleLayout({
                                                 'conic-gradient(var(--brand-primary) 0 66%, var(--brand-accent) 66% 88%, var(--border) 88% 100%)',
                                         }}
                                     >
-                                        <div className="absolute inset-[6px] rounded-full bg-card" />
+                                        <div className="absolute inset-[6px] rounded-full bg-[#FAF8F5]" />
                                         <span className="absolute inset-0 grid place-items-center text-xs font-semibold">
                                             88%
                                         </span>
@@ -121,14 +121,14 @@ export default function AuthSimpleLayout({
                                 </div>
                             </div>
 
-                            <div className="absolute top-24 right-0 w-[48%] rotate-2 rounded-xl border bg-card p-4 text-foreground shadow-xl">
-                                <p className="text-[11px] font-medium text-muted-foreground">
+                            <div className="absolute top-24 right-0 w-[48%] rotate-2 rounded-xl border bg-[#FAF8F5] p-4 text-[#2A2621] shadow-xl">
+                                <p className="text-[11px] font-medium text-[#6B635A]">
                                     Rent collected
                                 </p>
                                 <p className="mt-1 text-lg font-semibold tabular-nums">
                                     KES 1.24M
                                 </p>
-                                <p className="text-[11px] text-muted-foreground">
+                                <p className="text-[11px] text-[#6B635A]">
                                     of KES 1.35M this month
                                 </p>
                                 <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-border">

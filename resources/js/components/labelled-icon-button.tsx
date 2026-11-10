@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils';
  * button in a header that already has other controls.
  */
 const iconChipVariants = cva(
-    'inline-flex size-9 items-center justify-center rounded-lg transition-colors',
+    'inline-flex size-9 coarse:size-11 items-center justify-center rounded-lg transition-colors',
     {
         variants: {
             color: {

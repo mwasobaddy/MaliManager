@@ -10,7 +10,6 @@ import {
     Dialog,
     DialogContent,
     DialogDescription,
-    DialogFooter,
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog';
@@ -90,22 +89,20 @@ export default function DeleteUser() {
                                         <InputError message={errors.password} />
                                     </div>
 
-                                    <DialogFooter>
-                                        <OverlayFooter
-                                            onCancel={() =>
-                                                resetAndClearErrors()
-                                            }
-                                            actions={[
-                                                {
-                                                    label: 'Delete account',
-                                                    tone: 'danger',
-                                                    type: 'submit',
-                                                    disabled: processing,
-                                                    testId: 'confirm-delete-user-button',
-                                                },
-                                            ]}
-                                        />
-                                    </DialogFooter>
+                                    <OverlayFooter
+                                        onCancel={() =>
+                                            resetAndClearErrors()
+                                        }
+                                        actions={[
+                                            {
+                                                label: 'Delete account',
+                                                tone: 'danger',
+                                                type: 'submit',
+                                                disabled: processing,
+                                                testId: 'confirm-delete-user-button',
+                                            },
+                                        ]}
+                                    />
                                 </>
                             )}
                         </Form>

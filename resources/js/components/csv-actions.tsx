@@ -92,6 +92,8 @@ export function CsvImportSheet({
                 }}
                 className="space-y-3 py-2"
             >
+                {({ processing }) => (
+                    <>
                 <div className="border-border-strong bg-background space-y-1 rounded-lg border p-3 text-xs">
                     <div className="font-medium">Required columns</div>
                     <div className="text-muted-foreground mt-1">
@@ -141,10 +143,15 @@ export function CsvImportSheet({
                     </div>
                 )}
 
-                <Button type="submit" className="w-full">
+                <Button
+                    type="submit"
+                    disabled={processing}
+                >
                     <Upload className="mr-2 size-4" />
-                    {buttonLabel}
+                    {processing ? 'Importing…' : buttonLabel}
                 </Button>
+                    </>
+                )}
             </Form>
         </ResponsiveOverlay>
     );

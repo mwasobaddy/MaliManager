@@ -225,7 +225,7 @@ export function GlobalSearch() {
                 <Button
                     variant="ghost"
                     size="sm"
-                    className="group text-muted-foreground hover:text-foreground h-9 cursor-pointer gap-2 px-2"
+                    className="group text-muted-foreground hover:text-foreground h-9 cursor-pointer gap-2 px-2 coarse:h-11"
                     aria-label="Search (Command K)"
                 >
                     <Search className="!size-5 opacity-80 group-hover:opacity-100" />

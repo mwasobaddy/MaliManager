@@ -54,6 +54,8 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
     Select,
     SelectContent,
@@ -224,6 +226,7 @@ function ToolbarButton({
                     disabled={disabled}
                     onClick={onClick}
                     aria-label={title ?? label ?? 'Formatting button'}
+                    aria-pressed={active ?? false}
                 >
                     {icon}
                 </Button>
@@ -254,6 +257,8 @@ export default function RichTextEditor({
 }: RichTextEditorProps) {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [uploading, setUploading] = useState(false);
+    const [linkEditing, setLinkEditing] = useState(false);
+    const [linkDraft, setLinkDraft] = useState('');
     const [cropTarget, setCropTarget] = useState<{
         src: string;
         alt: string;
@@ -520,31 +525,32 @@ export default function RichTextEditor({
         }
     }
 
-    function setLink() {
+    function openLinkEditor() {
         if (!editor) {
             return;
         }
 
         const previous = editor.getAttributes('link');
-        const prevUrl = (previous.href as string) ?? '';
-        const url = window.prompt('Link URL', prevUrl);
+        setLinkDraft((previous.href as string) ?? '');
+        setLinkEditing(true);
+    }
 
-        if (url === null) {
+    function applyLink() {
+        if (!editor) {
+            setLinkEditing(false);
+
             return;
         }
+
+        const url = linkDraft.trim();
 
         if (url === '') {
             editor.chain().focus().extendMarkRange('link').unsetLink().run();
-
-            return;
+        } else {
+            editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
         }
 
-        editor
-            .chain()
-            .focus()
-            .extendMarkRange('link')
-            .setLink({ href: url })
-            .run();
+        setLinkEditing(false);
     }
 
     const tableMenu = useMemo(() => {
@@ -656,7 +662,10 @@ export default function RichTextEditor({
                         }
                     }}
                 >
-                    <SelectTrigger className="h-8 w-28 text-xs">
+                    <SelectTrigger
+                        className="h-8 w-28 text-xs"
+                        aria-label="Text style"
+                    >
                         <SelectValue placeholder="Style" />
                     </SelectTrigger>
                     <SelectContent onCloseAutoFocus={keepFocus}>
@@ -797,7 +806,7 @@ export default function RichTextEditor({
                 {/* Link */}
                 <ToolbarButton
                     active={toolbar.isLink}
-                    onClick={setLink}
+                    onClick={openLinkEditor}
                     icon={<Link2 className="size-4" />}
                     title="Insert / edit link"
                 />
@@ -874,6 +883,7 @@ export default function RichTextEditor({
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 rounded-md"
+                            aria-label="Table"
                         >
                             <Table2 className="size-4" />
                         </Button>
@@ -1004,6 +1014,48 @@ export default function RichTextEditor({
                     </DropdownMenu>
                 )}
             </div>
+
+            {linkEditing && (
+                <form
+                    className="flex flex-col gap-2 rounded-md border border-input bg-background p-2 sm:flex-row sm:items-end"
+                    onSubmit={(event) => {
+                        event.preventDefault();
+                        applyLink();
+                    }}
+                >
+                    <div className="grid flex-1 gap-1.5">
+                        <Label htmlFor="rte-link-url">Link URL</Label>
+                        <Input
+                            id="rte-link-url"
+                            value={linkDraft}
+                            onChange={(event) =>
+                                setLinkDraft(event.target.value)
+                            }
+                            placeholder="https://example.com"
+                            inputMode="url"
+                            autoFocus
+                            onKeyDown={(event) => {
+                                if (event.key === 'Escape') {
+                                    setLinkEditing(false);
+                                }
+                            }}
+                        />
+                    </div>
+                    <div className="flex gap-2">
+                        <Button
+                            type="button"
+                            variant="shadcndefault"
+                            size="sm"
+                            onClick={() => setLinkEditing(false)}
+                        >
+                            Cancel
+                        </Button>
+                        <Button type="submit" size="sm">
+                            Apply
+                        </Button>
+                    </div>
+                </form>
+            )}
 
             <EditorContent
                 editor={editor}
