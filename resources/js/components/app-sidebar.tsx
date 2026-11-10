@@ -3,10 +3,12 @@ import {
     BarChart3,
     Bookmark,
     Building2,
+    Banknote,
     CreditCard,
     DoorOpen,
     FileText,
     FolderGit2,
+    Gauge,
     History,
     LayoutGrid,
     ArrowLeftRight,
@@ -16,6 +18,7 @@ import {
     ScrollText,
     Sparkles,
     Tags,
+    Undo2,
     Users,
     UserRound,
     Wand2,
@@ -54,6 +57,8 @@ import agreementTemplates, {
 } from '@/routes/tenant/agreement-templates';
 import { edit as aiSettingsEdit } from '@/routes/tenant/ai-settings';
 import { index as auditIndex } from '@/routes/tenant/audit';
+import { show as billingShow } from '@/routes/tenant/billing';
+import { index as depositRefundsIndex } from '@/routes/tenant/deposit-refunds';
 import { page as draftingPageIndex } from '@/routes/tenant/drafting';
 import { index as expensesIndex } from '@/routes/tenant/expenses';
 import { index as inspectionsIndex } from '@/routes/tenant/inspections';
@@ -63,7 +68,9 @@ import {
 } from '@/routes/tenant/land-parcels';
 import { index as leasesIndex } from '@/routes/tenant/leases';
 import { index as maintenanceIndex } from '@/routes/tenant/maintenance';
+import { index as meterReadingsIndex } from '@/routes/tenant/meter-readings';
 import { index as occupantsIndex } from '@/routes/tenant/occupants';
+import { index as paymentsIndex } from '@/routes/tenant/payments';
 import {
     dashboard as propertyDashboard,
     index as propertiesIndex,
@@ -102,6 +109,8 @@ export function AppSidebar() {
         (context as { is_owner?: boolean } | undefined)?.is_owner ?? false;
     const canManageMaintenance =
         context?.permissions?.includes('maintenance.manage') ?? false;
+    const canManagePayments =
+        context?.permissions?.includes('payment.manage') ?? false;
     const canViewReports =
         (context as { is_owner?: boolean } | undefined)?.is_owner ||
         [
@@ -260,6 +269,28 @@ export function AppSidebar() {
                 ],
             },
             {
+                label: 'Operations',
+                items: [
+                    ...(canManageExpenses
+                        ? [item('Expenses', expensesIndex(), ReceiptText)]
+                        : []),
+                    ...(canManagePayments
+                        ? [item('Payments', paymentsIndex(), Banknote)]
+                        : []),
+                    ...(canManageMaintenance
+                        ? [
+                              dropdown('Maintenance', Wrench, [
+                                  item(
+                                      'All requests',
+                                      maintenanceIndex(),
+                                      Wrench,
+                                  ),
+                              ]),
+                          ]
+                        : []),
+                ],
+            },
+            {
                 label: 'Organization',
                 items: [
                     ...(switchPropertyItem() ? [switchPropertyItem()!] : []),
@@ -322,7 +353,14 @@ export function AppSidebar() {
                           ]
                         : []),
                     ...(canManageUnits
-                        ? [item('Units', unitsIndex(), DoorOpen)]
+                        ? [
+                              item('Units', unitsIndex(), DoorOpen),
+                              item(
+                                  'Meter readings',
+                                  meterReadingsIndex(),
+                                  Gauge,
+                              ),
+                          ]
                         : []),
                     ...(canManageLandParcels
                         ? [
@@ -345,6 +383,18 @@ export function AppSidebar() {
                 items: [
                     ...(canManageExpenses
                         ? [item('Expenses', expensesIndex(), ReceiptText)]
+                        : []),
+                    ...(canManagePayments
+                        ? [item('Payments', paymentsIndex(), Banknote)]
+                        : []),
+                    ...(canViewLeases
+                        ? [
+                              item(
+                                  'Deposit refunds',
+                                  depositRefundsIndex(),
+                                  Undo2,
+                              ),
+                          ]
                         : []),
                     ...(canManageMaintenance
                         ? [
@@ -370,6 +420,9 @@ export function AppSidebar() {
                 items: [
                     ...(canManageStaff
                         ? [item('Staff', staffIndex(), Users)]
+                        : []),
+                    ...(isOwner
+                        ? [item('Billing', billingShow(), CreditCard)]
                         : []),
                     ...(canManageTemplates
                         ? [
