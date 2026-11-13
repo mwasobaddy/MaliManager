@@ -265,3 +265,7 @@ export default function ReportsIndex({ types }: Props) {
         </>
     );
 }
+
+ReportsIndex.layout = {
+    breadcrumbs: [{ title: 'Reports' }],
+};

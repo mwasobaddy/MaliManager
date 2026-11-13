@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Empty } from '@/components/ui/empty';
 import { create as createInspectionRoute } from '@/routes/tenant/inspections';
+import { index as propertiesIndex } from '@/routes/tenant/properties';
 
 type InspectionRow = {
     id: number;
@@ -111,3 +112,15 @@ export default function InspectionsIndex({ propertySlug, inspections }: Props) {
         </>
     );
 }
+
+InspectionsIndex.layout = {
+    breadcrumbs: [
+        {
+            title: 'Properties',
+            href: propertiesIndex().url,
+        },
+        {
+            title: 'Inspections',
+        },
+    ],
+};

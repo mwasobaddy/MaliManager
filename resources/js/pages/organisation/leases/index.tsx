@@ -45,6 +45,7 @@ import {
     renewalSuggestion,
 } from '@/routes/tenant/leases';
 import { agreement as agreementPrintRoute } from '@/routes/tenant/occupants';
+import { index as propertiesIndex } from '@/routes/tenant/properties';
 
 type LeaseRow = {
     id: number;
@@ -636,3 +637,15 @@ export default function LeasesIndex({ leases, filters }: Props) {
         </>
     );
 }
+
+LeasesIndex.layout = {
+    breadcrumbs: [
+        {
+            title: 'Properties',
+            href: propertiesIndex().url,
+        },
+        {
+            title: 'Leases',
+        },
+    ],
+};

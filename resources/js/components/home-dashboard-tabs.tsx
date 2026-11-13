@@ -23,12 +23,14 @@ export function HomeDashboardTabs() {
 
     return (
         <Tabs
-            value={onDashboard ? dashboardUrl : homeUrl}
-            onValueChange={(value) => router.visit(value)}
+            value={onDashboard ? 'dashboard' : 'home'}
+            onValueChange={(value) =>
+                router.visit(value === 'dashboard' ? dashboardUrl : homeUrl)
+            }
         >
             <TabsList aria-label="Switch between Home and Dashboard">
-                <TabsTrigger value={homeUrl}>Home</TabsTrigger>
-                <TabsTrigger value={dashboardUrl}>Dashboard</TabsTrigger>
+                <TabsTrigger value="home">Home</TabsTrigger>
+                <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
             </TabsList>
         </Tabs>
     );

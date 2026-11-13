@@ -18,6 +18,7 @@ import {
     index as inspectionsIndex,
     store as storeInspection,
 } from '@/routes/tenant/inspections';
+import { index as propertiesIndex } from '@/routes/tenant/properties';
 
 type Unit = { id: number; name: string };
 
@@ -170,3 +171,18 @@ export default function InspectionCreate({ units }: Props) {
         </>
     );
 }
+
+InspectionCreate.layout = {
+    breadcrumbs: [
+        {
+            title: 'Properties',
+            href: propertiesIndex().url,
+        },
+        {
+            title: 'Inspections',
+        },
+        {
+            title: 'New inspection',
+        },
+    ],
+};

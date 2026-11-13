@@ -13,6 +13,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { formatDate } from '@/lib/format-date';
 import { formatMoney } from '@/lib/format-money';
 import {
     index as paymentsIndexRoute,
@@ -137,7 +138,7 @@ export default function PaymentsIndex({ payments, statuses }: Props) {
                                         className="border-b last:border-0"
                                     >
                                         <td className="px-3 py-2 font-medium">
-                                            {payment.tenant_name}
+                                            {payment.tenant_name ?? '—'}
                                         </td>
                                         <td className="px-3 py-2 text-muted-foreground">
                                             {payment.property_name ?? '—'}
@@ -152,7 +153,9 @@ export default function PaymentsIndex({ payments, statuses }: Props) {
                                             )}
                                         </td>
                                         <td className="px-3 py-2">
-                                            {payment.paid_on}
+                                            {payment.paid_on
+                                                ? formatDate(payment.paid_on)
+                                                : '—'}
                                         </td>
                                         <td className="px-3 py-2 text-right capitalize">
                                             {payment.method}
@@ -203,7 +206,7 @@ export default function PaymentsIndex({ payments, statuses }: Props) {
                                                             payment: payment.id,
                                                         }).url
                                                     }
-                                                    aria-label={`Edit payment for ${payment.tenant_name}`}
+                                                    aria-label={`Edit payment for ${payment.tenant_name ?? payment.unit_name ?? `payment ${payment.id}`}`}
                                                 >
                                                     <Pencil className="size-4" />
                                                 </Link>
@@ -235,3 +238,7 @@ export default function PaymentsIndex({ payments, statuses }: Props) {
         </>
     );
 }
+
+PaymentsIndex.layout = {
+    breadcrumbs: [{ title: 'Payments' }],
+};

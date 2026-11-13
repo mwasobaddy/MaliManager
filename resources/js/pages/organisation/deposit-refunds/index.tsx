@@ -407,3 +407,7 @@ export default function DepositRefunds({ refunds, leases, filters }: Props) {
         </>
     );
 }
+
+DepositRefunds.layout = {
+    breadcrumbs: [{ title: 'Deposit refunds' }],
+};

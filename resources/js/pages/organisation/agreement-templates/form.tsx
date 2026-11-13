@@ -210,3 +210,15 @@ export default function AgreementTemplateForm({
         </>
     );
 }
+
+AgreementTemplateForm.layout = {
+    breadcrumbs: [
+        {
+            title: 'Agreement templates',
+            href: agreementTemplates.orgIndex(),
+        },
+        {
+            title: 'Template',
+        },
+    ],
+};

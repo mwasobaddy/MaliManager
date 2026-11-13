@@ -188,7 +188,16 @@ export default function LandParcelShow({
                                             : null
                                     }
                                 />
-                                <Detail label="Zoning" value={parcel.zoning} />
+                                <Detail
+                                    label="Zoning"
+                                    value={
+                                        parcel.zoning ? (
+                                            <span className="capitalize">
+                                                {parcel.zoning}
+                                            </span>
+                                        ) : null
+                                    }
+                                />
                                 <Detail
                                     label="Address"
                                     value={parcel.address}
@@ -203,6 +212,7 @@ export default function LandParcelShow({
                                                     ? 'default'
                                                     : 'secondary'
                                             }
+                                            className="capitalize"
                                         >
                                             {parcel.status}
                                         </Badge>
@@ -235,9 +245,9 @@ export default function LandParcelShow({
                         {/* Sections: sub-plots that can be leased independently. */}
                         <div className="rounded-xl border border-input p-6">
                             <div className="flex items-center justify-between gap-4">
-                                <h3 className="text-sm font-semibold">
+                                <h2 className="text-sm font-semibold">
                                     Sections
-                                </h3>
+                                </h2>
                                 {canManageSections && !addSection && (
                                     <Button
                                         size="sm"
@@ -631,7 +641,7 @@ export default function LandParcelShow({
 
                     <div className="space-y-6">
                         <div className="rounded-xl border border-input p-6">
-                            <h3 className="text-sm font-semibold">Managers</h3>
+                            <h2 className="text-sm font-semibold">Managers</h2>
                             {managers.length === 0 ? (
                                 <p className="mt-2 text-sm text-muted-foreground">
                                     No managers assigned.
@@ -659,9 +669,9 @@ export default function LandParcelShow({
 
                         {canDeleteLandParcel && (
                             <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-6">
-                                <h3 className="text-sm font-semibold text-destructive">
+                                <h2 className="text-sm font-semibold text-destructive">
                                     Danger zone
-                                </h3>
+                                </h2>
                                 <p className="mt-2 text-sm text-muted-foreground">
                                     Removing this parcel is permanent and cannot
                                     be undone.
@@ -804,6 +814,7 @@ LandParcelShow.layout = {
     breadcrumbs: [
         {
             title: 'Land parcels',
+            href: index(),
         },
         {
             title: 'Parcel',

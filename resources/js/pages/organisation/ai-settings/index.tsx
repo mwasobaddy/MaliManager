@@ -375,3 +375,7 @@ export default function AiSettings({
         </>
     );
 }
+
+AiSettings.layout = {
+    breadcrumbs: [{ title: 'AI settings' }],
+};

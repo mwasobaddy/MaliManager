@@ -457,3 +457,7 @@ export default function MeterReadings({
         </>
     );
 }
+
+MeterReadings.layout = {
+    breadcrumbs: [{ title: 'Meter readings' }],
+};

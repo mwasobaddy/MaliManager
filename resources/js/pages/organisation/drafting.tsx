@@ -278,3 +278,7 @@ export default function Drafting({ enabled }: Props) {
         </>
     );
 }
+
+Drafting.layout = {
+    breadcrumbs: [{ title: 'AI drafting' }],
+};

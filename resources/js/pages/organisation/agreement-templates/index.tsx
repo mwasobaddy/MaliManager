@@ -162,3 +162,7 @@ export default function AgreementTemplatesIndex({
         </>
     );
 }
+
+AgreementTemplatesIndex.layout = {
+    breadcrumbs: [{ title: 'Agreement templates' }],
+};

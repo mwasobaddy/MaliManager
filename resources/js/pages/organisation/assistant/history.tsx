@@ -30,3 +30,15 @@ export default function TenantConversationHistory({
         />
     );
 }
+
+TenantConversationHistory.layout = {
+    breadcrumbs: [
+        {
+            title: 'Assistant',
+            href: tenantAssistantPage(),
+        },
+        {
+            title: 'History',
+        },
+    ],
+};

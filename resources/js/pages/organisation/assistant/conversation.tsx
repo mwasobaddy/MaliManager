@@ -23,3 +23,15 @@ export default function TenantConversationDetail({
         />
     );
 }
+
+TenantConversationDetail.layout = {
+    breadcrumbs: [
+        {
+            title: 'Assistant',
+            href: '/assistant',
+        },
+        {
+            title: 'Conversation',
+        },
+    ],
+};

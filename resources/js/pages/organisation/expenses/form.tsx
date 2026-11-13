@@ -368,3 +368,15 @@ export default function ExpenseForm({ expense, targets }: Props) {
         </>
     );
 }
+
+ExpenseForm.layout = {
+    breadcrumbs: [
+        {
+            title: 'Expenses',
+            href: expensesIndexRoute(),
+        },
+        {
+            title: 'Expense',
+        },
+    ],
+};

@@ -2,6 +2,7 @@ import { Head, Link } from '@inertiajs/react';
 import { ArrowLeft, Building2, ImageOff } from 'lucide-react';
 import Heading from '@/components/heading';
 import { Card } from '@/components/ui/card';
+import { formatMoney } from '@/lib/format-money';
 import { index as unitsIndex } from '@/routes/tenant/units';
 
 type Unit = {
@@ -26,8 +27,8 @@ export default function UnitShow({ unit }: Props) {
         ['Reference', unit.slug],
         ['Type', unit.type ?? '—'],
         ['Status', unit.status],
-        ['Monthly rent', unit.monthly_rent ?? '—'],
-        ['Deposit', unit.deposit ?? '—'],
+        ['Monthly rent', formatMoney(unit.monthly_rent)],
+        ['Deposit', formatMoney(unit.deposit)],
     ];
 
     return (
@@ -127,5 +128,5 @@ export default function UnitShow({ unit }: Props) {
 }
 
 UnitShow.layout = {
-    breadcrumbs: [{ title: 'Units' }, { title: 'Unit' }],
+    breadcrumbs: [{ title: 'Units', href: unitsIndex() }, { title: 'Unit' }],
 };

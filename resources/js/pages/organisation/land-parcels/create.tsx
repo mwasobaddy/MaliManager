@@ -4,6 +4,7 @@ import LandParcelAssetForm, {
 } from '@/components/assets/land-parcel-asset-form';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
+import { index as landParcelsIndex } from '@/routes/tenant/land-parcels';
 
 type Organization = {
     id: number;
@@ -54,6 +55,7 @@ LandParcelCreate.layout = {
     breadcrumbs: [
         {
             title: 'Land parcels',
+            href: landParcelsIndex(),
         },
         {
             title: 'Add land parcel',

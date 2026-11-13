@@ -36,3 +36,7 @@ export default function Assistant({
         />
     );
 }
+
+Assistant.layout = {
+    breadcrumbs: [{ title: 'Assistant' }],
+};

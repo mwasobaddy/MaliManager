@@ -281,3 +281,15 @@ export default function PaymentForm({ payment, leases }: Props) {
         </>
     );
 }
+
+PaymentForm.layout = {
+    breadcrumbs: [
+        {
+            title: 'Payments',
+            href: paymentsIndexRoute(),
+        },
+        {
+            title: 'Payment',
+        },
+    ],
+};
