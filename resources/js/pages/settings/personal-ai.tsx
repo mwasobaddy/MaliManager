@@ -71,6 +71,8 @@ export default function PersonalAi({
         <>
             <Head title="AI settings" />
 
+            <h1 className="sr-only">Personal AI settings</h1>
+
             <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-4">
                 <Heading
                     title="Personal AI settings"
@@ -190,7 +192,7 @@ export default function PersonalAi({
                                 <Button
                                     variant="ghost"
                                     size="sm"
-                                    className="text-status-danger w-fit"
+                                    className="w-fit text-status-danger"
                                     onClick={() =>
                                         router.delete(destroyPersonalAi().url, {
                                             preserveScroll: true,

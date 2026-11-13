@@ -23,8 +23,7 @@ export default function ReportPrint({
         <>
             <Head title={`${report.title} — ${organizationName ?? ''}`} />
             <div className="mx-auto max-w-4xl p-8 print:p-0">
-                <div className="mb-6 flex items-center justify-between print:hidden">
-                    <h1 className="text-lg font-semibold">{report.title}</h1>
+                <div className="mb-6 flex items-center justify-end print:hidden">
                     <button
                         type="button"
                         onClick={() => window.print()}
@@ -37,7 +36,7 @@ export default function ReportPrint({
                 </div>
 
                 <header className="mb-6 border-b pb-4 print:mb-4">
-                    <h2 className="text-xl font-semibold">{report.title}</h2>
+                    <h1 className="text-xl font-semibold">{report.title}</h1>
                     <p className="text-sm text-muted-foreground">
                         {organizationName} · {rangeLabel}
                     </p>

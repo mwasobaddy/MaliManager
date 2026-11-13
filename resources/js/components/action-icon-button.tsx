@@ -27,17 +27,14 @@ const actionColorVariants = cva('', {
     variants: {
         color: {
             default: 'bg-muted text-muted-foreground hover:bg-accent',
-            primary:
-                'bg-primary text-primary-foreground hover:bg-primary/90',
+            primary: 'bg-primary text-primary-foreground hover:bg-primary/90',
             /* v2 §7.3 — neutral at rest, tinted on hover. See the block
                comment above for why the v1 fills went away. */
             view: 'bg-muted text-muted-foreground hover:bg-brand-accent-100 hover:text-accent-text focus-visible:ring-accent-text/30',
             edit: 'bg-muted text-muted-foreground hover:bg-brand-primary-100 hover:text-primary-text focus-visible:ring-primary-text/30',
-            danger:
-                'bg-muted text-muted-foreground hover:bg-status-danger-bg hover:text-status-danger focus-visible:ring-status-danger/30',
+            danger: 'bg-muted text-muted-foreground hover:bg-status-danger-bg hover:text-status-danger focus-visible:ring-status-danger/30',
             brand: 'bg-muted text-muted-foreground hover:bg-brand-primary-100 hover:text-primary-text focus-visible:ring-primary-text/30',
-            accent:
-                'bg-brand-accent/12 text-brand-accent hover:bg-brand-accent/20 focus-visible:ring-brand-accent/30',
+            accent: 'bg-brand-accent/12 text-brand-accent hover:bg-brand-accent/20 focus-visible:ring-brand-accent/30',
             /**
              * Solid teal for a table's utility controls (filter, export,
              * import). Watch the §5 trap here: putting all three on solid teal
@@ -69,7 +66,15 @@ type ActionIconButtonProps = React.ComponentProps<typeof Button> & {
      * Semantic color. `view` blue, `edit` green, `danger` red, `brand`
      * terracotta, `accent` teal, or a shadcn default.
      */
-    color?: 'default' | 'primary' | 'view' | 'edit' | 'danger' | 'brand' | 'accent' | 'teal';
+    color?:
+        | 'default'
+        | 'primary'
+        | 'view'
+        | 'edit'
+        | 'danger'
+        | 'brand'
+        | 'accent'
+        | 'teal';
     /** Which side the tooltip opens on. */
     tooltipSide?: 'top' | 'right' | 'bottom' | 'left';
 };
@@ -121,7 +126,13 @@ export function ActionIconButton({
                     variant="ghost"
                     size="icon"
                     aria-label={label}
-                    className={cn(actionColorVariants({ color }), className)}
+                    className={cn(
+                        // Icon-only row actions meet the 44px touch target on
+                        // coarse pointers; fine pointers keep the compact 36px.
+                        'coarse:min-h-11 coarse:min-w-11',
+                        actionColorVariants({ color }),
+                        className,
+                    )}
                     {...props}
                 >
                     {/*

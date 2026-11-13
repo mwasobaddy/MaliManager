@@ -464,578 +464,595 @@ export default function Welcome() {
                     )}
                 </header>
 
-                {/* ============ HERO ============ */}
-                <section
-                    id="top"
-                    className="grid-texture relative overflow-hidden"
-                >
-                    <div className="glow-orb absolute -top-40 -left-40 size-[520px] rounded-full bg-primary/15 blur-[90px] dark:bg-primary/20" />
-                    <div className="absolute top-40 right-0 size-[420px] rounded-full bg-brand-accent/15 blur-[90px] dark:bg-brand-accent/20" />
+                <main>
+                    {/* ============ HERO ============ */}
+                    <section
+                        id="top"
+                        className="grid-texture relative overflow-hidden"
+                    >
+                        <div className="glow-orb absolute -top-40 -left-40 size-[520px] rounded-full bg-primary/15 blur-[90px] dark:bg-primary/20" />
+                        <div className="absolute top-40 right-0 size-[420px] rounded-full bg-brand-accent/15 blur-[90px] dark:bg-brand-accent/20" />
 
-                    <div className="relative z-10 mx-auto grid max-w-7xl items-center gap-14 px-6 pt-16 pb-20 lg:grid-cols-[1.05fr_0.95fr] lg:gap-8 lg:px-10 lg:pt-24 lg:pb-28">
-                        <div>
-                            <div
-                                className={`${revealClasses} mb-7 inline-flex items-center gap-2 rounded-full border border-border bg-card/70 px-3.5 py-1.5 text-sm text-muted-foreground`}
-                                style={{ animationDelay: '0.05s' }}
-                            >
-                                <span className="size-1.5 rounded-full bg-primary" />
-                                Built for landlords and caretakers across Kenya
-                            </div>
-
-                            <h1
-                                className={`${revealClasses} max-w-xl font-display text-[2.35rem] leading-[1.1] font-semibold tracking-tight text-foreground sm:text-5xl lg:text-[3.4rem]`}
-                                style={{ animationDelay: '0.1s' }}
-                            >
-                                Every property in Kenya. Every tenant. One
-                                dashboard.
-                            </h1>
-
-                            <p
-                                className={`${revealClasses} mt-6 max-w-md text-lg leading-relaxed text-muted-foreground`}
-                                style={{ animationDelay: '0.15s' }}
-                            >
-                                MaliManager gives landlords and property
-                                managers a single, real-time view across every
-                                unit — rent collected through M-Pesa, leases,
-                                and maintenance, all in one place.
-                            </p>
-
-                            <div
-                                className={`${revealClasses} mt-9 flex flex-col gap-3.5 sm:flex-row`}
-                                style={{ animationDelay: '0.2s' }}
-                            >
-                                <Link
-                                    href={primaryHref}
-                                    className="inline-flex items-center justify-center rounded-full bg-primary px-6 py-3.5 font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                        <div className="relative z-10 mx-auto grid max-w-7xl items-center gap-14 px-6 pt-16 pb-20 lg:grid-cols-[1.05fr_0.95fr] lg:gap-8 lg:px-10 lg:pt-24 lg:pb-28">
+                            <div>
+                                <div
+                                    className={`${revealClasses} mb-7 inline-flex items-center gap-2 rounded-full border border-border bg-card/70 px-3.5 py-1.5 text-sm text-muted-foreground`}
+                                    style={{ animationDelay: '0.05s' }}
                                 >
-                                    {auth.user
-                                        ? 'Open Dashboard'
-                                        : 'Get Started Free'}
-                                </Link>
-                                <Link href="#features" className={accentCta}>
-                                    See how it works
-                                </Link>
+                                    <span className="size-1.5 rounded-full bg-primary" />
+                                    Built for landlords and caretakers across
+                                    Kenya
+                                </div>
+
+                                <h1
+                                    className={`${revealClasses} max-w-xl font-display text-[2.35rem] leading-[1.1] font-semibold tracking-tight text-foreground sm:text-5xl lg:text-[3.4rem]`}
+                                    style={{ animationDelay: '0.1s' }}
+                                >
+                                    Every property in Kenya. Every tenant. One
+                                    dashboard.
+                                </h1>
+
+                                <p
+                                    className={`${revealClasses} mt-6 max-w-md text-lg leading-relaxed text-muted-foreground`}
+                                    style={{ animationDelay: '0.15s' }}
+                                >
+                                    MaliManager gives landlords and property
+                                    managers a single, real-time view across
+                                    every unit — rent collected through M-Pesa,
+                                    leases, and maintenance, all in one place.
+                                </p>
+
+                                <div
+                                    className={`${revealClasses} mt-9 flex flex-col gap-3.5 sm:flex-row`}
+                                    style={{ animationDelay: '0.2s' }}
+                                >
+                                    <Link
+                                        href={primaryHref}
+                                        className="inline-flex items-center justify-center rounded-full bg-primary px-6 py-3.5 font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                                    >
+                                        {auth.user
+                                            ? 'Open Dashboard'
+                                            : 'Get Started Free'}
+                                    </Link>
+                                    <Link
+                                        href="#features"
+                                        className={accentCta}
+                                    >
+                                        See how it works
+                                    </Link>
+                                </div>
+
+                                <div
+                                    className={`${revealClasses} mt-10 flex items-center gap-6 text-sm text-muted-foreground`}
+                                    style={{ animationDelay: '0.25s' }}
+                                >
+                                    <span>No card required</span>
+                                    <span className="size-1 rounded-full bg-border" />
+                                    <span>Setup in under a day</span>
+                                </div>
                             </div>
 
+                            {/* Dashboard mock */}
                             <div
-                                className={`${revealClasses} mt-10 flex items-center gap-6 text-sm text-muted-foreground`}
-                                style={{ animationDelay: '0.25s' }}
+                                className={`${revealClasses} relative`}
+                                style={{ animationDelay: '0.3s' }}
                             >
-                                <span>No card required</span>
-                                <span className="size-1 rounded-full bg-border" />
-                                <span>Setup in under a day</span>
-                            </div>
-                        </div>
-
-                        {/* Dashboard mock */}
-                        <div
-                            className={`${revealClasses} relative`}
-                            style={{ animationDelay: '0.3s' }}
-                        >
-                            <div className="absolute -inset-3 rounded-[2rem] bg-gradient-to-br from-primary/15 to-transparent blur-xl" />
-                            <div className="relative rounded-3xl border border-border bg-card p-5 shadow-2xl shadow-foreground/10 sm:p-6">
-                                <div className="mb-5 flex items-center justify-between">
-                                    <div>
-                                        <p className="text-xs text-muted-foreground">
-                                            Portfolio overview
-                                        </p>
-                                        <p className="font-semibold text-foreground">
-                                            Kilimani &amp; Westlands Cluster
-                                        </p>
-                                    </div>
-                                    <span className="rounded-full border border-brand-accent/30 bg-brand-accent/10 px-2.5 py-1 text-xs text-brand-accent">
-                                        Live
-                                    </span>
-                                </div>
-
-                                <div className="mb-4 grid grid-cols-2 gap-3">
-                                    <div className="rounded-2xl border border-border bg-muted p-4">
-                                        <p className="mb-1 text-xs text-muted-foreground">
-                                            Occupancy
-                                        </p>
-                                        <p className="text-2xl font-semibold text-foreground">
-                                            <AnimatedStat
-                                                value={94}
-                                                suffix="%"
-                                            />
-                                        </p>
-                                    </div>
-                                    <div className="rounded-2xl border border-border bg-muted p-4">
-                                        <p className="mb-1 text-xs text-muted-foreground">
-                                            Active leases
-                                        </p>
-                                        <p className="text-2xl font-semibold text-foreground">
-                                            <AnimatedStat value={142} />
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <div className="mb-4 rounded-2xl border border-border bg-muted p-4">
-                                    <div className="mb-1 flex items-center justify-between">
-                                        <p className="text-xs text-muted-foreground">
-                                            Rent collected · this month
-                                        </p>
-                                        <span className="text-xs font-medium text-status-success">
-                                            ↑ 8.2%
+                                <div className="absolute -inset-3 rounded-[2rem] bg-gradient-to-br from-primary/15 to-transparent blur-xl" />
+                                <div className="relative rounded-3xl border border-border bg-card p-5 shadow-2xl shadow-foreground/10 sm:p-6">
+                                    <div className="mb-5 flex items-center justify-between">
+                                        <div>
+                                            <p className="text-xs text-muted-foreground">
+                                                Portfolio overview
+                                            </p>
+                                            <p className="font-semibold text-foreground">
+                                                Kilimani &amp; Westlands Cluster
+                                            </p>
+                                        </div>
+                                        <span className="rounded-full border border-brand-accent/30 bg-brand-accent/10 px-2.5 py-1 text-xs text-brand-accent">
+                                            Live
                                         </span>
                                     </div>
-                                    <p className="text-2xl font-semibold text-foreground">
-                                        KES{' '}
-                                        <AnimatedStat
-                                            value={2438000}
-                                            format="comma"
-                                        />
-                                    </p>
-                                    <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-border">
-                                        <div
-                                            className="h-full rounded-full bg-primary"
-                                            style={{ width: '87%' }}
-                                        />
-                                    </div>
-                                </div>
 
-                                <div className="space-y-2.5">
-                                    <p className="mb-1 text-xs text-muted-foreground">
-                                        Recent payments
-                                    </p>
-                                    <div className="flex items-center justify-between border-t border-border py-2 text-sm">
-                                        <div>
-                                            <p className="text-foreground">
-                                                Unit B4 · Kilimani Heights
+                                    <div className="mb-4 grid grid-cols-2 gap-3">
+                                        <div className="rounded-2xl border border-border bg-muted p-4">
+                                            <p className="mb-1 text-xs text-muted-foreground">
+                                                Occupancy
                                             </p>
-                                            <p className="text-xs text-muted-foreground">
-                                                via M-Pesa STK Push
+                                            <p className="text-2xl font-semibold text-foreground">
+                                                <AnimatedStat
+                                                    value={94}
+                                                    suffix="%"
+                                                />
                                             </p>
                                         </div>
-                                        <p className="font-medium text-foreground">
-                                            KES 28,000
-                                        </p>
+                                        <div className="rounded-2xl border border-border bg-muted p-4">
+                                            <p className="mb-1 text-xs text-muted-foreground">
+                                                Active leases
+                                            </p>
+                                            <p className="text-2xl font-semibold text-foreground">
+                                                <AnimatedStat value={142} />
+                                            </p>
+                                        </div>
                                     </div>
-                                    <div className="flex items-center justify-between border-t border-border py-2 text-sm">
-                                        <div>
-                                            <p className="text-foreground">
-                                                Unit A2 · Riverpark Court
-                                            </p>
+
+                                    <div className="mb-4 rounded-2xl border border-border bg-muted p-4">
+                                        <div className="mb-1 flex items-center justify-between">
                                             <p className="text-xs text-muted-foreground">
-                                                via M-Pesa STK Push
+                                                Rent collected · this month
+                                            </p>
+                                            <span className="text-xs font-medium text-status-success">
+                                                ↑ 8.2%
+                                            </span>
+                                        </div>
+                                        <p className="text-2xl font-semibold text-foreground">
+                                            KES{' '}
+                                            <AnimatedStat
+                                                value={2438000}
+                                                format="comma"
+                                            />
+                                        </p>
+                                        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-border">
+                                            <div
+                                                className="h-full rounded-full bg-primary"
+                                                style={{ width: '87%' }}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2.5">
+                                        <p className="mb-1 text-xs text-muted-foreground">
+                                            Recent payments
+                                        </p>
+                                        <div className="flex items-center justify-between border-t border-border py-2 text-sm">
+                                            <div>
+                                                <p className="text-foreground">
+                                                    Unit B4 · Kilimani Heights
+                                                </p>
+                                                <p className="text-xs text-muted-foreground">
+                                                    via M-Pesa STK Push
+                                                </p>
+                                            </div>
+                                            <p className="font-medium text-foreground">
+                                                KES 28,000
                                             </p>
                                         </div>
-                                        <p className="font-medium text-foreground">
-                                            KES 32,500
-                                        </p>
+                                        <div className="flex items-center justify-between border-t border-border py-2 text-sm">
+                                            <div>
+                                                <p className="text-foreground">
+                                                    Unit A2 · Riverpark Court
+                                                </p>
+                                                <p className="text-xs text-muted-foreground">
+                                                    via M-Pesa STK Push
+                                                </p>
+                                            </div>
+                                            <p className="font-medium text-foreground">
+                                                KES 32,500
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                </section>
+                    </section>
 
-                {/* ============ FEATURES ============ */}
-                <section
-                    id="features"
-                    className="border-t border-border py-20 lg:py-28"
-                >
-                    <div className="mx-auto max-w-7xl px-6 lg:px-10">
-                        <div className="mb-14 max-w-lg">
-                            <h2 className="font-display text-3xl font-semibold tracking-tight text-foreground lg:text-4xl">
-                                Built around how Kenyan landlords actually work
-                            </h2>
-                            <p className="mt-4 leading-relaxed text-muted-foreground">
-                                Three tools that replace the spreadsheet, the
-                                WhatsApp group, and the notebook of receipts.
-                            </p>
-                        </div>
+                    {/* ============ FEATURES ============ */}
+                    <section
+                        id="features"
+                        className="border-t border-border py-20 lg:py-28"
+                    >
+                        <div className="mx-auto max-w-7xl px-6 lg:px-10">
+                            <div className="mb-14 max-w-lg">
+                                <h2 className="font-display text-3xl font-semibold tracking-tight text-foreground lg:text-4xl">
+                                    Built around how Kenyan landlords actually
+                                    work
+                                </h2>
+                                <p className="mt-4 leading-relaxed text-muted-foreground">
+                                    Three tools that replace the spreadsheet,
+                                    the WhatsApp group, and the notebook of
+                                    receipts.
+                                </p>
+                            </div>
 
-                        <div className="grid gap-6 md:grid-cols-3">
-                            {features.map((feature, index) => (
-                                <div
-                                    key={feature.title}
-                                    className="rounded-2xl border border-l-2 border-border border-l-primary bg-card p-7"
-                                >
-                                    <div className="mb-6 flex size-11 items-center justify-center rounded-xl bg-primary/10">
-                                        <FeatureIcon
-                                            kind={index as 0 | 1 | 2}
-                                        />
+                            <div className="grid gap-6 md:grid-cols-3">
+                                {features.map((feature, index) => (
+                                    <div
+                                        key={feature.title}
+                                        className="rounded-2xl border border-l-2 border-border border-l-primary bg-card p-7"
+                                    >
+                                        <div className="mb-6 flex size-11 items-center justify-center rounded-xl bg-primary/10">
+                                            <FeatureIcon
+                                                kind={index as 0 | 1 | 2}
+                                            />
+                                        </div>
+                                        <h3 className="mb-2.5 font-display text-lg font-semibold text-foreground">
+                                            {feature.title}
+                                        </h3>
+                                        <p className="text-[15px] leading-relaxed text-muted-foreground">
+                                            {feature.body}
+                                        </p>
                                     </div>
-                                    <h3 className="mb-2.5 font-display text-lg font-semibold text-foreground">
-                                        {feature.title}
-                                    </h3>
-                                    <p className="text-[15px] leading-relaxed text-muted-foreground">
-                                        {feature.body}
-                                    </p>
-                                </div>
-                            ))}
+                                ))}
+                            </div>
                         </div>
-                    </div>
-                </section>
+                    </section>
 
-                {/* ============ PORTAL TOGGLE ============ */}
-                <section className="border-t border-border bg-muted/40 py-20 lg:py-28">
-                    <div className="mx-auto max-w-7xl px-6 lg:px-10">
-                        <div className="mb-10 max-w-lg">
-                            <h2 className="font-display text-3xl font-semibold tracking-tight text-foreground lg:text-4xl">
-                                One app, two experiences
-                            </h2>
-                            <p className="mt-4 leading-relaxed text-muted-foreground">
-                                Landlords see the whole portfolio. Tenants see
-                                exactly what matters to them. Nobody has to dig
-                                for information.
-                            </p>
-                        </div>
+                    {/* ============ PORTAL TOGGLE ============ */}
+                    <section className="border-t border-border bg-muted/40 py-20 lg:py-28">
+                        <div className="mx-auto max-w-7xl px-6 lg:px-10">
+                            <div className="mb-10 max-w-lg">
+                                <h2 className="font-display text-3xl font-semibold tracking-tight text-foreground lg:text-4xl">
+                                    One app, two experiences
+                                </h2>
+                                <p className="mt-4 leading-relaxed text-muted-foreground">
+                                    Landlords see the whole portfolio. Tenants
+                                    see exactly what matters to them. Nobody has
+                                    to dig for information.
+                                </p>
+                            </div>
 
-                        <div
-                            className="mb-10 inline-flex rounded-full border border-border bg-card p-1"
-                            role="tablist"
-                            aria-label="Portal view"
-                        >
-                            <button
-                                type="button"
-                                role="tab"
-                                aria-selected={portalView === 'landlord'}
-                                aria-controls="panel-landlord"
-                                onClick={() => setPortalView('landlord')}
-                                className={`rounded-full px-5 py-2.5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${
-                                    portalView === 'landlord'
-                                        ? 'bg-primary text-primary-foreground'
-                                        : 'text-muted-foreground hover:text-foreground'
-                                }`}
+                            <div
+                                className="mb-10 inline-flex rounded-full border border-border bg-card p-1"
+                                role="tablist"
+                                aria-label="Portal view"
                             >
-                                Landlord view
-                            </button>
-                            <button
-                                type="button"
-                                role="tab"
-                                aria-selected={portalView === 'tenant'}
-                                aria-controls="panel-tenant"
-                                onClick={() => setPortalView('tenant')}
-                                className={`rounded-full px-5 py-2.5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${
-                                    portalView === 'tenant'
-                                        ? 'bg-primary text-primary-foreground'
-                                        : 'text-muted-foreground hover:text-foreground'
-                                }`}
-                            >
-                                Tenant view
-                            </button>
-                        </div>
-
-                        <div className="grid items-center gap-10 lg:grid-cols-2">
-                            {portalView === 'landlord' ? (
-                                <ul
-                                    id="panel-landlord"
-                                    role="tabpanel"
-                                    aria-labelledby="tab-landlord"
-                                    className="space-y-4"
-                                    key="landlord"
+                                <button
+                                    type="button"
+                                    role="tab"
+                                    id="tab-landlord"
+                                    aria-selected={portalView === 'landlord'}
+                                    aria-controls="panel-landlord"
+                                    onClick={() => setPortalView('landlord')}
+                                    className={`rounded-full px-5 py-2.5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${
+                                        portalView === 'landlord'
+                                            ? 'bg-primary text-primary-foreground'
+                                            : 'text-muted-foreground hover:text-foreground'
+                                    }`}
                                 >
-                                    {landlordView.map((item) => (
-                                        <li
-                                            key={item.title}
-                                            className="flex gap-3.5"
-                                        >
-                                            <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-primary" />
-                                            <div>
-                                                <p className="font-medium text-foreground">
-                                                    {item.title}
+                                    Landlord view
+                                </button>
+                                <button
+                                    type="button"
+                                    role="tab"
+                                    id="tab-tenant"
+                                    aria-selected={portalView === 'tenant'}
+                                    aria-controls="panel-tenant"
+                                    onClick={() => setPortalView('tenant')}
+                                    className={`rounded-full px-5 py-2.5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${
+                                        portalView === 'tenant'
+                                            ? 'bg-primary text-primary-foreground'
+                                            : 'text-muted-foreground hover:text-foreground'
+                                    }`}
+                                >
+                                    Tenant view
+                                </button>
+                            </div>
+
+                            <div className="grid items-center gap-10 lg:grid-cols-2">
+                                {portalView === 'landlord' ? (
+                                    <div
+                                        id="panel-landlord"
+                                        role="tabpanel"
+                                        aria-labelledby="tab-landlord"
+                                        key="landlord"
+                                    >
+                                        <ul className="space-y-4">
+                                            {landlordView.map((item) => (
+                                                <li
+                                                    key={item.title}
+                                                    className="flex gap-3.5"
+                                                >
+                                                    <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-primary" />
+                                                    <div>
+                                                        <p className="font-medium text-foreground">
+                                                            {item.title}
+                                                        </p>
+                                                        <p className="text-sm text-muted-foreground">
+                                                            {item.body}
+                                                        </p>
+                                                    </div>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                ) : (
+                                    <div
+                                        id="panel-tenant"
+                                        role="tabpanel"
+                                        aria-labelledby="tab-tenant"
+                                        key="tenant"
+                                    >
+                                        <ul className="space-y-4">
+                                            {tenantView.map((item) => (
+                                                <li
+                                                    key={item.title}
+                                                    className="flex gap-3.5"
+                                                >
+                                                    <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-primary" />
+                                                    <div>
+                                                        <p className="font-medium text-foreground">
+                                                            {item.title}
+                                                        </p>
+                                                        <p className="text-sm text-muted-foreground">
+                                                            {item.body}
+                                                        </p>
+                                                    </div>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
+
+                                {portalView === 'landlord' ? (
+                                    <div
+                                        key="mock-landlord"
+                                        className="rounded-3xl border border-border bg-card p-6 shadow-xl shadow-foreground/5"
+                                    >
+                                        <p className="mb-4 text-xs text-muted-foreground">
+                                            Landlord · Portfolio
+                                        </p>
+                                        <div className="space-y-3">
+                                            <div className="flex items-center justify-between rounded-xl border border-border bg-muted px-4 py-3">
+                                                <p className="text-sm text-foreground">
+                                                    Riverpark Court
                                                 </p>
-                                                <p className="text-sm text-muted-foreground">
-                                                    {item.body}
+                                                <p className="text-sm text-status-success">
+                                                    96% occupied
                                                 </p>
                                             </div>
-                                        </li>
-                                    ))}
-                                </ul>
-                            ) : (
-                                <ul
-                                    id="panel-tenant"
-                                    role="tabpanel"
-                                    aria-labelledby="tab-tenant"
-                                    className="space-y-4"
-                                    key="tenant"
-                                >
-                                    {tenantView.map((item) => (
-                                        <li
-                                            key={item.title}
-                                            className="flex gap-3.5"
-                                        >
-                                            <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-primary" />
-                                            <div>
-                                                <p className="font-medium text-foreground">
-                                                    {item.title}
+                                            <div className="flex items-center justify-between rounded-xl border border-border bg-muted px-4 py-3">
+                                                <p className="text-sm text-foreground">
+                                                    Kilimani Heights
                                                 </p>
-                                                <p className="text-sm text-muted-foreground">
-                                                    {item.body}
+                                                <p className="text-sm text-status-success">
+                                                    100% occupied
                                                 </p>
                                             </div>
-                                        </li>
-                                    ))}
-                                </ul>
-                            )}
-
-                            {portalView === 'landlord' ? (
-                                <div
-                                    key="mock-landlord"
-                                    className="rounded-3xl border border-border bg-card p-6 shadow-xl shadow-foreground/5"
-                                >
-                                    <p className="mb-4 text-xs text-muted-foreground">
-                                        Landlord · Portfolio
-                                    </p>
-                                    <div className="space-y-3">
-                                        <div className="flex items-center justify-between rounded-xl border border-border bg-muted px-4 py-3">
-                                            <p className="text-sm text-foreground">
-                                                Riverpark Court
-                                            </p>
-                                            <p className="text-sm text-status-success">
-                                                96% occupied
-                                            </p>
-                                        </div>
-                                        <div className="flex items-center justify-between rounded-xl border border-border bg-muted px-4 py-3">
-                                            <p className="text-sm text-foreground">
-                                                Kilimani Heights
-                                            </p>
-                                            <p className="text-sm text-status-success">
-                                                100% occupied
-                                            </p>
-                                        </div>
-                                        <div className="flex items-center justify-between rounded-xl border border-border bg-muted px-4 py-3">
-                                            <p className="text-sm text-foreground">
-                                                Nyali Breeze Apartments
-                                            </p>
-                                            <p className="text-sm text-muted-foreground">
-                                                3 units vacant
-                                            </p>
+                                            <div className="flex items-center justify-between rounded-xl border border-border bg-muted px-4 py-3">
+                                                <p className="text-sm text-foreground">
+                                                    Nyali Breeze Apartments
+                                                </p>
+                                                <p className="text-sm text-muted-foreground">
+                                                    3 units vacant
+                                                </p>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            ) : (
-                                <div
-                                    key="mock-tenant"
-                                    className="rounded-3xl border border-border bg-card p-6 shadow-xl shadow-foreground/5"
-                                >
-                                    <p className="mb-4 text-xs text-muted-foreground">
-                                        Tenant · Unit B4
-                                    </p>
-                                    <div className="mb-3 rounded-xl border border-border bg-muted p-5">
-                                        <p className="mb-1 text-sm text-muted-foreground">
-                                            Rent due
-                                        </p>
-                                        <p className="mb-3 text-xl font-semibold text-foreground">
-                                            KES 28,000
-                                        </p>
-                                        <button
-                                            type="button"
-                                            className="w-full rounded-full bg-primary py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
-                                        >
-                                            Pay with M-Pesa
-                                        </button>
-                                    </div>
-                                    <div className="flex items-center justify-between rounded-xl border border-border bg-muted px-4 py-3">
-                                        <p className="text-sm text-foreground">
-                                            Leaking tap — kitchen
-                                        </p>
-                                        <p className="text-xs text-brand-accent">
-                                            In progress
-                                        </p>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </section>
-
-                {/* ============ TESTIMONIALS ============ */}
-                <section
-                    id="testimonials"
-                    className="border-t border-border py-20 lg:py-28"
-                >
-                    <div className="mx-auto max-w-7xl px-6 lg:px-10">
-                        <div className="mb-14 max-w-lg">
-                            <h2 className="font-display text-3xl font-semibold tracking-tight text-foreground lg:text-4xl">
-                                What managers are saying
-                            </h2>
-                        </div>
-
-                        <div className="grid gap-6 md:grid-cols-3">
-                            {testimonials.map((testimonial) => (
-                                <div
-                                    key={testimonial.author}
-                                    className="rounded-2xl border border-border bg-card p-7 shadow-xl shadow-foreground/5"
-                                >
-                                    <p className="mb-6 leading-relaxed text-foreground">
-                                        “{testimonial.quote}”
-                                    </p>
-                                    <p className="text-sm font-medium text-foreground">
-                                        {testimonial.author}
-                                    </p>
-                                    <p className="text-sm text-muted-foreground">
-                                        {testimonial.role}
-                                    </p>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </section>
-
-                {/* ============ PRICING ============ */}
-                <section
-                    id="pricing"
-                    className="border-t border-border bg-muted/40 py-20 lg:py-28"
-                >
-                    <div className="mx-auto max-w-7xl px-6 lg:px-10">
-                        <div className="mb-14 max-w-lg">
-                            <h2 className="font-display text-3xl font-semibold tracking-tight text-foreground lg:text-4xl">
-                                Priced by portfolio, not by promise
-                            </h2>
-                            <p className="mt-4 leading-relaxed text-muted-foreground">
-                                Start free. Upgrade when you add units, not on a
-                                timer.
-                            </p>
-                        </div>
-
-                        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
-                            {plans.map((tier, tierIndex) => {
-                                const featured = tierIndex === featuredPlan;
-                                const price = formatPlanPrice(tier);
-
-                                return (
+                                ) : (
                                     <div
-                                        key={tier.slug}
-                                        className={`relative flex flex-col rounded-2xl p-7 ${
-                                            featured
-                                                ? 'border-2 border-primary bg-card shadow-xl shadow-foreground/5'
-                                                : 'border border-border bg-card shadow-xl shadow-foreground/5'
-                                        }`}
+                                        key="mock-tenant"
+                                        className="rounded-3xl border border-border bg-card p-6 shadow-xl shadow-foreground/5"
                                     >
-                                        {featured && (
-                                            <span className="absolute -top-3 left-7 rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">
-                                                Most popular
-                                            </span>
-                                        )}
-                                        <p className="mb-1 text-lg font-semibold text-foreground">
-                                            {tier.name}
+                                        <p className="mb-4 text-xs text-muted-foreground">
+                                            Tenant · Unit B4
                                         </p>
-                                        <p className="mb-5 text-sm text-muted-foreground">
-                                            {formatPlanLimits(tier)}
-                                        </p>
-                                        <p className="mb-6 text-3xl font-semibold text-foreground">
-                                            {price}
-                                            {price !== 'Free' && (
-                                                <span className="text-base font-normal text-muted-foreground">
-                                                    /mo
-                                                </span>
-                                            )}
-                                        </p>
-                                        {tier.description && (
-                                            <p className="mb-8 flex-1 text-sm text-muted-foreground">
-                                                {tier.description}
+                                        <div className="mb-3 rounded-xl border border-border bg-muted p-5">
+                                            <p className="mb-1 text-sm text-muted-foreground">
+                                                Rent due
                                             </p>
-                                        )}
-                                        <Link
-                                            href={login().url}
-                                            className={
-                                                featured
-                                                    ? `${primaryCta} w-full text-center`
-                                                    : `${accentCta} w-full text-center`
-                                            }
-                                        >
-                                            Get Started
-                                        </Link>
+                                            <p className="mb-3 text-xl font-semibold text-foreground">
+                                                KES 28,000
+                                            </p>
+                                            <button
+                                                type="button"
+                                                className="w-full rounded-full bg-primary py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+                                            >
+                                                Pay with M-Pesa
+                                            </button>
+                                        </div>
+                                        <div className="flex items-center justify-between rounded-xl border border-border bg-muted px-4 py-3">
+                                            <p className="text-sm text-foreground">
+                                                Leaking tap — kitchen
+                                            </p>
+                                            <p className="text-xs text-brand-accent">
+                                                In progress
+                                            </p>
+                                        </div>
                                     </div>
-                                );
-                            })}
+                                )}
+                            </div>
                         </div>
-                    </div>
-                </section>
+                    </section>
 
-                {/* ============ FAQ ============ */}
-                <section
-                    id="faq"
-                    className="border-t border-border py-20 lg:py-28"
-                >
-                    <div className="mx-auto max-w-3xl px-6 lg:px-10">
-                        <h2 className="mb-10 font-display text-3xl font-semibold tracking-tight text-foreground lg:text-4xl">
-                            Questions, answered
-                        </h2>
+                    {/* ============ TESTIMONIALS ============ */}
+                    <section
+                        id="testimonials"
+                        className="border-t border-border py-20 lg:py-28"
+                    >
+                        <div className="mx-auto max-w-7xl px-6 lg:px-10">
+                            <div className="mb-14 max-w-lg">
+                                <h2 className="font-display text-3xl font-semibold tracking-tight text-foreground lg:text-4xl">
+                                    What managers are saying
+                                </h2>
+                            </div>
 
-                        <div className="space-y-3">
-                            {faqs.map((faq, index) => {
-                                const isOpen = openFaq === index;
-
-                                return (
+                            <div className="grid gap-6 md:grid-cols-3">
+                                {testimonials.map((testimonial) => (
                                     <div
-                                        key={faq.question}
-                                        className={`rounded-2xl border bg-card ${
-                                            isOpen
-                                                ? 'border-primary'
-                                                : 'border-border'
-                                        }`}
+                                        key={testimonial.author}
+                                        className="rounded-2xl border border-border bg-card p-7 shadow-xl shadow-foreground/5"
                                     >
-                                        <button
-                                            type="button"
-                                            onClick={() =>
-                                                setOpenFaq(
-                                                    isOpen ? null : index,
-                                                )
-                                            }
-                                            aria-expanded={isOpen}
-                                            className="flex w-full items-center justify-between px-6 py-5 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                                        >
-                                            <span
-                                                className={`font-medium ${
-                                                    isOpen
-                                                        ? 'text-primary'
-                                                        : 'text-foreground'
-                                                }`}
-                                            >
-                                                {faq.question}
-                                            </span>
-                                            <span
-                                                className={`shrink-0 transition-transform duration-300 ${
-                                                    isOpen ? 'rotate-180' : ''
-                                                }`}
-                                            >
-                                                <Chevron />
-                                            </span>
-                                        </button>
+                                        <p className="mb-6 leading-relaxed text-foreground">
+                                            “{testimonial.quote}”
+                                        </p>
+                                        <p className="text-sm font-medium text-foreground">
+                                            {testimonial.author}
+                                        </p>
+                                        <p className="text-sm text-muted-foreground">
+                                            {testimonial.role}
+                                        </p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* ============ PRICING ============ */}
+                    <section
+                        id="pricing"
+                        className="border-t border-border bg-muted/40 py-20 lg:py-28"
+                    >
+                        <div className="mx-auto max-w-7xl px-6 lg:px-10">
+                            <div className="mb-14 max-w-lg">
+                                <h2 className="font-display text-3xl font-semibold tracking-tight text-foreground lg:text-4xl">
+                                    Priced by portfolio, not by promise
+                                </h2>
+                                <p className="mt-4 leading-relaxed text-muted-foreground">
+                                    Start free. Upgrade when you add units, not
+                                    on a timer.
+                                </p>
+                            </div>
+
+                            <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+                                {plans.map((tier, tierIndex) => {
+                                    const featured = tierIndex === featuredPlan;
+                                    const price = formatPlanPrice(tier);
+
+                                    return (
                                         <div
-                                            className={`grid transition-[grid-template-rows] duration-300 ${
-                                                isOpen
-                                                    ? 'grid-rows-[1fr]'
-                                                    : 'grid-rows-[0fr]'
+                                            key={tier.slug}
+                                            className={`relative flex flex-col rounded-2xl p-7 ${
+                                                featured
+                                                    ? 'border-2 border-primary bg-card shadow-xl shadow-foreground/5'
+                                                    : 'border border-border bg-card shadow-xl shadow-foreground/5'
                                             }`}
                                         >
-                                            <div className="overflow-hidden">
-                                                <div className="px-6">
-                                                    <p className="pb-5 text-sm leading-relaxed text-muted-foreground">
-                                                        {faq.answer}
-                                                    </p>
+                                            {featured && (
+                                                <span className="absolute -top-3 left-7 rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">
+                                                    Most popular
+                                                </span>
+                                            )}
+                                            <p className="mb-1 text-lg font-semibold text-foreground">
+                                                {tier.name}
+                                            </p>
+                                            <p className="mb-5 text-sm text-muted-foreground">
+                                                {formatPlanLimits(tier)}
+                                            </p>
+                                            <p className="mb-6 text-3xl font-semibold text-foreground">
+                                                {price}
+                                                {price !== 'Free' && (
+                                                    <span className="text-base font-normal text-muted-foreground">
+                                                        /mo
+                                                    </span>
+                                                )}
+                                            </p>
+                                            {tier.description && (
+                                                <p className="mb-8 flex-1 text-sm text-muted-foreground">
+                                                    {tier.description}
+                                                </p>
+                                            )}
+                                            <Link
+                                                href={login().url}
+                                                className={
+                                                    featured
+                                                        ? `${primaryCta} w-full text-center`
+                                                        : `${accentCta} w-full text-center`
+                                                }
+                                            >
+                                                Get Started
+                                            </Link>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* ============ FAQ ============ */}
+                    <section
+                        id="faq"
+                        className="border-t border-border py-20 lg:py-28"
+                    >
+                        <div className="mx-auto max-w-3xl px-6 lg:px-10">
+                            <h2 className="mb-10 font-display text-3xl font-semibold tracking-tight text-foreground lg:text-4xl">
+                                Questions, answered
+                            </h2>
+
+                            <div className="space-y-3">
+                                {faqs.map((faq, index) => {
+                                    const isOpen = openFaq === index;
+
+                                    return (
+                                        <div
+                                            key={faq.question}
+                                            className={`rounded-2xl border bg-card ${
+                                                isOpen
+                                                    ? 'border-primary'
+                                                    : 'border-border'
+                                            }`}
+                                        >
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    setOpenFaq(
+                                                        isOpen ? null : index,
+                                                    )
+                                                }
+                                                aria-expanded={isOpen}
+                                                className="flex w-full items-center justify-between px-6 py-5 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                                            >
+                                                <span
+                                                    className={`font-medium ${
+                                                        isOpen
+                                                            ? 'text-primary'
+                                                            : 'text-foreground'
+                                                    }`}
+                                                >
+                                                    {faq.question}
+                                                </span>
+                                                <span
+                                                    className={`shrink-0 transition-transform duration-300 ${
+                                                        isOpen
+                                                            ? 'rotate-180'
+                                                            : ''
+                                                    }`}
+                                                >
+                                                    <Chevron />
+                                                </span>
+                                            </button>
+                                            <div
+                                                className={`grid transition-[grid-template-rows] duration-300 ${
+                                                    isOpen
+                                                        ? 'grid-rows-[1fr]'
+                                                        : 'grid-rows-[0fr]'
+                                                }`}
+                                            >
+                                                <div className="overflow-hidden">
+                                                    <div className="px-6">
+                                                        <p className="pb-5 text-sm leading-relaxed text-muted-foreground">
+                                                            {faq.answer}
+                                                        </p>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
-                                );
-                            })}
+                                    );
+                                })}
+                            </div>
                         </div>
-                    </div>
-                </section>
+                    </section>
 
-                {/* ============ CTA STRIP ============ */}
-                <section className="border-t border-border py-20">
-                    <div className="mx-auto max-w-4xl px-6 text-center lg:px-10">
-                        <h2 className="mb-5 font-display text-3xl font-semibold tracking-tight text-foreground lg:text-4xl">
-                            Run your portfolio from your phone, starting today
-                        </h2>
-                        <p className="mx-auto mb-8 max-w-md text-muted-foreground">
-                            No card required to start. Set up your first
-                            property in under a day.
-                        </p>
-                        <Link
-                            href={primaryHref}
-                            className="inline-flex items-center justify-center rounded-full bg-primary px-7 py-3.5 font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                        >
-                            {auth.user ? 'Open Dashboard' : 'Get Started Free'}
-                        </Link>
-                    </div>
-                </section>
+                    {/* ============ CTA STRIP ============ */}
+                    <section className="border-t border-border py-20">
+                        <div className="mx-auto max-w-4xl px-6 text-center lg:px-10">
+                            <h2 className="mb-5 font-display text-3xl font-semibold tracking-tight text-foreground lg:text-4xl">
+                                Run your portfolio from your phone, starting
+                                today
+                            </h2>
+                            <p className="mx-auto mb-8 max-w-md text-muted-foreground">
+                                No card required to start. Set up your first
+                                property in under a day.
+                            </p>
+                            <Link
+                                href={primaryHref}
+                                className="inline-flex items-center justify-center rounded-full bg-primary px-7 py-3.5 font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                            >
+                                {auth.user
+                                    ? 'Open Dashboard'
+                                    : 'Get Started Free'}
+                            </Link>
+                        </div>
+                    </section>
+                </main>
 
                 {/* ============ FOOTER ============ */}
                 <footer className="border-t border-border py-14">

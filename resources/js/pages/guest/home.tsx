@@ -242,7 +242,9 @@ export default function GuestHome({
             );
         }
 
-        return parts.length > 0 ? parts.join(' · ') : 'No extra filters';
+        return parts.length > 0
+            ? parts.join(' · ')
+            : 'Filter by rent, type and sort order.';
     }, [filterForm.data]);
 
     const saveSearch = (event: FormEvent) => {

@@ -8,8 +8,7 @@ export default function Suspended() {
 
             <div className="space-y-6 text-center">
                 <p className="text-sm text-muted-foreground">
-                    Your account has been suspended. Please contact your
-                    administrator if you believe this is an error.
+                    Your account has been suspended.
                 </p>
 
                 <Link

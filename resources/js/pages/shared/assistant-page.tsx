@@ -50,6 +50,7 @@ export default function AssistantPage({
             <>
                 <Head title={headTitle} />
                 <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
+                    <h1 className="sr-only">{title}</h1>
                     <p className="text-sm text-muted-foreground">
                         {disabledMessage}
                     </p>
@@ -61,6 +62,7 @@ export default function AssistantPage({
     return (
         <>
             <Head title={headTitle} />
+            <h1 className="sr-only">{title}</h1>
             <AssistantChat
                 askUrl={askUrl}
                 quickPrompts={quickPrompts}

@@ -229,7 +229,7 @@ export function GlobalSearch() {
                     variant="ghost"
                     size="sm"
                     className="group h-9 cursor-pointer gap-2 px-2 text-muted-foreground hover:text-foreground coarse:h-11"
-                    aria-label="Search (Command K)"
+                    aria-label="Search (⌘K)"
                 >
                     <Search className="!size-5 opacity-80 group-hover:opacity-100" />
                     <Kbd className="hidden lg:inline-flex">⌘K</Kbd>

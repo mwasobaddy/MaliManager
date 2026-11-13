@@ -2,7 +2,6 @@ import { Head, router } from '@inertiajs/react';
 import { Printer, Sparkles, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import ConfirmDeleteOverlay from '@/components/confirm-delete-overlay';
-import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
 import {
     destroy as destroyInspection,
@@ -51,12 +50,7 @@ export default function InspectionShow({ propertySlug, inspection }: Props) {
         <>
             <Head title={inspection.title} />
             <div className="mx-auto max-w-4xl p-8 print:p-0">
-                <div className="mb-6 flex flex-wrap items-center justify-between gap-2 print:hidden">
-                    <Heading
-                        level="h1"
-                        variant="small"
-                        title={inspection.title}
-                    />
+                <div className="mb-6 flex flex-wrap items-center justify-end gap-2 print:hidden">
                     <div className="flex gap-2">
                         {!inspection.report_generated_at && (
                             <Button
@@ -86,9 +80,9 @@ export default function InspectionShow({ propertySlug, inspection }: Props) {
                 </div>
 
                 <header className="mb-6 border-b pb-3">
-                    <h2 className="text-xl font-semibold capitalize">
+                    <h1 className="text-xl font-semibold capitalize">
                         {inspection.unit_name} inspection
-                    </h2>
+                    </h1>
                     <p className="text-sm text-muted-foreground">
                         {inspection.inspection_date}
                     </p>
