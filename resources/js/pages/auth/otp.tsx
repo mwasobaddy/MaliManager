@@ -1,25 +1,240 @@
 import { Form, Head, Link } from '@inertiajs/react';
-import { REGEXP_ONLY_DIGITS } from 'input-otp';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
-import {
-    InputOTP,
-    InputOTPGroup,
-    InputOTPSlot,
-} from '@/components/ui/input-otp';
-import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { login } from '@/routes';
 import { resend, verify } from '@/routes/login/otp';
+
+const CODE_LENGTH = 6;
+const RESEND_COOLDOWN_SECONDS = 90;
+const COOLDOWN_KEY = 'malimanager.otp-cooldown';
 
 type Props = {
     email: string;
     status?: string;
 };
 
+/**
+ * Reads the persisted resend deadline for this email. Returns 0 when there
+ * is none, it belongs to another email, it already passed, or storage is
+ * unavailable — all of which simply mean "no cooldown".
+ */
+function readCooldown(email: string): number {
+    try {
+        const raw = localStorage.getItem(COOLDOWN_KEY);
+
+        if (!raw) {
+            return 0;
+        }
+
+        const parsed = JSON.parse(raw) as {
+            email?: unknown;
+            availableAt?: unknown;
+        };
+
+        if (parsed.email !== email || typeof parsed.availableAt !== 'number') {
+            return 0;
+        }
+
+        return parsed.availableAt;
+    } catch {
+        return 0;
+    }
+}
+
+function writeCooldown(email: string, availableAt: number): void {
+    try {
+        localStorage.setItem(
+            COOLDOWN_KEY,
+            JSON.stringify({ email, availableAt }),
+        );
+    } catch {
+        // Private browsing etc: the timer just won't survive a refresh.
+    }
+}
+
+function clearCooldown(): void {
+    try {
+        localStorage.removeItem(COOLDOWN_KEY);
+    } catch {
+        // Nothing to clean up.
+    }
+}
+
+function formatRemaining(totalSeconds: number): string {
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+
+    return `${minutes}:${String(seconds).padStart(2, '0')}`;
+}
+
 export default function Otp({ email, status }: Props) {
-    const [code, setCode] = useState('');
+    const [digits, setDigits] = useState<string[]>(() =>
+        Array<string>(CODE_LENGTH).fill(''),
+    );
+    const [cooldownUntil, setCooldownUntil] = useState<number>(() =>
+        readCooldown(email),
+    );
+    const [now, setNow] = useState<number>(() => Date.now());
+    const boxes = useRef<Array<HTMLInputElement | null>>([]);
+
+    // The arrival on this page always follows a fresh send from the login
+    // form, so a visit with no (valid) stored deadline starts one. A stored
+    // future deadline — e.g. after a hard refresh — is resumed untouched.
+    useEffect(() => {
+        if (cooldownUntil > Date.now()) {
+            return;
+        }
+
+        const fresh = Date.now() + RESEND_COOLDOWN_SECONDS * 1000;
+        writeCooldown(email, fresh);
+        setCooldownUntil(fresh);
+    }, [email, cooldownUntil]);
+
+    useEffect(() => {
+        if (cooldownUntil <= Date.now()) {
+            return;
+        }
+
+        const id = window.setInterval(() => setNow(Date.now()), 500);
+
+        return () => window.clearInterval(id);
+    }, [cooldownUntil]);
+
+    const remainingSeconds = Math.max(
+        0,
+        Math.ceil((cooldownUntil - now) / 1000),
+    );
+
+    const focusBox = (index: number): void => {
+        const box = boxes.current[index];
+
+        if (box) {
+            box.focus();
+            box.select();
+        }
+    };
+
+    const setDigit = (index: number, value: string): void => {
+        setDigits((previous) => {
+            if (previous[index] === value) {
+                return previous;
+            }
+
+            const next = [...previous];
+            next[index] = value;
+
+            return next;
+        });
+    };
+
+    const handleChange = (index: number, raw: string): void => {
+        const cleaned = raw.replace(/\D/g, '');
+
+        if (cleaned === '') {
+            setDigit(index, '');
+
+            return;
+        }
+
+        // A full paste (or autofill) landing in one box still fills from here.
+        const chars = cleaned.split('');
+
+        if (chars.length > 1) {
+            setDigits((previous) => {
+                const next = [...previous];
+
+                for (
+                    let offset = 0;
+                    offset < chars.length && index + offset < CODE_LENGTH;
+                    offset++
+                ) {
+                    next[index + offset] = chars[offset];
+                }
+
+                return next;
+            });
+            focusBox(Math.min(index + chars.length, CODE_LENGTH - 1));
+
+            return;
+        }
+
+        setDigit(index, chars[chars.length - 1]);
+        focusBox(Math.min(index + 1, CODE_LENGTH - 1));
+    };
+
+    const handleKeyDown = (
+        index: number,
+        event: React.KeyboardEvent<HTMLInputElement>,
+    ): void => {
+        if (event.key === 'Backspace') {
+            event.preventDefault();
+
+            if (digits[index] !== '') {
+                setDigit(index, '');
+            } else if (index > 0) {
+                setDigit(index - 1, '');
+                focusBox(index - 1);
+            }
+
+            return;
+        }
+
+        if (event.key === 'Delete') {
+            event.preventDefault();
+            setDigit(index, '');
+
+            return;
+        }
+
+        if (event.key === 'ArrowLeft' && index > 0) {
+            event.preventDefault();
+            focusBox(index - 1);
+
+            return;
+        }
+
+        if (event.key === 'ArrowRight' && index < CODE_LENGTH - 1) {
+            event.preventDefault();
+            focusBox(index + 1);
+        }
+    };
+
+    const handlePaste = (
+        event: React.ClipboardEvent<HTMLInputElement>,
+    ): void => {
+        const text = event.clipboardData.getData('text').replace(/\D/g, '');
+
+        if (text === '') {
+            return;
+        }
+
+        event.preventDefault();
+
+        const chars = text.split('').slice(0, CODE_LENGTH);
+        setDigits((previous) => {
+            const next = [...previous];
+
+            chars.forEach((char, offset) => {
+                next[offset] = char;
+            });
+
+            return next;
+        });
+        focusBox(Math.min(chars.length, CODE_LENGTH - 1));
+    };
+
+    const restartCooldown = (): void => {
+        const availableAt = Date.now() + RESEND_COOLDOWN_SECONDS * 1000;
+        writeCooldown(email, availableAt);
+        setCooldownUntil(availableAt);
+        setNow(Date.now());
+    };
+
+    const code = digits.join('');
+    const complete = code.length === CODE_LENGTH;
 
     return (
         <>
@@ -33,55 +248,77 @@ export default function Otp({ email, status }: Props) {
                     </p>
                 </div>
 
-                <Form {...verify.form()} className="flex flex-col gap-6">
+                <Form
+                    {...verify.form()}
+                    onSuccess={clearCooldown}
+                    className="flex flex-col gap-6"
+                >
                     {({ processing, errors }) => (
                         <>
-                            <div className="grid gap-2">
-                                <Label htmlFor="code">One-time code</Label>
-                                <div className="flex justify-center">
-                                    <InputOTP
-                                        id="code"
-                                        name="code"
-                                        maxLength={6}
-                                        value={code}
-                                        onChange={(value) =>
-                                            setCode(
-                                                value.replace(/[^0-9]/g, ''),
-                                            )
-                                        }
-                                        disabled={processing}
-                                        pattern={REGEXP_ONLY_DIGITS}
-                                        autoFocus
-                                    >
-                                        <InputOTPGroup>
-                                            {Array.from(
-                                                { length: 6 },
-                                                (_, index) => (
-                                                    <InputOTPSlot
-                                                        key={index}
-                                                        index={index}
-                                                    />
-                                                ),
-                                            )}
-                                        </InputOTPGroup>
-                                    </InputOTP>
+                            <fieldset className="grid gap-2">
+                                <legend className="text-sm leading-none font-medium">
+                                    One-time code
+                                </legend>
+                                <div
+                                    className="flex justify-center gap-2"
+                                    onPaste={handlePaste}
+                                >
+                                    {digits.map((digit, index) => (
+                                        <Input
+                                            key={index}
+                                            ref={(element) => {
+                                                boxes.current[index] = element;
+                                            }}
+                                            value={digit}
+                                            onChange={(event) =>
+                                                handleChange(
+                                                    index,
+                                                    event.target.value,
+                                                )
+                                            }
+                                            onKeyDown={(event) =>
+                                                handleKeyDown(index, event)
+                                            }
+                                            onFocus={(event) =>
+                                                event.target.select()
+                                            }
+                                            inputMode="numeric"
+                                            autoComplete={
+                                                index === 0
+                                                    ? 'one-time-code'
+                                                    : 'off'
+                                            }
+                                            aria-label={`Digit ${index + 1} of ${CODE_LENGTH}`}
+                                            maxLength={CODE_LENGTH}
+                                            disabled={processing}
+                                            data-test={`code-digit-${index + 1}`}
+                                            className="h-12 w-12 text-center text-lg tabular-nums"
+                                        />
+                                    ))}
                                 </div>
-                                {code.length > 0 && code.length < 6 ? (
+                                {/* The six boxes are the UI; this carries the joined value. */}
+                                <input
+                                    type="hidden"
+                                    name="code"
+                                    value={code}
+                                    readOnly
+                                />
+                                {code.length > 0 && !complete ? (
                                     <p
                                         className="text-sm text-destructive"
                                         data-test="code-incomplete"
                                     >
-                                        Code must be 6 digits.
+                                        Code must be {CODE_LENGTH} digits.
                                     </p>
                                 ) : (
                                     <InputError message={errors.code} />
                                 )}
-                            </div>
+                            </fieldset>
 
                             <Button
                                 type="submit"
                                 className="w-full"
-                                disabled={processing || code.length !== 6}
+                                disabled={processing || !complete}
                                 data-test="verify-button"
                             >
                                 {processing && <Spinner />}
@@ -98,16 +335,24 @@ export default function Otp({ email, status }: Props) {
                 )}
 
                 <div className="flex items-center justify-between text-sm">
-                    <Form {...resend.form()} className="inline">
+                    <Form
+                        {...resend.form()}
+                        onSuccess={restartCooldown}
+                        className="inline"
+                    >
                         {({ processing }) => (
                             <Button
                                 type="submit"
                                 variant="link"
                                 className="h-auto p-0"
-                                disabled={processing}
+                                disabled={processing || remainingSeconds > 0}
                                 data-test="resend-button"
                             >
-                                {processing ? 'Sending…' : 'Resend code'}
+                                {processing
+                                    ? 'Sending…'
+                                    : remainingSeconds > 0
+                                      ? `Resend code in ${formatRemaining(remainingSeconds)}`
+                                      : 'Resend code'}
                             </Button>
                         )}
                     </Form>
