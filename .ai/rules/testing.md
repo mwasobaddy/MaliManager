@@ -37,3 +37,6 @@ Assert the side effect as well as the redirect — it proves the refusal happene
 php artisan test --filter=DepositRefund     # one slice
 php artisan test                            # full suite before handing back
 ```
+
+## SQLite masks missing-column selects that MySQL rejects
+The test DB is SQLite :memory: while production is MySQL. Eloquent on SQLite tolerated `select id, name from occupants` (returning null) where MySQL throws 1054 Unknown column (deposit-refunds index 500). A passing index test with an empty relation therefore does NOT prove the select list is valid. Regression tests for eager-load column lists must include a related record so the constrained columns actually resolve, and treat a null where a name is expected as a failure signal.
