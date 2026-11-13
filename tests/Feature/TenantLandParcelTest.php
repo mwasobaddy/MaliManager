@@ -42,6 +42,20 @@ function createParcel(Organization $organization, User $owner, array $attributes
     ], $attributes));
 }
 
+test('the land parcel edit page renders for the owner', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createLandParcelOrganization($owner);
+    $parcel = createParcel($organization, $owner);
+
+    $this->actingAs($owner)
+        ->get(parcelTenantUrl($organization, "/land-parcels/{$parcel->slug}/edit"))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('organisation/land-parcels/edit')
+            ->has('parcel')
+        );
+});
+
 test('land parcels index requires the land_parcel.manage sub-permission', function () {
     $owner = User::factory()->create(['onboarded_at' => now()]);
     $organization = createLandParcelOrganization($owner);

@@ -110,6 +110,7 @@ class LandParcelController extends Controller
         $this->authorizeAccess($request, $landParcel);
 
         $organization = TenancyContext::organization();
+        $user = $request->user();
 
         return Inertia::render('organisation/land-parcels/edit', [
             'organization' => $organization->only('id', 'name', 'slug'),
