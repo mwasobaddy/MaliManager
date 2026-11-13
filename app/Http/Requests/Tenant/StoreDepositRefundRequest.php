@@ -7,6 +7,7 @@ namespace App\Http\Requests\Tenant;
 use App\Data\Deposits\RequestDepositRefundData;
 use App\Models\DepositRefund;
 use App\Models\Lease;
+use App\Services\StaffService;
 use App\Support\TenancyContext;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -16,7 +17,29 @@ class StoreDepositRefundRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()->can('create', DepositRefund::class);
+        if (! $this->user()->can('create', DepositRefund::class)) {
+            return false;
+        }
+
+        // Staff may only raise refunds against leases on properties they are
+        // delegated to; an unknown or cross-org lease falls through to the
+        // `exists` rule so the user gets a validation error, not a 403.
+        $lease = Lease::find($this->integer('lease_id'));
+        $organization = TenancyContext::organization();
+
+        if ($lease === null || $lease->organization_id !== $organization?->id) {
+            return true;
+        }
+
+        if ($organization === null || $this->user()->isOwnerOf($organization)) {
+            return true;
+        }
+
+        return in_array(
+            $lease->property_id,
+            app(StaffService::class)->delegatedPropertyIds($this->user()->membershipFor($organization)),
+            true,
+        );
     }
 
     /**

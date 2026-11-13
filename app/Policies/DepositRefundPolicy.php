@@ -9,6 +9,7 @@ use App\Enums\SubPermissionKey;
 use App\Models\DepositRefund;
 use App\Models\Organization;
 use App\Models\User;
+use App\Services\StaffService;
 use App\Support\TenancyContext;
 use Illuminate\Auth\Access\HandlesAuthorization;
 
@@ -31,7 +32,8 @@ class DepositRefundPolicy
     public function view(User $user, DepositRefund $refund): bool
     {
         return $user->hasRole(PlatformRole::Admin->value)
-            || $this->canRequestIn($user, $this->findOrganization($refund));
+            || ($this->canRequestIn($user, $this->findOrganization($refund))
+                && $this->delegatedToRefund($user, $refund));
     }
 
     public function create(User $user): bool
@@ -52,7 +54,8 @@ class DepositRefundPolicy
 
         return $user->hasRole(PlatformRole::Admin->value)
             || $user->isOwnerOf($organization)
-            || $user->hasSubPermission($organization, SubPermissionKey::LeaseEdit);
+            || ($user->hasSubPermission($organization, SubPermissionKey::LeaseEdit)
+                && $this->delegatedToRefund($user, $refund));
     }
 
     private function canRequestIn(User $user, ?Organization $organization): bool
@@ -68,6 +71,31 @@ class DepositRefundPolicy
     private function findOrganization(DepositRefund $refund): ?Organization
     {
         return Organization::find($refund->organization_id);
+    }
+
+    /**
+     * Staff only see and decide refunds on properties they are delegated to;
+     * owners and admins pass through the callers' own checks.
+     */
+    private function delegatedToRefund(User $user, DepositRefund $refund): bool
+    {
+        $organization = $this->findOrganization($refund);
+
+        if ($organization === null || $user->isOwnerOf($organization)) {
+            return $organization !== null;
+        }
+
+        $propertyId = $refund->lease?->property_id;
+
+        if ($propertyId === null) {
+            return false;
+        }
+
+        return in_array(
+            $propertyId,
+            app(StaffService::class)->delegatedPropertyIds($user->membershipFor($organization)),
+            true,
+        );
     }
 
     private function organization(): ?Organization
