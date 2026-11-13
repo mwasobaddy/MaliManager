@@ -3,6 +3,7 @@ import { ArrowLeft } from 'lucide-react';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { formatDateTime } from '@/lib/format-date';
 import { index as auditIndex } from '@/routes/tenant/audit';
 
 type Audit = {
@@ -53,9 +54,7 @@ export default function AuditShow({ audit }: Props) {
                         <CardContent className="space-y-3 text-sm">
                             <Row
                                 label="When"
-                                value={new Date(
-                                    audit.created_at,
-                                ).toLocaleString()}
+                                value={formatDateTime(audit.created_at)}
                             />
                             <Row label="Action" value={audit.event ?? '—'} />
                             <Row

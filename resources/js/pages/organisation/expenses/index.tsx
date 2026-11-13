@@ -12,6 +12,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { formatDate } from '@/lib/format-date';
 import { formatMoney } from '@/lib/format-money';
 import {
     create,
@@ -152,7 +153,9 @@ export default function ExpensesIndex({
                                             )}
                                         </td>
                                         <td className="px-3 py-2">
-                                            {expense.spent_on}
+                                            {expense.spent_on
+                                                ? formatDate(expense.spent_on)
+                                                : '—'}
                                         </td>
                                         <td className="px-3 py-2 text-right">
                                             {expense.receipt_url ? (

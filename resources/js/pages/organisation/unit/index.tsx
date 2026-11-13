@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Pagination } from '@/components/ui/pagination';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { formatMoney } from '@/lib/format-money';
 import * as unitRoutes from '@/routes/tenant/units';
 
 type UnitRow = {
@@ -250,7 +251,7 @@ export default function UnitsIndex({ units, properties }: Props) {
                 header: 'Rent',
                 cell: ({ row }) => (
                     <span className="text-xs tabular-nums">
-                        {row.original.monthly_rent ?? '—'}
+                        {formatMoney(row.original.monthly_rent)}
                     </span>
                 ),
             },

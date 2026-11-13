@@ -172,6 +172,7 @@ export default function PropertiesDashboard({
                                     ? 'default'
                                     : 'secondary'
                             }
+                            className="capitalize"
                         >
                             {property.status}
                         </Badge>

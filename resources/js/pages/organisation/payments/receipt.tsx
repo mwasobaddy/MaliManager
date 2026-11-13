@@ -39,6 +39,14 @@ export default function PaymentReceipt({
         .map((part: string) => part.charAt(0).toUpperCase() + part.slice(1))
         .join(' ');
 
+    // The lease can be tenantless (a payment recorded without a linked
+    // occupant), so the heading falls back to the unit and property rather
+    // than rendering a double dash.
+    const subject =
+        tenantName && tenantName !== '—'
+            ? tenantName
+            : [unitName, propertyName].filter(Boolean).join(' · ') || '—';
+
     const statusColor =
         status === 'received'
             ? 'bg-status-success-bg text-status-success-fg'
@@ -48,11 +56,11 @@ export default function PaymentReceipt({
 
     return (
         <>
-            <Head title={`Receipt — ${tenantName}`} />
+            <Head title={`Receipt — ${subject}`} />
             <div className="mx-auto max-w-3xl p-8 print:p-0">
                 <div className="mb-6 flex items-center justify-between print:hidden">
                     <h1 className="text-lg font-semibold">
-                        Rent receipt — {tenantName}
+                        Rent receipt — {subject}
                     </h1>
                     <button
                         type="button"
@@ -72,7 +80,7 @@ export default function PaymentReceipt({
                                 <p className="text-sm text-muted-foreground">
                                     Tenant
                                 </p>
-                                <p className="font-medium">{tenantName}</p>
+                                <p className="font-medium">{subject}</p>
                             </div>
                             {propertyName && (
                                 <div>
@@ -107,7 +115,9 @@ export default function PaymentReceipt({
                                 <p className="text-sm text-muted-foreground">
                                     Status
                                 </p>
-                                <p className={`font-medium ${statusColor}`}>
+                                <p
+                                    className={`font-medium capitalize ${statusColor}`}
+                                >
                                     {status}
                                 </p>
                             </div>

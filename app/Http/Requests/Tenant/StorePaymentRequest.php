@@ -14,6 +14,19 @@ class StorePaymentRequest extends FormRequest
     }
 
     /**
+     * @return array<string, string>
+     */
+    public function attributes(): array
+    {
+        return [
+            'lease_id' => 'lease',
+            'paid_on' => 'payment date',
+            'period_start' => 'period start',
+            'period_end' => 'period end',
+        ];
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function rules(): array

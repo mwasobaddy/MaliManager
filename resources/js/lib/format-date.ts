@@ -14,6 +14,17 @@ const formatter = new Intl.DateTimeFormat('en-KE', {
     hour12: false,
 });
 
+const dateFormatter = new Intl.DateTimeFormat('en-KE', {
+    timeZone: 'Africa/Nairobi',
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+});
+
 export function formatDateTime(value: string | number | Date): string {
     return formatter.format(new Date(value));
+}
+
+export function formatDate(value: string | number | Date): string {
+    return dateFormatter.format(new Date(value));
 }

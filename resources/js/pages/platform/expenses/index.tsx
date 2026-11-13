@@ -26,6 +26,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Pagination } from '@/components/ui/pagination';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { formatMoney } from '@/lib/format-money';
 import {
     Select,
     SelectContent,
@@ -335,8 +336,10 @@ export default function PlatformExpensesIndex({
                 meta: { align: 'right' },
                 cell: ({ row }) => (
                     <span className="block text-right font-medium whitespace-nowrap tabular-nums">
-                        {row.original.currency}{' '}
-                        {row.original.amount.toLocaleString()}
+                        {formatMoney(
+                            row.original.amount,
+                            row.original.currency,
+                        )}
                     </span>
                 ),
             },
@@ -571,7 +574,10 @@ export default function PlatformExpensesIndex({
                 }}
                 title={
                     viewedExpense
-                        ? `${viewedExpense.currency} ${viewedExpense.amount.toLocaleString()}`
+                        ? formatMoney(
+                              viewedExpense.amount,
+                              viewedExpense.currency,
+                          )
                         : 'Expense'
                 }
                 description={
