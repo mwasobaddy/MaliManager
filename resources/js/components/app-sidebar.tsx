@@ -112,13 +112,7 @@ export function AppSidebar() {
     const canManagePayments =
         context?.permissions?.includes('payment.manage') ?? false;
     const canViewReports =
-        (context as { is_owner?: boolean } | undefined)?.is_owner ||
-        [
-            'expense.manage',
-            'maintenance.manage',
-            'lease.manage',
-            'occupant.manage',
-        ].some((key) => (context?.permissions ?? []).includes(key));
+        context?.permissions?.includes('lease.manage_templates') ?? false;
     const canViewAudit = context?.permissions?.includes('audit.view') ?? false;
     const canRaiseMaintenance =
         usePage().props.auth?.canRaiseMaintenance ?? false;
@@ -319,7 +313,7 @@ export function AppSidebar() {
                               ),
                           ]
                         : []),
-                    ...(aiEnabled
+                    ...(aiEnabled && canManageTemplates
                         ? [item('AI drafting', draftingPageIndex(), Wand2)]
                         : []),
                     ...(canViewReports
@@ -394,7 +388,7 @@ export function AppSidebar() {
                     ...(canViewReports
                         ? [item('Reports', reportsNavIndex(), BarChart3)]
                         : []),
-                    ...(aiEnabled
+                    ...(aiEnabled && canManageTemplates
                         ? [item('AI drafting', draftingPageIndex(), Wand2)]
                         : []),
                 ],

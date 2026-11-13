@@ -249,47 +249,49 @@ Route::middleware([
                 ->name('tenant.ai-settings.update');
             Route::delete('/ai-settings/key', [AiSettingsController::class, 'destroyKey'])
                 ->name('tenant.ai-settings.destroy');
+        });
 
-            // Organization-level expense records (target properties or land parcels).
-            Route::get('/expenses', [ExpenseController::class, 'index'])
-                ->middleware('sub-permission:expense.manage')
-                ->name('tenant.expenses.index');
-            Route::get('/expenses/create', [ExpenseController::class, 'create'])
-                ->middleware('sub-permission:expense.manage')
-                ->name('tenant.expenses.create');
-            Route::post('/expenses', [ExpenseController::class, 'store'])
-                ->middleware('sub-permission:expense.manage')
-                ->name('tenant.expenses.store');
-            Route::get('/expenses/{expense}/edit', [ExpenseController::class, 'edit'])
-                ->middleware('sub-permission:expense.manage')
-                ->name('tenant.expenses.edit');
-            Route::put('/expenses/{expense}', [ExpenseController::class, 'update'])
-                ->middleware('sub-permission:expense.manage')
-                ->name('tenant.expenses.update');
-            Route::delete('/expenses/{expense}', [ExpenseController::class, 'destroy'])
-                ->middleware('sub-permission:expense.manage')
-                ->name('tenant.expenses.destroy');
+        // Organization-level expense records (target properties or land parcels).
+        Route::get('/expenses', [ExpenseController::class, 'index'])
+            ->middleware('sub-permission:expense.manage')
+            ->name('tenant.expenses.index');
+        Route::get('/expenses/create', [ExpenseController::class, 'create'])
+            ->middleware('sub-permission:expense.manage')
+            ->name('tenant.expenses.create');
+        Route::post('/expenses', [ExpenseController::class, 'store'])
+            ->middleware('sub-permission:expense.manage')
+            ->name('tenant.expenses.store');
+        Route::get('/expenses/{expense}/edit', [ExpenseController::class, 'edit'])
+            ->middleware('sub-permission:expense.manage')
+            ->name('tenant.expenses.edit');
+        Route::put('/expenses/{expense}', [ExpenseController::class, 'update'])
+            ->middleware('sub-permission:expense.manage')
+            ->name('tenant.expenses.update');
+        Route::delete('/expenses/{expense}', [ExpenseController::class, 'destroy'])
+            ->middleware('sub-permission:expense.manage')
+            ->name('tenant.expenses.destroy');
 
-            // Maintenance request workflow (staff side).
-            Route::get('/maintenance', [MaintenanceController::class, 'index'])
-                ->middleware('sub-permission:maintenance.manage')
-                ->name('tenant.maintenance.index');
-            Route::put('/maintenance/{record}', [MaintenanceController::class, 'update'])
-                ->middleware('sub-permission:maintenance.edit')
-                ->name('tenant.maintenance.update');
-            Route::delete('/maintenance/{record}', [MaintenanceController::class, 'destroy'])
-                ->middleware('sub-permission:maintenance.delete')
-                ->name('tenant.maintenance.destroy');
+        // Maintenance request workflow (staff side).
+        Route::get('/maintenance', [MaintenanceController::class, 'index'])
+            ->middleware('sub-permission:maintenance.manage')
+            ->name('tenant.maintenance.index');
+        Route::put('/maintenance/{record}', [MaintenanceController::class, 'update'])
+            ->middleware('sub-permission:maintenance.edit')
+            ->name('tenant.maintenance.update');
+        Route::delete('/maintenance/{record}', [MaintenanceController::class, 'destroy'])
+            ->middleware('sub-permission:maintenance.delete')
+            ->name('tenant.maintenance.destroy');
 
-            // Notes hang off one request. Reading them is part of working the
-            // request; writing one is an edit.
-            Route::get('/maintenance/{record}/notes', [MaintenanceNoteController::class, 'index'])
-                ->middleware('sub-permission:maintenance.manage')
-                ->name('tenant.maintenance.notes.index');
-            Route::post('/maintenance/{record}/notes', [MaintenanceNoteController::class, 'store'])
-                ->middleware('sub-permission:maintenance.edit')
-                ->name('tenant.maintenance.notes.store');
+        // Notes hang off one request. Reading them is part of working the
+        // request; writing one is an edit.
+        Route::get('/maintenance/{record}/notes', [MaintenanceNoteController::class, 'index'])
+            ->middleware('sub-permission:maintenance.manage')
+            ->name('tenant.maintenance.notes.index');
+        Route::post('/maintenance/{record}/notes', [MaintenanceNoteController::class, 'store'])
+            ->middleware('sub-permission:maintenance.edit')
+            ->name('tenant.maintenance.notes.store');
 
+        Route::middleware('sub-permission:lease.manage_templates')->group(function () {
             // Organization-wide templates.
             Route::get('/agreement-templates', [AgreementTemplateController::class, 'orgIndex'])
                 ->name('tenant.agreement-templates.org-index');

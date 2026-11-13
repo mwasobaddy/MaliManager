@@ -156,7 +156,8 @@ class HandleInertiaRequests extends Middleware
         $aiEnabled = app(AiGateway::class)->canUse($user, AiFeature::AskData, $organization);
 
         if ($organization) {
-            $permitted = $user->hasSubPermission($organization, SubPermissionKey::AiUse);
+            $permitted = $user->hasSubPermission($organization, SubPermissionKey::AiUse)
+                && $user->hasSubPermission($organization, SubPermissionKey::LeaseManageTemplates);
             $scope = 'tenant';
             $copy = [
                 'title' => 'Organization assistant',

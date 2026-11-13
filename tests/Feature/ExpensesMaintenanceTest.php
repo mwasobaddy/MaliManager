@@ -1,10 +1,15 @@
 <?php
 
+use App\Models\Delegation;
 use App\Models\Expense;
 use App\Models\Lease;
 use App\Models\MaintenanceRequest;
 use App\Models\Organization;
+use App\Models\OrganizationUser;
 use App\Models\Plan;
+use App\Models\Property;
+use App\Models\SubPermission;
+use App\Models\SubRole;
 use App\Models\User;
 use App\Services\MaintenanceRequestService;
 use App\Services\OccupantService;
@@ -30,7 +35,7 @@ function expenseOrganization(User $owner): Organization
     );
 }
 
-function expenseProperty(Organization $organization, User $owner): App\Models\Property
+function expenseProperty(Organization $organization, User $owner): Property
 {
     return $organization->properties()->create([
         'name' => 'Sunset Heights',
@@ -187,6 +192,129 @@ test('users without an active lease cannot raise maintenance requests', function
         ])->assertRedirect();
 
     expect(MaintenanceRequest::count())->toBe(0);
+});
+
+function caretakerStaff(Organization $organization, User $owner, array $keys): User
+{
+    $subRole = SubRole::factory()->create(['organization_id' => $organization->id]);
+    $subRole->subPermissions()->sync(SubPermission::whereIn('key', $keys)->pluck('id'));
+
+    $staff = User::factory()->create(['onboarded_at' => now()]);
+    $organization->users()->attach($staff->id, ['is_owner' => false, 'sub_role_id' => $subRole->id, 'status' => 'active']);
+
+    return $staff;
+}
+
+function delegateProperty(Organization $organization, User $owner, User $staff, Property $property): void
+{
+    $membership = OrganizationUser::where('organization_id', $organization->id)
+        ->where('user_id', $staff->id)
+        ->firstOrFail();
+
+    Delegation::create([
+        'organization_id' => $organization->id,
+        'organization_user_id' => $membership->id,
+        'delegatable_type' => Property::class,
+        'delegatable_id' => $property->id,
+        'created_by' => $owner->id,
+    ]);
+}
+
+test('maintenance routes are gated on maintenance.manage, not templates', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = expenseOrganization($owner);
+    $property = expenseProperty($organization, $owner);
+    $staff = caretakerStaff($organization, $owner, ['maintenance.manage']);
+    delegateProperty($organization, $owner, $staff, $property);
+
+    // The route group used to demand lease.manage_templates, bouncing
+    // caretakers with a denial toast. maintenance.manage is the gate now.
+    $this->actingAs($staff)
+        ->get(expenseUrl($organization, '/maintenance'))
+        ->assertOk();
+});
+
+test('maintenance lists and updates are scoped to delegated properties', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = expenseOrganization($owner);
+    $propertyA = expenseProperty($organization, $owner);
+    $propertyB = $organization->properties()->create([
+        'name' => 'Second Court',
+        'slug' => 'second-court',
+        'status' => 'active',
+        'created_by' => $owner->id,
+    ]);
+    $staff = caretakerStaff($organization, $owner, ['maintenance.manage', 'maintenance.edit']);
+    delegateProperty($organization, $owner, $staff, $propertyA);
+
+    $mine = MaintenanceRequest::create([
+        'organization_id' => $organization->id,
+        'property_id' => $propertyA->id,
+        'raised_by' => $owner->id,
+        'title' => 'Mine',
+        'description' => 'Delegated property.',
+        'status' => 'opened',
+        'priority' => 'high',
+    ]);
+    $theirs = MaintenanceRequest::create([
+        'organization_id' => $organization->id,
+        'property_id' => $propertyB->id,
+        'raised_by' => $owner->id,
+        'title' => 'Theirs',
+        'description' => 'Other property.',
+        'status' => 'opened',
+        'priority' => 'high',
+    ]);
+
+    $this->actingAs($staff)
+        ->get(expenseUrl($organization, '/maintenance'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('requests.data', 1)
+            ->where('requests.data.0.id', $mine->id)
+        );
+
+    // Updating the other property's request bounces and changes nothing.
+    $this->actingAs($staff)
+        ->put(expenseUrl($organization, "/maintenance/{$theirs->id}"), ['status' => 'assigned'])
+        ->assertRedirect();
+
+    expect($theirs->fresh()->status)->toBe('opened');
+
+    // The delegated one updates fine.
+    $this->actingAs($staff)
+        ->put(expenseUrl($organization, "/maintenance/{$mine->id}"), ['status' => 'assigned'])
+        ->assertRedirect();
+
+    expect($mine->fresh()->status)->toBe('assigned');
+});
+
+test('caretakers without expense.manage cannot open expenses', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = expenseOrganization($owner);
+    $property = expenseProperty($organization, $owner);
+    $staff = caretakerStaff($organization, $owner, ['maintenance.manage']);
+    delegateProperty($organization, $owner, $staff, $property);
+
+    $this->actingAs($staff)
+        ->get(expenseUrl($organization, '/expenses'))
+        ->assertRedirect();
+});
+
+test('reports stay gated on lease.manage_templates', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = expenseOrganization($owner);
+    $property = expenseProperty($organization, $owner);
+    $staff = caretakerStaff($organization, $owner, ['maintenance.manage']);
+    delegateProperty($organization, $owner, $staff, $property);
+
+    $this->actingAs($staff)
+        ->get(expenseUrl($organization, '/reports'))
+        ->assertRedirect();
+
+    $this->actingAs($owner)
+        ->get(expenseUrl($organization, '/reports'))
+        ->assertOk();
 });
 
 test('staff advance request statuses through the allowed workflow only', function () {

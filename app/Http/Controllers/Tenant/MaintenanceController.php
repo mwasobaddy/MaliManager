@@ -9,8 +9,10 @@ use App\Http\Requests\Tenant\UpdateMaintenanceRequest;
 use App\Models\MaintenanceRequest;
 use App\Models\User;
 use App\Services\MaintenanceRequestService;
+use App\Services\StaffService;
 use App\Support\TenancyContext;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -24,11 +26,18 @@ class MaintenanceController extends Controller
     {
         $status = $request->string('status')->toString();
         $priority = $request->string('priority')->toString();
+        $organization = TenancyContext::organization();
 
         $requests = MaintenanceRequest::query()
-            ->where('organization_id', TenancyContext::organization()?->id)
+            ->where('organization_id', $organization?->id)
             ->when($status !== '', fn ($query) => $query->where('status', $status))
             ->when($priority !== '', fn ($query) => $query->where('priority', $priority))
+            ->when(! $request->user()->isOwnerOf($organization), function ($query) use ($request, $organization) {
+                $query->whereIn(
+                    'property_id',
+                    app(StaffService::class)->delegatedPropertyIds($request->user()->membershipFor($organization)),
+                );
+            })
             ->with(['unit:id,name', 'assignee:id,name', 'raiser:id,name'])
             ->orderByDesc('created_at')
             ->paginate(15)
@@ -62,7 +71,7 @@ class MaintenanceController extends Controller
 
     public function update(UpdateMaintenanceRequest $updateRequest, MaintenanceRequest $record, MaintenanceRequestService $service): RedirectResponse
     {
-        abort_if($record->organization_id !== TenancyContext::organization()?->id, 403);
+        $this->authorizeRecordAccess($updateRequest, $record);
 
         $service->update($record, $updateRequest->user(), $updateRequest->validated());
 
@@ -73,13 +82,38 @@ class MaintenanceController extends Controller
 
     public function destroy(DestroyRequest $destroyRequest, MaintenanceRequest $record, MaintenanceRequestService $service): RedirectResponse
     {
-        abort_if($record->organization_id !== TenancyContext::organization()?->id, 403);
+        $this->authorizeRecordAccess($destroyRequest, $record);
 
         $service->softDelete($record);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Request removed.']);
 
         return redirect()->route('tenant.maintenance.index');
+    }
+
+    /**
+     * Staff may only touch requests on properties they are delegated to;
+     * owners can work every property in the organization.
+     */
+    private function authorizeRecordAccess(Request $request, MaintenanceRequest $record): void
+    {
+        $organization = TenancyContext::organization();
+
+        abort_if($record->organization_id !== $organization?->id, 403);
+
+        if ($organization === null || $request->user()->isOwnerOf($organization)) {
+            return;
+        }
+
+        abort_unless(
+            $record->property_id !== null
+                && in_array(
+                    $record->property_id,
+                    app(StaffService::class)->delegatedPropertyIds($request->user()->membershipFor($organization)),
+                    true,
+                ),
+            403,
+        );
     }
 
     /**

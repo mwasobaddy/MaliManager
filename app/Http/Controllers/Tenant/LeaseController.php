@@ -15,6 +15,7 @@ use App\Models\Property;
 use App\Services\AiRenewalService;
 use App\Services\OccupantService;
 use App\Services\RentArrearsService;
+use App\Services\StaffService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -144,6 +145,12 @@ class LeaseController extends Controller
         $user = $request->user();
 
         if ($user->isOwnerOf($property->organization)) {
+            return;
+        }
+
+        $membership = $user->membershipFor($property->organization);
+
+        if ($membership && in_array($property->id, app(StaffService::class)->delegatedPropertyIds($membership))) {
             return;
         }
 
