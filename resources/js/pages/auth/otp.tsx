@@ -70,6 +70,20 @@ function formatRemaining(totalSeconds: number): string {
     return `${minutes}:${String(seconds).padStart(2, '0')}`;
 }
 
+/**
+ * Shows just enough to confirm where the code went — first letter plus the
+ * domain — so a shared screen never leaks the full address.
+ */
+function maskEmail(email: string): string {
+    const at = email.indexOf('@');
+
+    if (at <= 0 || at === email.length - 1) {
+        return email;
+    }
+
+    return `${email.slice(0, 1)}•••••${email.slice(at)}`;
+}
+
 export default function Otp({ email, status }: Props) {
     const [digits, setDigits] = useState<string[]>(() =>
         Array<string>(CODE_LENGTH).fill(''),
@@ -244,7 +258,8 @@ export default function Otp({ email, status }: Props) {
                 <div className="space-y-1">
                     <h2 className="text-lg font-medium">Check your email</h2>
                     <p className="text-sm text-muted-foreground">
-                        We sent a one-time code to <strong>{email}</strong>.
+                        We sent a one-time code to{' '}
+                        <strong>{maskEmail(email)}</strong>.
                     </p>
                 </div>
 
