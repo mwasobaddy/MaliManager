@@ -22,11 +22,9 @@
         'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
         'Noto Color Emoji';
 
-    --font-display:
-        'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+    --font-display: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
 
-    --animate-fade-in-up:
-        fade-in-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+    --animate-fade-in-up: fade-in-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
 
     @keyframes fade-in-up {
         from {
@@ -107,6 +105,16 @@
     --color-brand-accent: var(--brand-accent);
     --color-brand-accent-100: var(--brand-accent-100);
     --color-brand-accent-foreground: var(--brand-accent-foreground);
+    /*
+     * Auth brand-panel overlays (§auth): floating cards and the phone
+     * screen sit on photography, so they keep one locked treatment in
+     * both themes instead of following the flipping surface tokens.
+     */
+    --color-auth-card: var(--auth-card);
+    --color-auth-card-ink: var(--auth-card-ink);
+    --color-auth-card-muted: var(--auth-card-muted);
+    --color-auth-card-line: var(--auth-card-line);
+    --color-auth-screen: var(--auth-screen);
     --color-action-view: var(--action-view);
     --color-action-edit: var(--action-edit);
     --color-action-danger: var(--action-danger);
@@ -181,6 +189,13 @@
     --brand-accent-100: #d7eeed;
     /* Dark teal fill, so the label must be light. */
     --brand-accent-foreground: #f2fbfb;
+
+    /* Auth brand-panel overlays: locked light in both themes (see @theme). */
+    --auth-card: #faf8f5;
+    --auth-card-ink: #2a2621;
+    --auth-card-muted: #6b635a;
+    --auth-card-line: #d8cfbf;
+    --auth-screen: #17140f;
 
     /* shadcn primary = AA-safe terracotta button fill */
     --primary: #a85a36;
@@ -298,6 +313,13 @@
     /* The dark-mode accent is a *light* teal, so a white label would only
        reach ~2.1:1 against it. Flip the foreground instead. */
     --brand-accent-foreground: #0c2426;
+
+    /* Auth brand-panel overlays stay locked light over photography. */
+    --auth-card: #faf8f5;
+    --auth-card-ink: #2a2621;
+    --auth-card-muted: #6b635a;
+    --auth-card-line: #d8cfbf;
+    --auth-screen: #17140f;
 
     --primary: #c87a53;
     --primary-foreground: #1a1917;
@@ -519,7 +541,11 @@
     .dark .grid-texture {
         background-image:
             linear-gradient(rgb(234 230 223 / 0.045) 1px, transparent 1px),
-            linear-gradient(90deg, rgb(234 230 223 / 0.045) 1px, transparent 1px);
+            linear-gradient(
+                90deg,
+                rgb(234 230 223 / 0.045) 1px,
+                transparent 1px
+            );
     }
 }
 
