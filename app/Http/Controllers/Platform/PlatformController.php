@@ -8,6 +8,7 @@ use App\Http\Requests\Platform\ImpersonateOrganizationRequest;
 use App\Http\Requests\Platform\ImpersonateUserRequest;
 use App\Models\Organization;
 use App\Models\User;
+use App\Services\PlatformOverviewService;
 use App\Support\InertiaRedirect;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -16,7 +17,7 @@ use Inertia\Response;
 
 class PlatformController extends Controller
 {
-    public function index(): Response
+    public function index(PlatformOverviewService $overview): Response
     {
         $organizations = Organization::query()
             ->with([
@@ -43,6 +44,14 @@ class PlatformController extends Controller
 
         return Inertia::render('platform/dashboard', [
             'organizations' => $organizations,
+            'overview' => $overview->payload(),
+            'growth' => [
+                'funnel' => $overview->funnel(),
+                'cohorts' => $overview->cohorts(),
+            ],
+            'payments' => $overview->paymentPerformance(),
+            'adoption' => $overview->adoption(),
+            'histories' => $overview->histories(),
         ]);
     }
 
