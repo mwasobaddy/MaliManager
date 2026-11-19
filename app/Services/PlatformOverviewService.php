@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\OrganizationStatus;
+use App\Models\Audit;
 use App\Models\LandParcel;
 use App\Models\Lease;
 use App\Models\MaintenanceRequest;
@@ -16,6 +17,7 @@ use App\Models\SubscriptionPayment;
 use App\Models\Unit;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Central-DB-only metrics for the platform dashboard: the five-second
@@ -568,6 +570,77 @@ class PlatformOverviewService extends Service
                 'label' => $row->captured_on->format('M d'),
                 'rent' => (float) $row->rent_month_to_date,
             ])->all(),
+        ];
+    }
+
+    /**
+     * Operations signals: failed jobs, recent audit activity, and which
+     * integrations are configured. Integration tiles deliberately read
+     * "configured", never "healthy" — presence of a key proves nothing
+     * about the vendor being up.
+     *
+     * @return array{
+     *     failed_jobs: array{count: int, recent: list<array{queue: string, age: string}>},
+     *     audit: list<array{text: string, age: string}>,
+     *     integrations: list<array{key: string, label: string, detail: string, configured: bool}>,
+     * }
+     */
+    public function operations(): array
+    {
+        $failedCount = DB::table('failed_jobs')->count();
+
+        $recentFailed = DB::table('failed_jobs')
+            ->orderByDesc('failed_at')
+            ->limit(5)
+            ->get(['queue', 'failed_at'])
+            ->map(fn (object $job) => [
+                'queue' => (string) $job->queue,
+                'age' => CarbonImmutable::parse($job->failed_at)->diffForHumans(),
+            ])
+            ->all();
+
+        $audit = Audit::query()
+            ->latest()
+            ->limit(8)
+            ->get(['log_name', 'description', 'created_at'])
+            ->map(fn (Audit $entry) => [
+                'text' => "[{$entry->log_name}] {$entry->description}",
+                'age' => $entry->created_at->diffForHumans(),
+            ])
+            ->all();
+
+        $queue = (string) config('queue.default', 'sync');
+        $mailer = (string) config('mail.default', '');
+
+        return [
+            'failed_jobs' => ['count' => $failedCount, 'recent' => $recentFailed],
+            'audit' => $audit,
+            'integrations' => [
+                [
+                    'key' => 'queue',
+                    'label' => 'Queue workers',
+                    'detail' => $queue === 'sync' ? 'sync (no workers)' : $queue,
+                    'configured' => $queue !== 'sync',
+                ],
+                [
+                    'key' => 'mail',
+                    'label' => 'Mail',
+                    'detail' => $mailer === '' ? 'not set' : $mailer,
+                    'configured' => $mailer !== '',
+                ],
+                [
+                    'key' => 'sms',
+                    'label' => 'SMS gateway',
+                    'detail' => (string) config('services.africastalking.username', '') === '' ? 'no username' : 'account set',
+                    'configured' => (string) config('services.africastalking.username', '') !== '',
+                ],
+                [
+                    'key' => 'mpesa',
+                    'label' => 'M-Pesa Daraja',
+                    'detail' => (string) config('services.mpesa.shortcode', '') === '' ? 'no shortcode' : 'shortcode set',
+                    'configured' => (string) config('services.mpesa.shortcode', '') !== '',
+                ],
+            ],
         ];
     }
 

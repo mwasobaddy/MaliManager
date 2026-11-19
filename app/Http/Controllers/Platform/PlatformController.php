@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Platform;
 
 use App\Enums\OrganizationStatus;
+use App\Enums\PlatformPermissionKey;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Platform\ImpersonateOrganizationRequest;
 use App\Http\Requests\Platform\ImpersonateUserRequest;
@@ -17,8 +18,13 @@ use Inertia\Response;
 
 class PlatformController extends Controller
 {
-    public function index(PlatformOverviewService $overview): Response
+    public function index(Request $request, PlatformOverviewService $overview): Response
     {
+        // Entry requires the admin role, but the metrics sections follow
+        // the same permission as the main dashboard's admin tab: a future
+        // support role admitted past the middleware sees organizations
+        // without seeing platform revenue.
+        $metrics = $request->user()->can(PlatformPermissionKey::ViewAdvancedMetrics->value);
         $organizations = Organization::query()
             ->with([
                 'plan:id,slug,name',
@@ -44,14 +50,15 @@ class PlatformController extends Controller
 
         return Inertia::render('platform/dashboard', [
             'organizations' => $organizations,
-            'overview' => $overview->payload(),
-            'growth' => [
+            'overview' => $metrics ? $overview->payload() : null,
+            'growth' => $metrics ? [
                 'funnel' => $overview->funnel(),
                 'cohorts' => $overview->cohorts(),
-            ],
-            'payments' => $overview->paymentPerformance(),
-            'adoption' => $overview->adoption(),
-            'histories' => $overview->histories(),
+            ] : null,
+            'payments' => $metrics ? $overview->paymentPerformance() : null,
+            'adoption' => $metrics ? $overview->adoption() : null,
+            'histories' => $metrics ? $overview->histories() : null,
+            'operations' => $metrics ? $overview->operations() : null,
         ]);
     }
 

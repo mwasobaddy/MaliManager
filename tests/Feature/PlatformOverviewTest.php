@@ -11,6 +11,9 @@ use App\Models\SubscriptionPayment;
 use App\Models\Unit;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Spatie\Permission\Models\Role;
 
 beforeEach(function () {
     (new RolesAndPermissionsSeeder)->run();
@@ -116,6 +119,27 @@ test('platform overview is empty but honest with no organizations', function () 
             ->where('overview.alerts.0.text', 'Nothing needs attention.'));
 });
 
+test('platform metrics hide without the advanced metrics permission', function () {
+    $admin = overviewAdmin();
+    Role::where('name', 'admin')->firstOrFail()->revokePermissionTo('view advanced metrics');
+    expect($admin->refresh()->can('view advanced metrics'))->toBeFalse();
+
+    Organization::factory()->create();
+
+    $this->actingAs($admin)
+        ->get(route('platform.dashboard'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('platform/dashboard')
+            ->where('overview', null)
+            ->where('growth', null)
+            ->where('payments', null)
+            ->where('adoption', null)
+            ->where('histories', null)
+            ->where('operations', null)
+            ->has('organizations', 1));
+});
+
 test('platform growth reports funnel, cohorts and payment performance', function () {
     $plan = Plan::factory()->create(['price' => 2500]);
 
@@ -212,4 +236,27 @@ test('platform growth reports funnel, cohorts and payment performance', function
         ->and($leases['organizations'])->toBe(1);
 
     expect($props['histories']['as_of'])->toBeNull();
+});
+
+test('platform operations reports failed jobs, audit and integrations', function () {
+    DB::table('failed_jobs')->insert([
+        'uuid' => (string) Str::uuid(),
+        'connection' => 'database',
+        'queue' => 'default',
+        'payload' => '{}',
+        'exception' => 'Boom',
+        'failed_at' => now()->subHour()->toDateTimeString(),
+    ]);
+
+    activity()->inLog('platform')->log('Suspended Lapsed Ltd');
+
+    $props = $this->actingAs(overviewAdmin())
+        ->get(route('platform.dashboard'))
+        ->viewData('page')['props'];
+
+    expect($props['operations']['failed_jobs']['count'])->toBe(1)
+        ->and($props['operations']['failed_jobs']['recent'][0]['queue'])->toBe('default')
+        ->and($props['operations']['audit'][0]['text'])->toContain('Suspended Lapsed Ltd')
+        ->and(collect($props['operations']['integrations'])->pluck('key')->all())
+        ->toBe(['queue', 'mail', 'sms', 'mpesa']);
 });

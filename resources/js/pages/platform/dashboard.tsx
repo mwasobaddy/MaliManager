@@ -72,7 +72,7 @@ type Overview = {
 
 type Props = {
     organizations: Organization[];
-    overview: Overview;
+    overview: Overview | null;
     growth: {
         funnel: Array<{
             stage: string;
@@ -88,7 +88,7 @@ type Props = {
                 cells: Array<{ rate: number | null; retained: number }>;
             }>;
         };
-    };
+    } | null;
     payments: {
         daily: Array<{
             label: string;
@@ -105,7 +105,7 @@ type Props = {
             reason: string;
             age: string;
         }>;
-    };
+    } | null;
     adoption: {
         properties_total: number;
         units_total: number;
@@ -117,12 +117,25 @@ type Props = {
             organizations: number;
             percent: number;
         }>;
-    };
+    } | null;
     histories: {
         as_of: string | null;
         mrr: ComboPoint[];
         rent: ComboPoint[];
-    };
+    } | null;
+    operations: {
+        failed_jobs: {
+            count: number;
+            recent: Array<{ queue: string; age: string }>;
+        };
+        audit: Array<{ text: string; age: string }>;
+        integrations: Array<{
+            key: string;
+            label: string;
+            detail: string;
+            configured: boolean;
+        }>;
+    } | null;
 };
 
 type DashboardTab = 'overview' | 'growth' | 'payments' | 'adoption';
@@ -393,7 +406,11 @@ function formatLatency(seconds: number | null): string {
  * text. One brand-neutral series: the drop-off numbers are the story, and
  * a rainbow would imply categories that are not there.
  */
-function FunnelChart({ stages }: { stages: Props['growth']['funnel'] }) {
+function FunnelChart({
+    stages,
+}: {
+    stages: NonNullable<Props['growth']>['funnel'];
+}) {
     const first = stages[0]?.count ?? 0;
 
     return (
@@ -441,7 +458,11 @@ function FunnelChart({ stages }: { stages: Props['growth']['funnel'] }) {
  * values survive screen readers and greyscale, and no new dependency is
  * needed. Future months read as empty, never as zero.
  */
-function CohortHeatmap({ cohorts }: { cohorts: Props['growth']['cohorts'] }) {
+function CohortHeatmap({
+    cohorts,
+}: {
+    cohorts: NonNullable<Props['growth']>['cohorts'];
+}) {
     const tint = (rate: number | null): string => {
         if (rate === null) {
             return 'bg-muted/40 text-muted-foreground';
@@ -540,7 +561,7 @@ function FailuresTable({
     failures,
     currency,
 }: {
-    failures: Props['payments']['failures'];
+    failures: NonNullable<Props['payments']>['failures'];
     currency: string;
 }) {
     if (failures.length === 0) {
@@ -618,7 +639,7 @@ function FailuresTable({
 function AdoptionBars({
     features,
 }: {
-    features: Props['adoption']['features'];
+    features: NonNullable<Props['adoption']>['features'];
 }) {
     const max = Math.max(...features.map((f) => f.organizations), 1);
 
@@ -667,12 +688,25 @@ export default function AdminDashboard({
     payments,
     adoption,
     histories,
+    operations,
 }: Props) {
-    const { kpis, currency } = overview;
+    const metrics =
+        overview !== null &&
+        growth !== null &&
+        payments !== null &&
+        adoption !== null &&
+        histories !== null &&
+        operations !== null
+            ? { overview, growth, payments, adoption, histories, operations }
+            : null;
+    const kpis = metrics?.overview.kpis;
+    const currency = metrics?.overview.currency ?? 'KES';
     const signupDelta =
-        kpis.signups_this_month.value - kpis.signups_this_month.last_month;
+        (kpis?.signups_this_month.value ?? 0) -
+        (kpis?.signups_this_month.last_month ?? 0);
     const collectedDelta =
-        kpis.collected_this_month.value - kpis.collected_this_month.last_month;
+        (kpis?.collected_this_month.value ?? 0) -
+        (kpis?.collected_this_month.last_month ?? 0);
 
     return (
         <>
@@ -693,310 +727,484 @@ export default function AdminDashboard({
                     </div>
                 </div>
 
-                <Tabs defaultValue="overview" className="flex flex-col gap-6">
-                    <TabsList className="self-start">
-                        <TabsTrigger value="overview">Overview</TabsTrigger>
-                        <TabsTrigger value="growth">Growth</TabsTrigger>
-                        <TabsTrigger value="payments">Payments</TabsTrigger>
-                        <TabsTrigger value="adoption">Adoption</TabsTrigger>
-                    </TabsList>
-
-                    <TabsContent
-                        value="overview"
+                {metrics === null || kpis === undefined ? (
+                    <p className="text-sm text-muted-foreground">
+                        Platform metrics need the &apos;view advanced
+                        metrics&apos; permission. Organization management below
+                        is unaffected.
+                    </p>
+                ) : (
+                    <Tabs
+                        defaultValue="overview"
                         className="flex flex-col gap-6"
                     >
-                        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                            <KpiCard
-                                label="MRR"
-                                value={formatMoney(kpis.mrr.value, currency)}
-                                sub={`${kpis.mrr.paying_organizations} paying organizations`}
-                            />
-                            <KpiCard
-                                label="Active organizations"
-                                value={String(kpis.active_organizations.value)}
-                                sub={`${kpis.active_organizations.on_trial} on trial`}
-                            />
-                            <KpiCard
-                                label="New signups this month"
-                                value={String(kpis.signups_this_month.value)}
-                                sub={
-                                    signupDelta === 0
-                                        ? `same as last month (${kpis.signups_this_month.last_month})`
-                                        : `${signupDelta > 0 ? '+' : ''}${signupDelta} vs last month (${kpis.signups_this_month.last_month})`
-                                }
-                            />
-                            <KpiCard
-                                label="Past-due subscriptions"
-                                value={String(kpis.past_due.value)}
-                                sub={`${formatMoney(kpis.past_due.exposure, currency)} exposed`}
-                                alert={kpis.past_due.value > 0}
-                            />
-                            <KpiCard
-                                label="Collected this month"
-                                value={formatMoney(
-                                    kpis.collected_this_month.value,
-                                    currency,
-                                )}
-                                sub={`${collectedDelta >= 0 ? '+' : ''}${formatMoney(collectedDelta, currency)} vs last month`}
-                                spark={kpis.collected_this_month.spark}
-                            />
-                            <KpiCard
-                                label="Trials ending soon"
-                                value={String(kpis.trials_ending.value)}
-                                sub={`within ${kpis.trials_ending.within_days} days`}
-                            />
-                        </div>
+                        <TabsList className="self-start">
+                            <TabsTrigger value="overview">Overview</TabsTrigger>
+                            <TabsTrigger value="growth">Growth</TabsTrigger>
+                            <TabsTrigger value="payments">Payments</TabsTrigger>
+                            <TabsTrigger value="adoption">Adoption</TabsTrigger>
+                            <TabsTrigger value="operations">
+                                Operations
+                            </TabsTrigger>
+                        </TabsList>
 
-                        <div className="grid items-start gap-4 xl:grid-cols-5">
-                            <div className="xl:col-span-3">
+                        <TabsContent
+                            value="overview"
+                            className="flex flex-col gap-6"
+                        >
+                            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                                <KpiCard
+                                    label="MRR"
+                                    value={formatMoney(
+                                        kpis.mrr.value,
+                                        currency,
+                                    )}
+                                    sub={`${kpis.mrr.paying_organizations} paying organizations`}
+                                />
+                                <KpiCard
+                                    label="Active organizations"
+                                    value={String(
+                                        kpis.active_organizations.value,
+                                    )}
+                                    sub={`${kpis.active_organizations.on_trial} on trial`}
+                                />
+                                <KpiCard
+                                    label="New signups this month"
+                                    value={String(
+                                        kpis.signups_this_month.value,
+                                    )}
+                                    sub={
+                                        signupDelta === 0
+                                            ? `same as last month (${kpis.signups_this_month.last_month})`
+                                            : `${signupDelta > 0 ? '+' : ''}${signupDelta} vs last month (${kpis.signups_this_month.last_month})`
+                                    }
+                                />
+                                <KpiCard
+                                    label="Past-due subscriptions"
+                                    value={String(kpis.past_due.value)}
+                                    sub={`${formatMoney(kpis.past_due.exposure, currency)} exposed`}
+                                    alert={kpis.past_due.value > 0}
+                                />
+                                <KpiCard
+                                    label="Collected this month"
+                                    value={formatMoney(
+                                        kpis.collected_this_month.value,
+                                        currency,
+                                    )}
+                                    sub={`${collectedDelta >= 0 ? '+' : ''}${formatMoney(collectedDelta, currency)} vs last month`}
+                                    spark={kpis.collected_this_month.spark}
+                                />
+                                <KpiCard
+                                    label="Trials ending soon"
+                                    value={String(kpis.trials_ending.value)}
+                                    sub={`within ${kpis.trials_ending.within_days} days`}
+                                />
+                            </div>
+
+                            <div className="grid items-start gap-4 xl:grid-cols-5">
+                                <div className="xl:col-span-3">
+                                    <ComboChart
+                                        title="Subscription income — trailing 12 months"
+                                        data={metrics.overview.income_trend}
+                                        series={[
+                                            {
+                                                key: 'income',
+                                                label: 'Income',
+                                                color: 'var(--chart-1)',
+                                                type: 'bar',
+                                            },
+                                        ]}
+                                    />
+                                </div>
+                                <div className="xl:col-span-2">
+                                    <AlertsPanel
+                                        alerts={metrics.overview.alerts}
+                                    />
+                                </div>
+                            </div>
+
+                            <AttentionTable rows={metrics.overview.attention} />
+
+                            <h2 className="text-base font-semibold">
+                                All organizations
+                            </h2>
+
+                            {organizations.length === 0 ? (
+                                <Card>
+                                    <CardContent className="py-10 text-center text-sm text-muted-foreground">
+                                        No organizations have been created yet.
+                                    </CardContent>
+                                </Card>
+                            ) : (
+                                <div className="grid gap-4">
+                                    {organizations.map((organization) => (
+                                        <Card key={organization.id}>
+                                            <CardHeader>
+                                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <Building2 className="size-4 text-muted-foreground" />
+                                                        <CardTitle>
+                                                            {organization.name}
+                                                        </CardTitle>
+                                                        <Badge variant="primary">
+                                                            {organization.plan ??
+                                                                'No plan'}
+                                                        </Badge>
+                                                        <Badge
+                                                            variant={
+                                                                organization.status ===
+                                                                'active'
+                                                                    ? 'success'
+                                                                    : 'neutral'
+                                                            }
+                                                        >
+                                                            {
+                                                                organization.status
+                                                            }
+                                                        </Badge>
+                                                    </div>
+                                                    <CardDescription>
+                                                        {organization.slug}
+                                                    </CardDescription>
+                                                </div>
+                                            </CardHeader>
+                                            <CardContent>
+                                                {organization.users.length ===
+                                                0 ? (
+                                                    <p className="text-sm text-muted-foreground">
+                                                        No members.
+                                                    </p>
+                                                ) : (
+                                                    <div className="divide-y divide-border rounded-lg border">
+                                                        {organization.users.map(
+                                                            (user) => (
+                                                                <div
+                                                                    key={
+                                                                        user.id
+                                                                    }
+                                                                    className="flex items-center justify-between gap-4 px-4 py-3"
+                                                                >
+                                                                    <div className="min-w-0">
+                                                                        <p className="truncate text-sm font-medium">
+                                                                            {
+                                                                                user.name
+                                                                            }
+                                                                        </p>
+                                                                        <p className="truncate text-sm text-muted-foreground">
+                                                                            {
+                                                                                user.email
+                                                                            }
+                                                                        </p>
+                                                                    </div>
+                                                                    <Form
+                                                                        method="post"
+                                                                        action={impersonate(
+                                                                            [
+                                                                                organization.id,
+                                                                                user.id,
+                                                                            ],
+                                                                        )}
+                                                                        as="button"
+                                                                        disabled={
+                                                                            !organization.domain
+                                                                        }
+                                                                        title={
+                                                                            organization.domain
+                                                                                ? `Log in as ${user.name}`
+                                                                                : 'No domain configured'
+                                                                        }
+                                                                    >
+                                                                        <Button
+                                                                            type="submit"
+                                                                            variant="outline"
+                                                                            size="sm"
+                                                                            disabled={
+                                                                                !organization.domain
+                                                                            }
+                                                                        >
+                                                                            Impersonate
+                                                                        </Button>
+                                                                    </Form>
+                                                                </div>
+                                                            ),
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </CardContent>
+                                        </Card>
+                                    ))}
+                                </div>
+                            )}
+                        </TabsContent>
+
+                        <TabsContent
+                            value="growth"
+                            className="flex flex-col gap-4"
+                        >
+                            <div className="grid items-start gap-4 xl:grid-cols-2">
+                                <FunnelChart stages={metrics.growth.funnel} />
+                                <CohortHeatmap
+                                    cohorts={metrics.growth.cohorts}
+                                />
+                            </div>
+                            {metrics.histories.as_of === null ? (
+                                <Card>
+                                    <CardContent className="py-8 text-center text-sm text-muted-foreground">
+                                        MRR history starts with the first
+                                        nightly snapshot — run{' '}
+                                        <code className="rounded bg-muted px-1 py-0.5 text-xs">
+                                            metrics:snapshot
+                                        </code>{' '}
+                                        or wait for tonight&apos;s run.
+                                    </CardContent>
+                                </Card>
+                            ) : (
                                 <ComboChart
-                                    title="Subscription income — trailing 12 months"
-                                    data={overview.income_trend}
+                                    title={`MRR history (snapshots since ${metrics.histories.as_of})`}
+                                    data={metrics.histories.mrr}
                                     series={[
                                         {
-                                            key: 'income',
-                                            label: 'Income',
+                                            key: 'mrr',
+                                            label: 'MRR',
                                             color: 'var(--chart-1)',
+                                            type: 'area',
+                                        },
+                                    ]}
+                                />
+                            )}
+                        </TabsContent>
+
+                        <TabsContent
+                            value="payments"
+                            className="flex flex-col gap-4"
+                        >
+                            <ComboChart
+                                title="Gateway attempts and success rate — trailing 30 days"
+                                data={metrics.payments.daily.map((day) => ({
+                                    label: day.label,
+                                    attempts: day.attempts,
+                                    ...(day.success_rate !== null
+                                        ? { success_rate: day.success_rate }
+                                        : {}),
+                                }))}
+                                series={[
+                                    {
+                                        key: 'attempts',
+                                        label: 'Attempts',
+                                        color: 'var(--chart-1)',
+                                        type: 'bar',
+                                    },
+                                    {
+                                        key: 'success_rate',
+                                        label: 'Success %',
+                                        color: 'var(--chart-2)',
+                                        type: 'line',
+                                        axis: 'right',
+                                    },
+                                ]}
+                            />
+                            <p className="text-sm text-muted-foreground">
+                                Median confirmation latency:{' '}
+                                {formatLatency(
+                                    metrics.payments.latency_this_week,
+                                )}{' '}
+                                trailing 7 days vs{' '}
+                                {formatLatency(
+                                    metrics.payments.latency_last_week,
+                                )}{' '}
+                                the week before. Pending attempts are still in
+                                flight and never count toward the rate.
+                            </p>
+                            <FailuresTable
+                                failures={metrics.payments.failures}
+                                currency={currency}
+                            />
+                        </TabsContent>
+
+                        <TabsContent
+                            value="adoption"
+                            className="flex flex-col gap-4"
+                        >
+                            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                                <KpiCard
+                                    label="Properties under management"
+                                    value={String(
+                                        metrics.adoption.properties_total,
+                                    )}
+                                    sub="across active organizations"
+                                />
+                                <KpiCard
+                                    label="Units under management"
+                                    value={String(metrics.adoption.units_total)}
+                                    sub="across active organizations"
+                                />
+                                <KpiCard
+                                    label="Rent collected this month"
+                                    value={formatMoney(
+                                        metrics.adoption.rent_month_to_date,
+                                        currency,
+                                    )}
+                                    sub="received payments platform-wide"
+                                />
+                                <KpiCard
+                                    label="Open maintenance"
+                                    value={String(
+                                        metrics.adoption.maintenance_open,
+                                    )}
+                                    sub="platform-wide right now"
+                                />
+                            </div>
+                            <AdoptionBars
+                                features={metrics.adoption.features}
+                            />
+                            {metrics.histories.rent.length > 0 && (
+                                <ComboChart
+                                    title="Rent collected trend (nightly snapshots)"
+                                    data={metrics.histories.rent}
+                                    series={[
+                                        {
+                                            key: 'rent',
+                                            label: 'Rent',
+                                            color: 'var(--chart-2)',
                                             type: 'bar',
                                         },
                                     ]}
                                 />
-                            </div>
-                            <div className="xl:col-span-2">
-                                <AlertsPanel alerts={overview.alerts} />
-                            </div>
-                        </div>
+                            )}
+                        </TabsContent>
 
-                        <AttentionTable rows={overview.attention} />
-
-                        <h2 className="text-base font-semibold">
-                            All organizations
-                        </h2>
-
-                        {organizations.length === 0 ? (
-                            <Card>
-                                <CardContent className="py-10 text-center text-sm text-muted-foreground">
-                                    No organizations have been created yet.
-                                </CardContent>
-                            </Card>
-                        ) : (
-                            <div className="grid gap-4">
-                                {organizations.map((organization) => (
-                                    <Card key={organization.id}>
-                                        <CardHeader>
-                                            <div className="flex flex-wrap items-center justify-between gap-2">
-                                                <div className="flex items-center gap-2">
-                                                    <Building2 className="size-4 text-muted-foreground" />
-                                                    <CardTitle>
-                                                        {organization.name}
-                                                    </CardTitle>
-                                                    <Badge variant="primary">
-                                                        {organization.plan ??
-                                                            'No plan'}
-                                                    </Badge>
-                                                    <Badge
-                                                        variant={
-                                                            organization.status ===
-                                                            'active'
-                                                                ? 'success'
-                                                                : 'neutral'
-                                                        }
+                        <TabsContent
+                            value="operations"
+                            className="flex flex-col gap-4"
+                        >
+                            <div className="grid items-start gap-4 xl:grid-cols-2">
+                                <Card>
+                                    <CardHeader className="pb-2">
+                                        <CardTitle className="text-base font-medium">
+                                            Integrations
+                                        </CardTitle>
+                                        <CardDescription>
+                                            Configured means a credential exists
+                                            — not that the vendor is up.
+                                        </CardDescription>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <ul className="divide-y divide-border">
+                                            {metrics.operations.integrations.map(
+                                                (integration) => (
+                                                    <li
+                                                        key={integration.key}
+                                                        className="flex items-center gap-2.5 py-2.5 text-sm first:pt-0 last:pb-0"
                                                     >
-                                                        {organization.status}
-                                                    </Badge>
-                                                </div>
-                                                <CardDescription>
-                                                    {organization.slug}
-                                                </CardDescription>
-                                            </div>
-                                        </CardHeader>
-                                        <CardContent>
-                                            {organization.users.length === 0 ? (
-                                                <p className="text-sm text-muted-foreground">
-                                                    No members.
-                                                </p>
-                                            ) : (
-                                                <div className="divide-y divide-border rounded-lg border">
-                                                    {organization.users.map(
-                                                        (user) => (
-                                                            <div
-                                                                key={user.id}
-                                                                className="flex items-center justify-between gap-4 px-4 py-3"
-                                                            >
-                                                                <div className="min-w-0">
-                                                                    <p className="truncate text-sm font-medium">
-                                                                        {
-                                                                            user.name
-                                                                        }
-                                                                    </p>
-                                                                    <p className="truncate text-sm text-muted-foreground">
-                                                                        {
-                                                                            user.email
-                                                                        }
-                                                                    </p>
-                                                                </div>
-                                                                <Form
-                                                                    method="post"
-                                                                    action={impersonate(
-                                                                        [
-                                                                            organization.id,
-                                                                            user.id,
-                                                                        ],
-                                                                    )}
-                                                                    as="button"
-                                                                    disabled={
-                                                                        !organization.domain
-                                                                    }
-                                                                    title={
-                                                                        organization.domain
-                                                                            ? `Log in as ${user.name}`
-                                                                            : 'No domain configured'
-                                                                    }
-                                                                >
-                                                                    <Button
-                                                                        type="submit"
-                                                                        variant="outline"
-                                                                        size="sm"
-                                                                        disabled={
-                                                                            !organization.domain
-                                                                        }
-                                                                    >
-                                                                        Impersonate
-                                                                    </Button>
-                                                                </Form>
-                                                            </div>
-                                                        ),
-                                                    )}
-                                                </div>
+                                                        <StatusIcon
+                                                            tone={
+                                                                integration.configured
+                                                                    ? 'success'
+                                                                    : 'muted'
+                                                            }
+                                                            label={
+                                                                integration.configured
+                                                                    ? 'configured'
+                                                                    : 'not configured'
+                                                            }
+                                                            className="shrink-0"
+                                                        />
+                                                        <span className="font-medium">
+                                                            {integration.label}
+                                                        </span>
+                                                        <span className="ml-auto text-muted-foreground">
+                                                            {integration.detail}
+                                                        </span>
+                                                    </li>
+                                                ),
                                             )}
-                                        </CardContent>
-                                    </Card>
-                                ))}
+                                        </ul>
+                                    </CardContent>
+                                </Card>
+                                <Card>
+                                    <CardHeader className="pb-2">
+                                        <CardTitle className="text-base font-medium">
+                                            Failed jobs
+                                        </CardTitle>
+                                        <CardDescription>
+                                            {metrics.operations.failed_jobs
+                                                .count === 0
+                                                ? 'Queue is clear.'
+                                                : `${metrics.operations.failed_jobs.count} failed — inspect before retrying.`}
+                                        </CardDescription>
+                                    </CardHeader>
+                                    <CardContent>
+                                        {metrics.operations.failed_jobs.recent
+                                            .length === 0 ? (
+                                            <p className="text-sm text-muted-foreground">
+                                                None recorded.
+                                            </p>
+                                        ) : (
+                                            <ul className="divide-y divide-border">
+                                                {metrics.operations.failed_jobs.recent.map(
+                                                    (job, index) => (
+                                                        <li
+                                                            key={`${job.queue}-${job.age}-${index}`}
+                                                            className="flex items-center gap-2.5 py-2.5 text-sm first:pt-0 last:pb-0"
+                                                        >
+                                                            <StatusIcon
+                                                                tone="danger"
+                                                                label="failed"
+                                                                className="shrink-0"
+                                                            />
+                                                            <span className="font-medium">
+                                                                {job.queue}
+                                                            </span>
+                                                            <span className="ml-auto text-muted-foreground">
+                                                                {job.age}
+                                                            </span>
+                                                        </li>
+                                                    ),
+                                                )}
+                                            </ul>
+                                        )}
+                                    </CardContent>
+                                </Card>
                             </div>
-                        )}
-                    </TabsContent>
-
-                    <TabsContent value="growth" className="flex flex-col gap-4">
-                        <div className="grid items-start gap-4 xl:grid-cols-2">
-                            <FunnelChart stages={growth.funnel} />
-                            <CohortHeatmap cohorts={growth.cohorts} />
-                        </div>
-                        {histories.as_of === null ? (
                             <Card>
-                                <CardContent className="py-8 text-center text-sm text-muted-foreground">
-                                    MRR history starts with the first nightly
-                                    snapshot — run{' '}
-                                    <code className="rounded bg-muted px-1 py-0.5 text-xs">
-                                        metrics:snapshot
-                                    </code>{' '}
-                                    or wait for tonight&apos;s run.
+                                <CardHeader className="pb-2">
+                                    <CardTitle className="text-base font-medium">
+                                        Recent audit activity
+                                    </CardTitle>
+                                    <CardDescription>
+                                        Latest platform log entries, newest
+                                        first.
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    {metrics.operations.audit.length === 0 ? (
+                                        <p className="text-sm text-muted-foreground">
+                                            No audit entries yet.
+                                        </p>
+                                    ) : (
+                                        <ul className="divide-y divide-border">
+                                            {metrics.operations.audit.map(
+                                                (entry, index) => (
+                                                    <li
+                                                        key={`${entry.text}-${entry.age}-${index}`}
+                                                        className="flex items-baseline gap-2.5 py-2 text-sm first:pt-0 last:pb-0"
+                                                    >
+                                                        <span className="min-w-0 flex-1 truncate">
+                                                            {entry.text}
+                                                        </span>
+                                                        <span className="shrink-0 text-xs whitespace-nowrap text-muted-foreground">
+                                                            {entry.age}
+                                                        </span>
+                                                    </li>
+                                                ),
+                                            )}
+                                        </ul>
+                                    )}
                                 </CardContent>
                             </Card>
-                        ) : (
-                            <ComboChart
-                                title={`MRR history (snapshots since ${histories.as_of})`}
-                                data={histories.mrr}
-                                series={[
-                                    {
-                                        key: 'mrr',
-                                        label: 'MRR',
-                                        color: 'var(--chart-1)',
-                                        type: 'area',
-                                    },
-                                ]}
-                            />
-                        )}
-                    </TabsContent>
-
-                    <TabsContent
-                        value="payments"
-                        className="flex flex-col gap-4"
-                    >
-                        <ComboChart
-                            title="Gateway attempts and success rate — trailing 30 days"
-                            data={payments.daily.map((day) => ({
-                                label: day.label,
-                                attempts: day.attempts,
-                                ...(day.success_rate !== null
-                                    ? { success_rate: day.success_rate }
-                                    : {}),
-                            }))}
-                            series={[
-                                {
-                                    key: 'attempts',
-                                    label: 'Attempts',
-                                    color: 'var(--chart-1)',
-                                    type: 'bar',
-                                },
-                                {
-                                    key: 'success_rate',
-                                    label: 'Success %',
-                                    color: 'var(--chart-2)',
-                                    type: 'line',
-                                    axis: 'right',
-                                },
-                            ]}
-                        />
-                        <p className="text-sm text-muted-foreground">
-                            Median confirmation latency:{' '}
-                            {formatLatency(payments.latency_this_week)} trailing
-                            7 days vs{' '}
-                            {formatLatency(payments.latency_last_week)} the week
-                            before. Pending attempts are still in flight and
-                            never count toward the rate.
-                        </p>
-                        <FailuresTable
-                            failures={payments.failures}
-                            currency={currency}
-                        />
-                    </TabsContent>
-
-                    <TabsContent
-                        value="adoption"
-                        className="flex flex-col gap-4"
-                    >
-                        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                            <KpiCard
-                                label="Properties under management"
-                                value={String(adoption.properties_total)}
-                                sub="across active organizations"
-                            />
-                            <KpiCard
-                                label="Units under management"
-                                value={String(adoption.units_total)}
-                                sub="across active organizations"
-                            />
-                            <KpiCard
-                                label="Rent collected this month"
-                                value={formatMoney(
-                                    adoption.rent_month_to_date,
-                                    currency,
-                                )}
-                                sub="received payments platform-wide"
-                            />
-                            <KpiCard
-                                label="Open maintenance"
-                                value={String(adoption.maintenance_open)}
-                                sub="platform-wide right now"
-                            />
-                        </div>
-                        <AdoptionBars features={adoption.features} />
-                        {histories.rent.length > 0 && (
-                            <ComboChart
-                                title="Rent collected trend (nightly snapshots)"
-                                data={histories.rent}
-                                series={[
-                                    {
-                                        key: 'rent',
-                                        label: 'Rent',
-                                        color: 'var(--chart-2)',
-                                        type: 'bar',
-                                    },
-                                ]}
-                            />
-                        )}
-                    </TabsContent>
-                </Tabs>
+                        </TabsContent>
+                    </Tabs>
+                )}
             </div>
         </>
     );
