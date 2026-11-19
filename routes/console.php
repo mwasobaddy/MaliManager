@@ -14,5 +14,8 @@ Schedule::command('activity:prune --days=180')->daily();
 // Trial-ending and lapsed billing reminders on each owner's channel.
 Schedule::command('billing:remind')->dailyAt('09:00');
 
+// Nightly platform and per-organization metrics rollup for trend charts.
+Schedule::command('metrics:snapshot')->dailyAt('01:00');
+
 // Weekly portfolio digest (numbers + AI narrative) to owners and managers.
 Schedule::command('ai:send-digest')->weeklyOn(1, '08:00');
