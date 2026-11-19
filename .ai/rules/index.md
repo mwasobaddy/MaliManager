@@ -35,3 +35,6 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/Http/Controllers/Tenant/**, app/Models/** | .ai/rules/tenant-models.md |
 | app/Http/Controllers/Tenant/** | .ai/rules/tenant.md |
 | tests/** | .ai/rules/testing.md |
+| app/**, resources/js/**, database/**, routes/** | .ai/rules/scalability.md |
+| resources/js/**, resources/css/** | .ai/rules/marketing.md |
+| resources/js/** | .ai/rules/skeletons.md |

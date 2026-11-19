@@ -40,3 +40,6 @@ php artisan test                            # full suite before handing back
 
 ## SQLite masks missing-column selects that MySQL rejects
 The test DB is SQLite :memory: while production is MySQL. Eloquent on SQLite tolerated `select id, name from occupants` (returning null) where MySQL throws 1054 Unknown column (deposit-refunds index 500). A passing index test with an empty relation therefore does NOT prove the select list is valid. Regression tests for eager-load column lists must include a related record so the constrained columns actually resolve, and treat a null where a name is expected as a failure signal.
+
+## SQLite SUM returns float where MySQL returns decimal strings
+`Collection::sum()` and query-builder `sum()` on decimal columns come back float under SQLite and decimal-string under MySQL, so `toBe('60000.00')` fails in one environment or the other. Services normalize money to 2dp strings at the boundary (per money.md); tests compare money with `(float)` casts on both sides or `number_format`, never string identity — and never "fix" it by changing the service to return floats.
