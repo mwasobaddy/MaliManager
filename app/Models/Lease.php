@@ -130,9 +130,16 @@ class Lease extends Model implements HasMedia
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    /**
+     * Still running: status active and no end date, or an end date that
+     * has not arrived. A lease expiring in 20 days owes rent and takes
+     * reminders like any other; only a past end date retires it. Kept in
+     * sync with scopeActive() below.
+     */
     public function isActive(): bool
     {
-        return $this->status === 'active' && $this->ends_at === null;
+        return $this->status === 'active'
+            && ($this->ends_at === null || ! $this->ends_at->startOfDay()->lessThan(now()->startOfDay()));
     }
 
     /**
@@ -187,7 +194,9 @@ class Lease extends Model implements HasMedia
 
     public function scopeActive(Builder $query): Builder
     {
-        return $query->where('status', 'active')->whereNull('ends_at');
+        return $query->where('status', 'active')->where(function (Builder $inner): void {
+            $inner->whereNull('ends_at')->orWhereDate('ends_at', '>=', now()->toDateString());
+        });
     }
 
     public function scopeEnded(Builder $query): Builder

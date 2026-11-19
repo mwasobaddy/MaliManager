@@ -91,7 +91,9 @@ class RentArrearsService extends Service
         $leases = Lease::query()
             ->where('organization_id', $organization->id)
             ->where('status', 'active')
-            ->whereNull('ends_at')
+            ->where(function ($query): void {
+                $query->whereNull('ends_at')->orWhereDate('ends_at', '>=', now()->toDateString());
+            })
             ->when($propertyIds !== null, fn ($query) => $query->whereIn('property_id', $propertyIds))
             ->get();
 

@@ -468,5 +468,29 @@ test('ended leases keep a final balance but are never overdue', function () {
     // balance still reports, but an ended lease is never overdue.
     expect($balance['expected'])->toBe('20000.00')
         ->and($balance['outstanding'])->toBe('20000.00')
-        ->and($balance['overdue'])->toBeFalse();
+        ->and($balance['overdue'])->toBeFalse()
+        ->and($lease->isActive())->toBeFalse();
+});
+
+test('a lease expiring in the future is still active and can be overdue', function () {
+    $this->travelTo('2026-11-10');
+
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createArrearsOrganization($owner);
+    [$property, $unit] = makePropertyWithUnit($organization, $owner);
+
+    $lease = makeLease($organization, $property, $unit, Person::factory()->create(), [
+        'starts_at' => '2026-08-01',
+        'ends_at' => '2026-11-30',
+        'status' => 'active',
+        'rent_due_day' => 5,
+    ]);
+
+    $balance = app(RentArrearsService::class)->balanceFor($lease);
+
+    // Aug 5 through Nov 5 accrue; nothing past the end date. Still
+    // running, still owes, still remindable.
+    expect($lease->isActive())->toBeTrue()
+        ->and($balance['expected'])->toBe('40000.00')
+        ->and($balance['overdue'])->toBeTrue();
 });
