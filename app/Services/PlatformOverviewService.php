@@ -550,15 +550,17 @@ class PlatformOverviewService extends Service
     /**
      * Trend lines from the snapshot tables. Empty until metrics:snapshot
      * has run at least once — the frontend says so instead of flatlining.
+     * Only point-in-time counters trend here; month-to-date money resets
+     * on the 1st and would sawtooth, so it stays out.
      *
-     * @return array{as_of: string|null, mrr: list<array{label: string, mrr: float}>, rent: list<array{label: string, rent: float}>}
+     * @return array{as_of: string|null, mrr: list<array{label: string, mrr: float}>, rent: list<array{label: string, rent: float}>, active: list<float>, trials: list<float>, past_due: list<float>}
      */
     public function histories(): array
     {
         $rows = PlatformDailyMetric::query()
             ->orderBy('captured_on')
             ->take(30)
-            ->get(['captured_on', 'mrr', 'rent_month_to_date']);
+            ->get(['captured_on', 'mrr', 'rent_month_to_date', 'active_organizations', 'trials', 'past_due']);
 
         return [
             'as_of' => $rows->isNotEmpty() ? $rows->last()->captured_on->toDateString() : null,
@@ -570,6 +572,9 @@ class PlatformOverviewService extends Service
                 'label' => $row->captured_on->format('M d'),
                 'rent' => (float) $row->rent_month_to_date,
             ])->all(),
+            'active' => $rows->map(fn (PlatformDailyMetric $row) => (float) $row->active_organizations)->all(),
+            'trials' => $rows->map(fn (PlatformDailyMetric $row) => (float) $row->trials)->all(),
+            'past_due' => $rows->map(fn (PlatformDailyMetric $row) => (float) $row->past_due)->all(),
         ];
     }
 
@@ -640,6 +645,53 @@ class PlatformOverviewService extends Service
                     'detail' => (string) config('services.mpesa.shortcode', '') === '' ? 'no shortcode' : 'shortcode set',
                     'configured' => (string) config('services.mpesa.shortcode', '') !== '',
                 ],
+            ],
+        ];
+    }
+
+    /**
+     * One page of organizations with their members for the dashboard's
+     * platform section. 15 matches the house standard; the full
+     * search/sort/suspend surface lives on platform/organizations.
+     *
+     * @return array{
+     *     rows: list<array{id: int, name: string, slug: string, status: string, plan: string|null, domain: string|null, users: list<array{id: int, name: string, email: string}>, created_at: string|null}>,
+     *     pagination: array{current_page: int, last_page: int, total: int, per_page: int},
+     * }
+     */
+    public function organizationsPage(int $page): array
+    {
+        $organizations = Organization::query()
+            ->with([
+                'plan:id,slug,name',
+                'tenant',
+                'users' => fn ($query) => $query->select('users.id', 'users.name', 'users.email'),
+            ])
+            ->orderBy('created_at', 'desc')
+            ->paginate(15, ['*'], 'orgs_page', max(1, $page));
+
+        $rows = collect($organizations->items())->map(fn (Organization $organization) => [
+            'id' => $organization->id,
+            'name' => $organization->name,
+            'slug' => $organization->slug,
+            'status' => $organization->status,
+            'plan' => $organization->plan?->name,
+            'domain' => $organization->tenant?->domains()->value('domain'),
+            'users' => $organization->users->map(fn ($user) => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+            ])->all(),
+            'created_at' => $organization->created_at?->toDateTimeString(),
+        ])->all();
+
+        return [
+            'rows' => $rows,
+            'pagination' => [
+                'current_page' => $organizations->currentPage(),
+                'last_page' => $organizations->lastPage(),
+                'total' => $organizations->total(),
+                'per_page' => $organizations->perPage(),
             ],
         ];
     }

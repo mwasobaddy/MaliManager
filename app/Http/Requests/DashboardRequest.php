@@ -30,6 +30,8 @@ class DashboardRequest extends FormRequest
         return [
             'year' => ['nullable', 'integer', 'min:2000', 'max:2100'],
             'month' => ['nullable', 'integer', 'between:1,12'],
+            'orgs_page' => ['nullable', 'integer', 'min:1'],
+            'property' => ['nullable', 'integer', 'min:1'],
         ];
     }
 }

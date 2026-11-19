@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\PlatformPermissionKey;
 use App\Http\Requests\AcknowledgePickerRequest;
 use App\Http\Requests\DashboardRequest;
 use App\Services\DashboardService;
+use App\Services\PlatformOverviewService;
 use App\Services\PropertyAccessService;
 use App\Support\TenancyContext;
 use Illuminate\Http\RedirectResponse;
@@ -53,11 +55,30 @@ class DashboardController extends Controller
         $year = $request->integer('year');
         $month = $request->integer('month');
 
+        // Platform sections ride along for holders of the metrics
+        // permission and stay null for everyone else, exactly like the
+        // permission-gated tabs below. The organization list is role-gated
+        // instead, so it serves regardless. Payments resolve deferred.
+        $platform = app(PlatformOverviewService::class);
+        $metrics = $user->can(PlatformPermissionKey::ViewAdvancedMetrics->value);
+        $orgsPage = $platform->organizationsPage($request->integer('orgs_page', 1));
+
         return Inertia::render('dashboard', array_merge(
-            app(DashboardService::class)->payload($user, $access, $year ?: null, $month ?: null),
+            app(DashboardService::class)->payload($user, $access, $year ?: null, $month ?: null, $request->integer('property') ?: null),
             [
                 'autoOpenPropertyPicker' => $accessibleAssets->isNotEmpty()
                     && ! $request->session()->get(self::ACK_KEY, false),
+                'platform' => $metrics ? $platform->payload() : null,
+                'growth' => $metrics ? [
+                    'funnel' => $platform->funnel(),
+                    'cohorts' => $platform->cohorts(),
+                ] : null,
+                'payments' => $metrics ? Inertia::defer(fn () => $platform->paymentPerformance()) : null,
+                'adoption' => $metrics ? $platform->adoption() : null,
+                'operations' => $metrics ? $platform->operations() : null,
+                'platform_histories' => $metrics ? $platform->histories() : null,
+                'platform_organizations' => $orgsPage['rows'],
+                'platform_organizations_pagination' => $orgsPage['pagination'],
             ],
         ));
     }

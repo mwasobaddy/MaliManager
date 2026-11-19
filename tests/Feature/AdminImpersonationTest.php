@@ -9,48 +9,54 @@ beforeEach(function () {
     (new RolesAndPermissionsSeeder)->run();
 });
 
-test('guests are redirected from the admin dashboard', function () {
-    $this->get(route('platform.dashboard'))->assertRedirect(route('login'));
+test('guests are redirected from the dashboard', function () {
+    $this->get(route('dashboard'))->assertRedirect(route('login'));
 });
 
-test('non-admin users are forbidden from the admin dashboard', function () {
-    $user = User::factory()->create();
+test('non-admin users see the dashboard without the platform sections', function () {
+    $user = User::factory()->create(['onboarded_at' => now()]);
 
     $this->actingAs($user)
-        ->get(route('platform.dashboard'))
-        ->assertRedirect();
-    assertErrorToast();
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('dashboard')
+            ->where('platform', null)
+            ->where('platform_organizations', []));
 });
 
-test('platform admins can view the admin dashboard', function () {
-    $admin = User::factory()->create();
+test('platform admins land on the platform tab with metrics', function () {
+    $admin = User::factory()->create(['onboarded_at' => now()]);
     $admin->assignRole('admin');
 
     $this->actingAs($admin)
-        ->get(route('platform.dashboard'))
+        ->get(route('dashboard'))
         ->assertOk()
-        ->assertInertia(fn ($page) => $page->component('platform/dashboard'));
+        ->assertInertia(fn ($page) => $page
+            ->component('dashboard')
+            ->where('defaultTab', 'platform')
+            ->has('platform.kpis'));
 });
 
-test('admin dashboard lists organizations and their members', function () {
-    $admin = User::factory()->create();
+test('dashboard lists organizations and their members', function () {
+    $admin = User::factory()->create(['onboarded_at' => now()]);
     $admin->assignRole('admin');
 
     $organization = Organization::factory()->create();
-    $member = User::factory()->create();
+    $member = User::factory()->create(['onboarded_at' => now()]);
     $organization->users()->attach($member->id, ['is_owner' => true, 'status' => 'active']);
 
     $this->actingAs($admin)
-        ->get(route('platform.dashboard'))
+        ->get(route('dashboard'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('platform/dashboard')
-            ->where('organizations.0.name', $organization->name)
-            ->where('organizations.0.users.0.email', $member->email));
+            ->component('dashboard')
+            ->where('platform_organizations.0.name', $organization->name)
+            ->where('platform_organizations.0.users.0.email', $member->email));
 });
 
 test('admins can generate an impersonation redirect for an organization member', function () {
-    $admin = User::factory()->create();
+    $admin = User::factory()->create(['onboarded_at' => now()]);
     $admin->assignRole('admin');
 
     $organization = Organization::factory()->create();
@@ -65,11 +71,11 @@ test('admins can generate an impersonation redirect for an organization member',
 });
 
 test('admins cannot impersonate users outside the organization', function () {
-    $admin = User::factory()->create();
+    $admin = User::factory()->create(['onboarded_at' => now()]);
     $admin->assignRole('admin');
 
     $organization = Organization::factory()->create();
-    $stranger = User::factory()->create();
+    $stranger = User::factory()->create(['onboarded_at' => now()]);
 
     $this->actingAs($admin)
         ->post(route('platform.impersonate', [$organization, $stranger]))
@@ -78,10 +84,10 @@ test('admins cannot impersonate users outside the organization', function () {
 });
 
 test('admins cannot impersonate other admins', function () {
-    $admin = User::factory()->create();
+    $admin = User::factory()->create(['onboarded_at' => now()]);
     $admin->assignRole('admin');
 
-    $otherAdmin = User::factory()->create();
+    $otherAdmin = User::factory()->create(['onboarded_at' => now()]);
     $otherAdmin->assignRole('admin');
 
     $organization = Organization::factory()->create();
@@ -94,7 +100,7 @@ test('admins cannot impersonate other admins', function () {
 });
 
 test('impersonated user is logged in on the tenant domain', function () {
-    $admin = User::factory()->create();
+    $admin = User::factory()->create(['onboarded_at' => now()]);
     $admin->assignRole('admin');
 
     $organization = Organization::factory()->create();

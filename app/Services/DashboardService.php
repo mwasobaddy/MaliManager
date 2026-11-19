@@ -4,12 +4,15 @@ namespace App\Services;
 
 use App\Enums\PlatformPermissionKey;
 use App\Models\Expense;
+use App\Models\LandParcel;
 use App\Models\Lease;
 use App\Models\MaintenanceRequest;
 use App\Models\Organization;
+use App\Models\Payment;
 use App\Models\PlatformExpense;
 use App\Models\Property;
 use App\Models\SubscriptionPayment;
+use App\Models\Unit;
 use App\Models\User;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
@@ -27,14 +30,18 @@ use Illuminate\Support\Facades\DB;
  */
 class DashboardService extends Service
 {
+    public function __construct(private RentArrearsService $arrears) {}
+
     /**
      * @param  array<int, array{id: int, properties: array<int, array{units_count: int}}>]|null  $access
      *         Precomputed PropertyAccessService result, when the caller already has it.
      */
-    public function payload(User $user, ?array $access = null, ?int $year = null, ?int $month = null): array
+    public function payload(User $user, ?array $access = null, ?int $year = null, ?int $month = null, ?int $propertyId = null): array
     {
         $access ??= app(PropertyAccessService::class)->organizationsWithProperties($user);
         $year ??= (int) date('Y');
+
+        $scopedAccess = $this->scopeAccess($access, $propertyId);
 
         return [
             'available_years' => $this->availableYears(),
@@ -42,7 +49,17 @@ class DashboardService extends Service
                 ? $this->adminStats($year, $month)
                 : null,
             'organization' => $user->can(PlatformPermissionKey::ViewOrgMetrics->value)
-                ? $this->organizationStats($access, $year, $month)
+                ? array_merge(
+                    $this->organizationStats($scopedAccess, $year, $month),
+                    [
+                        'property_options' => collect($access)
+                            ->flatMap(fn (array $organization) => $organization['properties'])
+                            ->map(fn (array $property) => ['id' => $property['id'], 'name' => $property['name']])
+                            ->values()
+                            ->all(),
+                        'selected_property' => $propertyId,
+                    ],
+                )
                 : null,
             'searcher' => $user->can(PlatformPermissionKey::ViewSearcherMetrics->value)
                 ? $this->personLeaseStats($user->person_id, 'searcher', $year, $month)
@@ -76,7 +93,7 @@ class DashboardService extends Service
     private function defaultTab(User $user): string
     {
         return match (true) {
-            $user->can(PlatformPermissionKey::ViewAdvancedMetrics->value) => 'admin',
+            $user->can(PlatformPermissionKey::ViewAdvancedMetrics->value) => 'platform',
             $user->can(PlatformPermissionKey::ViewOrgMetrics->value) => 'organization',
             $user->can(PlatformPermissionKey::ViewSearcherMetrics->value) => 'searcher',
             default => 'occupant',
@@ -151,7 +168,38 @@ class DashboardService extends Service
     }
 
     /**
-     * @param  array<int, array{id: int, properties: array<int, array{units_count: int}>}>  $access
+     * Narrow the access set to one property. An unknown or inaccessible id
+     * falls back to the full set rather than stranding the dashboard
+     * empty — the id set is already access-filtered, so nothing leaks.
+     *
+     * @param  array<int, array{id: int, properties: array<int, array{id: int}}}>  $access
+     * @return array<int, array{id: int, properties: array<int, array{id: int}}}>
+     */
+    private function scopeAccess(array $access, ?int $propertyId): array
+    {
+        if ($propertyId === null) {
+            return $access;
+        }
+
+        $scoped = [];
+
+        foreach ($access as $organization) {
+            $properties = array_values(array_filter(
+                $organization['properties'],
+                fn (array $property): bool => $property['id'] === $propertyId,
+            ));
+
+            if ($properties !== []) {
+                $organization['properties'] = $properties;
+                $scoped[] = $organization;
+            }
+        }
+
+        return $scoped === [] ? $access : $scoped;
+    }
+
+    /**
+     * @param  array<int, array{id: int, properties: array<int, array{id: int, name: string}>}>  $access
      */
     private function organizationStats(array $access, int $year, ?int $month): array
     {
@@ -192,7 +240,415 @@ class DashboardService extends Service
             'operations_monthly' => $operations,
             'flags' => $this->predictiveFlags($orgIds, $properties),
             'expiring_leases' => $this->expiringLeases($orgIds),
+            'collection' => $this->collectionStats($orgIds, $properties),
+            'attention' => $this->attentionItems($orgIds, $properties),
+            'portfolio' => $this->portfolioDetails($orgIds, $properties, $year),
         ];
+    }
+
+    /**
+     * Drill-down widgets for the landlord portfolio: unit grid, payment
+     * timing, tax summary, P&L and land parcels. Everything reads the same
+     * access-scoped ids as the collection stats above.
+     *
+     * @param  array<int, int>  $orgIds
+     * @param  iterable<int, array{id: int, name: string}>  $properties
+     * @return array{
+     *     units_grid: list<array{property: string, units: list<array{id: int, name: string, status: string, overdue: bool, occupant: string|null}>}>,
+     *     timing: array{early: int, on_time: int, late: int},
+     *     tax: list<array{label: string, total: string, properties: list<array{property: string, total: string}>}>,
+     *     pnl: array{income_ytd: string, expenses_ytd: string, net_ytd: string, expenses_by_category: list<array{category: string, total: string}>},
+     *     land: list<array{id: int, name: string, status: string, city: string|null, acreage: string|null, latitude: float|null, longitude: float|null}>,
+     * }
+     */
+    private function portfolioDetails(array $orgIds, iterable $properties, int $year): array
+    {
+        $propertyIds = collect($properties)->pluck('id')->all();
+        $propertyNames = collect($properties)->pluck('name', 'id')->all();
+
+        if ($orgIds === [] || $propertyIds === []) {
+            return [
+                'units_grid' => [],
+                'timing' => ['early' => 0, 'on_time' => 0, 'late' => 0],
+                'tax' => [],
+                'pnl' => ['income_ytd' => '0.00', 'expenses_ytd' => '0.00', 'net_ytd' => '0.00', 'expenses_by_category' => []],
+                'land' => [],
+            ];
+        }
+
+        // Unit grid: every unit with its current occupant, grouped by building.
+        $gridLeases = Lease::query()
+            ->whereIn('organization_id', $orgIds)
+            ->whereIn('property_id', $propertyIds)
+            ->where('status', 'active')
+            ->whereNotNull('unit_id')
+            ->with('person:id,first_name,last_name')
+            ->get(['id', 'unit_id', 'person_id']);
+
+        $leasesByUnit = $gridLeases->keyBy('unit_id');
+        $overdueUnitIds = collect($this->arrears->balancesFor($gridLeases))
+            ->filter(fn (array $balance): bool => $balance['overdue'])
+            ->map(fn (array $balance) => $balance['lease']->unit_id)
+            ->all();
+
+        $unitsGrid = [];
+        foreach ($propertyIds as $propertyId) {
+            $units = Unit::query()
+                ->where('property_id', $propertyId)
+                ->orderBy('name')
+                ->get(['id', 'name', 'status'])
+                ->map(fn (Unit $unit): array => [
+                    'id' => $unit->id,
+                    'name' => $unit->name,
+                    'status' => $unit->status,
+                    'overdue' => in_array($unit->id, $overdueUnitIds, true),
+                    'occupant' => ($lease = $leasesByUnit->get($unit->id)) !== null && $lease->person !== null
+                        ? trim($lease->person->first_name.' '.$lease->person->last_name)
+                        : null,
+                ])
+                ->all();
+
+            $unitsGrid[] = [
+                'property' => $propertyNames[$propertyId] ?? '',
+                'units' => $units,
+            ];
+        }
+
+        // Payment timing against the billing period: early, within a
+        // 7-day grace window, or late. Payments without a period carry no
+        // timing signal and stay out of the counts.
+        $timing = ['early' => 0, 'on_time' => 0, 'late' => 0];
+        foreach (Payment::query()
+            ->whereIn('organization_id', $orgIds)
+            ->where('status', 'received')
+            ->whereNotNull('period_start')
+            ->whereNotNull('paid_on')
+            ->cursor(['paid_on', 'period_start']) as $payment) {
+            if ($payment->paid_on->lessThan($payment->period_start)) {
+                $timing['early']++;
+            } elseif ($payment->paid_on->lessThanOrEqualTo($payment->period_start->copy()->addDays(7))) {
+                $timing['on_time']++;
+            } else {
+                $timing['late']++;
+            }
+        }
+
+        // Rental income summary: monthly received totals with a per-property
+        // split. Gross figures for the accountant; tax treatment belongs to
+        // one, not to this dashboard.
+        $yearPayments = Payment::query()
+            ->whereIn('organization_id', $orgIds)
+            ->where('status', 'received')
+            ->whereYear('paid_on', $year)
+            ->with('lease:id,property_id')
+            ->get(['lease_id', 'amount', 'paid_on']);
+
+        $tax = [];
+        for ($m = 1; $m <= 12; $m++) {
+            $monthPayments = $yearPayments->filter(fn (Payment $payment) => (int) $payment->paid_on->format('n') === $m);
+            $byProperty = $monthPayments
+                ->groupBy(fn (Payment $payment) => $payment->lease?->property_id)
+                ->map(fn ($group, $id) => [
+                    'property' => $propertyNames[$id] ?? '',
+                    'total' => number_format((float) $group->sum(fn (Payment $payment) => (float) $payment->amount), 2, '.', ''),
+                ])
+                ->filter(fn (array $row): bool => $row['property'] !== '')
+                ->values()
+                ->all();
+
+            $tax[] = [
+                'label' => Carbon::createFromDate($year, $m, 1)->format('M'),
+                'total' => number_format((float) $monthPayments->sum(fn (Payment $payment) => (float) $payment->amount), 2, '.', ''),
+                'properties' => $byProperty,
+            ];
+        }
+
+        // P&L, year to date: received rent against property-attributed
+        // expenses by category. Org-overhead expenses without a property
+        // stay out and the card says so.
+        $incomeYtd = (string) $yearPayments->sum(fn (Payment $payment) => (float) $payment->amount);
+
+        $expenses = Expense::query()
+            ->whereIn('organization_id', $orgIds)
+            ->where('expenseable_type', Property::class)
+            ->whereIn('expenseable_id', $propertyIds)
+            ->whereYear('spent_on', $year)
+            ->get(['category', 'amount']);
+
+        $byCategory = $expenses
+            ->groupBy(fn (Expense $expense) => (string) ($expense->category ?? 'Uncategorized'))
+            ->map(fn ($group, string $category) => [
+                'category' => ucfirst($category),
+                'total' => number_format((float) $group->sum(fn (Expense $expense) => (float) $expense->amount), 2, '.', ''),
+            ])
+            ->sortByDesc('total')
+            ->values()
+            ->all();
+
+        $expensesYtd = '0.00';
+        foreach ($byCategory as $row) {
+            $expensesYtd = bcadd($expensesYtd, $row['total'], 2);
+        }
+
+        $land = LandParcel::query()
+            ->whereIn('organization_id', $orgIds)
+            ->orderBy('name')
+            ->get(['id', 'name', 'status', 'city', 'acreage', 'latitude', 'longitude'])
+            ->map(fn (LandParcel $parcel): array => [
+                'id' => $parcel->id,
+                'name' => $parcel->name,
+                'status' => $parcel->status,
+                'city' => $parcel->city,
+                'acreage' => $parcel->acreage !== null ? (string) $parcel->acreage : null,
+                'latitude' => $parcel->latitude !== null ? (float) $parcel->latitude : null,
+                'longitude' => $parcel->longitude !== null ? (float) $parcel->longitude : null,
+            ])
+            ->all();
+
+        return [
+            'units_grid' => $unitsGrid,
+            'timing' => $timing,
+            'tax' => $tax,
+            'pnl' => [
+                'income_ytd' => number_format((float) $incomeYtd, 2, '.', ''),
+                'expenses_ytd' => $expensesYtd,
+                'net_ytd' => bcsub(number_format((float) $incomeYtd, 2, '.', ''), $expensesYtd, 2),
+                'expenses_by_category' => $byCategory,
+            ],
+            'land' => $land,
+        ];
+    }
+
+    /**
+     * Portfolio rent picture, scoped to accessible properties: what the
+     * active leases ask for this month, what arrived, who owes what and
+     * for how long, and which properties earn. Expected is the live rent
+     * roll, not a forecast — prepayments can push collected past it, which
+     * reads as over 100% rather than an error.
+     *
+     * @param  array<int, int>  $orgIds
+     * @param  iterable<int, array{id: int, name: string}>  $properties
+     * @return array{
+     *     expected_mtd: string, collected_mtd: string, collection_rate: float|null,
+     *     arrears_total: string, overdue_count: int,
+     *     occupancy_rate: float|null, occupied: int, vacant: int, units_total: int,
+     *     net_mtd: string,
+     *     aging: list<array{bucket: string, total: string, count: int}>,
+     *     defaulters: list<array{lease_id: int, occupant: string, unit: string|null, property: string, property_slug: string, outstanding: string, days_overdue: int}>,
+     *     expiry: array{within_30: int, within_60: int, within_90: int},
+     *     properties: list<array{property: string, income_mtd: string, expenses_mtd: string, net_mtd: string}>,
+     * }
+     */
+    private function collectionStats(array $orgIds, iterable $properties): array
+    {
+        $propertyIds = collect($properties)->pluck('id')->all();
+        $propertyNames = collect($properties)->pluck('name', 'id')->all();
+        $monthStart = now()->startOfMonth()->toDateString();
+
+        $leases = ($orgIds !== [] && $propertyIds !== [])
+            ? Lease::query()
+                ->whereIn('organization_id', $orgIds)
+                ->whereIn('property_id', $propertyIds)
+                ->where('status', 'active')
+                ->with(['unit:id,name', 'person:id,first_name,last_name', 'property:id,name,slug'])
+                ->get()
+            : collect();
+
+        $balances = $this->arrears->balancesFor($leases);
+
+        $expected = '0.00';
+        foreach ($leases as $lease) {
+            $expected = bcadd($expected, number_format((float) ($lease->rent_amount ?? 0), 2, '.', ''), 2);
+        }
+
+        $leaseIds = $leases->pluck('id')->all();
+
+        $collected = $leaseIds === [] ? '0.00' : (string) Payment::query()
+            ->whereIn('lease_id', $leaseIds)
+            ->where('status', 'received')
+            ->whereDate('paid_on', '>=', $monthStart)
+            ->sum('amount');
+
+        $overdue = collect($balances)->filter(fn (array $balance): bool => $balance['overdue']);
+
+        $buckets = [
+            ['bucket' => '1–7 days', 'min' => 1, 'max' => 7, 'total' => '0.00', 'count' => 0],
+            ['bucket' => '8–30 days', 'min' => 8, 'max' => 30, 'total' => '0.00', 'count' => 0],
+            ['bucket' => '31–60 days', 'min' => 31, 'max' => 60, 'total' => '0.00', 'count' => 0],
+            ['bucket' => '60+ days', 'min' => 61, 'max' => PHP_INT_MAX, 'total' => '0.00', 'count' => 0],
+        ];
+
+        foreach ($overdue as $balance) {
+            foreach ($buckets as &$bucket) {
+                if ($balance['days_overdue'] >= $bucket['min'] && $balance['days_overdue'] <= $bucket['max']) {
+                    $bucket['total'] = bcadd($bucket['total'], $balance['outstanding'], 2);
+                    $bucket['count']++;
+                    break;
+                }
+            }
+            unset($bucket);
+        }
+
+        $defaulters = $overdue
+            ->sortByDesc(fn (array $balance): float => (float) $balance['outstanding'])
+            ->take(5)
+            ->map(fn (array $balance): array => [
+                'lease_id' => $balance['lease']->id,
+                'occupant' => trim(($balance['lease']->person?->first_name ?? '').' '.($balance['lease']->person?->last_name ?? '')),
+                'unit' => $balance['lease']->unit?->name,
+                'property' => $balance['lease']->property?->name ?? '',
+                'property_slug' => $balance['lease']->property?->slug ?? '',
+                'outstanding' => $balance['outstanding'],
+                'days_overdue' => $balance['days_overdue'],
+            ])
+            ->values()
+            ->all();
+
+        $expiry = ['within_30' => 0, 'within_60' => 0, 'within_90' => 0];
+        foreach ($leases as $lease) {
+            if ($lease->ends_at === null) {
+                continue;
+            }
+
+            $days = (int) now()->startOfDay()->diffInDays($lease->ends_at->startOfDay(), false);
+
+            if ($days < 0) {
+                continue;
+            }
+
+            if ($days <= 30) {
+                $expiry['within_30']++;
+            } elseif ($days <= 60) {
+                $expiry['within_60']++;
+            } elseif ($days <= 90) {
+                $expiry['within_90']++;
+            }
+        }
+
+        $incomeByProperty = $leaseIds === [] ? collect() : Payment::query()
+            ->whereIn('lease_id', $leaseIds)
+            ->where('status', 'received')
+            ->whereDate('paid_on', '>=', $monthStart)
+            ->with('lease:id,property_id')
+            ->get(['lease_id', 'amount'])
+            ->groupBy(fn (Payment $payment) => $payment->lease?->property_id);
+
+        $expenseByProperty = $propertyIds === [] ? collect() : Expense::query()
+            ->where('expenseable_type', Property::class)
+            ->whereIn('expenseable_id', $propertyIds)
+            ->whereDate('spent_on', '>=', $monthStart)
+            ->get(['expenseable_id', 'amount'])
+            ->groupBy('expenseable_id');
+
+        $propertyRows = [];
+        foreach ($propertyIds as $propertyId) {
+            $income = (string) ($incomeByProperty->get($propertyId) ?? collect())->sum(fn ($payment) => (float) $payment->amount);
+            $expenses = (string) ($expenseByProperty->get($propertyId) ?? collect())->sum(fn ($expense) => (float) $expense->amount);
+
+            $propertyRows[] = [
+                'property' => $propertyNames[$propertyId] ?? '',
+                'income_mtd' => number_format((float) $income, 2, '.', ''),
+                'expenses_mtd' => number_format((float) $expenses, 2, '.', ''),
+                'net_mtd' => bcsub(number_format((float) $income, 2, '.', ''), number_format((float) $expenses, 2, '.', ''), 2),
+            ];
+        }
+
+        $arrearsTotal = '0.00';
+        foreach ($overdue as $balance) {
+            $arrearsTotal = bcadd($arrearsTotal, $balance['outstanding'], 2);
+        }
+
+        $unitStatuses = $propertyIds === [] ? collect() : Unit::query()
+            ->whereIn('property_id', $propertyIds)
+            ->selectRaw('status, count(*) as count')
+            ->groupBy('status')
+            ->pluck('count', 'status');
+
+        $occupied = (int) ($unitStatuses->get('occupied') ?? 0);
+        $vacant = (int) ($unitStatuses->get('vacant') ?? 0);
+        $unitsTotal = (int) $unitStatuses->sum();
+
+        $expensesMtd = '0.00';
+        foreach ($propertyRows as $row) {
+            $expensesMtd = bcadd($expensesMtd, $row['expenses_mtd'], 2);
+        }
+
+        return [
+            'expected_mtd' => $expected,
+            'collected_mtd' => number_format((float) $collected, 2, '.', ''),
+            'collection_rate' => bccomp($expected, '0', 2) === 1
+                ? round((float) $collected / (float) $expected * 100, 1)
+                : null,
+            'arrears_total' => $arrearsTotal,
+            'overdue_count' => $overdue->count(),
+            'occupancy_rate' => $unitsTotal > 0 ? round($occupied / $unitsTotal * 100, 1) : null,
+            'occupied' => $occupied,
+            'vacant' => $vacant,
+            'units_total' => $unitsTotal,
+            'net_mtd' => bcsub(number_format((float) $collected, 2, '.', ''), $expensesMtd, 2),
+            'aging' => collect($buckets)->map(fn (array $bucket) => [
+                'bucket' => $bucket['bucket'],
+                'total' => $bucket['total'],
+                'count' => $bucket['count'],
+            ])->all(),
+            'defaulters' => $defaulters,
+            'expiry' => $expiry,
+            'properties' => $propertyRows,
+        ];
+    }
+
+    /**
+     * Landlord to-do list, plain text by the marketing rule: overdue
+     * tenants past a week, leases expiring within 30 days. Stale urgent
+     * maintenance already reports through flags, so it stays out.
+     *
+     * @param  array<int, int>  $orgIds
+     * @param  iterable<int, array{id: int, name: string}>  $properties
+     * @return list<array{severity: string, text: string}>
+     */
+    private function attentionItems(array $orgIds, iterable $properties): array
+    {
+        $propertyIds = collect($properties)->pluck('id')->all();
+
+        if ($orgIds === [] || $propertyIds === []) {
+            return [];
+        }
+
+        $items = [];
+
+        $overdueWeek = Lease::query()
+            ->whereIn('organization_id', $orgIds)
+            ->whereIn('property_id', $propertyIds)
+            ->where('status', 'active')
+            ->get();
+
+        $weekOverdue = collect($this->arrears->balancesFor($overdueWeek))
+            ->filter(fn (array $balance): bool => $balance['overdue'] && $balance['days_overdue'] > 7)
+            ->count();
+
+        if ($weekOverdue > 0) {
+            $items[] = [
+                'severity' => 'danger',
+                'text' => "{$weekOverdue} tenant".($weekOverdue > 1 ? 's' : '').' more than 7 days overdue.',
+            ];
+        }
+
+        $expiring = Lease::query()
+            ->whereIn('organization_id', $orgIds)
+            ->whereIn('property_id', $propertyIds)
+            ->where('status', 'active')
+            ->whereNotNull('ends_at')
+            ->whereBetween('ends_at', [now()->toDateString(), now()->addDays(30)->toDateString()])
+            ->count();
+
+        if ($expiring > 0) {
+            $items[] = [
+                'severity' => 'warning',
+                'text' => "{$expiring} lease".($expiring > 1 ? 's expire' : ' expires').' within 30 days — line up renewals.',
+            ];
+        }
+
+        return $items;
     }
 
     /**

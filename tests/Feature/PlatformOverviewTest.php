@@ -21,7 +21,7 @@ beforeEach(function () {
 
 function overviewAdmin(): User
 {
-    $admin = User::factory()->create();
+    $admin = User::factory()->create(['onboarded_at' => now()]);
     $admin->assignRole('admin');
 
     return $admin;
@@ -66,22 +66,22 @@ test('platform overview reports mrr, past-due and trials', function () {
     ]);
 
     $this->actingAs(overviewAdmin())
-        ->get(route('platform.dashboard'))
+        ->get(route('dashboard'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('platform/dashboard')
-            ->where('overview.kpis.mrr.value', 15000)
-            ->where('overview.kpis.mrr.paying_organizations', 2)
-            ->where('overview.kpis.past_due.value', 1)
-            ->where('overview.kpis.past_due.exposure', 2500)
-            ->where('overview.kpis.trials_ending.value', 1)
-            ->where('overview.kpis.signups_this_month.value', 3)
-            ->where('overview.kpis.collected_this_month.value', 7500)
-            ->where('overview.kpis.collected_this_month.last_month', 7500)
-            ->where('overview.currency', 'KES')
-            ->has('overview.income_trend', 12)
-            ->has('overview.alerts')
-            ->has('overview.attention', 2));
+            ->component('dashboard')
+            ->where('platform.kpis.mrr.value', 15000)
+            ->where('platform.kpis.mrr.paying_organizations', 2)
+            ->where('platform.kpis.past_due.value', 1)
+            ->where('platform.kpis.past_due.exposure', 2500)
+            ->where('platform.kpis.trials_ending.value', 1)
+            ->where('platform.kpis.signups_this_month.value', 3)
+            ->where('platform.kpis.collected_this_month.value', 7500)
+            ->where('platform.kpis.collected_this_month.last_month', 7500)
+            ->where('platform.currency', 'KES')
+            ->has('platform.income_trend', 12)
+            ->has('platform.alerts')
+            ->has('platform.attention', 2));
 });
 
 test('platform overview flags subscriptions lapsed over fourteen days', function () {
@@ -95,10 +95,10 @@ test('platform overview flags subscriptions lapsed over fourteen days', function
         'subscription_ends_at' => now()->subDays(20),
     ]);
 
-    $response = $this->actingAs(overviewAdmin())->get(route('platform.dashboard'));
+    $response = $this->actingAs(overviewAdmin())->get(route('dashboard'));
 
-    $attention = $response->viewData('page')['props']['overview']['attention'];
-    $alerts = $response->viewData('page')['props']['overview']['alerts'];
+    $attention = $response->viewData('page')['props']['platform']['attention'];
+    $alerts = $response->viewData('page')['props']['platform']['alerts'];
 
     expect($attention)->toHaveCount(1)
         ->and($attention[0]['name'])->toBe('Lapsed Ltd')
@@ -110,13 +110,13 @@ test('platform overview flags subscriptions lapsed over fourteen days', function
 
 test('platform overview is empty but honest with no organizations', function () {
     $this->actingAs(overviewAdmin())
-        ->get(route('platform.dashboard'))
+        ->get(route('dashboard'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->where('overview.kpis.mrr.value', 0)
-            ->where('overview.kpis.past_due.value', 0)
-            ->where('overview.attention', [])
-            ->where('overview.alerts.0.text', 'Nothing needs attention.'));
+            ->where('platform.kpis.mrr.value', 0)
+            ->where('platform.kpis.past_due.value', 0)
+            ->where('platform.attention', [])
+            ->where('platform.alerts.0.text', 'Nothing needs attention.'));
 });
 
 test('platform metrics hide without the advanced metrics permission', function () {
@@ -127,17 +127,26 @@ test('platform metrics hide without the advanced metrics permission', function (
     Organization::factory()->create();
 
     $this->actingAs($admin)
-        ->get(route('platform.dashboard'))
+        ->get(route('dashboard'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('platform/dashboard')
-            ->where('overview', null)
+            ->component('dashboard')
+            ->where('platform', null)
             ->where('growth', null)
             ->where('payments', null)
             ->where('adoption', null)
-            ->where('histories', null)
+            ->where('platform_histories', null)
             ->where('operations', null)
-            ->has('organizations', 1));
+            ->has('platform_organizations', 1)
+            ->where('platform_organizations_pagination.total', 1));
+});
+
+test('retired platform urls no longer resolve', function () {
+    $admin = User::factory()->create(['onboarded_at' => now()]);
+    $admin->assignRole('admin');
+
+    $this->actingAs($admin)->get('/platform')->assertNotFound();
+    $this->actingAs($admin)->get('/admin')->assertNotFound();
 });
 
 test('platform growth reports funnel, cohorts and payment performance', function () {
@@ -180,6 +189,60 @@ test('platform growth reports funnel, cohorts and payment performance', function
         'received_on' => now()->subMonthsNoOverflow(2)->startOfMonth()->toDateString(),
     ]);
 
+    $response = $this->actingAs(overviewAdmin())->get(route('dashboard'));
+
+    $props = $response->viewData('page')['props'];
+
+    // Payments resolve deferred, so the initial payload omits them.
+    expect($props)->not->toHaveKey('payments');
+
+    $funnel = collect($props['growth']['funnel'])->mapWithKeys(fn ($stage) => [$stage['stage'] => $stage]);
+    expect($funnel['signed_up']['count'])->toBe(2)
+        ->and($funnel['first_property']['count'])->toBe(1)
+        ->and($funnel['first_property']['conversion'])->toBe(50.0)
+        ->and($funnel['first_unit']['count'])->toBe(1)
+        ->and($funnel['first_occupant']['count'])->toBe(1)
+        ->and($funnel['first_rent']['count'])->toBe(1)
+        ->and($funnel['converted']['count'])->toBe(1);
+
+    $cohort = collect($props['growth']['cohorts']['rows'])
+        ->first(fn ($row) => $row['size'] >= 1);
+    expect($cohort)->not->toBeNull()
+        ->and($cohort['cells'][0]['retained'])->toBeGreaterThanOrEqual(1);
+
+    $leases = collect($props['adoption']['features'])->firstWhere('key', 'leases');
+    expect($props['adoption']['properties_total'])->toBe(1)
+        ->and($props['adoption']['units_total'])->toBe(1)
+        ->and($props['adoption']['rent_month_to_date'])->toBe(25000.0)
+        ->and($leases['organizations'])->toBe(1);
+
+    expect($props['platform_histories']['as_of'])->toBeNull();
+});
+
+test('platform organization section paginates at fifteen per page', function () {
+    Organization::factory()->count(16)->create();
+
+    $first = $this->actingAs(overviewAdmin())->get(route('dashboard'));
+    $first->assertOk();
+
+    $props = $first->viewData('page')['props'];
+    expect($props['platform_organizations'])->toHaveCount(15)
+        ->and($props['platform_organizations_pagination']['total'])->toBe(16)
+        ->and($props['platform_organizations_pagination']['last_page'])->toBe(2)
+        ->and($props['platform_organizations_pagination']['current_page'])->toBe(1);
+
+    $second = $this->actingAs(overviewAdmin())->get(route('dashboard', ['orgs_page' => 2]));
+    $second->assertOk();
+
+    $pageTwo = $second->viewData('page')['props'];
+    expect($pageTwo['platform_organizations'])->toHaveCount(1)
+        ->and($pageTwo['platform_organizations_pagination']['current_page'])->toBe(2);
+});
+
+test('platform payments resolve deferred with success rate and latency', function () {
+    $plan = Plan::factory()->create(['price' => 2500]);
+    $organization = Organization::factory()->create(['plan_id' => $plan->id]);
+
     $succeeded = PaymentAttempt::create([
         'organization_id' => $organization->id,
         'plan_id' => $plan->id,
@@ -204,38 +267,26 @@ test('platform growth reports funnel, cohorts and payment performance', function
     $failed->created_at = now()->subMinutes(2);
     $failed->save();
 
-    $response = $this->actingAs(overviewAdmin())->get(route('platform.dashboard'));
+    $initial = $this->actingAs(overviewAdmin())->get(route('dashboard'));
+    expect($initial->viewData('page')['props'])->not->toHaveKey('payments');
 
-    $props = $response->viewData('page')['props'];
+    $partial = $this->actingAs(overviewAdmin())->get(
+        route('dashboard'),
+        [
+            'X-Inertia-Partial-Data' => 'payments',
+            'X-Inertia-Partial-Component' => 'dashboard',
+        ],
+    );
 
-    $funnel = collect($props['growth']['funnel'])->mapWithKeys(fn ($stage) => [$stage['stage'] => $stage]);
-    expect($funnel['signed_up']['count'])->toBe(2)
-        ->and($funnel['first_property']['count'])->toBe(1)
-        ->and($funnel['first_property']['conversion'])->toBe(50.0)
-        ->and($funnel['first_unit']['count'])->toBe(1)
-        ->and($funnel['first_occupant']['count'])->toBe(1)
-        ->and($funnel['first_rent']['count'])->toBe(1)
-        ->and($funnel['converted']['count'])->toBe(1);
+    $partial->assertOk();
+    $payments = $partial->viewData('page')['props']['payments'];
+    $today = collect($payments['daily'])->last();
 
-    $cohort = collect($props['growth']['cohorts']['rows'])
-        ->first(fn ($row) => $row['size'] >= 1);
-    expect($cohort)->not->toBeNull()
-        ->and($cohort['cells'][0]['retained'])->toBeGreaterThanOrEqual(1);
-
-    $today = collect($props['payments']['daily'])->last();
     expect($today['attempts'])->toBe(2)
         ->and($today['success_rate'])->toBe(50.0)
         ->and($today['latency_p50_seconds'])->toBe(210)
-        ->and($props['payments']['failures'])->toHaveCount(1)
-        ->and($props['payments']['failures'][0]['reason'])->toBe('Insufficient funds');
-
-    $leases = collect($props['adoption']['features'])->firstWhere('key', 'leases');
-    expect($props['adoption']['properties_total'])->toBe(1)
-        ->and($props['adoption']['units_total'])->toBe(1)
-        ->and($props['adoption']['rent_month_to_date'])->toBe(25000.0)
-        ->and($leases['organizations'])->toBe(1);
-
-    expect($props['histories']['as_of'])->toBeNull();
+        ->and($payments['failures'])->toHaveCount(1)
+        ->and($payments['failures'][0]['reason'])->toBe('Insufficient funds');
 });
 
 test('platform operations reports failed jobs, audit and integrations', function () {
@@ -251,7 +302,7 @@ test('platform operations reports failed jobs, audit and integrations', function
     activity()->inLog('platform')->log('Suspended Lapsed Ltd');
 
     $props = $this->actingAs(overviewAdmin())
-        ->get(route('platform.dashboard'))
+        ->get(route('dashboard'))
         ->viewData('page')['props'];
 
     expect($props['operations']['failed_jobs']['count'])->toBe(1)

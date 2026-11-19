@@ -1,10 +1,16 @@
 <?php
 
 use App\Enums\PlatformRole;
+use App\Models\LandParcel;
+use App\Models\Lease;
+use App\Models\Occupant;
 use App\Models\Organization;
+use App\Models\Payment;
 use App\Models\Plan;
+use App\Models\Property;
 use App\Models\SubRole;
 use App\Models\SubscriptionPayment;
+use App\Models\Unit;
 use App\Models\User;
 use App\Services\StaffService;
 use App\Services\TenantService;
@@ -30,7 +36,7 @@ it('shows admin stats only to users with the advanced metrics permission', funct
         ->assertInertia(fn ($page) => $page
             ->has('admin')
             ->where('admin.organizations_count', 0)
-            ->where('defaultTab', 'admin'));
+            ->where('defaultTab', 'platform'));
 });
 
 it('returns null sections for users without the relevant permissions', function () {
@@ -45,6 +51,124 @@ it('returns null sections for users without the relevant permissions', function 
             ->where('organization', null)
             ->where('searcher', null)
             ->where('occupant', null));
+});
+
+it('reports landlord collection, aging and defaulters on the organization tab', function () {
+    $this->seed(RolesAndPermissionsSeeder::class);
+
+    $owner = makeOnboardedUser();
+    $owner->assignRole(PlatformRole::OrganizationOwner->value);
+
+    $org = Organization::factory()->create();
+    $owner->organizations()->attach($org->id, ['is_owner' => true, 'status' => 'active']);
+
+    $property = Property::factory()->for($org)->create();
+    Unit::factory()->create(['property_id' => $property->id, 'status' => 'occupied']);
+    Unit::factory()->create(['property_id' => $property->id, 'status' => 'vacant']);
+
+    $occupant = Occupant::factory()->create(['organization_id' => $org->id]);
+
+    $paidLease = Lease::factory()->create([
+        'organization_id' => $org->id,
+        'property_id' => $property->id,
+        'person_id' => $occupant->person_id,
+        'status' => 'active',
+        'starts_at' => now()->startOfMonth()->toDateString(),
+        'ends_at' => null,
+        'rent_amount' => 25000,
+        'rent_due_day' => 5,
+    ]);
+
+    Payment::factory()->create([
+        'organization_id' => $org->id,
+        'lease_id' => $paidLease->id,
+        'occupant_id' => $occupant->id,
+        'amount' => 25000,
+        'status' => 'received',
+        'method' => 'mpesa',
+        'paid_on' => now()->toDateString(),
+    ]);
+
+    $overdueLease = Lease::factory()->create([
+        'organization_id' => $org->id,
+        'property_id' => $property->id,
+        'person_id' => $occupant->person_id,
+        'status' => 'active',
+        'starts_at' => now()->subMonthsNoOverflow(3)->toDateString(),
+        'ends_at' => null,
+        'rent_amount' => 20000,
+        'rent_due_day' => 5,
+    ]);
+
+    $expiringLease = Lease::factory()->create([
+        'organization_id' => $org->id,
+        'property_id' => $property->id,
+        'person_id' => $occupant->person_id,
+        'status' => 'active',
+        'starts_at' => now()->startOfMonth()->toDateString(),
+        'ends_at' => now()->addDays(20)->toDateString(),
+        'rent_amount' => 15000,
+        'rent_due_day' => 5,
+    ]);
+
+    Payment::factory()->create([
+        'organization_id' => $org->id,
+        'lease_id' => $expiringLease->id,
+        'occupant_id' => $occupant->id,
+        'amount' => 15000,
+        'status' => 'received',
+        'method' => 'mpesa',
+        'paid_on' => now()->toDateString(),
+    ]);
+
+    $collection = $this->actingAs($owner)
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->viewData('page')['props']['organization']['collection'];
+
+    expect($collection['expected_mtd'])->toBe('60000.00')
+        ->and($collection['collected_mtd'])->toBe('40000.00')
+        ->and($collection['collection_rate'])->toBe(66.7)
+        ->and($collection['overdue_count'])->toBe(1)
+        ->and($collection['occupancy_rate'])->toBe(50.0)
+        ->and($collection['vacant'])->toBe(1)
+        ->and($collection['defaulters'])->toHaveCount(1)
+        ->and($collection['defaulters'][0]['lease_id'])->toBe($overdueLease->id)
+        ->and($collection['expiry']['within_30'])->toBe(1)
+        ->and($collection['properties'])->toHaveCount(1)
+        ->and($collection['properties'][0]['income_mtd'])->toBe('40000.00');
+
+    $buckets = collect($collection['aging']);
+    expect((float) $buckets->sum('total'))->toBe((float) $collection['arrears_total'])
+        ->and($buckets->sum('count'))->toBe(1);
+
+    LandParcel::factory()->create(['organization_id' => $org->id]);
+
+    $portfolio = $this->actingAs($owner)
+        ->get(route('dashboard'))
+        ->viewData('page')['props']['organization']['portfolio'];
+
+    expect($portfolio['units_grid'])->toHaveCount(1)
+        ->and($portfolio['units_grid'][0]['units'])->toHaveCount(2)
+        ->and($portfolio['timing']['early'] + $portfolio['timing']['on_time'] + $portfolio['timing']['late'])->toBe(2)
+        ->and($portfolio['pnl']['income_ytd'])->toBe('40000.00')
+        ->and($portfolio['pnl']['expenses_by_category'])->toBe([])
+        ->and($portfolio['land'])->toHaveCount(1)
+        ->and($portfolio['land'][0]['latitude'])->not->toBeNull();
+
+    $currentMonth = now()->format('M');
+    $taxMonth = collect($portfolio['tax'])->firstWhere('label', $currentMonth);
+    expect($taxMonth['total'])->toBe('40000.00');
+
+    $otherProperty = Property::factory()->for($org)->create();
+    $scoped = $this->actingAs($owner)
+        ->get(route('dashboard', ['property' => $otherProperty->id]))
+        ->viewData('page')['props']['organization'];
+
+    expect($scoped['selected_property'])->toBe($otherProperty->id)
+        ->and($scoped['collection']['expected_mtd'])->toBe('0.00')
+        ->and($scoped['portfolio']['units_grid'])->toHaveCount(1)
+        ->and($scoped['portfolio']['units_grid'][0]['units'])->toHaveCount(0);
 });
 
 it('grants the organization tab to owners and staff but not searchers', function () {
