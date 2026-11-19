@@ -29,8 +29,10 @@ Route::post('impersonation/stop', [ImpersonationController::class, 'stop'])
     ->name('impersonation.stop');
 
 // Central platform administration, gated by the `admin` middleware.
+// The dashboard moved into the central /dashboard platform tabs; the
+// GET route below stays removed so /platform no longer resolves, while
+// PlatformController is kept until its remaining actions migrate too.
 Route::middleware(['auth', 'verified', 'admin'])->group(function () {
-    Route::get('platform', [PlatformController::class, 'index'])->name('platform.dashboard');
     Route::post('platform/impersonate/{organization}/{user}', [PlatformController::class, 'impersonate'])
         ->name('platform.impersonate');
     Route::get('platform/assistant', [AssistantController::class, 'page'])

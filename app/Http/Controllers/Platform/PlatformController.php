@@ -25,6 +25,9 @@ class PlatformController extends Controller
         // support role admitted past the middleware sees organizations
         // without seeing platform revenue.
         $metrics = $request->user()->can(PlatformPermissionKey::ViewAdvancedMetrics->value);
+        // The dashboard section shows a page of organizations, not the
+        // table: 15 matches the house standard, and the full
+        // search/sort/suspend surface lives on platform/organizations.
         $organizations = Organization::query()
             ->with([
                 'plan:id,slug,name',
@@ -32,30 +35,41 @@ class PlatformController extends Controller
                 'users' => fn ($query) => $query->select('users.id', 'users.name', 'users.email'),
             ])
             ->orderBy('created_at', 'desc')
-            ->get()
-            ->map(fn (Organization $organization) => [
-                'id' => $organization->id,
-                'name' => $organization->name,
-                'slug' => $organization->slug,
-                'status' => $organization->status,
-                'plan' => $organization->plan?->name,
-                'domain' => $organization->tenant?->domains()->value('domain'),
-                'users' => $organization->users->map(fn (User $user) => [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                ]),
-                'created_at' => $organization->created_at?->toDateTimeString(),
-            ]);
+            ->paginate(15, ['*'], 'orgs_page', max(1, $request->integer('orgs_page', 1)));
+
+        $rows = collect($organizations->items())->map(fn (Organization $organization) => [
+            'id' => $organization->id,
+            'name' => $organization->name,
+            'slug' => $organization->slug,
+            'status' => $organization->status,
+            'plan' => $organization->plan?->name,
+            'domain' => $organization->tenant?->domains()->value('domain'),
+            'users' => $organization->users->map(fn (User $user) => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+            ]),
+            'created_at' => $organization->created_at?->toDateTimeString(),
+        ])->all();
 
         return Inertia::render('platform/dashboard', [
-            'organizations' => $organizations,
+            'organizations' => $rows,
+            'organizations_pagination' => [
+                'current_page' => $organizations->currentPage(),
+                'last_page' => $organizations->lastPage(),
+                'total' => $organizations->total(),
+                'per_page' => $organizations->perPage(),
+            ],
+            // Overview paints first; the payments analytics resolve a beat
+            // later behind their skeleton. Everything else answers in cheap
+            // bounded queries, so deferring it would trade one fast request
+            // for two slower-feeling ones.
             'overview' => $metrics ? $overview->payload() : null,
             'growth' => $metrics ? [
                 'funnel' => $overview->funnel(),
                 'cohorts' => $overview->cohorts(),
             ] : null,
-            'payments' => $metrics ? $overview->paymentPerformance() : null,
+            'payments' => $metrics ? Inertia::defer(fn () => $overview->paymentPerformance()) : null,
             'adoption' => $metrics ? $overview->adoption() : null,
             'histories' => $metrics ? $overview->histories() : null,
             'operations' => $metrics ? $overview->operations() : null,

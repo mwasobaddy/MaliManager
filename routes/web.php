@@ -19,7 +19,8 @@ Route::get('/', HomeController::class)->name('home');
 require __DIR__.'/auth.php';
 
 Route::middleware(['auth', 'verified', 'admin'])->group(function () {
-    Route::get('admin', [PlatformController::class, 'index'])->name('admin.dashboard');
+    // Legacy /admin dashboard URL retired with /platform: the content
+    // lives in the central /dashboard platform tabs. Assistant routes stay.
     Route::post('admin/impersonate/{organization}/{user}', [PlatformController::class, 'impersonate'])
         ->name('admin.impersonate');
     Route::get('admin/assistant', [AssistantController::class, 'page'])

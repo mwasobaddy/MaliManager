@@ -1,4 +1,4 @@
-import { Form, Head, Link } from '@inertiajs/react';
+import { Form, Head, Link, router } from '@inertiajs/react';
 import { Building2, Shield } from 'lucide-react';
 import { useState } from 'react';
 import { ComboChart } from '@/components/dashboard/combo-chart';
@@ -15,6 +15,7 @@ import {
     CardTitle,
 } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { dashboard as platformDashboard } from '@/routes';
 import { impersonate } from '@/routes/platform';
 import * as orgRoutes from '@/routes/platform/organizations';
 import { formatMoney } from '@/lib/format-money';
@@ -72,6 +73,12 @@ type Overview = {
 
 type Props = {
     organizations: Organization[];
+    organizations_pagination: {
+        current_page: number;
+        last_page: number;
+        total: number;
+        per_page: number;
+    };
     overview: Overview | null;
     growth: {
         funnel: Array<{
@@ -122,6 +129,9 @@ type Props = {
         as_of: string | null;
         mrr: ComboPoint[];
         rent: ComboPoint[];
+        active: number[];
+        trials: number[];
+        past_due: number[];
     } | null;
     operations: {
         failed_jobs: {
@@ -681,8 +691,43 @@ function AdoptionBars({
     );
 }
 
-export default function AdminDashboard({
+/**
+ * Pulsing wireframe shown while a deferred analytics group resolves.
+ * Same card shell the content will land in, so arrival shifts nothing.
+ * Decorative by design: the loaded figures carry the meaning.
+ */
+function SectionSkeleton({ blocks = 4 }: { blocks?: number }) {
+    const widths = [92, 78, 86, 64, 88, 72, 80];
+
+    return (
+        <Card aria-hidden>
+            <CardContent className="flex flex-col gap-3 pt-5">
+                {Array.from({ length: blocks }, (_, index) => (
+                    <div
+                        key={index}
+                        className="h-4 animate-pulse rounded bg-skeleton"
+                        style={{
+                            width: `${widths[index % widths.length]}%`,
+                        }}
+                    />
+                ))}
+            </CardContent>
+        </Card>
+    );
+}
+
+/**
+ * Snapshot-sourced sparkline points: two or more snapshots or nothing.
+ * A single point is not a trend, and month-to-date counters never spark
+ * (they sawtooth on the 1st) — those stay delta text.
+ */
+function snapshotSpark(values?: number[]): number[] | undefined {
+    return values !== undefined && values.length >= 2 ? values : undefined;
+}
+
+export default function PlatformDashboard({
     organizations,
+    organizations_pagination: pagination,
     overview,
     growth,
     payments,
@@ -690,13 +735,17 @@ export default function AdminDashboard({
     histories,
     operations,
 }: Props) {
+    // Overview ships eager, and so do growth, adoption, histories and
+    // operations: bounded cheap queries. Only payments resolves
+    // deferred (its table grows forever), skeletonizing while undefined.
+    // The controller sets every eager key together, so one check covers
+    // them; null anywhere here means no access, not loading.
     const metrics =
-        overview !== null &&
-        growth !== null &&
-        payments !== null &&
-        adoption !== null &&
-        histories !== null &&
-        operations !== null
+        overview != null &&
+        growth != null &&
+        adoption != null &&
+        histories != null &&
+        operations != null
             ? { overview, growth, payments, adoption, histories, operations }
             : null;
     const kpis = metrics?.overview.kpis;
@@ -708,18 +757,24 @@ export default function AdminDashboard({
         (kpis?.collected_this_month.value ?? 0) -
         (kpis?.collected_this_month.last_month ?? 0);
 
+    const goOrgPage = (page: number) => {
+        router.get(
+            platformDashboard({ query: { orgs_page: page } }).url,
+            {},
+            { preserveState: true, preserveScroll: true, replace: true },
+        );
+    };
+
     return (
         <>
-            <Head title="Admin" />
+            <Head title="Platform" />
             <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-4">
                 <div className="flex items-center gap-3">
                     <div className="flex size-10 items-center justify-center rounded-xl bg-sidebar-primary/10">
                         <Shield className="size-5" />
                     </div>
                     <div>
-                        <h1 className="text-xl font-semibold">
-                            Platform Admin
-                        </h1>
+                        <h1 className="text-xl font-semibold">Platform</h1>
                         <p className="text-sm text-muted-foreground">
                             Platform health at a glance — organizations and
                             impersonation below.
@@ -760,6 +815,11 @@ export default function AdminDashboard({
                                         currency,
                                     )}
                                     sub={`${kpis.mrr.paying_organizations} paying organizations`}
+                                    spark={snapshotSpark(
+                                        metrics.histories?.mrr.map((row) =>
+                                            Number(row.mrr),
+                                        ),
+                                    )}
                                 />
                                 <KpiCard
                                     label="Active organizations"
@@ -767,6 +827,9 @@ export default function AdminDashboard({
                                         kpis.active_organizations.value,
                                     )}
                                     sub={`${kpis.active_organizations.on_trial} on trial`}
+                                    spark={snapshotSpark(
+                                        metrics.histories?.active,
+                                    )}
                                 />
                                 <KpiCard
                                     label="New signups this month"
@@ -784,6 +847,9 @@ export default function AdminDashboard({
                                     value={String(kpis.past_due.value)}
                                     sub={`${formatMoney(kpis.past_due.exposure, currency)} exposed`}
                                     alert={kpis.past_due.value > 0}
+                                    spark={snapshotSpark(
+                                        metrics.histories?.past_due,
+                                    )}
                                 />
                                 <KpiCard
                                     label="Collected this month"
@@ -798,6 +864,9 @@ export default function AdminDashboard({
                                     label="Trials ending soon"
                                     value={String(kpis.trials_ending.value)}
                                     sub={`within ${kpis.trials_ending.within_days} days`}
+                                    spark={snapshotSpark(
+                                        metrics.histories?.trials,
+                                    )}
                                 />
                             </div>
 
@@ -824,117 +893,6 @@ export default function AdminDashboard({
                             </div>
 
                             <AttentionTable rows={metrics.overview.attention} />
-
-                            <h2 className="text-base font-semibold">
-                                All organizations
-                            </h2>
-
-                            {organizations.length === 0 ? (
-                                <Card>
-                                    <CardContent className="py-10 text-center text-sm text-muted-foreground">
-                                        No organizations have been created yet.
-                                    </CardContent>
-                                </Card>
-                            ) : (
-                                <div className="grid gap-4">
-                                    {organizations.map((organization) => (
-                                        <Card key={organization.id}>
-                                            <CardHeader>
-                                                <div className="flex flex-wrap items-center justify-between gap-2">
-                                                    <div className="flex items-center gap-2">
-                                                        <Building2 className="size-4 text-muted-foreground" />
-                                                        <CardTitle>
-                                                            {organization.name}
-                                                        </CardTitle>
-                                                        <Badge variant="primary">
-                                                            {organization.plan ??
-                                                                'No plan'}
-                                                        </Badge>
-                                                        <Badge
-                                                            variant={
-                                                                organization.status ===
-                                                                'active'
-                                                                    ? 'success'
-                                                                    : 'neutral'
-                                                            }
-                                                        >
-                                                            {
-                                                                organization.status
-                                                            }
-                                                        </Badge>
-                                                    </div>
-                                                    <CardDescription>
-                                                        {organization.slug}
-                                                    </CardDescription>
-                                                </div>
-                                            </CardHeader>
-                                            <CardContent>
-                                                {organization.users.length ===
-                                                0 ? (
-                                                    <p className="text-sm text-muted-foreground">
-                                                        No members.
-                                                    </p>
-                                                ) : (
-                                                    <div className="divide-y divide-border rounded-lg border">
-                                                        {organization.users.map(
-                                                            (user) => (
-                                                                <div
-                                                                    key={
-                                                                        user.id
-                                                                    }
-                                                                    className="flex items-center justify-between gap-4 px-4 py-3"
-                                                                >
-                                                                    <div className="min-w-0">
-                                                                        <p className="truncate text-sm font-medium">
-                                                                            {
-                                                                                user.name
-                                                                            }
-                                                                        </p>
-                                                                        <p className="truncate text-sm text-muted-foreground">
-                                                                            {
-                                                                                user.email
-                                                                            }
-                                                                        </p>
-                                                                    </div>
-                                                                    <Form
-                                                                        method="post"
-                                                                        action={impersonate(
-                                                                            [
-                                                                                organization.id,
-                                                                                user.id,
-                                                                            ],
-                                                                        )}
-                                                                        as="button"
-                                                                        disabled={
-                                                                            !organization.domain
-                                                                        }
-                                                                        title={
-                                                                            organization.domain
-                                                                                ? `Log in as ${user.name}`
-                                                                                : 'No domain configured'
-                                                                        }
-                                                                    >
-                                                                        <Button
-                                                                            type="submit"
-                                                                            variant="outline"
-                                                                            size="sm"
-                                                                            disabled={
-                                                                                !organization.domain
-                                                                            }
-                                                                        >
-                                                                            Impersonate
-                                                                        </Button>
-                                                                    </Form>
-                                                                </div>
-                                                            ),
-                                                        )}
-                                                    </div>
-                                                )}
-                                            </CardContent>
-                                        </Card>
-                                    ))}
-                                </div>
-                            )}
                         </TabsContent>
 
                         <TabsContent
@@ -978,47 +936,62 @@ export default function AdminDashboard({
                             value="payments"
                             className="flex flex-col gap-4"
                         >
-                            <ComboChart
-                                title="Gateway attempts and success rate — trailing 30 days"
-                                data={metrics.payments.daily.map((day) => ({
-                                    label: day.label,
-                                    attempts: day.attempts,
-                                    ...(day.success_rate !== null
-                                        ? { success_rate: day.success_rate }
-                                        : {}),
-                                }))}
-                                series={[
-                                    {
-                                        key: 'attempts',
-                                        label: 'Attempts',
-                                        color: 'var(--chart-1)',
-                                        type: 'bar',
-                                    },
-                                    {
-                                        key: 'success_rate',
-                                        label: 'Success %',
-                                        color: 'var(--chart-2)',
-                                        type: 'line',
-                                        axis: 'right',
-                                    },
-                                ]}
-                            />
-                            <p className="text-sm text-muted-foreground">
-                                Median confirmation latency:{' '}
-                                {formatLatency(
-                                    metrics.payments.latency_this_week,
-                                )}{' '}
-                                trailing 7 days vs{' '}
-                                {formatLatency(
-                                    metrics.payments.latency_last_week,
-                                )}{' '}
-                                the week before. Pending attempts are still in
-                                flight and never count toward the rate.
-                            </p>
-                            <FailuresTable
-                                failures={metrics.payments.failures}
-                                currency={currency}
-                            />
+                            {metrics.payments == null ? (
+                                <>
+                                    <SectionSkeleton blocks={6} />
+                                    <SectionSkeleton blocks={3} />
+                                </>
+                            ) : (
+                                <>
+                                    <ComboChart
+                                        title="Gateway attempts and success rate — trailing 30 days"
+                                        data={metrics.payments.daily.map(
+                                            (day) => ({
+                                                label: day.label,
+                                                attempts: day.attempts,
+                                                ...(day.success_rate !== null
+                                                    ? {
+                                                          success_rate:
+                                                              day.success_rate,
+                                                      }
+                                                    : {}),
+                                            }),
+                                        )}
+                                        series={[
+                                            {
+                                                key: 'attempts',
+                                                label: 'Attempts',
+                                                color: 'var(--chart-1)',
+                                                type: 'bar',
+                                            },
+                                            {
+                                                key: 'success_rate',
+                                                label: 'Success %',
+                                                color: 'var(--chart-2)',
+                                                type: 'line',
+                                                axis: 'right',
+                                            },
+                                        ]}
+                                    />
+                                    <p className="text-sm text-muted-foreground">
+                                        Median confirmation latency:{' '}
+                                        {formatLatency(
+                                            metrics.payments.latency_this_week,
+                                        )}{' '}
+                                        trailing 7 days vs{' '}
+                                        {formatLatency(
+                                            metrics.payments.latency_last_week,
+                                        )}{' '}
+                                        the week before. Pending attempts are
+                                        still in flight and never count toward
+                                        the rate.
+                                    </p>
+                                    <FailuresTable
+                                        failures={metrics.payments.failures}
+                                        currency={currency}
+                                    />
+                                </>
+                            )}
                         </TabsContent>
 
                         <TabsContent
@@ -1057,10 +1030,10 @@ export default function AdminDashboard({
                             <AdoptionBars
                                 features={metrics.adoption.features}
                             />
-                            {metrics.histories.rent.length > 0 && (
+                            {(metrics.histories?.rent.length ?? 0) > 0 && (
                                 <ComboChart
                                     title="Rent collected trend (nightly snapshots)"
-                                    data={metrics.histories.rent}
+                                    data={metrics.histories?.rent ?? []}
                                     series={[
                                         {
                                             key: 'rent',
@@ -1205,15 +1178,155 @@ export default function AdminDashboard({
                         </TabsContent>
                     </Tabs>
                 )}
+
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h2 className="text-base font-semibold">
+                        All organizations
+                    </h2>
+                    <Link
+                        href={orgRoutes.index().url}
+                        className="text-sm font-medium text-accent-text hover:text-foreground"
+                    >
+                        Manage all
+                    </Link>
+                </div>
+
+                {organizations.length === 0 ? (
+                    <Card>
+                        <CardContent className="py-10 text-center text-sm text-muted-foreground">
+                            No organizations have been created yet.
+                        </CardContent>
+                    </Card>
+                ) : (
+                    <div className="grid gap-4">
+                        {organizations.map((organization) => (
+                            <Card key={organization.id}>
+                                <CardHeader>
+                                    <div className="flex flex-wrap items-center justify-between gap-2">
+                                        <div className="flex items-center gap-2">
+                                            <Building2 className="size-4 text-muted-foreground" />
+                                            <CardTitle>
+                                                {organization.name}
+                                            </CardTitle>
+                                            <Badge variant="primary">
+                                                {organization.plan ?? 'No plan'}
+                                            </Badge>
+                                            <Badge
+                                                variant={
+                                                    organization.status ===
+                                                    'active'
+                                                        ? 'success'
+                                                        : 'neutral'
+                                                }
+                                            >
+                                                {organization.status}
+                                            </Badge>
+                                        </div>
+                                        <CardDescription>
+                                            {organization.slug}
+                                        </CardDescription>
+                                    </div>
+                                </CardHeader>
+                                <CardContent>
+                                    {organization.users.length === 0 ? (
+                                        <p className="text-sm text-muted-foreground">
+                                            No members.
+                                        </p>
+                                    ) : (
+                                        <div className="divide-y divide-border rounded-lg border">
+                                            {organization.users.map((user) => (
+                                                <div
+                                                    key={user.id}
+                                                    className="flex items-center justify-between gap-4 px-4 py-3"
+                                                >
+                                                    <div className="min-w-0">
+                                                        <p className="truncate text-sm font-medium">
+                                                            {user.name}
+                                                        </p>
+                                                        <p className="truncate text-sm text-muted-foreground">
+                                                            {user.email}
+                                                        </p>
+                                                    </div>
+                                                    <Form
+                                                        method="post"
+                                                        action={impersonate([
+                                                            organization.id,
+                                                            user.id,
+                                                        ])}
+                                                        as="button"
+                                                        disabled={
+                                                            !organization.domain
+                                                        }
+                                                        title={
+                                                            organization.domain
+                                                                ? `Log in as ${user.name}`
+                                                                : 'No domain configured'
+                                                        }
+                                                    >
+                                                        <Button
+                                                            type="submit"
+                                                            variant="outline"
+                                                            size="sm"
+                                                            disabled={
+                                                                !organization.domain
+                                                            }
+                                                        >
+                                                            Impersonate
+                                                        </Button>
+                                                    </Form>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        ))}
+                    </div>
+                )}
+                {pagination.last_page > 1 && (
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-sm text-muted-foreground tabular-nums">
+                            Page {pagination.current_page} of{' '}
+                            {pagination.last_page} · {pagination.total} total
+                        </p>
+                        <div className="flex gap-2">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                disabled={pagination.current_page <= 1}
+                                onClick={() =>
+                                    goOrgPage(pagination.current_page - 1)
+                                }
+                            >
+                                Previous
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                disabled={
+                                    pagination.current_page >=
+                                    pagination.last_page
+                                }
+                                onClick={() =>
+                                    goOrgPage(pagination.current_page + 1)
+                                }
+                            >
+                                Next
+                            </Button>
+                        </div>
+                    </div>
+                )}
             </div>
         </>
     );
 }
 
-AdminDashboard.layout = {
+PlatformDashboard.layout = {
     breadcrumbs: [
         {
-            title: 'Admin',
+            title: 'Platform',
         },
     ],
 };
