@@ -5,10 +5,13 @@ import { ComboChart } from '@/components/dashboard/combo-chart';
 import type { ComboPoint } from '@/components/dashboard/combo-chart';
 import { StatsCards } from '@/components/dashboard/stats-cards';
 import { HomeDashboardTabs } from '@/components/home-dashboard-tabs';
+import { PageHero } from '@/components/page-hero';
 import { AdoptionBars } from '@/components/platform/adoption-bars';
 import { AlertsPanel } from '@/components/platform/alerts-panel';
+import { ArrearsAgingCard } from '@/components/platform/arrears-aging';
 import { AttentionTable } from '@/components/platform/attention-table';
 import { CohortHeatmap } from '@/components/platform/cohort-heatmap';
+import { DefaulterTable } from '@/components/platform/defaulter-table';
 import { FailuresTable } from '@/components/platform/failures-table';
 import { LandMap } from '@/components/platform/land-map';
 import { FunnelChart } from '@/components/platform/funnel-chart';
@@ -18,10 +21,12 @@ import {
     formatLatency,
 } from '@/components/platform/operations-panels';
 import { OrganizationsSection } from '@/components/platform/organizations-section';
+import { RentCollectionHero } from '@/components/platform/rent-collection-hero';
 import {
     ChartSkeleton,
     SectionSkeleton,
 } from '@/components/platform/section-skeleton';
+import { UnitGridCard } from '@/components/platform/unit-grid';
 import type {
     Adoption,
     Growth,
@@ -52,7 +57,6 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { formatMoney } from '@/lib/format-money';
 import { dashboard } from '@/routes';
 import { home as guestHome } from '@/routes/guest';
-import { remind as remindLease } from '@/routes/tenant/leases';
 
 type AdminStats = {
     organizations_count: number;
@@ -455,6 +459,10 @@ export default function Dashboard(props: Props) {
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
                 <h1 className="sr-only">Dashboard</h1>
                 <HomeDashboardTabs />
+                <PageHero
+                    title="Dashboard"
+                    description="Portfolio, platform and home views — pick a tab to dive in."
+                />
                 {visibleTabs.length === 0 ? (
                     <Card>
                         <CardContent>
@@ -888,197 +896,6 @@ function AdoptionTab({
  * paid". A progress bar, not a number — position in the month matters as
  * much as the total.
  */
-function RentCollectionHero({
-    collection,
-}: {
-    collection: OrgStats['collection'];
-}) {
-    const expected = Number(collection.expected_mtd);
-    const collected = Number(collection.collected_mtd);
-    const pct = expected > 0 ? Math.min((collected / expected) * 100, 100) : 0;
-
-    return (
-        <Card>
-            <CardContent className="flex flex-col gap-2 pt-5">
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <p className="text-sm text-muted-foreground">
-                        Rent collected this month
-                    </p>
-                    <p className="text-sm text-muted-foreground tabular-nums">
-                        {collection.collection_rate === null
-                            ? 'no rent due yet'
-                            : `${collection.collection_rate}% of expected`}
-                    </p>
-                </div>
-                <p className="text-2xl font-semibold tracking-tight tabular-nums">
-                    {formatMoney(collection.collected_mtd)} of{' '}
-                    {formatMoney(collection.expected_mtd)}
-                </p>
-                <div
-                    className="h-2.5 overflow-hidden rounded-full bg-muted"
-                    role="img"
-                    aria-label={`Collected ${formatMoney(collection.collected_mtd)} of ${formatMoney(collection.expected_mtd)} expected`}
-                >
-                    <div
-                        className="h-full rounded-full bg-brand-primary"
-                        style={{ width: `${pct}%` }}
-                    />
-                </div>
-                <p className="text-xs text-muted-foreground tabular-nums">
-                    {formatMoney(collection.arrears_total)} overdue across{' '}
-                    {collection.overdue_count}{' '}
-                    {collection.overdue_count === 1 ? 'lease' : 'leases'}
-                </p>
-            </CardContent>
-        </Card>
-    );
-}
-
-function ArrearsAgingCard({
-    aging,
-}: {
-    aging: OrgStats['collection']['aging'];
-}) {
-    const max = Math.max(...aging.map((row) => Number(row.total)), 1);
-
-    return (
-        <Card>
-            <CardHeader className="pb-2">
-                <CardTitle className="text-base font-medium">
-                    Arrears aging
-                </CardTitle>
-                <CardDescription>
-                    Overdue shillings by how late they are.
-                </CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-3">
-                {aging.map((row) => (
-                    <div key={row.bucket} className="flex flex-col gap-1">
-                        <div className="flex items-baseline justify-between gap-2 text-sm">
-                            <span className="font-medium">{row.bucket}</span>
-                            <span className="text-muted-foreground tabular-nums">
-                                {formatMoney(row.total)} · {row.count}
-                            </span>
-                        </div>
-                        <div
-                            className="h-2.5 overflow-hidden rounded-full bg-muted"
-                            role="img"
-                            aria-label={`${row.bucket}: ${formatMoney(row.total)} across ${row.count} leases`}
-                        >
-                            <div
-                                className="h-full rounded-full bg-chart-2"
-                                style={{
-                                    width: `${(Number(row.total) / max) * 100}%`,
-                                }}
-                            />
-                        </div>
-                    </div>
-                ))}
-            </CardContent>
-        </Card>
-    );
-}
-
-function DefaulterTable({
-    defaulters,
-}: {
-    defaulters: OrgStats['collection']['defaulters'];
-}) {
-    if (defaulters.length === 0) {
-        return (
-            <Card>
-                <CardHeader className="pb-2">
-                    <CardTitle className="text-base font-medium">
-                        Top defaulters
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <p className="text-sm text-muted-foreground">
-                        Nobody owes rent right now.
-                    </p>
-                </CardContent>
-            </Card>
-        );
-    }
-
-    const remind = (propertySlug: string, leaseId: number) => {
-        router.post(
-            remindLease({ property: propertySlug, lease: leaseId }).url,
-            {},
-            { preserveScroll: true },
-        );
-    };
-
-    return (
-        <Card>
-            <CardHeader className="pb-2">
-                <CardTitle className="text-base font-medium">
-                    Top defaulters
-                </CardTitle>
-                <CardDescription>
-                    Largest balances first — remind with one tap.
-                </CardDescription>
-            </CardHeader>
-            <CardContent className="overflow-x-auto px-0">
-                <table className="w-full text-sm">
-                    <thead>
-                        <tr className="border-y text-left text-xs tracking-wide text-muted-foreground uppercase">
-                            <th className="px-4 py-2 font-medium">Tenant</th>
-                            <th className="px-4 py-2 font-medium">Owes</th>
-                            <th className="px-4 py-2 font-medium">Late by</th>
-                            <th className="px-4 py-2 text-right font-medium">
-                                Actions
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {defaulters.map((row) => (
-                            <tr
-                                key={row.lease_id}
-                                className="border-b last:border-0"
-                            >
-                                <td className="px-4 py-2.5">
-                                    <p className="font-medium">
-                                        {row.occupant === ''
-                                            ? 'Unnamed tenant'
-                                            : row.occupant}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">
-                                        {row.unit ?? '—'} · {row.property}
-                                    </p>
-                                </td>
-                                <td className="px-4 py-2.5 font-medium tabular-nums">
-                                    {formatMoney(row.outstanding)}
-                                </td>
-                                <td className="px-4 py-2.5 text-muted-foreground tabular-nums">
-                                    {row.days_overdue}d
-                                </td>
-                                <td className="px-4 py-2.5">
-                                    <div className="flex justify-end">
-                                        {row.can_remind && (
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() =>
-                                                    remind(
-                                                        row.property_slug,
-                                                        row.lease_id,
-                                                    )
-                                                }
-                                            >
-                                                Remind
-                                            </Button>
-                                        )}
-                                    </div>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </CardContent>
-        </Card>
-    );
-}
 
 function PropertyPerformanceCard({
     properties,
@@ -1340,57 +1157,6 @@ function OrganizationTab({
 
             <LandMap parcels={stats.portfolio.land} />
         </div>
-    );
-}
-
-function UnitGridCard({ grid }: { grid: OrgStats['portfolio']['units_grid'] }) {
-    const fill: Record<string, string> = {
-        occupied: 'bg-status-success-bg text-status-success-fg',
-        vacant: 'bg-status-neutral-bg text-status-neutral-fg',
-        maintenance: 'bg-status-warning-bg text-status-warning-fg',
-    };
-
-    return (
-        <Card>
-            <CardHeader className="pb-2">
-                <CardTitle className="text-base font-medium">
-                    Unit map
-                </CardTitle>
-                <CardDescription>
-                    Every unit at a glance — the red ring marks arrears.
-                </CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-4">
-                {grid.length === 0 && (
-                    <p className="text-sm text-muted-foreground">
-                        No units in scope.
-                    </p>
-                )}
-                {grid.map((building) => (
-                    <div key={building.property}>
-                        <p className="mb-2 text-sm font-medium">
-                            {building.property}
-                        </p>
-                        <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-8">
-                            {building.units.map((unit) => (
-                                <div
-                                    key={unit.id}
-                                    title={`${unit.name} · ${unit.status}${unit.occupant ? ` · ${unit.occupant}` : ''}`}
-                                    className={`rounded-lg border px-2 py-2 text-center ${fill[unit.status] ?? 'bg-muted text-muted-foreground'} ${unit.overdue ? 'ring-2 ring-status-danger' : ''}`}
-                                >
-                                    <p className="truncate text-xs font-semibold">
-                                        {unit.name}
-                                    </p>
-                                    <p className="truncate text-[10px] opacity-80">
-                                        {unit.occupant ?? unit.status}
-                                    </p>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                ))}
-            </CardContent>
-        </Card>
     );
 }
 

@@ -128,3 +128,39 @@ export type OrganizationsPagination = {
     total: number;
     per_page: number;
 };
+
+export type DefaulterRow = {
+    lease_id: number;
+    occupant: string;
+    unit: string | null;
+    property: string;
+    property_slug: string;
+    outstanding: string;
+    days_overdue: number;
+    can_remind: boolean;
+};
+
+export type AgingRow = {
+    bucket: string;
+    total: string;
+    count: number;
+};
+
+export type Collection = {
+    expected_mtd: string;
+    collected_mtd: string;
+    collection_rate: number | null;
+    arrears_total: string;
+    overdue_count: number;
+};
+
+export type UnitGridBuilding = {
+    property: string;
+    units: Array<{
+        id: number;
+        name: string;
+        status: string;
+        overdue: boolean;
+        occupant: string | null;
+    }>;
+};

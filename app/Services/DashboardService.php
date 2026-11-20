@@ -278,42 +278,7 @@ class DashboardService extends Service
         }
 
         // Unit grid: every unit with its current occupant, grouped by building.
-        $gridLeases = Lease::query()
-            ->whereIn('organization_id', $orgIds)
-            ->whereIn('property_id', $propertyIds)
-            ->where('status', 'active')
-            ->whereNotNull('unit_id')
-            ->with('person:id,first_name,last_name')
-            ->get(['id', 'unit_id', 'person_id']);
-
-        $leasesByUnit = $gridLeases->keyBy('unit_id');
-        $overdueUnitIds = collect($this->arrears->balancesFor($gridLeases))
-            ->filter(fn (array $balance): bool => $balance['overdue'])
-            ->map(fn (array $balance) => $balance['lease']->unit_id)
-            ->all();
-
-        $unitsGrid = [];
-        foreach ($propertyIds as $propertyId) {
-            $units = Unit::query()
-                ->where('property_id', $propertyId)
-                ->orderBy('name')
-                ->get(['id', 'name', 'status'])
-                ->map(fn (Unit $unit): array => [
-                    'id' => $unit->id,
-                    'name' => $unit->name,
-                    'status' => $unit->status,
-                    'overdue' => in_array($unit->id, $overdueUnitIds, true),
-                    'occupant' => ($lease = $leasesByUnit->get($unit->id)) !== null && $lease->person !== null
-                        ? trim($lease->person->first_name.' '.$lease->person->last_name)
-                        : null,
-                ])
-                ->all();
-
-            $unitsGrid[] = [
-                'property' => $propertyNames[$propertyId] ?? '',
-                'units' => $units,
-            ];
-        }
+        $unitsGrid = $this->unitsGrid($propertyIds, $propertyNames);
 
         // Payment timing against the billing period: early, within a
         // 7-day grace window, or late. Payments without a period carry no
@@ -440,7 +405,7 @@ class DashboardService extends Service
      *     properties: list<array{property: string, income_mtd: string, expenses_mtd: string, net_mtd: string}>,
      * }
      */
-    private function collectionStats(array $orgIds, iterable $properties, User $user): array
+    private function collectionStats(array $orgIds, iterable $properties, ?User $user): array
     {
         $propertyIds = collect($properties)->pluck('id')->all();
         $propertyNames = collect($properties)->pluck('name', 'id')->all();
@@ -449,7 +414,8 @@ class DashboardService extends Service
         $organizations = Organization::query()->whereIn('id', $orgIds)->get()->keyBy('id');
         $remindable = [];
         foreach ($organizations as $organization) {
-            $remindable[$organization->id] = $user->hasSubPermission($organization, SubPermissionKey::LeaseManage);
+            $remindable[$organization->id] = $user !== null
+                && $user->hasSubPermission($organization, SubPermissionKey::LeaseManage);
         }
 
         $leases = ($orgIds !== [] && $propertyIds !== [])
@@ -855,7 +821,7 @@ class DashboardService extends Service
      *
      * @return array<string, mixed>
      */
-    public function propertyStats(Property $property, ?int $year = null, ?int $month = null): array
+    public function propertyStats(Property $property, ?int $year = null, ?int $month = null, ?User $user = null): array
     {
         $year ??= (int) date('Y');
         $labels = $this->axisLabels($year, $month);
@@ -1011,7 +977,96 @@ class DashboardService extends Service
             'active_leases' => $activeLeases,
             'unit_status' => $unitStatus,
             'operations_monthly' => $operations,
+            'collection' => $this->collectionStats(
+                [$property->organization_id],
+                [['id' => $property->id, 'name' => $property->name]],
+                $user,
+            ),
+            'attention' => $this->attentionItems(
+                [$property->organization_id],
+                [['id' => $property->id]],
+            ),
+            'expiring_leases' => $this->expiringLeasesForProperty($property),
+            'units_grid' => $this->unitsGrid([$property->id], [$property->id => $property->name]),
         ];
+    }
+
+    /**
+     * Active leases ending within 60 days on one property, soonest first.
+     *
+     * @return list<array{unit: string|null, occupant: string|null, ends_at: string, days_left: int}>
+     */
+    private function expiringLeasesForProperty(Property $property): array
+    {
+        return Lease::query()
+            ->where('property_id', $property->id)
+            ->where('status', 'active')
+            ->whereNotNull('ends_at')
+            ->whereBetween('ends_at', [now()->toDateString(), now()->addDays(60)->toDateString()])
+            ->with(['unit:id,name', 'person:id,first_name,last_name'])
+            ->orderBy('ends_at')
+            ->limit(5)
+            ->get()
+            ->map(fn (Lease $lease): array => [
+                'unit' => $lease->unit?->name,
+                'occupant' => trim(($lease->person?->first_name ?? '').' '.($lease->person?->last_name ?? '')),
+                'ends_at' => $lease->ends_at?->toDateString(),
+                'days_left' => now()->startOfDay()->diffInDays($lease->ends_at->startOfDay()),
+            ])
+            ->all();
+    }
+
+    /**
+     * Every unit with its current occupant and arrears flag, grouped by
+     * building. Shared by the portfolio snapshot and the property page.
+     *
+     * @param  array<int, int>  $propertyIds
+     * @param  array<int, string>  $propertyNames
+     * @return list<array{property: string, units: list<array{id: int, name: string, status: string, overdue: bool, occupant: string|null}>}>
+     */
+    private function unitsGrid(array $propertyIds, array $propertyNames): array
+    {
+        if ($propertyIds === []) {
+            return [];
+        }
+
+        $gridLeases = Lease::query()
+            ->whereIn('property_id', $propertyIds)
+            ->where('status', 'active')
+            ->whereNotNull('unit_id')
+            ->with('person:id,first_name,last_name')
+            ->get(['id', 'unit_id', 'person_id']);
+
+        $leasesByUnit = $gridLeases->keyBy('unit_id');
+        $overdueUnitIds = collect($this->arrears->balancesFor($gridLeases))
+            ->filter(fn (array $balance): bool => $balance['overdue'])
+            ->map(fn (array $balance) => $balance['lease']->unit_id)
+            ->all();
+
+        $unitsGrid = [];
+        foreach ($propertyIds as $propertyId) {
+            $units = Unit::query()
+                ->where('property_id', $propertyId)
+                ->orderBy('name')
+                ->get(['id', 'name', 'status'])
+                ->map(fn (Unit $unit): array => [
+                    'id' => $unit->id,
+                    'name' => $unit->name,
+                    'status' => $unit->status,
+                    'overdue' => in_array($unit->id, $overdueUnitIds, true),
+                    'occupant' => ($lease = $leasesByUnit->get($unit->id)) !== null && $lease->person !== null
+                        ? trim($lease->person->first_name.' '.$lease->person->last_name)
+                        : null,
+                ])
+                ->all();
+
+            $unitsGrid[] = [
+                'property' => $propertyNames[$propertyId] ?? '',
+                'units' => $units,
+            ];
+        }
+
+        return $unitsGrid;
     }
 
     /**

@@ -1,5 +1,7 @@
 <?php
 
+use App\Models\Lease;
+use App\Models\Occupant;
 use App\Models\Organization;
 use App\Models\Plan;
 use App\Models\Property;
@@ -137,6 +139,48 @@ test('property dashboard shows real stats and charts', function () {
             ->where('stats.unit_status.0.status', 'occupied')
             ->where('stats.unit_status.0.count', 1)
             ->where('stats.operations_monthly', fn ($rows) => collect($rows)->count() === 12));
+});
+
+test('property dashboard carries collection, attention, expiry and unit grid', function () {
+    $user = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createTestOrganization($user);
+    $property = $organization->properties()->create([
+        'name' => 'Sunset Heights',
+        'slug' => 'sunset-heights',
+        'status' => 'active',
+        'created_by' => $user->id,
+    ]);
+
+    $property->units()->createMany([
+        ['name' => 'A1', 'status' => 'occupied', 'monthly_rent' => 25000, 'created_by' => $user->id],
+        ['name' => 'A2', 'status' => 'vacant', 'monthly_rent' => 20000, 'created_by' => $user->id],
+    ]);
+
+    $occupant = Occupant::factory()->create(['organization_id' => $organization->id]);
+
+    $lease = Lease::factory()->create([
+        'organization_id' => $organization->id,
+        'property_id' => $property->id,
+        'person_id' => $occupant->person_id,
+        'status' => 'active',
+        'starts_at' => now()->subMonthsNoOverflow(2)->toDateString(),
+        'ends_at' => now()->addDays(20)->toDateString(),
+        'rent_amount' => 25000,
+        'rent_due_day' => 5,
+    ]);
+
+    $stats = $this->actingAs($user)
+        ->get(tenantUrl($organization, "/{$property->slug}/dashboard"))
+        ->assertOk()
+        ->viewData('page')['props']['stats'];
+
+    expect($stats['collection']['expected_mtd'])->toBe('25000.00')
+        ->and($stats['collection']['overdue_count'])->toBe(1)
+        ->and($stats['collection']['defaulters'][0]['lease_id'])->toBe($lease->id)
+        ->and($stats['collection']['defaulters'][0]['can_remind'])->toBeTrue()
+        ->and($stats['expiring_leases'])->toHaveCount(1)
+        ->and($stats['units_grid'])->toHaveCount(1)
+        ->and($stats['units_grid'][0]['units'])->toHaveCount(2);
 });
 
 test('free plan property limit prevents a second property', function () {

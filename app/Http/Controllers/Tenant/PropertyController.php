@@ -155,7 +155,7 @@ class PropertyController extends Controller
                 'status' => $property->status,
             ],
             'units' => $units,
-            'stats' => app(DashboardService::class)->propertyStats($property, $year, $month),
+            'stats' => app(DashboardService::class)->propertyStats($property, $year, $month, $request->user()),
             'year' => $year,
             'month' => $month,
             'plan' => [
