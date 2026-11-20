@@ -134,6 +134,7 @@ it('reports landlord collection, aging and defaulters on the organization tab', 
         ->and($collection['vacant'])->toBe(1)
         ->and($collection['defaulters'])->toHaveCount(1)
         ->and($collection['defaulters'][0]['lease_id'])->toBe($overdueLease->id)
+        ->and($collection['defaulters'][0]['can_remind'])->toBeTrue()
         ->and($collection['expiry']['within_30'])->toBe(1)
         ->and($collection['properties'])->toHaveCount(1)
         ->and($collection['properties'][0]['income_mtd'])->toBe('40000.00');
@@ -169,6 +170,47 @@ it('reports landlord collection, aging and defaulters on the organization tab', 
         ->and($scoped['collection']['expected_mtd'])->toBe('0.00')
         ->and($scoped['portfolio']['units_grid'])->toHaveCount(1)
         ->and($scoped['portfolio']['units_grid'][0]['units'])->toHaveCount(0);
+});
+
+it('hides the remind button from staff without the lease permission', function () {
+    $this->seed(RolesAndPermissionsSeeder::class);
+
+    $owner = makeOnboardedUser();
+    $owner->assignRole(PlatformRole::OrganizationOwner->value);
+
+    $org = Organization::factory()->create();
+    $owner->organizations()->attach($org->id, ['is_owner' => true, 'status' => 'active']);
+
+    $property = Property::factory()->for($org)->create();
+    $occupant = Occupant::factory()->create(['organization_id' => $org->id]);
+
+    Lease::factory()->create([
+        'organization_id' => $org->id,
+        'property_id' => $property->id,
+        'person_id' => $occupant->person_id,
+        'status' => 'active',
+        'starts_at' => now()->subMonthsNoOverflow(3)->toDateString(),
+        'ends_at' => null,
+        'rent_amount' => 20000,
+        'rent_due_day' => 5,
+    ]);
+
+    $subRole = SubRole::factory()->create(['organization_id' => $org->id]);
+    $staff = app(StaffService::class)->create($org, $owner, [
+        'name' => 'Staffer',
+        'email' => 'staff-'.uniqid().'@example.com',
+        'phone' => '123456',
+        'sub_role_id' => $subRole->id,
+        'property_ids' => [$property->id],
+    ]);
+
+    $defaulters = $this->actingAs($staff)
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->viewData('page')['props']['organization']['collection']['defaulters'];
+
+    expect($defaulters)->toHaveCount(1)
+        ->and($defaulters[0]['can_remind'])->toBeFalse();
 });
 
 it('grants the organization tab to owners and staff but not searchers', function () {

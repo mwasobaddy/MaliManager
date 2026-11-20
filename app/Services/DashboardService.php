@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\PlatformPermissionKey;
+use App\Enums\SubPermissionKey;
 use App\Models\Expense;
 use App\Models\LandParcel;
 use App\Models\Lease;
@@ -50,7 +51,7 @@ class DashboardService extends Service
                 : null,
             'organization' => $user->can(PlatformPermissionKey::ViewOrgMetrics->value)
                 ? array_merge(
-                    $this->organizationStats($scopedAccess, $year, $month),
+                    $this->organizationStats($scopedAccess, $year, $month, $user),
                     [
                         'property_options' => collect($access)
                             ->flatMap(fn (array $organization) => $organization['properties'])
@@ -201,7 +202,7 @@ class DashboardService extends Service
     /**
      * @param  array<int, array{id: int, properties: array<int, array{id: int, name: string}>}>  $access
      */
-    private function organizationStats(array $access, int $year, ?int $month): array
+    private function organizationStats(array $access, int $year, ?int $month, User $user): array
     {
         $orgIds = collect($access)->pluck('id')->all();
         $properties = collect($access)->flatMap(fn (array $organization) => $organization['properties']);
@@ -240,7 +241,7 @@ class DashboardService extends Service
             'operations_monthly' => $operations,
             'flags' => $this->predictiveFlags($orgIds, $properties),
             'expiring_leases' => $this->expiringLeases($orgIds),
-            'collection' => $this->collectionStats($orgIds, $properties),
+            'collection' => $this->collectionStats($orgIds, $properties, $user),
             'attention' => $this->attentionItems($orgIds, $properties),
             'portfolio' => $this->portfolioDetails($orgIds, $properties, $year),
         ];
@@ -434,16 +435,22 @@ class DashboardService extends Service
      *     occupancy_rate: float|null, occupied: int, vacant: int, units_total: int,
      *     net_mtd: string,
      *     aging: list<array{bucket: string, total: string, count: int}>,
-     *     defaulters: list<array{lease_id: int, occupant: string, unit: string|null, property: string, property_slug: string, outstanding: string, days_overdue: int}>,
+     *     defaulters: list<array{lease_id: int, occupant: string, unit: string|null, property: string, property_slug: string, outstanding: string, days_overdue: int, can_remind: bool}>,
      *     expiry: array{within_30: int, within_60: int, within_90: int},
      *     properties: list<array{property: string, income_mtd: string, expenses_mtd: string, net_mtd: string}>,
      * }
      */
-    private function collectionStats(array $orgIds, iterable $properties): array
+    private function collectionStats(array $orgIds, iterable $properties, User $user): array
     {
         $propertyIds = collect($properties)->pluck('id')->all();
         $propertyNames = collect($properties)->pluck('name', 'id')->all();
         $monthStart = now()->startOfMonth()->toDateString();
+
+        $organizations = Organization::query()->whereIn('id', $orgIds)->get()->keyBy('id');
+        $remindable = [];
+        foreach ($organizations as $organization) {
+            $remindable[$organization->id] = $user->hasSubPermission($organization, SubPermissionKey::LeaseManage);
+        }
 
         $leases = ($orgIds !== [] && $propertyIds !== [])
             ? Lease::query()
@@ -500,6 +507,7 @@ class DashboardService extends Service
                 'property_slug' => $balance['lease']->property?->slug ?? '',
                 'outstanding' => $balance['outstanding'],
                 'days_overdue' => $balance['days_overdue'],
+                'can_remind' => $remindable[$balance['lease']->organization_id] ?? false,
             ])
             ->values()
             ->all();

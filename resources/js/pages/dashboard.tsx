@@ -101,6 +101,7 @@ type OrgStats = {
             property_slug: string;
             outstanding: string;
             days_overdue: number;
+            can_remind: boolean;
         }>;
         expiry: { within_30: number; within_60: number; within_90: number };
         properties: Array<{
@@ -983,9 +984,6 @@ function DefaulterTable({
 }: {
     defaulters: OrgStats['collection']['defaulters'];
 }) {
-    const permissions = (usePage().props.auth?.permissions ?? []) as string[];
-    const canRemind = permissions.includes('lease.manage');
-
     if (defaulters.length === 0) {
         return (
             <Card>
@@ -1057,7 +1055,7 @@ function DefaulterTable({
                                 </td>
                                 <td className="px-4 py-2.5">
                                     <div className="flex justify-end">
-                                        {canRemind && (
+                                        {row.can_remind && (
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
