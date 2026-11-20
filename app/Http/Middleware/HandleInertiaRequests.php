@@ -6,6 +6,7 @@ use App\Enums\AiFeature;
 use App\Enums\PlatformPermissionKey;
 use App\Enums\SubPermissionKey;
 use App\Models\Lease;
+use App\Models\Organization;
 use App\Models\Property;
 use App\Models\SavedSearch;
 use App\Models\User;
@@ -48,8 +49,11 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         $organization = TenancyContext::organization();
-        $property = $request->route('property');
         $user = $request->user();
+        $access = $user
+            ? App::make(PropertyAccessService::class)->organizationsWithProperties($user)
+            : [];
+        $property = $this->resolveProperty($request, $organization, $access);
 
         return [
             ...parent::share($request),
@@ -67,9 +71,7 @@ class HandleInertiaRequests extends Middleware
                 'ai_enabled' => $user !== null
                     && app(AiGateway::class)->canUse($user, AiFeature::AskData, $organization),
                 'permissions' => $this->centralPermissions($user),
-                'organizations' => $user
-                    ? App::make(PropertyAccessService::class)->organizationsWithProperties($user)
-                    : [],
+                'organizations' => $access,
                 // Non-owners see the upgrade path in the sidebar.
                 'canBecomeLandlord' => $user !== null
                     && ! $user->organizations()->wherePivot('is_owner', true)->exists(),
@@ -100,6 +102,57 @@ class HandleInertiaRequests extends Middleware
                     ->all()
                 : [],
         ];
+    }
+
+    /**
+     * The property for sidebar context: the route-bound one when present,
+     * otherwise the last property visited in this organization. Remembering
+     * it keeps property navigation alive on org-level pages (settings,
+     * team, billing) instead of dropping to the overall links. The slug is
+     * re-resolved and access-checked on every request, so a deleted
+     * property or a revoked delegation simply yields nothing.
+     *
+     * @param  array<int, array{id: int, properties: array<int, array{id: int}}>>  $access
+     */
+    private function resolveProperty(Request $request, ?Organization $organization, array $access): ?Property
+    {
+        $routeProperty = $request->route('property');
+
+        if ($routeProperty instanceof Property) {
+            if ($organization) {
+                $request->session()->put(
+                    "tenant.property.{$organization->id}",
+                    $routeProperty->slug,
+                );
+            }
+
+            return $routeProperty;
+        }
+
+        if ($organization === null) {
+            return null;
+        }
+
+        $slug = $request->session()->get("tenant.property.{$organization->id}");
+
+        if (! is_string($slug) || $slug === '') {
+            return null;
+        }
+
+        $property = Property::query()
+            ->where('organization_id', $organization->id)
+            ->where('slug', $slug)
+            ->first(['id', 'name', 'slug']);
+
+        if ($property === null) {
+            return null;
+        }
+
+        $accessible = collect($access)
+            ->flatMap(fn (array $item) => $item['properties'])
+            ->pluck('id');
+
+        return $accessible->contains($property->id) ? $property : null;
     }
 
     /**

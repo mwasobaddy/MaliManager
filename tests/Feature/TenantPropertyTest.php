@@ -141,6 +141,46 @@ test('property dashboard shows real stats and charts', function () {
             ->where('stats.operations_monthly', fn ($rows) => collect($rows)->count() === 12));
 });
 
+test('property navigation persists onto org-level pages within the session', function () {
+    $user = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createTestOrganization($user);
+    $property = $organization->properties()->create([
+        'name' => 'Sunset Heights',
+        'slug' => 'sunset-heights',
+        'status' => 'active',
+        'created_by' => $user->id,
+    ]);
+
+    $this->actingAs($user)
+        ->get(tenantUrl($organization, "/{$property->slug}/dashboard"))
+        ->assertOk();
+
+    $context = $this->actingAs($user)
+        ->get(tenantUrl($organization, '/overview'))
+        ->assertOk()
+        ->viewData('page')['props']['context'];
+
+    expect($context['property']['slug'] ?? null)->toBe('sunset-heights');
+});
+
+test('org-level pages show no property context without a prior visit', function () {
+    $user = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createTestOrganization($user);
+    $organization->properties()->create([
+        'name' => 'Sunset Heights',
+        'slug' => 'sunset-heights',
+        'status' => 'active',
+        'created_by' => $user->id,
+    ]);
+
+    $context = $this->actingAs($user)
+        ->get(tenantUrl($organization, '/overview'))
+        ->assertOk()
+        ->viewData('page')['props']['context'];
+
+    expect($context['property'] ?? null)->toBeNull();
+});
+
 test('property dashboard carries collection, attention, expiry and unit grid', function () {
     $user = User::factory()->create(['onboarded_at' => now()]);
     $organization = createTestOrganization($user);
