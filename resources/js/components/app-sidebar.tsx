@@ -62,10 +62,7 @@ import { index as depositRefundsIndex } from '@/routes/tenant/deposit-refunds';
 import { page as draftingPageIndex } from '@/routes/tenant/drafting';
 import { index as expensesIndex } from '@/routes/tenant/expenses';
 import { index as inspectionsIndex } from '@/routes/tenant/inspections';
-import {
-    index as landParcelsIndex,
-    create as landParcelCreate,
-} from '@/routes/tenant/land-parcels';
+import { index as landParcelsIndex } from '@/routes/tenant/land-parcels';
 import { index as leasesIndex } from '@/routes/tenant/leases';
 import { index as maintenanceIndex } from '@/routes/tenant/maintenance';
 import { index as meterReadingsIndex } from '@/routes/tenant/meter-readings';
@@ -90,8 +87,6 @@ export function AppSidebar() {
         context?.permissions?.includes('occupant.manage') ?? false;
     const canManageLandParcels =
         context?.permissions?.includes('land_parcel.manage') ?? false;
-    const canCreateLandParcel =
-        context?.permissions?.includes('land_parcel.create') ?? false;
     const canManageProperties =
         context?.permissions?.includes('property.manage') ?? false;
 
@@ -232,6 +227,11 @@ export function AppSidebar() {
                                                 leasesIndex({ property: slug }),
                                                 ScrollText,
                                             ),
+                                            item(
+                                                'Deposit refunds',
+                                                depositRefundsIndex(),
+                                                Undo2,
+                                            ),
                                         ]
                                       : []),
                                   ...(canManageInspections
@@ -247,23 +247,12 @@ export function AppSidebar() {
                           ]
                         : []),
                     ...(canManageLandParcels
-                        ? [
-                              item('Land parcels', landParcelsIndex(), Map),
-                              ...(canCreateLandParcel
-                                  ? [
-                                        item(
-                                            'Add land parcel',
-                                            landParcelCreate(),
-                                            Plus,
-                                        ),
-                                    ]
-                                  : []),
-                          ]
+                        ? [item('Land parcels', landParcelsIndex(), Map)]
                         : []),
                 ],
             },
             {
-                label: 'Operations',
+                label: 'Money',
                 items: [
                     ...(canManageExpenses
                         ? [item('Expenses', expensesIndex(), ReceiptText)]
@@ -271,21 +260,25 @@ export function AppSidebar() {
                     ...(canManagePayments
                         ? [item('Payments', paymentsIndex(), Banknote)]
                         : []),
+                ],
+            },
+            {
+                label: 'Upkeep',
+                items: [
                     ...(canManageMaintenance
                         ? [item('Maintenance', maintenanceIndex(), Wrench)]
+                        : []),
+                    ...(canManageUnits
+                        ? [item('Meter readings', meterReadingsIndex(), Gauge)]
                         : []),
                 ],
             },
             {
-                label: 'Organization',
+                label: 'Manage',
                 items: [
                     ...(switchPropertyItem() ? [switchPropertyItem()!] : []),
                     ...(canManageStaff
-                        ? [
-                              dropdown('Team', Users, [
-                                  item('Staff', staffIndex(), Users),
-                              ]),
-                          ]
+                        ? [item('Team', staffIndex(), Users)]
                         : []),
                     ...(isOwner
                         ? [item('AI settings', aiSettingsEdit(), Sparkles)]
@@ -304,20 +297,11 @@ export function AppSidebar() {
                     ...(canViewAudit
                         ? [item('Audit log', auditIndex(), History)]
                         : []),
-                    ...(canViewAnyAudit
-                        ? [
-                              item(
-                                  'Platform audit',
-                                  platformAuditIndex(),
-                                  History,
-                              ),
-                          ]
+                    ...(canViewReports
+                        ? [item('Reports', reportsNavIndex(), BarChart3)]
                         : []),
                     ...(aiEnabled && canManageTemplates
                         ? [item('AI drafting', draftingPageIndex(), Wand2)]
-                        : []),
-                    ...(canViewReports
-                        ? [item('Reports', reportsNavIndex(), BarChart3)]
                         : []),
                 ],
             },
@@ -349,23 +333,12 @@ export function AppSidebar() {
                           ]
                         : []),
                     ...(canManageLandParcels
-                        ? [
-                              item('Land parcels', landParcelsIndex(), Map),
-                              ...(canCreateLandParcel
-                                  ? [
-                                        item(
-                                            'Add land parcel',
-                                            landParcelCreate(),
-                                            Plus,
-                                        ),
-                                    ]
-                                  : []),
-                          ]
+                        ? [item('Land parcels', landParcelsIndex(), Map)]
                         : []),
                 ],
             },
             {
-                label: 'Operations',
+                label: 'Money',
                 items: [
                     ...(canManageExpenses
                         ? [item('Expenses', expensesIndex(), ReceiptText)]
@@ -382,14 +355,13 @@ export function AppSidebar() {
                               ),
                           ]
                         : []),
+                ],
+            },
+            {
+                label: 'Upkeep',
+                items: [
                     ...(canManageMaintenance
                         ? [item('Maintenance', maintenanceIndex(), Wrench)]
-                        : []),
-                    ...(canViewReports
-                        ? [item('Reports', reportsNavIndex(), BarChart3)]
-                        : []),
-                    ...(aiEnabled && canManageTemplates
-                        ? [item('AI drafting', draftingPageIndex(), Wand2)]
                         : []),
                 ],
             },
@@ -411,17 +383,14 @@ export function AppSidebar() {
                               ),
                           ]
                         : []),
+                    ...(canViewReports
+                        ? [item('Reports', reportsNavIndex(), BarChart3)]
+                        : []),
+                    ...(aiEnabled && canManageTemplates
+                        ? [item('AI drafting', draftingPageIndex(), Wand2)]
+                        : []),
                     ...(canViewAudit
                         ? [item('Audit log', auditIndex(), History)]
-                        : []),
-                    ...(canViewAnyAudit
-                        ? [
-                              item(
-                                  'Platform audit',
-                                  platformAuditIndex(),
-                                  History,
-                              ),
-                          ]
                         : []),
                 ],
             },
@@ -467,7 +436,13 @@ export function AppSidebar() {
                         : []),
                     item('My rentals', searcherRentals(), Building2),
                     ...(canRaiseMaintenance
-                        ? [item('Maintenance', maintenanceRoute(), Wrench)]
+                        ? [
+                              item(
+                                  'Request maintenance',
+                                  maintenanceRoute(),
+                                  Wrench,
+                              ),
+                          ]
                         : []),
                     // The upgrade path stays visible until they own an
                     // organization; the page header keeps the louder CTA.
@@ -556,7 +531,11 @@ export function AppSidebar() {
                         </SidebarMenuItem>
                     </SidebarMenu>
                 )}
-                <NavMain groups={navGroups} />
+                <NavMain
+                    groups={navGroups.filter(
+                        (group) => group.items.length > 0,
+                    )}
+                />
             </SidebarContent>
 
             <SidebarFooter>
