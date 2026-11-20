@@ -12,6 +12,11 @@ import {
 import type { ComboPoint } from '@/components/dashboard/combo-chart';
 import { ComboChart } from '@/components/dashboard/combo-chart';
 import { StatsCards } from '@/components/dashboard/stats-cards';
+import { AlertsPanel } from '@/components/platform/alerts-panel';
+import { ArrearsAgingCard } from '@/components/platform/arrears-aging';
+import { DefaulterTable } from '@/components/platform/defaulter-table';
+import { RentCollectionHero } from '@/components/platform/rent-collection-hero';
+import { UnitGridCard } from '@/components/platform/unit-grid';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import { Badge } from '@/components/ui/badge';
@@ -97,6 +102,41 @@ type PropertyStat = {
     active_leases: number;
     unit_status: UnitStatus[];
     operations_monthly: ComboPoint[];
+    collection: {
+        expected_mtd: string;
+        collected_mtd: string;
+        collection_rate: number | null;
+        arrears_total: string;
+        overdue_count: number;
+        aging: Array<{ bucket: string; total: string; count: number }>;
+        defaulters: Array<{
+            lease_id: number;
+            occupant: string;
+            unit: string | null;
+            property: string;
+            property_slug: string;
+            outstanding: string;
+            days_overdue: number;
+            can_remind: boolean;
+        }>;
+    };
+    attention: Array<{ severity: 'danger' | 'warning' | 'info'; text: string }>;
+    expiring_leases: Array<{
+        unit: string | null;
+        occupant: string | null;
+        ends_at: string;
+        days_left: number;
+    }>;
+    units_grid: Array<{
+        property: string;
+        units: Array<{
+            id: number;
+            name: string;
+            status: string;
+            overdue: boolean;
+            occupant: string | null;
+        }>;
+    }>;
 };
 
 type Props = {
@@ -154,29 +194,51 @@ export default function PropertiesDashboard({
             <Head title={property.name} />
 
             <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-4">
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                    <div className="space-y-0.5">
-                        <Heading
-                            variant="small"
-                            level="h1"
-                            title={property.name}
-                            description={
-                                [property.city, property.address]
-                                    .filter(Boolean)
-                                    .join(' · ') || undefined
-                            }
-                        />
-                        <Badge
-                            variant={
-                                property.status === 'active'
-                                    ? 'default'
-                                    : 'secondary'
-                            }
-                            className="capitalize"
-                        >
-                            {property.status}
-                        </Badge>
+                {/* Hero band over the property line-art. The image is
+                    near-white, so a bottom-up background scrim carries the
+                    title in both themes while the drawing shows through. */}
+                <div className="relative overflow-hidden rounded-2xl border">
+                    <img
+                        src="/images/property-hero.jpg"
+                        alt=""
+                        aria-hidden
+                        className="absolute inset-0 h-full w-full object-cover object-center"
+                    />
+                    <div
+                        aria-hidden
+                        className="absolute inset-0 bg-gradient-to-t from-background via-background/55 to-transparent"
+                    />
+                    <div className="relative flex flex-wrap items-end justify-between gap-4 px-6 pt-16 pb-5 sm:px-8">
+                        <div className="space-y-0.5">
+                            <Heading
+                                variant="small"
+                                level="h1"
+                                title={property.name}
+                                description={
+                                    [property.city, property.address]
+                                        .filter(Boolean)
+                                        .join(' · ') || undefined
+                                }
+                            />
+                            <Badge
+                                variant={
+                                    property.status === 'active'
+                                        ? 'default'
+                                        : 'secondary'
+                                }
+                                className="capitalize"
+                            >
+                                {property.status}
+                            </Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground tabular-nums">
+                            {stats.total_units}{' '}
+                            {stats.total_units === 1 ? 'unit' : 'units'} ·{' '}
+                            {stats.occupancy_rate}% occupied
+                        </p>
                     </div>
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-4">
                     <Button asChild variant="outline">
                         <Link href={index()}>All properties</Link>
                     </Button>
@@ -277,6 +339,50 @@ export default function PropertiesDashboard({
                         },
                     ]}
                 />
+
+                <RentCollectionHero collection={stats.collection} />
+
+                {stats.attention.length > 0 && (
+                    <AlertsPanel alerts={stats.attention} />
+                )}
+
+                <div className="grid items-start gap-4 xl:grid-cols-2">
+                    <ArrearsAgingCard aging={stats.collection.aging} />
+                    <DefaulterTable defaulters={stats.collection.defaulters} />
+                </div>
+
+                {stats.expiring_leases.length > 0 && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="text-base font-medium">
+                                Leases expiring soon
+                            </CardTitle>
+                            <CardDescription>
+                                Renewals and rent reviews due within 60 days.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <ul className="space-y-2 text-sm">
+                                {stats.expiring_leases.map((lease) => (
+                                    <li
+                                        key={`${lease.unit}-${lease.ends_at}`}
+                                        className="flex items-center justify-between gap-2"
+                                    >
+                                        <span>
+                                            {lease.occupant} — {lease.unit}
+                                        </span>
+                                        <span className="text-muted-foreground tabular-nums">
+                                            {lease.ends_at} · {lease.days_left}d
+                                            left
+                                        </span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </CardContent>
+                    </Card>
+                )}
+
+                <UnitGridCard grid={stats.units_grid} />
 
                 <div className="grid gap-4 lg:grid-cols-3">
                     <div className="lg:col-span-2">

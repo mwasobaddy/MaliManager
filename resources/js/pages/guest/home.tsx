@@ -10,10 +10,10 @@ import {
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { ActionIconButton } from '@/components/action-icon-button';
-import Heading from '@/components/heading';
 import { HomeDashboardTabs } from '@/components/home-dashboard-tabs';
 import { ListingTrustBadges } from '@/components/listing-trust-badges';
 import { OverlayFooter } from '@/components/overlay-footer';
+import { PageHero } from '@/components/page-hero';
 import { ResponsiveOverlay } from '@/components/responsive-overlay';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -285,21 +285,20 @@ export default function GuestHome({
 
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
                 <HomeDashboardTabs />
-                <div className="flex flex-wrap items-end justify-between gap-4">
-                    <Heading
-                        level="h1"
-                        title="Find a place to rent"
-                        description="Browse units listed by landlords on MaliManager."
-                    />
-                    {canBecomeLandlord && (
-                        <Button asChild>
-                            <Link href="/become-landlord">
-                                <Building2 className="size-4" />
-                                Become a landlord
-                            </Link>
-                        </Button>
-                    )}
-                </div>
+                <PageHero
+                    title="Find a place to rent"
+                    description="Browse units listed by landlords on MaliManager."
+                    actions={
+                        canBecomeLandlord && (
+                            <Button asChild>
+                                <Link href="/become-landlord">
+                                    <Building2 className="size-4" />
+                                    Become a landlord
+                                </Link>
+                            </Button>
+                        )
+                    }
+                />
 
                 {/*
                  * One card = the discovery frame, mirroring the platform

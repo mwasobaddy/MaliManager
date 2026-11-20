@@ -4,7 +4,7 @@ import { useState } from 'react';
 import type { ComboPoint } from '@/components/dashboard/combo-chart';
 import { ComboChart } from '@/components/dashboard/combo-chart';
 import { StatsCards } from '@/components/dashboard/stats-cards';
-import Heading from '@/components/heading';
+import { PageHero } from '@/components/page-hero';
 import { Badge } from '@/components/ui/badge';
 import {
     Card,
@@ -141,13 +141,15 @@ export default function OrganizationDashboard({
             <Head title={`${organization.name} overview`} />
 
             <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-4">
+                <PageHero
+                    title={`${organization.name} overview`}
+                    description={`${properties_count} ${properties_count === 1 ? 'property' : 'properties'} across your portfolio`}
+                />
+
                 <div className="flex flex-wrap items-center justify-between gap-4">
-                    <Heading
-                        variant="small"
-                        level="h1"
-                        title={`${organization.name} overview`}
-                        description={`${properties_count} ${properties_count === 1 ? 'property' : 'properties'} across your portfolio`}
-                    />
+                    <p className="text-sm text-muted-foreground">
+                        Filter the charts below by period.
+                    </p>
 
                     <div className="flex items-center gap-2">
                         <Select

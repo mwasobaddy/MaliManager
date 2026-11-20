@@ -470,6 +470,14 @@ export default function Welcome() {
                         id="top"
                         className="grid-texture relative overflow-hidden"
                     >
+                        {/* Line-art backdrop at ambient opacity — the copy
+                            stays the hero, the drawing is atmosphere. */}
+                        <img
+                            src="/images/property-hero.jpg"
+                            alt=""
+                            aria-hidden
+                            className="absolute inset-0 h-full w-full [mask-image:linear-gradient(to_bottom,black_55%,transparent)] object-cover opacity-[0.07] dark:opacity-10"
+                        />
                         <div className="glow-orb absolute -top-40 -left-40 size-[520px] rounded-full bg-primary/15 blur-[90px] dark:bg-primary/20" />
                         <div className="absolute top-40 right-0 size-[420px] rounded-full bg-brand-accent/15 blur-[90px] dark:bg-brand-accent/20" />
 
