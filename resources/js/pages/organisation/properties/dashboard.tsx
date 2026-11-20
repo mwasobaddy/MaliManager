@@ -1,14 +1,6 @@
 import { Form, Head, Link, router, usePage } from '@inertiajs/react';
 import { Building2, DoorOpen, Plus } from 'lucide-react';
 import { useState } from 'react';
-import {
-    Cell,
-    Legend,
-    Pie,
-    PieChart,
-    ResponsiveContainer,
-    Tooltip,
-} from 'recharts';
 import type { ComboPoint } from '@/components/dashboard/combo-chart';
 import { ComboChart } from '@/components/dashboard/combo-chart';
 import { StatsCards } from '@/components/dashboard/stats-cards';
@@ -384,72 +376,33 @@ export default function PropertiesDashboard({
 
                 <UnitGridCard grid={stats.units_grid} />
 
-                <div className="grid gap-4 lg:grid-cols-3">
-                    <div className="lg:col-span-2">
-                        <ComboChart
-                            title="Property activity"
-                            data={stats.operations_monthly}
-                            series={[
-                                {
-                                    key: 'rent_roll',
-                                    label: 'Rent roll',
-                                    color: 'var(--chart-1)',
-                                    type: 'area',
-                                    axis: 'left',
-                                },
-                                {
-                                    key: 'maintenance',
-                                    label: 'Maintenance',
-                                    color: 'var(--chart-2)',
-                                    type: 'bar',
-                                    axis: 'right',
-                                },
-                                {
-                                    key: 'new_leases',
-                                    label: 'New leases',
-                                    color: 'var(--chart-3)',
-                                    type: 'line',
-                                    axis: 'right',
-                                },
-                            ]}
-                        />
-                    </div>
-
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-base font-medium">
-                                Unit status
-                            </CardTitle>
-                            <CardDescription>
-                                Composition by status
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <ResponsiveContainer width="100%" height={260}>
-                                <PieChart accessibilityLayer>
-                                    <Pie
-                                        data={stats.unit_status}
-                                        dataKey="count"
-                                        nameKey="status"
-                                        cx="50%"
-                                        cy="50%"
-                                        outerRadius={90}
-                                        label
-                                    >
-                                        {stats.unit_status.map((entry) => (
-                                            <Cell
-                                                key={entry.status}
-                                                fill={entry.color}
-                                            />
-                                        ))}
-                                    </Pie>
-                                    <Tooltip />
-                                    <Legend />
-                                </PieChart>
-                            </ResponsiveContainer>
-                        </CardContent>
-                    </Card>
-                </div>
+                <ComboChart
+                    title="Property activity"
+                    data={stats.operations_monthly}
+                    series={[
+                        {
+                            key: 'rent_roll',
+                            label: 'Rent roll',
+                            color: 'var(--chart-1)',
+                            type: 'area',
+                            axis: 'left',
+                        },
+                        {
+                            key: 'maintenance',
+                            label: 'Maintenance',
+                            color: 'var(--chart-2)',
+                            type: 'bar',
+                            axis: 'right',
+                        },
+                        {
+                            key: 'new_leases',
+                            label: 'New leases',
+                            color: 'var(--chart-3)',
+                            type: 'line',
+                            axis: 'right',
+                        },
+                    ]}
+                />
 
                 <Card>
                     <CardHeader>
