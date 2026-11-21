@@ -203,51 +203,48 @@ export function AppSidebar() {
                 label: 'Property',
                 items: [
                     item('Dashboard', propertyDashboard(slug), LayoutGrid),
+                    ...(switchPropertyItem() ? [switchPropertyItem()!] : []),
+                ],
+            },
+            {
+                label: 'Operations',
+                items: [
                     item(
                         'Units',
                         `${propertyDashboard(slug).url}#units`,
                         Building2,
                     ),
-                    ...(canManageOccupants || canViewLeases
+                    ...(canManageOccupants
+                        ? [item('Occupants', occupantsIndex(slug), UserRound)]
+                        : []),
+                    ...(canViewLeases
                         ? [
-                              dropdown('Tenancy', UserRound, [
-                                  ...(canManageOccupants
-                                      ? [
-                                            item(
-                                                'Occupants',
-                                                occupantsIndex(slug),
-                                                UserRound,
-                                            ),
-                                        ]
-                                      : []),
-                                  ...(canViewLeases
-                                      ? [
-                                            item(
-                                                'Leases',
-                                                leasesIndex({ property: slug }),
-                                                ScrollText,
-                                            ),
-                                            item(
-                                                'Deposit refunds',
-                                                depositRefundsIndex(),
-                                                Undo2,
-                                            ),
-                                        ]
-                                      : []),
-                                  ...(canManageInspections
-                                      ? [
-                                            item(
-                                                'Inspections',
-                                                inspectionsIndex(slug),
-                                                ClipboardCheck,
-                                            ),
-                                        ]
-                                      : []),
-                              ]),
+                              item(
+                                  'Leases',
+                                  leasesIndex({ property: slug }),
+                                  ScrollText,
+                              ),
+                              item(
+                                  'Deposit refunds',
+                                  depositRefundsIndex(),
+                                  Undo2,
+                              ),
                           ]
                         : []),
-                    ...(canManageLandParcels
-                        ? [item('Land parcels', landParcelsIndex(), Map)]
+                    ...(canManageInspections
+                        ? [
+                              item(
+                                  'Inspections',
+                                  inspectionsIndex(slug),
+                                  ClipboardCheck,
+                              ),
+                          ]
+                        : []),
+                    ...(canManageUnits
+                        ? [item('Meter readings', meterReadingsIndex(), Gauge)]
+                        : []),
+                    ...(canManageMaintenance
+                        ? [item('Maintenance', maintenanceIndex(), Wrench)]
                         : []),
                 ],
             },
@@ -263,20 +260,8 @@ export function AppSidebar() {
                 ],
             },
             {
-                label: 'Upkeep',
-                items: [
-                    ...(canManageMaintenance
-                        ? [item('Maintenance', maintenanceIndex(), Wrench)]
-                        : []),
-                    ...(canManageUnits
-                        ? [item('Meter readings', meterReadingsIndex(), Gauge)]
-                        : []),
-                ],
-            },
-            {
                 label: 'Manage',
                 items: [
-                    ...(switchPropertyItem() ? [switchPropertyItem()!] : []),
                     ...(canManageStaff
                         ? [item('Team', staffIndex(), Users)]
                         : []),
@@ -532,9 +517,7 @@ export function AppSidebar() {
                     </SidebarMenu>
                 )}
                 <NavMain
-                    groups={navGroups.filter(
-                        (group) => group.items.length > 0,
-                    )}
+                    groups={navGroups.filter((group) => group.items.length > 0)}
                 />
             </SidebarContent>
 
