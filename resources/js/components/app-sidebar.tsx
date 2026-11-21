@@ -211,7 +211,7 @@ export function AppSidebar() {
                 items: [
                     item(
                         'Units',
-                        `${propertyDashboard(slug).url}#units`,
+                        unitsIndex({ query: { property: property.id } }),
                         Building2,
                     ),
                     ...(canManageOccupants
