@@ -1,7 +1,8 @@
 import { Head, router, usePage } from '@inertiajs/react';
 import { Form } from '@inertiajs/react';
-import { Mail, Phone, Plus, Trash2, UserCog } from 'lucide-react';
+import { Mail, Phone, Trash2, UserCog } from 'lucide-react';
 import { useEffect } from 'react';
+import { AddButton } from '@/components/add-button';
 import ConfirmDeleteOverlay from '@/components/confirm-delete-overlay';
 import Heading from '@/components/heading';
 import { OverlayFooter } from '@/components/overlay-footer';
@@ -166,10 +167,11 @@ export default function StaffIndex({
                         description="Manage the people who run your properties."
                     />
                     {canCreate && (
-                        <Button type="button" onClick={openCreate}>
-                            <Plus className="size-4" />
-                            Add staff
-                        </Button>
+                        <AddButton
+                            label="Add staff"
+                            tooltip="Invite a staff member to this organization"
+                            onClick={openCreate}
+                        />
                     )}
                 </div>
 

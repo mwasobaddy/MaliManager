@@ -1,6 +1,7 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { Pencil, Plus, Printer, Receipt } from 'lucide-react';
+import { Pencil, Printer, Receipt } from 'lucide-react';
 import { useState } from 'react';
+import { AddButton } from '@/components/add-button';
 import Heading from '@/components/heading';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -89,12 +90,16 @@ export default function PaymentsIndex({ payments, statuses }: Props) {
                                 ))}
                             </SelectContent>
                         </Select>
-                        <Button asChild data-test="new-payment-button">
+                        <AddButton
+                            label="Record payment"
+                            tooltip="Record rent received from a tenant"
+                            asChild
+                            data-test="new-payment-button"
+                        >
                             <Link href={paymentsCreateRoute().url}>
-                                <Plus className="size-4" />
                                 Record payment
                             </Link>
-                        </Button>
+                        </AddButton>
                     </div>
                 </div>
 

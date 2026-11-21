@@ -1,9 +1,10 @@
 import { Head, router, Form } from '@inertiajs/react';
 import { usePage } from '@inertiajs/react';
 import type { ColumnDef, SortingState } from '@tanstack/react-table';
-import { Building2, ImageOff, ListFilter, Plus, Search } from 'lucide-react';
+import { Building2, ImageOff, ListFilter, Search } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActionIconButton } from '@/components/action-icon-button';
+import { AddButton } from '@/components/add-button';
 import { DataTable } from '@/components/data-table';
 import Heading from '@/components/heading';
 import { OverlayFooter } from '@/components/overlay-footer';
@@ -341,11 +342,20 @@ export default function UnitsIndex({ units, properties, plan }: Props) {
             <Head title="Units" />
 
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
-                <Heading
-                    level="h1"
-                    title="Units"
-                    description="Every rentable unit across your properties, with the photos attached to each."
-                />
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                    <Heading
+                        level="h1"
+                        title="Units"
+                        description="Every rentable unit across your properties, with the photos attached to each."
+                    />
+                    {canCreate && properties.length > 0 && (
+                        <AddButton
+                            label="Add unit"
+                            tooltip="Add a unit to one of your properties"
+                            onClick={openCreate}
+                        />
+                    )}
+                </div>
 
                 <Card className="gap-0 py-0">
                     <div className="flex flex-wrap items-center gap-2 border-b border-border-strong p-4">
@@ -371,12 +381,6 @@ export default function UnitsIndex({ units, properties, plan }: Props) {
                                     : setOverlayParam('filters', '1')
                             }
                         />
-                        {canCreate && properties.length > 0 && (
-                            <Button size="sm" onClick={openCreate}>
-                                <Plus className="size-4" />
-                                Add unit
-                            </Button>
-                        )}
                     </div>
 
                     <DataTable

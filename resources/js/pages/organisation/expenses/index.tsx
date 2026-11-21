@@ -1,6 +1,7 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { Pencil, Plus, Receipt } from 'lucide-react';
+import { Pencil, Receipt } from 'lucide-react';
 import { useState } from 'react';
+import { AddButton } from '@/components/add-button';
 import Heading from '@/components/heading';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -95,12 +96,14 @@ export default function ExpensesIndex({
                                 ))}
                             </SelectContent>
                         </Select>
-                        <Button asChild data-test="new-expense-button">
-                            <Link href={create()}>
-                                <Plus className="size-4" />
-                                Record expense
-                            </Link>
-                        </Button>
+                        <AddButton
+                            label="Record expense"
+                            tooltip="Record an expense against a property"
+                            asChild
+                            data-test="new-expense-button"
+                        >
+                            <Link href={create()}>Record expense</Link>
+                        </AddButton>
                     </div>
                 </div>
 
