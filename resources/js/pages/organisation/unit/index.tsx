@@ -1,7 +1,7 @@
-import { Head, router } from '@inertiajs/react';
+import { Head, router, Form } from '@inertiajs/react';
 import { usePage } from '@inertiajs/react';
 import type { ColumnDef, SortingState } from '@tanstack/react-table';
-import { Building2, ImageOff, ListFilter, Search } from 'lucide-react';
+import { Building2, ImageOff, ListFilter, Plus, Search } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActionIconButton } from '@/components/action-icon-button';
 import { DataTable } from '@/components/data-table';
@@ -11,11 +11,20 @@ import { ResponsiveOverlay } from '@/components/responsive-overlay';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import InputError from '@/components/input-error';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Pagination } from '@/components/ui/pagination';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { formatMoney } from '@/lib/format-money';
+import { store as storeUnit } from '@/routes/tenant/properties/units';
 import * as unitRoutes from '@/routes/tenant/units';
 
 type UnitRow = {
@@ -37,7 +46,13 @@ type Props = {
         last_page: number;
         total: number;
     };
-    properties: { id: number; name: string }[];
+    properties: {
+        id: number;
+        name: string;
+        slug: string;
+        units_count: number;
+    }[];
+    plan: { units_limit: number | null };
 };
 
 /** Debounce so a fast typist issues one request, not one per keystroke. */
@@ -63,8 +78,11 @@ function useQuery(): URLSearchParams {
     }, [url]);
 }
 
-export default function UnitsIndex({ units, properties }: Props) {
+export default function UnitsIndex({ units, properties, plan }: Props) {
     const query = useQuery();
+
+    const { context } = usePage().props;
+    const canCreate = (context?.permissions ?? []).includes('unit.create');
 
     const filters = {
         search: query.get('search') ?? '',
@@ -195,6 +213,36 @@ export default function UnitsIndex({ units, properties }: Props) {
         setSearchDraft(filters.search);
     }
 
+    const isCreateOpen = query.get('create') === '1';
+
+    // Default to the filtered property so "Add unit" from a filtered list
+    // lands in the right building; fall back to the first property.
+    const [createPropertyId, setCreatePropertyId] = useState(
+        filters.property ||
+            (properties.length > 0 ? String(properties[0].id) : ''),
+    );
+
+    const createProperty = properties.find(
+        (property) => String(property.id) === createPropertyId,
+    );
+    const atUnitLimit =
+        plan.units_limit !== null &&
+        (createProperty?.units_count ?? 0) >= plan.units_limit;
+
+    function openCreate() {
+        setOverlayParam('create', '1');
+    }
+
+    function closeCreate() {
+        refetchTable({
+            search: filters.search,
+            status: filters.status,
+            property: filters.property,
+            sort: sort.column ?? '',
+            direction: sort.direction,
+        });
+    }
+
     const sorting = useMemo<SortingState>(
         () =>
             sort.column
@@ -323,6 +371,12 @@ export default function UnitsIndex({ units, properties }: Props) {
                                     : setOverlayParam('filters', '1')
                             }
                         />
+                        {canCreate && properties.length > 0 && (
+                            <Button size="sm" onClick={openCreate}>
+                                <Plus className="size-4" />
+                                Add unit
+                            </Button>
+                        )}
                     </div>
 
                     <DataTable
@@ -500,6 +554,113 @@ export default function UnitsIndex({ units, properties }: Props) {
                         </fieldset>
                     )}
                 </div>
+            </ResponsiveOverlay>
+
+            <ResponsiveOverlay
+                open={isCreateOpen}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setOverlayParam('create', null);
+                    }
+                }}
+                title="Add unit"
+                description="Rental units live under a property — pick the building first."
+                footer={
+                    <OverlayFooter
+                        onCancel={() => setOverlayParam('create', null)}
+                        cancelLabel="Cancel"
+                    />
+                }
+            >
+                {atUnitLimit && (
+                    <p className="text-sm text-destructive">
+                        {createProperty?.name} already has{' '}
+                        {createProperty?.units_count} units, the plan maximum.
+                        Upgrade the plan to add more here, or pick another
+                        property.
+                    </p>
+                )}
+                {createProperty && (
+                    <Form
+                        method="post"
+                        action={storeUnit(createProperty.slug)}
+                        options={{ preserveScroll: true }}
+                        onSuccess={closeCreate}
+                    >
+                        {({ processing, errors }) => (
+                            <div className="grid gap-4 py-2">
+                                <div className="grid gap-2">
+                                    <Label htmlFor="create-unit-property">
+                                        Property
+                                    </Label>
+                                    <Select
+                                        value={String(createProperty.id)}
+                                        onValueChange={setCreatePropertyId}
+                                    >
+                                        <SelectTrigger id="create-unit-property">
+                                            <SelectValue placeholder="Choose a property" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {properties.map((property) => (
+                                                <SelectItem
+                                                    key={property.id}
+                                                    value={String(property.id)}
+                                                >
+                                                    {property.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="create-unit-name">
+                                        Unit name
+                                    </Label>
+                                    <Input
+                                        id="create-unit-name"
+                                        name="name"
+                                        type="text"
+                                        required
+                                        placeholder="A1"
+                                    />
+                                    <InputError message={errors.name} />
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="create-unit-type">
+                                        Type
+                                    </Label>
+                                    <Input
+                                        id="create-unit-type"
+                                        name="type"
+                                        type="text"
+                                        placeholder="1 Bedroom"
+                                    />
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="create-unit-rent">
+                                        Monthly rent
+                                    </Label>
+                                    <Input
+                                        id="create-unit-rent"
+                                        name="monthly_rent"
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        placeholder="25000"
+                                    />
+                                    <InputError message={errors.monthly_rent} />
+                                </div>
+                                <InputError message={errors.plan} />
+                                <Button
+                                    type="submit"
+                                    disabled={processing || atUnitLimit}
+                                >
+                                    {processing ? 'Adding…' : 'Add unit'}
+                                </Button>
+                            </div>
+                        )}
+                    </Form>
+                )}
             </ResponsiveOverlay>
         </>
     );

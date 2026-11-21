@@ -103,12 +103,18 @@ class UnitController extends Controller
             'units' => $units,
             'properties' => TenancyContext::organization()?->properties()
                 ->orderBy('name')
-                ->get(['id', 'name'])
+                ->withCount('units')
+                ->get(['id', 'name', 'slug'])
                 ->map(fn (Property $property): array => [
                     'id' => $property->id,
                     'name' => $property->name,
+                    'slug' => $property->slug,
+                    'units_count' => $property->units_count ?? 0,
                 ])
                 ->all() ?? [],
+            'plan' => [
+                'units_limit' => TenancyContext::organization()?->effectivePlan()?->units_limit,
+            ],
         ]);
     }
 
@@ -151,11 +157,19 @@ class UnitController extends Controller
             $request->validated(),
         );
 
-        return redirect()->to(AuthLanding::property(
+        // Back keeps both entry points in place: the dashboard inline form
+        // lands back on the dashboard, the units index sheet lands back on
+        // the index (so its onSuccess only has to close the sheet). Direct
+        // posts without a referer fall through to the property dashboard.
+        $redirect = redirect()->back(fallback: AuthLanding::property(
             $property->organization,
             $property->slug,
             $request,
         ))->with('status', 'Unit added successfully.');
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Unit added successfully.']);
+
+        return $redirect;
     }
 
     private function authorizePropertyAccess(Request $request, Property $property): void

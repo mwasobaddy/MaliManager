@@ -462,3 +462,48 @@ test('staff with property.manage can view the properties index', function () {
         ->get(tenantUrl($organization, '/properties'))
         ->assertOk();
 });
+
+test('units index carries property slugs, counts and plan limit for the create sheet', function () {
+    $user = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createTestOrganization($user);
+    $property = $organization->properties()->create([
+        'name' => 'First Estate',
+        'slug' => 'first-estate',
+        'status' => 'active',
+        'created_by' => $user->id,
+    ]);
+    $property->units()->create(['name' => 'A1']);
+
+    $props = $this->actingAs($user)
+        ->get(tenantUrl($organization, '/units'))
+        ->assertOk()
+        ->viewData('page')['props'];
+
+    expect($props['properties'])->toHaveCount(1)
+        ->and($props['properties'][0]['slug'])->toBe('first-estate')
+        ->and($props['properties'][0]['units_count'])->toBe(1)
+        ->and($props['plan'])->toMatchArray(['units_limit' => 10]);
+});
+
+test('creating a unit from the index stays on the index', function () {
+    $user = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createTestOrganization($user);
+    $property = $organization->properties()->create([
+        'name' => 'First Estate',
+        'slug' => 'first-estate',
+        'status' => 'active',
+        'created_by' => $user->id,
+    ]);
+
+    $response = $this->actingAs($user)
+        ->from(tenantUrl($organization, '/units'))
+        ->post(tenantUrl($organization, '/first-estate/units'), [
+            'name' => 'A1',
+            'type' => '1 Bedroom',
+            'monthly_rent' => 25000,
+        ])
+        ->assertRedirect(tenantUrl($organization, '/units'));
+
+    expect($property->units()->where('name', 'A1')->exists())->toBeTrue();
+    assertSuccessToast();
+});
