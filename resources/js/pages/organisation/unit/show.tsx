@@ -84,11 +84,7 @@ export default function UnitShow({ unit }: Props) {
                             Photos ({unit.photos.length})
                         </h2>
                         <p className="mt-1 text-xs text-muted-foreground">
-                            Stored at{' '}
-                            <code>
-                                {'{organization}/{property}/{unit}/photos'}
-                            </code>
-                            .
+                            Up to 12 photos • JPG, PNG or WebP.
                         </p>
                     </div>
 

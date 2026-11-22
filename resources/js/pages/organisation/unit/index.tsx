@@ -5,6 +5,7 @@ import { Building2, ImageOff, ListFilter, Search, Plus } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActionIconButton } from '@/components/action-icon-button';
 import { LabelledIconButton } from '@/components/labelled-icon-button';
+import { PhotoPicker } from '@/components/photo-picker';
 import { SearchableSelect } from '@/components/searchable-select';
 import { DataTable } from '@/components/data-table';
 import Heading from '@/components/heading';
@@ -665,6 +666,24 @@ export default function UnitsIndex({
                                         placeholder="25000"
                                     />
                                     <InputError message={errors.monthly_rent} />
+                                </div>
+                                <div className="grid gap-2">
+                                    <span className="text-sm leading-none font-medium">
+                                        Photos{' '}
+                                        <span className="font-normal text-muted-foreground">
+                                            (optional)
+                                        </span>
+                                    </span>
+                                    <PhotoPicker
+                                        id="create-unit-photos"
+                                        error={
+                                            Object.entries(errors ?? {}).find(
+                                                ([key]) =>
+                                                    key === 'photos' ||
+                                                    key.startsWith('photos.'),
+                                            )?.[1] as string | undefined
+                                        }
+                                    />
                                 </div>
                                 <InputError message={errors.plan} />
                                 <Button
