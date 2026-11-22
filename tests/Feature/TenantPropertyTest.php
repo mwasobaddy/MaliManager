@@ -220,10 +220,16 @@ test('property attention lists one row per condition capped at fifteen', functio
         ->and($attention[0]['severity'])->toBe('danger')
         ->and($attention[0]['text'])->toContain('A1')
         ->and($attention[0]['text'])->toContain('days overdue')
+        ->and($attention[0]['href'])->toBe('/attention-courts/leases')
+        ->and($attention[0]['linkText'])->toContain('A1')
         ->and($attention[1]['severity'])->toBe('warning')
         ->and($attention[1]['text'])->toContain('A1')
+        ->and($attention[1]['href'])->toContain('dialog=suggest')
+        ->and($attention[1]['linkText'])->toContain('A1')
         ->and($attention[2]['severity'])->toBe('info')
-        ->and($attention[2]['text'])->toContain('A2');
+        ->and($attention[2]['text'])->toContain('A2')
+        ->and($attention[2]['href'])->toBe('/attention-courts/occupants?create=1&unit='.$property->units()->where('name', 'A2')->value('id'))
+        ->and($attention[2]['linkText'])->toBe('A2');
 });
 
 test('property attention caps vacant rows at fifteen', function () {

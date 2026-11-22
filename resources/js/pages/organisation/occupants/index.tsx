@@ -142,6 +142,17 @@ export default function OccupantsIndex({
 
     const isCreateOpen = query.get('create') === '1';
 
+    // Deep links from the Needs attention panel (?create=1&unit=5) arrive
+    // with the unit to fill. Validated against this property's units so a
+    // stray id selects nothing rather than the wrong unit.
+    const preselectedUnitId = Number(query.get('unit'));
+    const preselectedUnit =
+        Number.isFinite(preselectedUnitId) &&
+        preselectedUnitId > 0 &&
+        (units ?? []).some((unit) => unit.id === preselectedUnitId)
+            ? preselectedUnitId
+            : null;
+
     // Edit resolves like view; the sheet needs the full lease, which only
     // the server-fetched record carries.
     const isEditOpen =
@@ -681,12 +692,18 @@ export default function OccupantsIndex({
                         >
                             {({ errors }) => (
                                 <OccupantFormFields
+                                    key={`create-${preselectedUnit ?? 'none'}`}
                                     units={units}
                                     templates={templates}
                                     availableTokens={availableTokens}
                                     errors={errors}
                                     idPrefix="create"
                                     propertyName={property.name}
+                                    defaults={
+                                        preselectedUnit !== null
+                                            ? { unit_ids: [preselectedUnit] }
+                                            : undefined
+                                    }
                                 />
                             )}
                         </Form>

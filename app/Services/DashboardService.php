@@ -575,13 +575,18 @@ class DashboardService extends Service
      * Landlord to-do list, plain text by the marketing rule: one row per
      * condition, danger first. Overdue tenants past a week carry the
      * outstanding amount, expiring leases the end date, vacant units the
-     * lost rent. Capped at 15 rows so the panel stays scannable; the
-     * defaulter and expiry sections carry the full lists. Stale urgent
-     * maintenance already reports through flags, so it stays out.
+     * lost rent. Every row linkifies its identifying noun: overdue rows
+     * land on the property leases page where Remind lives with its
+     * throttle and audit (no second send button here), expiring rows
+     * open that lease's renewal suggestion, vacant rows open occupant
+     * create with the unit preselected. Capped at 15 rows so the panel
+     * stays scannable; the defaulter and expiry sections carry the full
+     * lists. Stale urgent maintenance already reports through flags, so
+     * it stays out.
      *
      * @param  array<int, int>  $orgIds
      * @param  iterable<int, array{id: int, name: string}>  $properties
-     * @return list<array{severity: string, text: string}>
+     * @return list<array{severity: string, text: string, href: string, linkText: string}>
      */
     private function attentionItems(array $orgIds, iterable $properties): array
     {
@@ -590,6 +595,8 @@ class DashboardService extends Service
         if ($orgIds === [] || $propertyIds === []) {
             return [];
         }
+
+        $slugs = Property::query()->whereIn('id', $propertyIds)->pluck('slug', 'id');
 
         $leases = Lease::query()
             ->whereIn('organization_id', $orgIds)
@@ -601,19 +608,24 @@ class DashboardService extends Service
 
         $items = [];
 
-        // Overdue past a week, worst first.
+        // Overdue past a week, worst first. The row links to the leases
+        // page — the send action stays there, with context and throttle.
         $balances = collect($this->arrears->balancesFor($leases))
             ->filter(fn (array $balance): bool => $balance['overdue'] && $balance['days_overdue'] > 7)
             ->sortByDesc(fn (array $balance): int => $balance['days_overdue']);
 
         foreach ($balances as $balance) {
+            $who = self::leaseWho($balance['lease']);
             $items[] = [
                 'severity' => 'danger',
-                'text' => self::leaseWho($balance['lease'])." is {$balance['days_overdue']} days overdue — {$balance['outstanding']} outstanding.",
+                'text' => "{$who} is {$balance['days_overdue']} days overdue — {$balance['outstanding']} outstanding.",
+                'href' => '/'.($slugs[$balance['lease']->property_id] ?? '').'/leases',
+                'linkText' => $who,
             ];
         }
 
-        // Leases expiring within 30 days, soonest first.
+        // Leases expiring within 30 days, soonest first. The row opens
+        // that lease's renewal suggestion directly.
         $today = now()->toDateString();
         $expiring = $leases
             ->filter(fn (Lease $lease): bool => $lease->ends_at !== null
@@ -622,19 +634,23 @@ class DashboardService extends Service
             ->sortBy(fn (Lease $lease): string => $lease->ends_at->toDateString());
 
         foreach ($expiring as $lease) {
+            $who = self::leaseWho($lease);
             $daysLeft = now()->startOfDay()->diffInDays($lease->ends_at->startOfDay());
             $items[] = [
                 'severity' => 'warning',
-                'text' => self::leaseWho($lease)."'s lease ends {$lease->ends_at->toDateString()} ({$daysLeft}d) — line up a renewal.",
+                'text' => "{$who}'s lease ends {$lease->ends_at->toDateString()} ({$daysLeft}d) — line up a renewal.",
+                'href' => '/'.($slugs[$lease->property_id] ?? '')."/leases?lease={$lease->id}&dialog=suggest",
+                'linkText' => $who,
             ];
         }
 
-        // Vacant units, by name.
+        // Vacant units, by name. The row opens occupant create with the
+        // unit preselected.
         $vacant = Unit::query()
             ->whereIn('property_id', $propertyIds)
             ->where('status', 'vacant')
             ->orderBy('name')
-            ->get(['id', 'name', 'monthly_rent']);
+            ->get(['id', 'name', 'property_id', 'monthly_rent']);
 
         foreach ($vacant as $unit) {
             $items[] = [
@@ -642,6 +658,8 @@ class DashboardService extends Service
                 'text' => $unit->monthly_rent !== null
                     ? "{$unit->name} is vacant — {$unit->monthly_rent}/mo uncollected."
                     : "{$unit->name} is vacant — list it.",
+                'href' => '/'.($slugs[$unit->property_id] ?? '')."/occupants?create=1&unit={$unit->id}",
+                'linkText' => $unit->name,
             ];
         }
 

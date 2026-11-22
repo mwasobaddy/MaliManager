@@ -17,6 +17,10 @@ export type Kpis = {
 export type OverviewAlert = {
     severity: StatusTone;
     text: string;
+    /** Relative tenant URL behind the identifying noun, if actionable. */
+    href?: string;
+    /** Exact substring of `text` rendered as the link. */
+    linkText?: string;
 };
 
 export type AttentionRow = {
