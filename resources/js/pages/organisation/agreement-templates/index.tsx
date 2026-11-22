@@ -1,6 +1,6 @@
 import { Head, Link } from '@inertiajs/react';
-import { Pencil, Trash2 } from 'lucide-react';
-import { AddButton } from '@/components/add-button';
+import { Pencil, Trash2, Plus } from 'lucide-react';
+import { LabelledIconButton } from '@/components/labelled-icon-button';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
 import agreementTemplates from '@/routes/tenant/agreement-templates';
@@ -54,13 +54,14 @@ export default function AgreementTemplatesIndex({
                         title="Agreement templates"
                         description="Reusable lease agreements with {{placeholders}} that auto-fill from lease data."
                     />
-                    <AddButton
+                    <LabelledIconButton
+                        icon={<Plus />}
                         label="New template"
                         tooltip="Create a reusable lease agreement"
-                        asChild
-                    >
-                        <Link href={createHref}>New template</Link>
-                    </AddButton>
+                        color="primary"
+                        href={createHref}
+                        className="max-w-20 sm:max-w-24"
+                    />
                 </div>
 
                 {templates.length === 0 ? (

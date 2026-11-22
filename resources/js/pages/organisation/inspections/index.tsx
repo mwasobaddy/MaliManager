@@ -1,6 +1,6 @@
 import { Head, Link } from '@inertiajs/react';
-import { FileSearch } from 'lucide-react';
-import { AddButton } from '@/components/add-button';
+import { FileSearch, Plus } from 'lucide-react';
+import { LabelledIconButton } from '@/components/labelled-icon-button';
 import Heading from '@/components/heading';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -33,20 +33,19 @@ export default function InspectionsIndex({ propertySlug, inspections }: Props) {
                         title="Inspections"
                         description="Unit walkthroughs with photo-based AI condition reports."
                     />
-                    <AddButton
+                    <LabelledIconButton
+                        icon={<Plus />}
                         label="New inspection"
                         tooltip="Start a unit walkthrough"
-                        asChild
-                        data-test="new-inspection-button"
-                    >
-                        <Link
-                            href={createInspectionRoute({
+                        color="primary"
+                        href={
+                            createInspectionRoute({
                                 property: propertySlug,
-                            })}
-                        >
-                            New inspection
-                        </Link>
-                    </AddButton>
+                            }).url
+                        }
+                        data-test="new-inspection-button"
+                        className="max-w-20 sm:max-w-24"
+                    />
                 </div>
 
                 {inspections.length === 0 ? (

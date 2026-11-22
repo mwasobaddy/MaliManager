@@ -59,6 +59,12 @@ type LabelledIconButtonProps = {
      * the short label is an abbreviation ("Create" -> "Create organisation").
      */
     tooltip?: string;
+    /**
+     * When set, the button disables and the tooltip carries this reason
+     * instead. Disabled buttons do not fire hover, so the trigger wraps in
+     * a span to keep the explanation reachable by mouse, keyboard and touch.
+     */
+    disabledReason?: string | null;
     color?: 'primary' | 'brand' | 'view' | 'edit' | 'danger' | 'default';
     /** Inertia target for navigation; omit for a <button>. */
     href?: InertiaLinkProps['href'];
@@ -66,6 +72,8 @@ type LabelledIconButtonProps = {
     type?: 'button' | 'submit';
     disabled?: boolean;
     className?: string;
+    /** QA hook, e.g. `data-test="new-payment-button"`. */
+    'data-test'?: string;
 };
 
 /**
@@ -79,19 +87,24 @@ export function LabelledIconButton({
     icon,
     label,
     tooltip,
+    disabledReason,
     color = 'primary',
     href,
     onClick,
     type = 'button',
     disabled = false,
     className,
+    'data-test': dataTest,
 }: LabelledIconButtonProps) {
+    const isDisabled = disabled || disabledReason != null;
+    const tooltipText =
+        isDisabled && disabledReason ? disabledReason : (tooltip ?? label);
     const content = (
         <>
             <span
                 className={cn(
                     iconChipVariants({ color }),
-                    !disabled && 'group-hover:brightness-95',
+                    !isDisabled && 'group-hover:brightness-95',
                 )}
             >
                 <span className="flex items-center justify-center [&_svg]:size-5">
@@ -115,25 +128,32 @@ export function LabelledIconButton({
     );
 
     const trigger =
-        href && !disabled ? (
-            <Link href={href} className={classes}>
+        href && !isDisabled ? (
+            <Link href={href} className={classes} data-test={dataTest}>
                 {content}
             </Link>
         ) : (
             <button
                 type={type}
                 onClick={onClick}
-                disabled={disabled}
+                disabled={isDisabled}
                 className={classes}
+                data-test={dataTest}
             >
                 {content}
             </button>
         );
 
+    const triggerWithHover = isDisabled ? (
+        <span className="inline-flex">{trigger}</span>
+    ) : (
+        trigger
+    );
+
     return (
         <Tooltip>
-            <TooltipTrigger asChild>{trigger}</TooltipTrigger>
-            <TooltipContent side="bottom">{tooltip ?? label}</TooltipContent>
+            <TooltipTrigger asChild>{triggerWithHover}</TooltipTrigger>
+            <TooltipContent side="bottom">{tooltipText}</TooltipContent>
         </Tooltip>
     );
 }

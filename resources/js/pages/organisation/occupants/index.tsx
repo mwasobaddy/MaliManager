@@ -8,10 +8,11 @@ import {
     Phone,
     Trash2,
     Users,
+    Plus,
 } from 'lucide-react';
 import { useEffect } from 'react';
 import ConfirmDeleteOverlay from '@/components/confirm-delete-overlay';
-import { AddButton } from '@/components/add-button';
+import { LabelledIconButton } from '@/components/labelled-icon-button';
 import Heading from '@/components/heading';
 import OccupantFormFields from '@/components/occupant-form-fields';
 import { OverlayFooter } from '@/components/overlay-footer';
@@ -238,10 +239,13 @@ export default function OccupantsIndex({
                         description="The people renting units in this property."
                     />
                     {canCreate && (
-                        <AddButton
+                        <LabelledIconButton
+                            icon={<Plus />}
                             label="Add occupant"
                             tooltip="Add an occupant to this property"
+                            color="primary"
                             onClick={openCreate}
+                            className="max-w-20 sm:max-w-24"
                         />
                     )}
                 </div>

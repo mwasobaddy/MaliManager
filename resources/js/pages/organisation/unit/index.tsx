@@ -1,10 +1,10 @@
 import { Head, router, Form } from '@inertiajs/react';
 import { usePage } from '@inertiajs/react';
 import type { ColumnDef, SortingState } from '@tanstack/react-table';
-import { Building2, ImageOff, ListFilter, Search } from 'lucide-react';
+import { Building2, ImageOff, ListFilter, Search, Plus } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActionIconButton } from '@/components/action-icon-button';
-import { AddButton } from '@/components/add-button';
+import { LabelledIconButton } from '@/components/labelled-icon-button';
 import { DataTable } from '@/components/data-table';
 import Heading from '@/components/heading';
 import { OverlayFooter } from '@/components/overlay-footer';
@@ -349,10 +349,13 @@ export default function UnitsIndex({ units, properties, plan }: Props) {
                         description="Every rentable unit across your properties, with the photos attached to each."
                     />
                     {canCreate && properties.length > 0 && (
-                        <AddButton
+                        <LabelledIconButton
+                            icon={<Plus />}
                             label="Add unit"
                             tooltip="Add a unit to one of your properties"
+                            color="primary"
                             onClick={openCreate}
+                            className="max-w-20 sm:max-w-24"
                         />
                     )}
                 </div>

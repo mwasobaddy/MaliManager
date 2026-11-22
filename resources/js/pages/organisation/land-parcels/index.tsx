@@ -1,7 +1,7 @@
 import { Head, Link } from '@inertiajs/react';
-import { Map } from 'lucide-react';
+import { Map, Plus } from 'lucide-react';
 import Heading from '@/components/heading';
-import { AddButton } from '@/components/add-button';
+import { LabelledIconButton } from '@/components/labelled-icon-button';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -52,13 +52,14 @@ export default function LandParcelsIndex({
                         description="Select a parcel to manage its details, or add a new one."
                     />
                     {canCreateLandParcel && (
-                        <AddButton
+                        <LabelledIconButton
+                            icon={<Plus />}
                             label="Add land parcel"
                             tooltip="Register a parcel of land"
-                            asChild
-                        >
-                            <Link href={create()}>Add land parcel</Link>
-                        </AddButton>
+                            color="primary"
+                            href={create().url}
+                            className="max-w-20 sm:max-w-24"
+                        />
                     )}
                 </div>
 

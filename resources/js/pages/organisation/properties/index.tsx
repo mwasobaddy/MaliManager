@@ -1,7 +1,7 @@
 import { Head, Link } from '@inertiajs/react';
-import { Building2 } from 'lucide-react';
+import { Building2, Plus } from 'lucide-react';
 import Heading from '@/components/heading';
-import { AddButton } from '@/components/add-button';
+import { LabelledIconButton } from '@/components/labelled-icon-button';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -51,13 +51,14 @@ export default function PropertiesIndex({
                         description="Select a property to manage its units, or add a new one."
                     />
                     {canCreateProperty && (
-                        <AddButton
+                        <LabelledIconButton
+                            icon={<Plus />}
                             label="Add property"
                             tooltip="Add a property to this organization"
-                            asChild
-                        >
-                            <Link href={create()}>Add property</Link>
-                        </AddButton>
+                            color="primary"
+                            href={create().url}
+                            className="max-w-20 sm:max-w-24"
+                        />
                     )}
                 </div>
 
