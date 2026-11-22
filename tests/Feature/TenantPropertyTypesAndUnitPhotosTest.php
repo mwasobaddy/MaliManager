@@ -342,7 +342,7 @@ test('a unit created with photos stores them under its own folder', function () 
             'units' => [
                 [
                     'name' => 'A1',
-                    'monthly_rent' => 25000,
+                    'rent_amount' => 25000, 'rent_frequency' => 'monthly',
                     'photos' => [
                         UploadedFile::fake()->image('front.jpg'),
                         UploadedFile::fake()->image('kitchen.jpg'),
@@ -382,6 +382,8 @@ test('units with the same name in different properties get different folders', f
                 'name' => $name,
                 'units' => [[
                     'name' => 'A1',
+                    'rent_frequency' => 'monthly',
+                    'rent_amount' => 25000,
                     'photos' => [UploadedFile::fake()->image('front.jpg')],
                 ]],
             ]);
@@ -428,6 +430,8 @@ test('a unit rejects a non-image upload', function () {
             'name' => 'Sunset Heights',
             'units' => [[
                 'name' => 'A1',
+                'rent_frequency' => 'monthly',
+                'rent_amount' => 25000,
                 'photos' => [
                     UploadedFile::fake()->create('payload.php', 4, 'application/x-php'),
                 ],
@@ -444,6 +448,8 @@ test('a unit rejects more photos than the cap', function () {
             'name' => 'Sunset Heights',
             'units' => [[
                 'name' => 'A1',
+                'rent_frequency' => 'monthly',
+                'rent_amount' => 25000,
                 'photos' => array_map(
                     fn (int $i) => UploadedFile::fake()->image("photo{$i}.jpg"),
                     range(1, Unit::MAX_PHOTOS + 1),
@@ -461,6 +467,8 @@ test('the units page lists units across properties with their photo counts', fun
             'name' => 'Sunset Heights',
             'units' => [[
                 'name' => 'A1',
+                'rent_frequency' => 'monthly',
+                'rent_amount' => 25000,
                 'photos' => [UploadedFile::fake()->image('front.jpg')],
             ]],
         ]);
@@ -484,6 +492,8 @@ test('the unit page shows every photo', function () {
             'name' => 'Sunset Heights',
             'units' => [[
                 'name' => 'A1',
+                'rent_frequency' => 'monthly',
+                'rent_amount' => 25000,
                 'photos' => [
                     UploadedFile::fake()->image('front.jpg'),
                     UploadedFile::fake()->image('kitchen.jpg'),

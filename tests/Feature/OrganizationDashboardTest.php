@@ -50,9 +50,9 @@ test('the organization overview renders portfolio stats for an owner', function 
     $property = createOverviewProperty($organization, $user, 'Sunset Heights', 'sunset-heights');
 
     $property->units()->createMany([
-        ['name' => 'A1', 'status' => 'occupied', 'monthly_rent' => 25000, 'created_by' => $user->id],
-        ['name' => 'A2', 'status' => 'vacant', 'monthly_rent' => 45000, 'created_by' => $user->id],
-        ['name' => 'A3', 'status' => 'maintenance', 'monthly_rent' => 30000, 'created_by' => $user->id],
+        ['name' => 'A1', 'status' => 'occupied', 'rent_amount' => 25000, 'rent_frequency' => 'monthly', 'created_by' => $user->id],
+        ['name' => 'A2', 'status' => 'vacant', 'rent_amount' => 45000, 'rent_frequency' => 'monthly', 'created_by' => $user->id],
+        ['name' => 'A3', 'status' => 'maintenance', 'rent_amount' => 30000, 'rent_frequency' => 'monthly', 'created_by' => $user->id],
     ]);
 
     $this->actingAs($user)
@@ -82,10 +82,10 @@ test('the organization overview compares every accessible property for an owner'
     $first = createOverviewProperty($organization, $user, 'First Estate', 'first-estate');
     $second = createOverviewProperty($organization, $user, 'Second Estate', 'second-estate');
 
-    $first->units()->create(['name' => 'A1', 'status' => 'occupied', 'monthly_rent' => 20000, 'created_by' => $user->id]);
+    $first->units()->create(['name' => 'A1', 'status' => 'occupied', 'rent_amount' => 20000, 'rent_frequency' => 'monthly', 'created_by' => $user->id]);
     $second->units()->createMany([
-        ['name' => 'B1', 'status' => 'occupied', 'monthly_rent' => 30000, 'created_by' => $user->id],
-        ['name' => 'B2', 'status' => 'vacant', 'monthly_rent' => 35000, 'created_by' => $user->id],
+        ['name' => 'B1', 'status' => 'occupied', 'rent_amount' => 30000, 'rent_frequency' => 'monthly', 'created_by' => $user->id],
+        ['name' => 'B2', 'status' => 'vacant', 'rent_amount' => 35000, 'rent_frequency' => 'monthly', 'created_by' => $user->id],
     ]);
 
     $this->actingAs($user)
@@ -109,8 +109,8 @@ test('the organization overview only shows properties delegated to staff', funct
     $delegated = createOverviewProperty($organization, $owner, 'Delegated Estate', 'delegated-estate');
     $other = createOverviewProperty($organization, $owner, 'Other Estate', 'other-estate');
 
-    $delegated->units()->create(['name' => 'A1', 'status' => 'occupied', 'monthly_rent' => 20000, 'created_by' => $owner->id]);
-    $other->units()->create(['name' => 'B1', 'status' => 'vacant', 'monthly_rent' => 30000, 'created_by' => $owner->id]);
+    $delegated->units()->create(['name' => 'A1', 'status' => 'occupied', 'rent_amount' => 20000, 'rent_frequency' => 'monthly', 'created_by' => $owner->id]);
+    $other->units()->create(['name' => 'B1', 'status' => 'vacant', 'rent_amount' => 30000, 'rent_frequency' => 'monthly', 'created_by' => $owner->id]);
 
     $staff = User::factory()->create(['onboarded_at' => now()]);
     $subRole = SubRole::factory()->create();

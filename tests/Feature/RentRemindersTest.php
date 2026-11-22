@@ -47,7 +47,7 @@ function makeLease(Organization $organization, $property, $unit, Person $person,
         'property_id' => $property->id,
         'unit_id' => $unit->id,
         'starts_at' => '2026-08-01',
-        'rent_amount' => 10000,
+        'rent_amount' => 10000, 'rent_frequency' => 'monthly',
         'rent_frequency' => 'monthly',
         'currency' => 'KES',
         'status' => 'active',
@@ -84,7 +84,7 @@ test('rent due day is stored on occupant creation and validated', function () {
             'status' => 'active',
             'unit_ids' => [$unit->id],
             'lease' => [
-                'rent_amount' => 25000,
+                'rent_amount' => 25000, 'rent_frequency' => 'monthly',
                 'rent_due_day' => 5,
             ],
         ])->assertRedirect();

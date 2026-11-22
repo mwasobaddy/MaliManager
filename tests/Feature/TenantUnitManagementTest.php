@@ -41,7 +41,8 @@ function makeUnit(Property $property, User $owner, array $overrides = []): Unit
     return $property->units()->create(array_merge([
         'name' => 'A1',
         'status' => 'vacant',
-        'monthly_rent' => 25000,
+        'rent_amount' => 25000,
+        'rent_frequency' => 'monthly',
         'created_by' => $owner->id,
     ], $overrides));
 }
@@ -87,14 +88,15 @@ test('an owner can update a unit', function () {
         ->put(tenantUrl($property->organization, "/units/{$unit->id}"), [
             'name' => 'A1-Renamed',
             'type' => '2 Bedroom',
-            'monthly_rent' => 30000,
+            'rent_amount' => 30000,
+            'rent_frequency' => 'monthly',
         ])
         ->assertRedirect();
 
     expect($unit->fresh())
         ->name->toBe('A1-Renamed')
         ->type->toBe('2 Bedroom')
-        ->monthly_rent->toBe('30000.00');
+        ->rent_amount->toBe('30000.00');
 });
 
 test('unit update validates its fields', function () {
@@ -105,9 +107,10 @@ test('unit update validates its fields', function () {
     $this->actingAs($owner)
         ->put(tenantUrl($property->organization, "/units/{$unit->id}"), [
             'name' => '',
-            'monthly_rent' => -5,
+            'rent_amount' => -5,
+            'rent_frequency' => 'monthly',
         ])
-        ->assertSessionHasErrors(['name', 'monthly_rent']);
+        ->assertSessionHasErrors(['name', 'rent_amount']);
 });
 
 test('staff with unit.edit can update, others get 403', function () {
@@ -120,6 +123,7 @@ test('staff with unit.edit can update, others get 403', function () {
     $this->actingAs($editor)
         ->put(tenantUrl($property->organization, "/units/{$unit->id}"), [
             'name' => 'A1-Edited',
+            'rent_frequency' => 'monthly',
         ])
         ->assertRedirect();
 
@@ -130,6 +134,7 @@ test('staff with unit.edit can update, others get 403', function () {
     $this->actingAs($viewer)
         ->put(tenantUrl($property->organization, "/units/{$unit->id}"), [
             'name' => 'A1-Hacked',
+            'rent_frequency' => 'monthly',
         ])
         ->assertRedirect()
         ->assertSessionHas('inertia.flash_data', fn (array $flash) => str_contains(
@@ -203,6 +208,7 @@ test('a unit from another organization answers 404', function () {
     $this->actingAs($other)
         ->put(tenantUrl($otherProperty->organization, "/units/{$unit->id}"), [
             'name' => 'A1-Hacked',
+            'rent_frequency' => 'monthly',
         ])
         ->assertNotFound();
 });
@@ -221,6 +227,7 @@ test('an edit can move a unit with no leases to another property', function () {
     $this->actingAs($owner)
         ->put(tenantUrl($property->organization, "/units/{$unit->id}"), [
             'name' => 'A1',
+            'rent_frequency' => 'monthly',
             'property_id' => $other->id,
         ])
         ->assertRedirect();
@@ -243,6 +250,7 @@ test('an edit cannot move a unit with an active lease', function () {
     $this->actingAs($owner)
         ->put(tenantUrl($property->organization, "/units/{$unit->id}"), [
             'name' => 'A1',
+            'rent_frequency' => 'monthly',
             'property_id' => $other->id,
         ])
         ->assertRedirect()
@@ -264,6 +272,7 @@ test('an edit appends uploaded photos', function () {
     $this->actingAs($owner)
         ->put(tenantUrl($property->organization, "/units/{$unit->id}"), [
             'name' => 'A1',
+            'rent_frequency' => 'monthly',
             'photos' => [UploadedFile::fake()->image('new.jpg')],
         ])
         ->assertRedirect();
@@ -285,6 +294,7 @@ test('an edit can reuse another unit’s photos without moving them', function (
     $this->actingAs($owner)
         ->put(tenantUrl($property->organization, "/units/{$target->id}"), [
             'name' => 'A2',
+            'rent_frequency' => 'monthly',
             'reuse_photo_ids' => [$sourcePhotoId],
         ])
         ->assertRedirect();
@@ -314,6 +324,7 @@ test('reuse ignores media from another organization', function () {
     $this->actingAs($owner)
         ->put(tenantUrl($property->organization, "/units/{$target->id}"), [
             'name' => 'A2',
+            'rent_frequency' => 'monthly',
             'reuse_photo_ids' => [$foreignId],
         ])
         ->assertRedirect();
@@ -335,6 +346,7 @@ test('the photo cap counts uploads and reused photos together', function () {
     $this->actingAs($owner)
         ->put(tenantUrl($property->organization, "/units/{$unit->id}"), [
             'name' => 'A1',
+            'rent_frequency' => 'monthly',
             'photos' => [UploadedFile::fake()->image('extra.jpg')],
         ])
         ->assertRedirect()
@@ -359,6 +371,7 @@ test('creating a unit can reuse another unit’s photos', function () {
     $this->actingAs($owner)
         ->post(tenantUrl($property->organization, "/{$property->slug}/units"), [
             'name' => 'A2',
+            'rent_frequency' => 'monthly',
             'reuse_photo_ids' => [$sourcePhotoId],
         ])
         ->assertRedirect();
@@ -397,6 +410,7 @@ test('an edit cannot file a unit under another organization’s property', funct
     $this->actingAs($owner)
         ->put(tenantUrl($property->organization, "/units/{$unit->id}"), [
             'name' => 'A1',
+            'rent_frequency' => 'monthly',
             'property_id' => $strangerProperty->id,
         ])
         ->assertSessionHasErrors('property_id');
@@ -420,6 +434,7 @@ test('a cover photo can be set and switched between photos', function () {
     $this->actingAs($owner)
         ->put(tenantUrl($property->organization, "/units/{$unit->id}"), [
             'name' => 'A1',
+            'rent_frequency' => 'monthly',
             'cover_photo_id' => $ids[1],
         ])
         ->assertRedirect();
@@ -455,6 +470,7 @@ test('a cover id from another unit is ignored, not applied', function () {
     $this->actingAs($owner)
         ->put(tenantUrl($property->organization, "/units/{$unit->id}"), [
             'name' => 'A1',
+            'rent_frequency' => 'monthly',
             'cover_photo_id' => $foreignId,
         ])
         ->assertRedirect();

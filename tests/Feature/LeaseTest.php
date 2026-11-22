@@ -44,7 +44,7 @@ test('assigning an occupant to a unit creates an active lease with cost data', f
         'unit_ids' => [$unit->id],
         'lease' => [
             'starts_at' => '2026-01-01',
-            'rent_amount' => 25000,
+            'rent_amount' => 25000, 'rent_frequency' => 'monthly',
             'rent_frequency' => 'monthly',
             'deposit' => 25000,
             'currency' => 'KES',

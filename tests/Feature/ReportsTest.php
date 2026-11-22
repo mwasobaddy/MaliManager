@@ -127,7 +127,7 @@ test('lease pipeline report lists leases with occupant names', function () {
         'property_id' => $property->id,
         'unit_id' => $unit->id,
         'starts_at' => '2026-01-01',
-        'rent_amount' => 25000,
+        'rent_amount' => 25000, 'rent_frequency' => 'monthly',
         'currency' => 'KES',
         'status' => 'active',
     ]);
@@ -200,7 +200,7 @@ test('leases index flags expiring leases and links to a pre-filled draft', funct
         'unit_id' => $unit->id,
         'starts_at' => now()->subYear(),
         'ends_at' => now()->addDays(30),
-        'rent_amount' => 25000,
+        'rent_amount' => 25000, 'rent_frequency' => 'monthly',
         'currency' => 'KES',
         'status' => 'active',
     ]);
@@ -256,7 +256,7 @@ test('renewal suggestion endpoint returns AI rent with usage logged', function (
         'unit_id' => $unit->id,
         'starts_at' => now()->subMonths(13),
         'ends_at' => now()->addDays(30),
-        'rent_amount' => 25000,
+        'rent_amount' => 25000, 'rent_frequency' => 'monthly',
         'currency' => 'KES',
         'status' => 'active',
     ]);

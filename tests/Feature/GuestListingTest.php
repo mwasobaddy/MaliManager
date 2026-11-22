@@ -44,7 +44,7 @@ function publicUnit(Organization $organization, array $overrides = []): Unit
         'name' => 'B2',
         'status' => 'vacant',
         'type' => '2BR',
-        'monthly_rent' => 45000,
+        'rent_amount' => 45000, 'rent_frequency' => 'monthly',
         'deposit' => 45000,
     ], $overrides));
 }
@@ -62,7 +62,7 @@ test('the public listing page renders a listed unit with photos and facts', func
             ->component('guest/listing')
             ->where('unit.name', 'B2')
             ->where('unit.type', '2BR')
-            ->where('unit.monthly_rent', '45000.00')
+            ->where('unit.rent_amount', '45000.00')
             ->where('unit.currency', 'KES')
             ->where('unit.property_name', 'Detail Court')
             ->where('unit.property_city', 'Nairobi')

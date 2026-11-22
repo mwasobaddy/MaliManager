@@ -64,7 +64,7 @@ test('the guest home shapes listings flat for cards', function () {
         'slug' => 'a1',
         'status' => 'vacant',
         'type' => '1BR',
-        'monthly_rent' => 35000,
+        'rent_amount' => 35000, 'rent_frequency' => 'monthly',
         'created_by' => $owner->id,
     ]);
 
@@ -96,8 +96,8 @@ test('the guest home sorts cheapest first', function () {
         'created_by' => $owner->id,
     ]);
     $property->units()->createMany([
-        ['name' => 'Pricy', 'slug' => 'pricy', 'status' => 'vacant', 'monthly_rent' => 90000, 'created_by' => $owner->id],
-        ['name' => 'Cheap', 'slug' => 'cheap', 'status' => 'vacant', 'monthly_rent' => 15000, 'created_by' => $owner->id],
+        ['name' => 'Pricy', 'slug' => 'pricy', 'status' => 'vacant', 'rent_amount' => 90000, 'rent_frequency' => 'monthly', 'created_by' => $owner->id],
+        ['name' => 'Cheap', 'slug' => 'cheap', 'status' => 'vacant', 'rent_amount' => 15000, 'rent_frequency' => 'monthly', 'created_by' => $owner->id],
     ]);
 
     $this->actingAs($owner)

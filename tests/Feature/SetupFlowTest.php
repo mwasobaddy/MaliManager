@@ -128,7 +128,7 @@ test('creating the first property inside setup continues to the plan step', func
             'address' => '12 Riverside Drive',
             'setup' => '1',
             'units' => [
-                ['name' => 'A1', 'type' => '1 Bedroom', 'monthly_rent' => 25000],
+                ['name' => 'A1', 'type' => '1 Bedroom', 'rent_amount' => 25000, 'rent_frequency' => 'monthly'],
             ],
         ])->assertRedirect(setupTenantUrl($organization, '/setup/plan'));
 });
@@ -158,7 +158,7 @@ test('creating outside setup still lands on the property dashboard', function ()
             'city' => 'Nairobi',
             'address' => '12 Riverside Drive',
             'units' => [
-                ['name' => 'A1', 'type' => '1 Bedroom', 'monthly_rent' => 25000],
+                ['name' => 'A1', 'type' => '1 Bedroom', 'rent_amount' => 25000, 'rent_frequency' => 'monthly'],
             ],
         ])->assertRedirect(setupTenantUrl($organization, '/sunset-heights/dashboard'));
 });

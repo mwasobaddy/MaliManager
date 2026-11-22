@@ -75,7 +75,7 @@ it('reports landlord collection, aging and defaulters on the organization tab', 
         'status' => 'active',
         'starts_at' => now()->startOfMonth()->toDateString(),
         'ends_at' => null,
-        'rent_amount' => 25000,
+        'rent_amount' => 25000, 'rent_frequency' => 'monthly',
         'rent_due_day' => 5,
     ]);
 
@@ -96,7 +96,7 @@ it('reports landlord collection, aging and defaulters on the organization tab', 
         'status' => 'active',
         'starts_at' => now()->subMonthsNoOverflow(3)->toDateString(),
         'ends_at' => null,
-        'rent_amount' => 20000,
+        'rent_amount' => 20000, 'rent_frequency' => 'monthly',
         'rent_due_day' => 5,
     ]);
 
@@ -107,7 +107,7 @@ it('reports landlord collection, aging and defaulters on the organization tab', 
         'status' => 'active',
         'starts_at' => now()->startOfMonth()->toDateString(),
         'ends_at' => now()->addDays(20)->toDateString(),
-        'rent_amount' => 15000,
+        'rent_amount' => 15000, 'rent_frequency' => 'monthly',
         'rent_due_day' => 5,
     ]);
 
@@ -191,7 +191,7 @@ it('hides the remind button from staff without the lease permission', function (
         'status' => 'active',
         'starts_at' => now()->subMonthsNoOverflow(3)->toDateString(),
         'ends_at' => null,
-        'rent_amount' => 20000,
+        'rent_amount' => 20000, 'rent_frequency' => 'monthly',
         'rent_due_day' => 5,
     ]);
 

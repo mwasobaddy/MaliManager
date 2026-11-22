@@ -127,7 +127,7 @@ test('leasing a section creates a lease and generates the agreement', function (
         ->post(parcelUrl($organization, "/land-parcels/{$parcel->slug}/sections/{$section->id}/leases"), [
             'tenant_name' => 'Jane Doe',
             'tenant_email' => 'jane@example.com',
-            'rent_amount' => 45000,
+            'rent_amount' => 45000, 'rent_frequency' => 'monthly',
             'currency' => 'KES',
             'rent_frequency' => 'monthly',
             'starts_at' => now()->toDateString(),

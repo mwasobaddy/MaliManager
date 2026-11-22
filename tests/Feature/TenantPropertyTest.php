@@ -53,8 +53,8 @@ test('organization owner can create a property with units', function () {
             'city' => 'Nairobi',
             'address' => '12 Riverside Drive',
             'units' => [
-                ['name' => 'A1', 'type' => '1 Bedroom', 'monthly_rent' => 25000],
-                ['name' => 'A2', 'type' => '2 Bedroom', 'monthly_rent' => 45000],
+                ['name' => 'A1', 'type' => '1 Bedroom', 'rent_amount' => 25000, 'rent_frequency' => 'monthly'],
+                ['name' => 'A2', 'type' => '2 Bedroom', 'rent_amount' => 45000, 'rent_frequency' => 'monthly'],
             ],
         ])->assertRedirect(tenantUrl($organization, '/sunset-heights/dashboard'));
 
@@ -62,7 +62,7 @@ test('organization owner can create a property with units', function () {
     expect($property)->not->toBeNull()
         ->and($property->organization_id)->toBe($organization->id)
         ->and($property->units)->toHaveCount(2)
-        ->and($property->units->first()->monthly_rent)->toBe('25000.00');
+        ->and($property->units->first()->rent_amount)->toBe('25000.00');
 });
 
 test('property index lists properties owned by the organization', function () {
@@ -103,7 +103,7 @@ test('property page shows units and lets the owner add more', function () {
         ->post(tenantUrl($organization, "/{$property->slug}/units"), [
             'name' => 'B1',
             'type' => 'Studio',
-            'monthly_rent' => 15000,
+            'rent_amount' => 15000, 'rent_frequency' => 'monthly',
         ])->assertRedirect(tenantUrl($organization, "/{$property->slug}/dashboard"))
         ->assertSessionHas('status');
 
@@ -121,9 +121,9 @@ test('property dashboard shows real stats and charts', function () {
     ]);
 
     $property->units()->createMany([
-        ['name' => 'A1', 'status' => 'occupied', 'monthly_rent' => 25000, 'created_by' => $user->id],
-        ['name' => 'A2', 'status' => 'vacant', 'monthly_rent' => 45000, 'created_by' => $user->id],
-        ['name' => 'A3', 'status' => 'maintenance', 'monthly_rent' => 30000, 'created_by' => $user->id],
+        ['name' => 'A1', 'status' => 'occupied', 'rent_amount' => 25000, 'rent_frequency' => 'monthly', 'created_by' => $user->id],
+        ['name' => 'A2', 'status' => 'vacant', 'rent_amount' => 45000, 'rent_frequency' => 'monthly', 'created_by' => $user->id],
+        ['name' => 'A3', 'status' => 'maintenance', 'rent_amount' => 30000, 'rent_frequency' => 'monthly', 'created_by' => $user->id],
     ]);
 
     $this->actingAs($user)
@@ -226,8 +226,8 @@ test('property attention lists one row per condition capped at fifteen', functio
     ]);
 
     $property->units()->createMany([
-        ['name' => 'A1', 'status' => 'occupied', 'monthly_rent' => 25000, 'created_by' => $user->id],
-        ['name' => 'A2', 'status' => 'vacant', 'monthly_rent' => 20000, 'created_by' => $user->id],
+        ['name' => 'A1', 'status' => 'occupied', 'rent_amount' => 25000, 'rent_frequency' => 'monthly', 'created_by' => $user->id],
+        ['name' => 'A2', 'status' => 'vacant', 'rent_amount' => 20000, 'rent_frequency' => 'monthly', 'created_by' => $user->id],
     ]);
 
     $occupant = Occupant::factory()->create(['organization_id' => $organization->id]);
@@ -240,7 +240,7 @@ test('property attention lists one row per condition capped at fifteen', functio
         'status' => 'active',
         'starts_at' => now()->subMonthsNoOverflow(2)->toDateString(),
         'ends_at' => now()->addDays(20)->toDateString(),
-        'rent_amount' => 25000,
+        'rent_amount' => 25000, 'rent_frequency' => 'monthly',
         'rent_due_day' => 5,
     ]);
 
@@ -277,8 +277,8 @@ test('property defaulter row reports the reminder throttle state', function () {
     ]);
 
     $property->units()->createMany([
-        ['name' => 'A1', 'status' => 'occupied', 'monthly_rent' => 25000, 'created_by' => $user->id],
-        ['name' => 'A2', 'status' => 'occupied', 'monthly_rent' => 20000, 'created_by' => $user->id],
+        ['name' => 'A1', 'status' => 'occupied', 'rent_amount' => 25000, 'rent_frequency' => 'monthly', 'created_by' => $user->id],
+        ['name' => 'A2', 'status' => 'occupied', 'rent_amount' => 20000, 'rent_frequency' => 'monthly', 'created_by' => $user->id],
     ]);
 
     $makeLease = function (string $unit, ?string $remindedAt) use ($organization, $property) {
@@ -292,7 +292,7 @@ test('property defaulter row reports the reminder throttle state', function () {
             'status' => 'active',
             'starts_at' => now()->subMonthsNoOverflow(2)->toDateString(),
             'ends_at' => now()->addMonthsNoOverflow(4)->toDateString(),
-            'rent_amount' => 25000,
+            'rent_amount' => 25000, 'rent_frequency' => 'monthly',
             'rent_due_day' => 5,
         ]);
 
@@ -332,7 +332,7 @@ test('property attention caps vacant rows at fifteen', function () {
     $units = [];
 
     for ($i = 1; $i <= 20; $i++) {
-        $units[] = ['name' => "U{$i}", 'status' => 'vacant', 'monthly_rent' => 10000, 'created_by' => $user->id];
+        $units[] = ['name' => "U{$i}", 'status' => 'vacant', 'rent_amount' => 10000, 'rent_frequency' => 'monthly', 'created_by' => $user->id];
     }
 
     $property->units()->createMany($units);
@@ -357,8 +357,8 @@ test('property dashboard carries collection, attention, expiry and unit grid', f
     ]);
 
     $property->units()->createMany([
-        ['name' => 'A1', 'status' => 'occupied', 'monthly_rent' => 25000, 'created_by' => $user->id],
-        ['name' => 'A2', 'status' => 'vacant', 'monthly_rent' => 20000, 'created_by' => $user->id],
+        ['name' => 'A1', 'status' => 'occupied', 'rent_amount' => 25000, 'rent_frequency' => 'monthly', 'created_by' => $user->id],
+        ['name' => 'A2', 'status' => 'vacant', 'rent_amount' => 20000, 'rent_frequency' => 'monthly', 'created_by' => $user->id],
     ]);
 
     $occupant = Occupant::factory()->create(['organization_id' => $organization->id]);
@@ -370,7 +370,7 @@ test('property dashboard carries collection, attention, expiry and unit grid', f
         'status' => 'active',
         'starts_at' => now()->subMonthsNoOverflow(2)->toDateString(),
         'ends_at' => now()->addDays(20)->toDateString(),
-        'rent_amount' => 25000,
+        'rent_amount' => 25000, 'rent_frequency' => 'monthly',
         'rent_due_day' => 5,
     ]);
 
@@ -386,8 +386,9 @@ test('property dashboard carries collection, attention, expiry and unit grid', f
         ->and($stats['expiring_leases'])->toHaveCount(1)
         ->and($stats['units_grid'])->toHaveCount(1)
         ->and($stats['units_grid'][0]['units'])->toHaveCount(2)
-        ->and($stats['units_grid'][0]['units'][0])->toHaveKeys(['id', 'name', 'status', 'overdue', 'occupant', 'type', 'monthly_rent'])
-        ->and($stats['units_grid'][0]['units'][0]['monthly_rent'])->toBe('25000.00');
+        ->and($stats['units_grid'][0]['units'][0])->toHaveKeys(['id', 'name', 'status', 'overdue', 'occupant', 'type', 'rent_amount', 'rent_frequency'])
+        ->and($stats['units_grid'][0]['units'][0]['rent_amount'])->toBe('25000.00')
+        ->and($stats['units_grid'][0]['units'][0]['rent_frequency'])->toBe('monthly');
 });
 
 test('free plan property limit prevents a second property', function () {
@@ -431,6 +432,7 @@ test('free plan unit limit prevents units beyond the plan allowance', function (
     $this->actingAs($user)
         ->post(tenantUrl($organization, "/{$property->slug}/units"), [
             'name' => 'U11',
+            'rent_frequency' => 'monthly',
         ])->assertRedirect();
 
     assertErrorToast();
@@ -500,6 +502,7 @@ test('exceeding the plan unit limit surfaces a toast from the global handler', f
     $this->actingAs($user)
         ->post(tenantUrl($organization, '/first-estate/units'), [
             'name' => 'Overflow Unit',
+            'rent_frequency' => 'monthly',
         ])
         ->assertRedirect()
         ->assertSessionHas('inertia.flash_data', fn (array $flash) => str_contains(
@@ -522,7 +525,7 @@ test('platform admin can create a property via god-mode without org membership',
             'name' => 'Admin Plot',
             'city' => 'Nairobi',
             'address' => '1 Admin Road',
-            'units' => [['name' => 'A1', 'type' => '1 Bedroom', 'monthly_rent' => 10000]],
+            'units' => [['name' => 'A1', 'type' => '1 Bedroom', 'rent_amount' => 10000, 'rent_frequency' => 'monthly']],
         ])
         ->assertRedirect();
 
@@ -564,7 +567,7 @@ test('staff with the property.create sub-permission can create a property', func
             'name' => 'Staff Block',
             'city' => 'Nairobi',
             'address' => '2 Staff Lane',
-            'units' => [['name' => 'B1', 'type' => '1 Bedroom', 'monthly_rent' => 12000]],
+            'units' => [['name' => 'B1', 'type' => '1 Bedroom', 'rent_amount' => 12000, 'rent_frequency' => 'monthly']],
         ])
         ->assertRedirect();
 
@@ -583,7 +586,7 @@ test('staff without the property.create sub-permission is forbidden from creatin
             'name' => 'No Perm Block',
             'city' => 'Nairobi',
             'address' => '3 Denied Way',
-            'units' => [['name' => 'C1', 'type' => '1 Bedroom', 'monthly_rent' => 12000]],
+            'units' => [['name' => 'C1', 'type' => '1 Bedroom', 'rent_amount' => 12000, 'rent_frequency' => 'monthly']],
         ])
         ->assertRedirect()
         ->assertSessionHas('inertia.flash_data', fn (array $flash) => str_contains(
@@ -667,7 +670,7 @@ test('creating a unit from the index stays on the index', function () {
         ->post(tenantUrl($organization, '/first-estate/units'), [
             'name' => 'A1',
             'type' => '1 Bedroom',
-            'monthly_rent' => 25000,
+            'rent_amount' => 25000, 'rent_frequency' => 'monthly',
         ])
         ->assertRedirect(tenantUrl($organization, '/units'));
 

@@ -48,12 +48,12 @@ function listingUnit(Organization $organization, array $overrides = []): Unit
 test('the public api lists vacant units of opted-in organizations', function () {
     $owner = User::factory()->create(['onboarded_at' => now()]);
     $organization = listingOrganization($owner, 'Open Estates', true);
-    listingUnit($organization, ['name' => 'A1', 'monthly_rent' => 25000]);
+    listingUnit($organization, ['name' => 'A1', 'rent_amount' => 25000]);
 
     $this->getJson('/api/listings')
         ->assertOk()
         ->assertJsonPath('data.0.name', 'A1')
-        ->assertJsonPath('data.0.monthly_rent', '25000.00')
+        ->assertJsonPath('data.0.rent_amount', '25000.00')
         ->assertJsonMissing(['owner' => true]);
 });
 
@@ -90,8 +90,8 @@ test('the public api honours a unit-level holdback', function () {
 test('the public api filters by rent range', function () {
     $owner = User::factory()->create(['onboarded_at' => now()]);
     $organization = listingOrganization($owner, 'Open Estates', true);
-    listingUnit($organization, ['name' => 'Cheap', 'monthly_rent' => 15000]);
-    listingUnit($organization, ['name' => 'Pricy', 'monthly_rent' => 90000]);
+    listingUnit($organization, ['name' => 'Cheap', 'rent_amount' => 15000]);
+    listingUnit($organization, ['name' => 'Pricy', 'rent_amount' => 90000]);
 
     $this->getJson('/api/listings?min_rent=20000&max_rent=50000')
         ->assertOk()
@@ -110,9 +110,9 @@ test('the public api needs no authentication', function () {
 test('the public api sorts cheapest first with rentless units last', function () {
     $owner = User::factory()->create(['onboarded_at' => now()]);
     $organization = listingOrganization($owner, 'Open Estates', true);
-    listingUnit($organization, ['name' => 'Pricy', 'monthly_rent' => 90000]);
-    listingUnit($organization, ['name' => 'NoRent', 'monthly_rent' => null]);
-    listingUnit($organization, ['name' => 'Cheap', 'monthly_rent' => 15000]);
+    listingUnit($organization, ['name' => 'Pricy', 'rent_amount' => 90000]);
+    listingUnit($organization, ['name' => 'NoRent', 'rent_amount' => null]);
+    listingUnit($organization, ['name' => 'Cheap', 'rent_amount' => 15000]);
 
     $this->getJson('/api/listings?sort=cheapest')
         ->assertOk()
@@ -129,7 +129,7 @@ test('listing payloads carry display currency and photo slot', function () {
     $owner = User::factory()->create(['onboarded_at' => now()]);
     $organization = listingOrganization($owner, 'Open Estates', true);
     $organization->update(['settings' => ['list_publicly' => true, 'currency' => 'UGX']]);
-    listingUnit($organization, ['name' => 'A1', 'monthly_rent' => 25000]);
+    listingUnit($organization, ['name' => 'A1', 'rent_amount' => 25000]);
 
     $this->getJson('/api/listings')
         ->assertOk()
@@ -155,7 +155,7 @@ test('the public api matches property name, city and organization', function () 
 test('a type match does not bypass the rent bounds', function () {
     $owner = User::factory()->create(['onboarded_at' => now()]);
     $organization = listingOrganization($owner, 'Open Estates', true);
-    listingUnit($organization, ['name' => 'A1', 'type' => '1BR', 'monthly_rent' => 90000]);
+    listingUnit($organization, ['name' => 'A1', 'type' => '1BR', 'rent_amount' => 90000]);
 
     $this->getJson('/api/listings?query=1BR&max_rent=10000')
         ->assertOk()

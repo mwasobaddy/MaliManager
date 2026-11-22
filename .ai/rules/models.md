@@ -12,3 +12,7 @@ Platform roles (admin, organization-owner, tenant) use spatie/laravel-permission
 ## OrganizationUser is an auto-incrementing pivot
 
 The organization_user table has an id column, so App\Models\OrganizationUser sets public $incrementing = true (Pivot defaults to false). Saving a new membership without this leaves id null, which breaks downstream rows that reference organization_user_id (e.g. delegations).
+
+## Never use wherePivot inside whereHas
+
+`wherePivot()` inside a `whereHas('organizations', ...)` callback silently matches nothing in this codebase (verified against organization_user with is_owner = 1). Constrain the joined pivot table directly instead: `->where('organization_user.is_owner', true)`.

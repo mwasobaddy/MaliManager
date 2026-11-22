@@ -134,7 +134,7 @@ test('occupants index is scoped to the property and lists occupants with their u
         'name' => 'Unit A1',
         'status' => 'occupied',
         'type' => '1 Bedroom',
-        'monthly_rent' => 25000,
+        'rent_amount' => 25000, 'rent_frequency' => 'monthly',
         'deposit' => 25000,
         'created_by' => $owner->id,
     ]);
@@ -216,7 +216,7 @@ test('the view sheet resolves the occupant with their units and lease', function
             'status' => 'active',
             'unit_ids' => [$unit->id],
             'lease' => [
-                'rent_amount' => 25000,
+                'rent_amount' => 25000, 'rent_frequency' => 'monthly',
                 'currency' => 'KES',
                 'agreement_text' => '<p>Rent is due</p>',
             ],
@@ -399,7 +399,7 @@ test('owner can add an occupant assigned to a unit', function () {
         'name' => 'Unit A1',
         'status' => 'vacant',
         'type' => '1 Bedroom',
-        'monthly_rent' => 25000,
+        'rent_amount' => 25000, 'rent_frequency' => 'monthly',
         'deposit' => 25000,
         'created_by' => $owner->id,
     ]);
@@ -444,7 +444,7 @@ test('adding an occupant who already has an account reuses the user', function (
         'name' => 'Unit A1',
         'status' => 'vacant',
         'type' => '1 Bedroom',
-        'monthly_rent' => 25000,
+        'rent_amount' => 25000, 'rent_frequency' => 'monthly',
         'deposit' => 25000,
         'created_by' => $owner->id,
     ]);
@@ -479,7 +479,7 @@ test('unit assignment rejects units from another property', function () {
         'name' => 'Unit A1',
         'status' => 'vacant',
         'type' => '1 Bedroom',
-        'monthly_rent' => 25000,
+        'rent_amount' => 25000, 'rent_frequency' => 'monthly',
         'deposit' => 25000,
         'created_by' => $owner->id,
     ]);
@@ -488,7 +488,7 @@ test('unit assignment rejects units from another property', function () {
         'name' => 'Unit B1',
         'status' => 'vacant',
         'type' => '1 Bedroom',
-        'monthly_rent' => 25000,
+        'rent_amount' => 25000, 'rent_frequency' => 'monthly',
         'deposit' => 25000,
         'created_by' => $owner->id,
     ]);
@@ -540,7 +540,7 @@ test('owner can update occupant details and unit assignments', function () {
         'name' => 'Unit A1',
         'status' => 'vacant',
         'type' => '1 Bedroom',
-        'monthly_rent' => 25000,
+        'rent_amount' => 25000, 'rent_frequency' => 'monthly',
         'deposit' => 25000,
         'created_by' => $owner->id,
     ]);
@@ -549,7 +549,7 @@ test('owner can update occupant details and unit assignments', function () {
         'name' => 'Unit A2',
         'status' => 'vacant',
         'type' => '1 Bedroom',
-        'monthly_rent' => 25000,
+        'rent_amount' => 25000, 'rent_frequency' => 'monthly',
         'deposit' => 25000,
         'created_by' => $owner->id,
     ]);
@@ -610,7 +610,7 @@ test('owner can remove an occupant with their current password', function () {
         'name' => 'Unit A1',
         'status' => 'vacant',
         'type' => '1 Bedroom',
-        'monthly_rent' => 25000,
+        'rent_amount' => 25000, 'rent_frequency' => 'monthly',
         'deposit' => 25000,
         'created_by' => $owner->id,
     ]);
@@ -672,7 +672,7 @@ test('occupant only appears in the property they are assigned to', function () {
         'name' => 'Unit A1',
         'status' => 'occupied',
         'type' => '1 Bedroom',
-        'monthly_rent' => 25000,
+        'rent_amount' => 25000, 'rent_frequency' => 'monthly',
         'deposit' => 25000,
         'created_by' => $owner->id,
     ]);
@@ -719,7 +719,7 @@ test('creating an occupant stores sanitized agreement html and uploads a documen
             'status' => 'active',
             'unit_ids' => [$unit->id],
             'lease' => [
-                'rent_amount' => 25000,
+                'rent_amount' => 25000, 'rent_frequency' => 'monthly',
                 'currency' => 'KES',
                 'agreement_text' => '<p>Rent is due <b>monthly</b>.</p><script>alert(1)</script><img src="x" onerror="alert(2)">',
                 'agreement_document' => $upload,
@@ -796,7 +796,7 @@ test('agreement placeholders are merged from lease data on the print page', func
 
     $lease = Lease::where('unit_id', $unit->id)->first();
     $lease->update([
-        'rent_amount' => 25000,
+        'rent_amount' => 25000, 'rent_frequency' => 'monthly',
         'currency' => 'KES',
         'starts_at' => '2026-01-01',
         'agreement_text' => '<p>{{occupant_name}} rents {{unit_name}} at {{property_name}} for {{rent_amount}} {{currency}} from {{start_date}}. Contact {{landlord_unknown_token}}.</p>',
