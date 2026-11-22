@@ -1,9 +1,18 @@
 import { Head, router, Form } from '@inertiajs/react';
 import { usePage } from '@inertiajs/react';
 import type { ColumnDef, SortingState } from '@tanstack/react-table';
-import { Building2, ImageOff, ListFilter, Search, Plus } from 'lucide-react';
+import {
+    Building2,
+    ImageOff,
+    ListFilter,
+    Pencil,
+    Plus,
+    Search,
+    Trash2,
+} from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActionIconButton } from '@/components/action-icon-button';
+import ConfirmDeleteOverlay from '@/components/confirm-delete-overlay';
 import { LabelledIconButton } from '@/components/labelled-icon-button';
 import { PhotoPicker } from '@/components/photo-picker';
 import { SearchableSelect } from '@/components/searchable-select';
@@ -93,6 +102,23 @@ export default function UnitsIndex({
 
     const { context } = usePage().props;
     const canCreate = (context?.permissions ?? []).includes('unit.create');
+    const canEdit = (context?.permissions ?? []).includes('unit.edit');
+    const canDelete = (context?.permissions ?? []).includes('unit.delete');
+
+    const [editTarget, setEditTarget] = useState<UnitRow | null>(null);
+    const [deleteTarget, setDeleteTarget] = useState<UnitRow | null>(null);
+
+    // The delete overlay is local state, so it closes itself once the
+    // fresh props come back without the row. A failed confirm (wrong
+    // password, freshly occupied) keeps the row — and the overlay — put.
+    useEffect(() => {
+        if (
+            deleteTarget !== null &&
+            !units.data.some((unit) => unit.id === deleteTarget.id)
+        ) {
+            setDeleteTarget(null);
+        }
+    }, [units.data, deleteTarget]);
 
     const filters = {
         search: query.get('search') ?? '',
@@ -342,8 +368,47 @@ export default function UnitsIndex({
                     </span>
                 ),
             },
+            {
+                id: 'actions',
+                header: 'Actions',
+                enableSorting: false,
+                meta: { align: 'right' },
+                cell: ({ row }) => {
+                    const unit = row.original;
+                    const occupied = unit.status === 'occupied';
+
+                    return (
+                        <div
+                            className="flex justify-end gap-1"
+                            onClick={(event) => event.stopPropagation()}
+                        >
+                            {canEdit && (
+                                <ActionIconButton
+                                    icon={<Pencil />}
+                                    label={`Edit ${unit.name}`}
+                                    color="edit"
+                                    onClick={() => setEditTarget(unit)}
+                                />
+                            )}
+                            {canDelete && (
+                                <ActionIconButton
+                                    icon={<Trash2 />}
+                                    label={`Delete ${unit.name}`}
+                                    color="danger"
+                                    disabledReason={
+                                        occupied
+                                            ? 'Occupied units cannot be deleted. End the lease first.'
+                                            : null
+                                    }
+                                    onClick={() => setDeleteTarget(unit)}
+                                />
+                            )}
+                        </div>
+                    );
+                },
+            },
         ],
-        [],
+        [canEdit, canDelete],
     );
 
     return (
@@ -697,6 +762,106 @@ export default function UnitsIndex({
                     </Form>
                 )}
             </ResponsiveOverlay>
+
+            {canEdit && editTarget !== null && (
+                <ResponsiveOverlay
+                    open
+                    onOpenChange={(open) => {
+                        if (!open) {
+                            setEditTarget(null);
+                        }
+                    }}
+                    title={`Edit ${editTarget.name}`}
+                    description="Update the name, type or rent for this unit."
+                    footer={
+                        <OverlayFooter
+                            onCancel={() => setEditTarget(null)}
+                            actions={[
+                                {
+                                    label: 'Save changes',
+                                    form: 'unit-edit-form',
+                                    type: 'submit',
+                                },
+                            ]}
+                        />
+                    }
+                >
+                    <Form
+                        key={editTarget.id}
+                        id="unit-edit-form"
+                        method="put"
+                        action={unitRoutes.update(editTarget.id).url}
+                        options={{ preserveScroll: true }}
+                        onSuccess={() => setEditTarget(null)}
+                        className="grid gap-4 py-2"
+                    >
+                        {({ processing, errors }) => (
+                            <>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="edit-unit-name">
+                                        Unit name
+                                    </Label>
+                                    <Input
+                                        id="edit-unit-name"
+                                        name="name"
+                                        type="text"
+                                        required
+                                        defaultValue={editTarget.name}
+                                    />
+                                    <InputError message={errors.name} />
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="edit-unit-type">Type</Label>
+                                    <SearchableSelect
+                                        id="edit-unit-type"
+                                        name="type"
+                                        options={unitTypes}
+                                        defaultValue={editTarget.type ?? ''}
+                                        placeholder="Select a type…"
+                                        searchPlaceholder="Search types…"
+                                    />
+                                    <InputError message={errors.type} />
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="edit-unit-rent">
+                                        Monthly rent
+                                    </Label>
+                                    <Input
+                                        id="edit-unit-rent"
+                                        name="monthly_rent"
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        defaultValue={
+                                            editTarget.monthly_rent ?? ''
+                                        }
+                                    />
+                                    <InputError message={errors.monthly_rent} />
+                                </div>
+                                {processing && (
+                                    <p className="text-sm text-muted-foreground">
+                                        Saving…
+                                    </p>
+                                )}
+                            </>
+                        )}
+                    </Form>
+                </ResponsiveOverlay>
+            )}
+
+            {canDelete && deleteTarget !== null && (
+                <ConfirmDeleteOverlay
+                    open
+                    onOpenChange={(open) => {
+                        if (!open) {
+                            setDeleteTarget(null);
+                        }
+                    }}
+                    action={unitRoutes.destroy(deleteTarget.id).url}
+                    title={`Delete ${deleteTarget.name}?`}
+                    description="This removes the unit and its photos. Occupied units cannot be deleted — end the lease first."
+                />
+            )}
         </>
     );
 }

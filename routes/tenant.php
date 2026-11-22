@@ -147,6 +147,13 @@ Route::middleware([
                 ->name('tenant.meter-readings.store');
         });
 
+        Route::put('/units/{unit}', [UnitController::class, 'update'])
+            ->middleware('sub-permission:unit.edit')
+            ->name('tenant.units.update');
+        Route::delete('/units/{unit}', [UnitController::class, 'destroy'])
+            ->middleware('sub-permission:unit.delete')
+            ->name('tenant.units.destroy');
+
         Route::middleware('sub-permission:occupant.manage')->group(function () {
             Route::get('/{property:slug}/occupants', [OccupantController::class, 'index'])
                 ->name('tenant.occupants.index');

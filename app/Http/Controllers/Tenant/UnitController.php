@@ -3,9 +3,12 @@
 namespace App\Http\Controllers\Tenant;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Tenant\DestroyUnitRequest;
 use App\Http\Requests\Tenant\StoreUnitRequest;
 use App\Http\Requests\Tenant\UnitIndexRequest;
 use App\Http\Requests\Tenant\UnitShowRequest;
+use App\Http\Requests\Tenant\UpdateUnitRequest;
+use App\Models\Lease;
 use App\Models\Property;
 use App\Models\PropertyType;
 use App\Models\Unit;
@@ -179,6 +182,49 @@ class UnitController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Unit added successfully.']);
 
         return $redirect;
+    }
+
+    /**
+     * Scalar fields only: name, type, rent. Photos are added at creation
+     * and status follows the leases, so neither is editable here.
+     */
+    public function update(UpdateUnitRequest $request, Unit $unit): RedirectResponse
+    {
+        abort_unless(
+            $unit->property?->organization_id === TenancyContext::organization()?->id,
+            404,
+        );
+
+        $unit->update($request->validated());
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Unit updated.']);
+
+        return back();
+    }
+
+    /**
+     * An occupied unit keeps its history: end the lease first instead of
+     * deleting the rooms out from under an active tenancy.
+     */
+    public function destroy(DestroyUnitRequest $request, Unit $unit): RedirectResponse
+    {
+        abort_unless(
+            $unit->property?->organization_id === TenancyContext::organization()?->id,
+            404,
+        );
+
+        $occupied = Lease::query()
+            ->where('unit_id', $unit->id)
+            ->where('status', 'active')
+            ->exists();
+
+        abort_if($occupied, 422, 'An occupied unit cannot be deleted. End its lease first.');
+
+        $unit->delete();
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Unit deleted.']);
+
+        return back();
     }
 
     private function authorizePropertyAccess(Request $request, Property $property): void

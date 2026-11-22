@@ -77,6 +77,12 @@ type ActionIconButtonProps = React.ComponentProps<typeof Button> & {
         | 'teal';
     /** Which side the tooltip opens on. */
     tooltipSide?: 'top' | 'right' | 'bottom' | 'left';
+    /**
+     * When set, the button disables and the tooltip carries this reason
+     * instead. Disabled buttons do not fire hover, so the trigger wraps
+     * in a span to keep the explanation reachable by mouse and keyboard.
+     */
+    disabledReason?: string | null;
 };
 
 /**
@@ -111,40 +117,59 @@ export function ActionIconButton({
     label,
     color = 'default',
     tooltipSide = 'top',
+    disabledReason,
     className,
     type = 'button',
     asChild = false,
     children,
+    disabled,
     ...props
 }: ActionIconButtonProps) {
+    const isDisabled = disabled || disabledReason != null;
+
+    const trigger = (
+        <Button
+            asChild={asChild}
+            type={type}
+            variant="ghost"
+            size="icon"
+            aria-label={label}
+            disabled={isDisabled}
+            className={cn(
+                // Icon-only row actions meet the 44px touch target on
+                // coarse pointers; fine pointers keep the compact 36px.
+                'coarse:min-h-11 coarse:min-w-11',
+                actionColorVariants({ color }),
+                className,
+            )}
+            {...props}
+        >
+            {/*
+             * With asChild the caller's element (e.g. an Inertia <Link>)
+             * is the real trigger and carries the content; otherwise the
+             * icon we were handed is. Passing `icon` unconditionally
+             * would hand Slot an undefined child and render nothing.
+             */}
+            {asChild ? children : icon}
+        </Button>
+    );
+
     return (
         <Tooltip>
             <TooltipTrigger asChild>
-                <Button
-                    asChild={asChild}
-                    type={type}
-                    variant="ghost"
-                    size="icon"
-                    aria-label={label}
-                    className={cn(
-                        // Icon-only row actions meet the 44px touch target on
-                        // coarse pointers; fine pointers keep the compact 36px.
-                        'coarse:min-h-11 coarse:min-w-11',
-                        actionColorVariants({ color }),
-                        className,
-                    )}
-                    {...props}
-                >
-                    {/*
-                     * With asChild the caller's element (e.g. an Inertia <Link>)
-                     * is the real trigger and carries the content; otherwise the
-                     * icon we were handed is. Passing `icon` unconditionally
-                     * would hand Slot an undefined child and render nothing.
-                     */}
-                    {asChild ? children : icon}
-                </Button>
+                {/*
+                 * Disabled buttons swallow hover, so the reason would be
+                 * unreachable without the wrapper.
+                 */}
+                {isDisabled ? (
+                    <span className="inline-flex">{trigger}</span>
+                ) : (
+                    trigger
+                )}
             </TooltipTrigger>
-            <TooltipContent side={tooltipSide}>{label}</TooltipContent>
+            <TooltipContent side={tooltipSide}>
+                {isDisabled && disabledReason ? disabledReason : label}
+            </TooltipContent>
         </Tooltip>
     );
 }
