@@ -508,38 +508,16 @@ export default function UnitsIndex({
                         title="Units"
                         description="Every rentable unit across your properties, with the photos attached to each."
                     />
-                    <div className="flex flex-wrap items-start gap-3">
-                        {canCreate && properties.length > 0 && (
-                            <LabelledIconButton
-                                icon={<Plus />}
-                                label="Add unit"
-                                tooltip="Add a unit to one of your properties"
-                                color="primary"
-                                onClick={openCreate}
-                                className="w-auto max-w-20 sm:max-w-24"
-                            />
-                        )}
-                        {canExport && (
-                            <LabelledIconButton
-                                icon={<Download />}
-                                label="Export"
-                                tooltip="Download the filtered units as CSV"
-                                color="teal"
-                                onClick={() => setOverlayParam('export', '1')}
-                                className="w-auto max-w-20 sm:max-w-24"
-                            />
-                        )}
-                        {canImport && (
-                            <LabelledIconButton
-                                icon={<Upload />}
-                                label="Import"
-                                tooltip="Create or update units from a CSV shaped like the export"
-                                color="default"
-                                onClick={() => setOverlayParam('import', '1')}
-                                className="w-auto max-w-20 sm:max-w-24"
-                            />
-                        )}
-                    </div>
+                    {canCreate && properties.length > 0 && (
+                        <LabelledIconButton
+                            icon={<Plus />}
+                            label="Add unit"
+                            tooltip="Add a unit to one of your properties"
+                            color="primary"
+                            onClick={openCreate}
+                            className="max-w-20 sm:max-w-24"
+                        />
+                    )}
                 </div>
 
                 <Card className="gap-0 py-0">
@@ -566,6 +544,22 @@ export default function UnitsIndex({
                                     : setOverlayParam('filters', '1')
                             }
                         />
+                        {canImport && (
+                            <ActionIconButton
+                                icon={<Upload />}
+                                label="Import from CSV"
+                                color="default"
+                                onClick={() => setOverlayParam('import', '1')}
+                            />
+                        )}
+                        {canExport && (
+                            <ActionIconButton
+                                icon={<Download />}
+                                label="Export"
+                                color="default"
+                                onClick={() => setOverlayParam('export', '1')}
+                            />
+                        )}
                     </div>
 
                     <DataTable

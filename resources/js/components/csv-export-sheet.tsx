@@ -134,17 +134,34 @@ export function CsvExportSheet({
                 </fieldset>
 
                 <fieldset className="grid gap-2">
-                    <legend className="text-sm font-medium">
-                        Columns{' '}
-                        <span className="font-normal text-muted-foreground">
-                            ({selected.length} of {columns.length})
-                        </span>
-                    </legend>
-                    <div className="grid gap-1">
+                    <div className="flex items-center justify-between">
+                        <legend className="text-sm font-medium">
+                            Columns{' '}
+                            <span className="font-normal text-muted-foreground">
+                                ({selected.length} of {columns.length})
+                            </span>
+                        </legend>
+                        <button
+                            type="button"
+                            onClick={() =>
+                                setSelected(
+                                    selected.length === columns.length
+                                        ? []
+                                        : [...columns],
+                                )
+                            }
+                            className="text-xs font-medium text-brand-accent underline-offset-2 hover:underline"
+                        >
+                            {selected.length === columns.length
+                                ? 'Deselect all'
+                                : 'Select all'}
+                        </button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-1 sm:grid-cols-3">
                         {columns.map((column) => (
                             <div
                                 key={column}
-                                className="flex items-center gap-2.5 rounded-md px-1 py-1.5 hover:bg-muted/50"
+                                className="flex min-w-0 items-center gap-2 rounded-md px-1 py-1.5 hover:bg-muted/50"
                             >
                                 <Checkbox
                                     id={`export-column-${column}`}
@@ -153,7 +170,8 @@ export function CsvExportSheet({
                                 />
                                 <Label
                                     htmlFor={`export-column-${column}`}
-                                    className="flex-1 cursor-pointer text-sm font-normal"
+                                    className="min-w-0 flex-1 cursor-pointer truncate text-sm font-normal"
+                                    title={column}
                                 >
                                     {column}
                                 </Label>
