@@ -232,6 +232,59 @@ test('property attention lists one row per condition capped at fifteen', functio
         ->and($attention[2]['linkText'])->toBe('A2');
 });
 
+test('property defaulter row reports the reminder throttle state', function () {
+    $user = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createTestOrganization($user);
+    $property = $organization->properties()->create([
+        'name' => 'Throttle House',
+        'slug' => 'throttle-house',
+        'status' => 'active',
+        'created_by' => $user->id,
+    ]);
+
+    $property->units()->createMany([
+        ['name' => 'A1', 'status' => 'occupied', 'monthly_rent' => 25000, 'created_by' => $user->id],
+        ['name' => 'A2', 'status' => 'occupied', 'monthly_rent' => 20000, 'created_by' => $user->id],
+    ]);
+
+    $makeLease = function (string $unit, ?string $remindedAt) use ($organization, $property) {
+        $occupant = Occupant::factory()->create(['organization_id' => $organization->id]);
+
+        $lease = Lease::factory()->create([
+            'organization_id' => $organization->id,
+            'property_id' => $property->id,
+            'unit_id' => $property->units()->where('name', $unit)->value('id'),
+            'person_id' => $occupant->person_id,
+            'status' => 'active',
+            'starts_at' => now()->subMonthsNoOverflow(2)->toDateString(),
+            'ends_at' => now()->addMonthsNoOverflow(4)->toDateString(),
+            'rent_amount' => 25000,
+            'rent_due_day' => 5,
+        ]);
+
+        if ($remindedAt !== null) {
+            $lease->forceFill(['last_reminded_at' => $remindedAt])->save();
+        }
+
+        return $lease;
+    };
+
+    $makeLease('A1', null);
+    $makeLease('A2', now()->subHours(2)->toDateTimeString());
+
+    $defaulters = $this->actingAs($user)
+        ->get(tenantUrl($organization, '/throttle-house/dashboard'))
+        ->assertOk()
+        ->viewData('page')['props']['stats']['collection']['defaulters'];
+
+    expect($defaulters)->toHaveCount(2)
+        ->and($defaulters[0]['can_remind'])->toBeTrue()
+        ->and($defaulters[0]['remind_throttled'])->toBeFalse()
+        ->and($defaulters[0]['last_reminded_ago'])->toBeNull()
+        ->and($defaulters[1]['remind_throttled'])->toBeTrue()
+        ->and($defaulters[1]['last_reminded_ago'])->toContain('hour');
+});
+
 test('property attention caps vacant rows at fifteen', function () {
     $user = User::factory()->create(['onboarded_at' => now()]);
     $organization = createTestOrganization($user);

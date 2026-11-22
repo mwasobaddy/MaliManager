@@ -110,6 +110,8 @@ type PropertyStat = {
             outstanding: string;
             days_overdue: number;
             can_remind: boolean;
+            remind_throttled: boolean;
+            last_reminded_ago: string | null;
         }>;
     };
     attention: Array<{ severity: 'danger' | 'warning' | 'info'; text: string }>;

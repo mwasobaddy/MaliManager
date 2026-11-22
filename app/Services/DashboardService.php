@@ -400,7 +400,7 @@ class DashboardService extends Service
      *     occupancy_rate: float|null, occupied: int, vacant: int, units_total: int,
      *     net_mtd: string,
      *     aging: list<array{bucket: string, total: string, count: int}>,
-     *     defaulters: list<array{lease_id: int, occupant: string, unit: string|null, property: string, property_slug: string, outstanding: string, days_overdue: int, can_remind: bool}>,
+     *     defaulters: list<array{lease_id: int, occupant: string, unit: string|null, property: string, property_slug: string, outstanding: string, days_overdue: int, can_remind: bool, remind_throttled: bool, last_reminded_ago: string|null}>,
      *     expiry: array{within_30: int, within_60: int, within_90: int},
      *     properties: list<array{property: string, income_mtd: string, expenses_mtd: string, net_mtd: string}>,
      * }
@@ -474,6 +474,9 @@ class DashboardService extends Service
                 'outstanding' => $balance['outstanding'],
                 'days_overdue' => $balance['days_overdue'],
                 'can_remind' => $remindable[$balance['lease']->organization_id] ?? false,
+                'remind_throttled' => $balance['lease']->last_reminded_at !== null
+                    && $balance['lease']->last_reminded_at->greaterThan(now()->subDay()),
+                'last_reminded_ago' => $balance['lease']->last_reminded_at?->diffForHumans(),
             ])
             ->values()
             ->all();

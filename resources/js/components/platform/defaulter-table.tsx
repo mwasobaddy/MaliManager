@@ -1,4 +1,5 @@
 import { router } from '@inertiajs/react';
+import { BellRing, Check } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -15,7 +16,7 @@ import type { DefaulterRow } from './types';
 export function DefaulterTable({ defaulters }: { defaulters: DefaulterRow[] }) {
     if (defaulters.length === 0) {
         return (
-            <Card>
+            <Card className="h-full">
                 <CardHeader className="pb-2">
                     <CardTitle className="text-base font-medium">
                         Top defaulters
@@ -39,7 +40,7 @@ export function DefaulterTable({ defaulters }: { defaulters: DefaulterRow[] }) {
     };
 
     return (
-        <Card>
+        <Card className="h-full">
             <CardHeader className="pb-2">
                 <CardTitle className="text-base font-medium">
                     Top defaulters
@@ -84,20 +85,33 @@ export function DefaulterTable({ defaulters }: { defaulters: DefaulterRow[] }) {
                                 </td>
                                 <td className="px-4 py-2.5">
                                     <div className="flex justify-end">
-                                        {row.can_remind && (
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() =>
-                                                    remind(
-                                                        row.property_slug,
-                                                        row.lease_id,
-                                                    )
-                                                }
-                                            >
-                                                Remind
-                                            </Button>
-                                        )}
+                                        {row.can_remind &&
+                                            (row.remind_throttled ? (
+                                                <span
+                                                    className="inline-flex items-center gap-1.5 text-xs text-muted-foreground"
+                                                    title="A reminder was already sent in the last 24 hours."
+                                                >
+                                                    <Check className="size-3.5" />
+                                                    Reminded
+                                                    {row.last_reminded_ago
+                                                        ? ` ${row.last_reminded_ago}`
+                                                        : ''}
+                                                </span>
+                                            ) : (
+                                                <Button
+                                                    size="sm"
+                                                    onClick={() =>
+                                                        remind(
+                                                            row.property_slug,
+                                                            row.lease_id,
+                                                        )
+                                                    }
+                                                    className="bg-brand-primary text-white hover:bg-brand-primary-600"
+                                                >
+                                                    <BellRing className="size-4" />
+                                                    Remind
+                                                </Button>
+                                            ))}
                                     </div>
                                 </td>
                             </tr>

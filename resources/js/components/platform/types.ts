@@ -142,6 +142,10 @@ export type DefaulterRow = {
     outstanding: string;
     days_overdue: number;
     can_remind: boolean;
+    /** True while the 24h reminder throttle holds for this lease. */
+    remind_throttled: boolean;
+    /** Human "2 hours ago", or null when never reminded. */
+    last_reminded_ago: string | null;
 };
 
 export type AgingRow = {

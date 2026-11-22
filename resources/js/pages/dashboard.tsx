@@ -106,6 +106,8 @@ type OrgStats = {
             outstanding: string;
             days_overdue: number;
             can_remind: boolean;
+            remind_throttled: boolean;
+            last_reminded_ago: string | null;
         }>;
         expiry: { within_30: number; within_60: number; within_90: number };
         properties: Array<{
@@ -127,6 +129,8 @@ type OrgStats = {
                 status: string;
                 overdue: boolean;
                 occupant: string | null;
+                type: string | null;
+                monthly_rent: string | null;
             }>;
         }>;
         timing: { early: number; on_time: number; late: number };
