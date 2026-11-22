@@ -39,7 +39,8 @@ class UpdateUnitRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'type' => ['nullable', 'string', 'max:255'],
-            'monthly_rent' => ['nullable', 'numeric', 'min:0'],
+            'rent_frequency' => ['required', 'string', Rule::in(['daily', 'weekly', 'monthly', 'yearly'])],
+            'rent_amount' => ['nullable', 'numeric', 'min:0'],
             'property_id' => [
                 'nullable',
                 'integer',

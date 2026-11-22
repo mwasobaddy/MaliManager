@@ -27,7 +27,7 @@ class UnitController extends Controller
 {
     private const SORTABLE = [
         'name' => 'units.name',
-        'rent' => 'units.monthly_rent',
+        'rent' => 'units.rent_amount',
         'status' => 'units.status',
         'photos' => 'units.id',
     ];
@@ -91,7 +91,8 @@ class UnitController extends Controller
                 'slug' => $unit->slug,
                 'type' => $unit->type,
                 'status' => $unit->status,
-                'monthly_rent' => $unit->monthly_rent,
+                'rent_amount' => $unit->rent_amount,
+                'rent_frequency' => $unit->rent_frequency,
                 'deposit' => $unit->deposit,
                 'photos_count' => $unit->getMedia('photos')->count(),
                 // Only the first photo renders inline; the full set rides
@@ -161,7 +162,8 @@ class UnitController extends Controller
                 'slug' => $unit->slug,
                 'type' => $unit->type,
                 'status' => $unit->status,
-                'monthly_rent' => $unit->monthly_rent,
+                'rent_amount' => $unit->rent_amount,
+                'rent_frequency' => $unit->rent_frequency,
                 'deposit' => $unit->deposit,
                 'photos' => $unit->photoPayload(),
                 'property' => [

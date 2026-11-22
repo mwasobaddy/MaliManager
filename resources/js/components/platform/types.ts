@@ -171,6 +171,7 @@ export type UnitGridBuilding = {
         overdue: boolean;
         occupant: string | null;
         type: string | null;
-        monthly_rent: string | null;
+        rent_amount: string | null;
+        rent_frequency: string | null;
     }>;
 };

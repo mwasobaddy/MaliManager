@@ -8,6 +8,7 @@ import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import { AlertsPanel } from '@/components/platform/alerts-panel';
 import { ArrearsAgingCard } from '@/components/platform/arrears-aging';
+import { FrequencySelect } from '@/components/frequency-select';
 import { DefaulterTable } from '@/components/platform/defaulter-table';
 import { RentCollectionHero } from '@/components/platform/rent-collection-hero';
 import { UnitGridCard } from '@/components/platform/unit-grid';
@@ -64,7 +65,8 @@ type Unit = {
     name: string;
     type: string | null;
     status: string;
-    monthly_rent: string | null;
+    rent_amount: string | null;
+    rent_frequency: string | null;
 };
 
 type Organization = {
@@ -132,7 +134,8 @@ type PropertyStat = {
             overdue: boolean;
             occupant: string | null;
             type: string | null;
-            monthly_rent: string | null;
+            rent_amount: string | null;
+            rent_frequency: string | null;
         }>;
     }>;
 };
@@ -161,6 +164,7 @@ export default function PropertiesDashboard({
 }: Props) {
     const [addUnit, setAddUnit] = useState(false);
     const [inlineNameError, setInlineNameError] = useState<string | null>(null);
+    const [inlineFrequency, setInlineFrequency] = useState('monthly');
     const [filterYear, setFilterYear] = useState<string>(
         year ? String(year) : '',
     );
@@ -458,19 +462,48 @@ export default function PropertiesDashboard({
                                             <InputError message={errors.type} />
                                         </div>
                                         <div className="grid gap-2">
+                                            <Label htmlFor="unit-frequency">
+                                                Billing frequency
+                                            </Label>
+                                            <FrequencySelect
+                                                id="unit-frequency"
+                                                name="rent_frequency"
+                                                value={inlineFrequency}
+                                                onValueChange={
+                                                    setInlineFrequency
+                                                }
+                                            />
+                                            <InputError
+                                                message={errors.rent_frequency}
+                                            />
+                                        </div>
+                                        <div className="grid gap-2">
                                             <Label htmlFor="unit-rent">
-                                                Monthly rent
+                                                Rent amount
                                             </Label>
                                             <Input
                                                 id="unit-rent"
-                                                name="monthly_rent"
+                                                name="rent_amount"
                                                 type="number"
                                                 min="0"
                                                 step="0.01"
                                                 placeholder="25000"
                                             />
+                                            <p className="text-xs text-muted-foreground">
+                                                Amount the tenant pays each{' '}
+                                                {inlineFrequency === 'daily'
+                                                    ? 'day'
+                                                    : inlineFrequency ===
+                                                        'weekly'
+                                                      ? 'week'
+                                                      : inlineFrequency ===
+                                                          'yearly'
+                                                        ? 'year'
+                                                        : 'month'}
+                                                .
+                                            </p>
                                             <InputError
-                                                message={errors.monthly_rent}
+                                                message={errors.rent_amount}
                                             />
                                         </div>
                                         <div className="flex items-end gap-2">

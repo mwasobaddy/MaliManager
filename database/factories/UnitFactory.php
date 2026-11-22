@@ -27,7 +27,8 @@ class UnitFactory extends Factory
             'slug' => Str::slug($name),
             'status' => fake()->randomElement(['vacant', 'occupied', 'maintenance']),
             'type' => fake()->randomElement(['Studio', '1 Bedroom', '2 Bedroom', '3 Bedroom']),
-            'monthly_rent' => fake()->randomFloat(2, 5000, 150000),
+            'rent_frequency' => fake()->randomElement(['daily', 'weekly', 'monthly', 'yearly']),
+            'rent_amount' => fake()->randomFloat(2, 5000, 150000),
             'deposit' => fake()->randomFloat(2, 5000, 150000),
         ];
     }

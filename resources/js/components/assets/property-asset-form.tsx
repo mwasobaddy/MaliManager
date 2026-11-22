@@ -1,6 +1,7 @@
 import { Form, Link } from '@inertiajs/react';
 import { Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
+import { FrequencySelect } from '@/components/frequency-select';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import {
@@ -40,7 +41,8 @@ export type AssetPlan = {
 type UnitDraft = {
     name: string;
     type: string;
-    monthly_rent: string;
+    rent_frequency: string;
+    rent_amount: string;
     /**
      * File inputs cannot be controlled, so photo counts live here and the
      * inputs are rendered with a `key` that changes when the count does —
@@ -53,7 +55,8 @@ type UnitDraft = {
 const emptyUnit = (): UnitDraft => ({
     name: '',
     type: '',
-    monthly_rent: '',
+    rent_frequency: 'monthly',
+    rent_amount: '',
     photoCount: 0,
 });
 
@@ -98,13 +101,10 @@ export default function PropertyAssetForm({
             <Card>
                 <CardContent className="space-y-3 pt-6">
                     <p className="text-sm text-destructive">
-                        Your current plan does not allow adding more
-                        properties.
+                        Your current plan does not allow adding more properties.
                     </p>
                     <Button asChild variant="outline" size="sm">
-                        <Link href={billing.url()}>
-                            Upgrade in Billing
-                        </Link>
+                        <Link href={billing.url()}>Upgrade in Billing</Link>
                     </Button>
                 </CardContent>
             </Card>
@@ -340,9 +340,31 @@ export default function PropertyAssetForm({
                                             </div>
                                             <div className="grid gap-2">
                                                 <Label
+                                                    htmlFor={`units-${i}-frequency`}
+                                                >
+                                                    Billing frequency
+                                                </Label>
+                                                <FrequencySelect
+                                                    id={`units-${i}-frequency`}
+                                                    name={`units[${i}][rent_frequency]`}
+                                                    defaultValue={
+                                                        unit.rent_frequency ||
+                                                        'monthly'
+                                                    }
+                                                />
+                                                <InputError
+                                                    message={
+                                                        errors[
+                                                            `units.${i}.rent_frequency`
+                                                        ]
+                                                    }
+                                                />
+                                            </div>
+                                            <div className="grid gap-2">
+                                                <Label
                                                     htmlFor={`units-${i}-rent`}
                                                 >
-                                                    Monthly rent
+                                                    Rent amount
                                                 </Label>
                                                 <Input
                                                     id={`units-${i}-rent`}
@@ -350,15 +372,22 @@ export default function PropertyAssetForm({
                                                     min="0"
                                                     step="0.01"
                                                     placeholder="25000"
-                                                    value={unit.monthly_rent}
+                                                    value={unit.rent_amount}
                                                     onChange={(e) =>
                                                         updateUnit(
                                                             i,
-                                                            'monthly_rent',
+                                                            'rent_amount',
                                                             e.target.value,
                                                         )
                                                     }
-                                                    name={`units[${i}][monthly_rent]`}
+                                                    name={`units[${i}][rent_amount]`}
+                                                />
+                                                <InputError
+                                                    message={
+                                                        errors[
+                                                            `units.${i}.rent_amount`
+                                                        ]
+                                                    }
                                                 />
                                             </div>
                                             <Button

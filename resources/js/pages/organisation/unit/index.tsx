@@ -38,6 +38,7 @@ import {
 } from '@/components/ui/select';
 import { formatMoney } from '@/lib/format-money';
 import { duplicateUnitName } from '@/lib/unit-names';
+import { FrequencySelect } from '@/components/frequency-select';
 import { cn } from '@/lib/utils';
 import { store as storeUnit } from '@/routes/tenant/properties/units';
 import * as unitRoutes from '@/routes/tenant/units';
@@ -48,7 +49,8 @@ type UnitRow = {
     slug: string;
     type: string | null;
     status: string;
-    monthly_rent: string | null;
+    rent_amount: string | null;
+    rent_frequency: string | null;
     photos_count: number;
     thumbnail: string | null;
     photos: { id: number; url: string; name: string; cover: boolean }[];
@@ -118,6 +120,8 @@ export default function UnitsIndex({
     const [editPropertyId, setEditPropertyId] = useState<string | null>(null);
     const [createNameError, setCreateNameError] = useState<string | null>(null);
     const [editNameError, setEditNameError] = useState<string | null>(null);
+    const [createFrequency, setCreateFrequency] = useState('monthly');
+    const [editFrequency, setEditFrequency] = useState('monthly');
     const [coverPhotoId, setCoverPhotoId] = useState<number | null>(null);
 
     // The property picker is local state, so reseed it per row. The form
@@ -127,6 +131,7 @@ export default function UnitsIndex({
             editTarget ? String(editTarget.property.id ?? '') : null,
         );
         setEditNameError(null);
+        setEditFrequency(editTarget?.rent_frequency ?? 'monthly');
         setCoverPhotoId(
             editTarget?.photos.find((photo) => photo.cover)?.id ?? null,
         );
@@ -355,11 +360,20 @@ export default function UnitsIndex({
             },
             {
                 id: 'rent',
-                accessorKey: 'monthly_rent',
+                accessorKey: 'rent_amount',
                 header: 'Rent',
                 cell: ({ row }) => (
                     <span className="text-xs tabular-nums">
-                        {formatMoney(row.original.monthly_rent)}
+                        {formatMoney(row.original.rent_amount)}
+                        {row.original.rent_frequency === 'daily'
+                            ? '/day'
+                            : row.original.rent_frequency === 'weekly'
+                              ? '/wk'
+                              : row.original.rent_frequency === 'yearly'
+                                ? '/yr'
+                                : row.original.rent_amount !== null
+                                  ? '/mo'
+                                  : ''}
                     </span>
                 ),
             },
@@ -773,18 +787,43 @@ export default function UnitsIndex({
                                     <InputError message={errors.type} />
                                 </div>
                                 <div className="grid gap-2">
+                                    <Label htmlFor="create-unit-frequency">
+                                        Billing frequency
+                                    </Label>
+                                    <FrequencySelect
+                                        id="create-unit-frequency"
+                                        name="rent_frequency"
+                                        value={createFrequency}
+                                        onValueChange={setCreateFrequency}
+                                    />
+                                    <InputError
+                                        message={errors.rent_frequency}
+                                    />
+                                </div>
+                                <div className="grid gap-2">
                                     <Label htmlFor="create-unit-rent">
-                                        Monthly rent
+                                        Rent amount
                                     </Label>
                                     <Input
                                         id="create-unit-rent"
-                                        name="monthly_rent"
+                                        name="rent_amount"
                                         type="number"
                                         min="0"
                                         step="0.01"
                                         placeholder="25000"
                                     />
-                                    <InputError message={errors.monthly_rent} />
+                                    <p className="text-xs text-muted-foreground">
+                                        Amount the tenant pays each{' '}
+                                        {createFrequency === 'daily'
+                                            ? 'day'
+                                            : createFrequency === 'weekly'
+                                              ? 'week'
+                                              : createFrequency === 'yearly'
+                                                ? 'year'
+                                                : 'month'}
+                                        .
+                                    </p>
+                                    <InputError message={errors.rent_amount} />
                                 </div>
                                 <div className="grid gap-2">
                                     <span className="text-sm leading-none font-medium">
@@ -939,20 +978,45 @@ export default function UnitsIndex({
                                     <InputError message={errors.type} />
                                 </div>
                                 <div className="grid gap-2">
+                                    <Label htmlFor="edit-unit-frequency">
+                                        Billing frequency
+                                    </Label>
+                                    <FrequencySelect
+                                        id="edit-unit-frequency"
+                                        name="rent_frequency"
+                                        value={editFrequency}
+                                        onValueChange={setEditFrequency}
+                                    />
+                                    <InputError
+                                        message={errors.rent_frequency}
+                                    />
+                                </div>
+                                <div className="grid gap-2">
                                     <Label htmlFor="edit-unit-rent">
-                                        Monthly rent
+                                        Rent amount
                                     </Label>
                                     <Input
                                         id="edit-unit-rent"
-                                        name="monthly_rent"
+                                        name="rent_amount"
                                         type="number"
                                         min="0"
                                         step="0.01"
                                         defaultValue={
-                                            editTarget.monthly_rent ?? ''
+                                            editTarget.rent_amount ?? ''
                                         }
                                     />
-                                    <InputError message={errors.monthly_rent} />
+                                    <p className="text-xs text-muted-foreground">
+                                        Amount the tenant pays each{' '}
+                                        {editFrequency === 'daily'
+                                            ? 'day'
+                                            : editFrequency === 'weekly'
+                                              ? 'week'
+                                              : editFrequency === 'yearly'
+                                                ? 'year'
+                                                : 'month'}
+                                        .
+                                    </p>
+                                    <InputError message={errors.rent_amount} />
                                 </div>
                                 <div className="grid gap-2">
                                     <span className="text-sm leading-none font-medium">

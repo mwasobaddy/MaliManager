@@ -93,12 +93,9 @@ export default function Listing({ unit }: Props) {
                         </CardHeader>
                         <CardContent className="divide-y divide-border">
                             {fact(
-                                'Monthly rent',
-                                unit.monthly_rent !== null
-                                    ? formatMoney(
-                                          unit.monthly_rent,
-                                          unit.currency,
-                                      )
+                                'Rent amount',
+                                unit.rent_amount !== null
+                                    ? `${formatMoney(unit.rent_amount, unit.currency)}${unit.rent_frequency === 'daily' ? ' / day' : unit.rent_frequency === 'weekly' ? ' / week' : unit.rent_frequency === 'yearly' ? ' / year' : ' / month'}`
                                     : null,
                             )}
                             {fact(

@@ -57,6 +57,8 @@ type Unit = {
     name: string;
     type: string | null;
     status: string;
+    rent_amount: string | null;
+    rent_frequency: string | null;
 };
 
 type Lease = {

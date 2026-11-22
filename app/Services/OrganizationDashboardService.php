@@ -38,7 +38,7 @@ class OrganizationDashboardService extends Service
         if ($propertyIds !== []) {
             $properties = Property::query()
                 ->whereIn('id', $propertyIds)
-                ->with('units:id,property_id,status,monthly_rent')
+                ->with('units:id,property_id,status,rent_amount,rent_frequency')
                 ->get(['id', 'name', 'slug', 'city', 'status']);
         }
 
@@ -113,7 +113,7 @@ class OrganizationDashboardService extends Service
             'vacant' => $units->where('status', 'vacant')->count(),
             'in_maintenance' => $units->where('status', 'maintenance')->count(),
             'occupancy_rate' => $totalUnits > 0 ? (int) round($occupied / $totalUnits * 100) : 0,
-            'rent_potential' => round((float) $units->sum(fn ($unit) => (float) $unit->monthly_rent), 2),
+            'rent_potential' => round((float) $units->sum(fn ($unit) => $unit->monthlyEquivalent()), 2),
             'open_maintenance' => (int) ($openMaintenanceByProperty[$property->id] ?? 0),
             'active_leases' => (int) ($activeLeasesByProperty[$property->id] ?? 0),
         ];

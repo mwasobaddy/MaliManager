@@ -25,7 +25,8 @@ class AddPropertyUnit extends Service
                 'property_id' => $property->id,
                 'name' => $data['name'],
                 'type' => $data['type'] ?? null,
-                'monthly_rent' => $data['monthly_rent'] ?? null,
+                'rent_frequency' => $data['rent_frequency'] ?? 'monthly',
+                'rent_amount' => $data['rent_amount'] ?? null,
                 'status' => 'vacant',
                 'created_by' => $user->id,
             ]));

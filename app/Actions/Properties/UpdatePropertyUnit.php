@@ -39,7 +39,8 @@ class UpdatePropertyUnit extends Service
             $unit->update([
                 'name' => $data['name'],
                 'type' => $data['type'] ?? null,
-                'monthly_rent' => $data['monthly_rent'] ?? null,
+                'rent_frequency' => $data['rent_frequency'] ?? 'monthly',
+                'rent_amount' => $data['rent_amount'] ?? null,
             ]);
 
             $this->attachAdditionalUnitPhotos($unit, $data);

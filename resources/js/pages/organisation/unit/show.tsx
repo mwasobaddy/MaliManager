@@ -12,7 +12,8 @@ type Unit = {
     slug: string;
     type: string | null;
     status: string;
-    monthly_rent: string | null;
+    rent_amount: string | null;
+    rent_frequency: string | null;
     deposit: string | null;
     photos: { id: number; url: string; name: string }[];
     property: { id: number | null; name: string | null; slug: string | null };
@@ -28,7 +29,10 @@ export default function UnitShow({ unit }: Props) {
         ['Reference', unit.slug],
         ['Type', unit.type ?? '—'],
         ['Status', unit.status],
-        ['Monthly rent', formatMoney(unit.monthly_rent)],
+        [
+            'Rent amount',
+            `${formatMoney(unit.rent_amount)}${unit.rent_frequency === 'daily' ? ' / day' : unit.rent_frequency === 'weekly' ? ' / week' : unit.rent_frequency === 'yearly' ? ' / year' : ' / month'}`,
+        ],
         ['Deposit', formatMoney(unit.deposit)],
     ];
 

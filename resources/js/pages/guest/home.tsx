@@ -426,12 +426,9 @@ export default function GuestHome({
                                             <CardContent className="flex flex-col gap-3">
                                                 <div className="flex items-center justify-between">
                                                     <span className="font-semibold tabular-nums">
-                                                        {unit.monthly_rent !==
+                                                        {unit.rent_amount !==
                                                         null
-                                                            ? formatMoney(
-                                                                  unit.monthly_rent,
-                                                                  unit.currency,
-                                                              )
+                                                            ? `${formatMoney(unit.rent_amount, unit.currency)}${unit.rent_frequency === 'daily' ? ' / day' : unit.rent_frequency === 'weekly' ? ' / week' : unit.rent_frequency === 'yearly' ? ' / year' : ' / month'}`
                                                             : '—'}
                                                     </span>
                                                     {unit.type && (

@@ -12,7 +12,8 @@ export type ListedUnit = {
     id: number;
     name: string;
     type: string | null;
-    monthly_rent: string | null;
+    rent_amount: string | null;
+    rent_frequency: string | null;
     deposit: string | null;
     currency: string;
     photo_url: string | null;
@@ -37,7 +38,8 @@ export type ListedUnitDetail = {
     id: number;
     name: string;
     type: string | null;
-    monthly_rent: string | null;
+    rent_amount: string | null;
+    rent_frequency: string | null;
     deposit: string | null;
     currency: string;
     photos: ListingPhoto[];

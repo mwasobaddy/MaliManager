@@ -23,7 +23,8 @@ use Spatie\MediaLibrary\InteractsWithMedia;
  * @property string $slug
  * @property string $status
  * @property string|null $type
- * @property float|null $monthly_rent
+ * @property string $rent_frequency
+ * @property float|null $rent_amount
  * @property float|null $deposit
  * @property array|null $settings
  * @property int|null $created_by
@@ -46,7 +47,8 @@ class Unit extends Model implements HasMedia
         'status',
         'list_publicly',
         'type',
-        'monthly_rent',
+        'rent_frequency',
+        'rent_amount',
         'deposit',
         'settings',
         'created_by',
@@ -56,7 +58,7 @@ class Unit extends Model implements HasMedia
     {
         return [
             'list_publicly' => 'boolean',
-            'monthly_rent' => 'decimal:2',
+            'rent_amount' => 'decimal:2',
             'deposit' => 'decimal:2',
             'settings' => 'array',
         ];
@@ -66,6 +68,38 @@ class Unit extends Model implements HasMedia
     protected static function newFactory(): UnitFactory
     {
         return UnitFactory::new();
+    }
+
+    /**
+     * The per-period amount normalized to a monthly figure for reporting,
+     * rounded to cents. Daily uses a 30-day month, weekly 52/12, yearly
+     * divides by 12 — documented here because every portfolio roll-up must
+     * use this one math, not its own approximation.
+     */
+    public function monthlyEquivalent(): float
+    {
+        $amount = (float) ($this->rent_amount ?? 0);
+
+        return round(match ($this->rent_frequency ?? 'monthly') {
+            'daily' => $amount * 30,
+            'weekly' => $amount * 52 / 12,
+            'yearly' => $amount / 12,
+            default => $amount,
+        }, 2);
+    }
+
+    /**
+     * Short per-period suffix for display next to an amount: /day, /wk,
+     * /mo, /yr. Keeps tiles honest about what the figure means.
+     */
+    public function rentSuffix(): string
+    {
+        return match ($this->rent_frequency ?? 'monthly') {
+            'daily' => '/day',
+            'weekly' => '/wk',
+            'yearly' => '/yr',
+            default => '/mo',
+        };
     }
 
     /**
@@ -225,15 +259,15 @@ class Unit extends Model implements HasMedia
                                 ->orWhereHas('organization', fn (Builder $org) => $org->where('organizations.name', 'like', "%{$term}%"));
                         });
                 }))
-            ->when(($filters['min_rent'] ?? null) !== null && ($filters['min_rent'] ?? '') !== '', fn (Builder $q) => $q->where('monthly_rent', '>=', $filters['min_rent']))
-            ->when(($filters['max_rent'] ?? null) !== null && ($filters['max_rent'] ?? '') !== '', fn (Builder $q) => $q->where('monthly_rent', '<=', $filters['max_rent']))
+            ->when(($filters['min_rent'] ?? null) !== null && ($filters['min_rent'] ?? '') !== '', fn (Builder $q) => $q->where('rent_amount', '>=', $filters['min_rent']))
+            ->when(($filters['max_rent'] ?? null) !== null && ($filters['max_rent'] ?? '') !== '', fn (Builder $q) => $q->where('rent_amount', '<=', $filters['max_rent']))
             ->when(($filters['type'] ?? '') !== '', fn (Builder $q) => $q->where('type', $filters['type']))
             ->when(
                 ($filters['sort'] ?? 'newest') === 'cheapest',
-                fn (Builder $q) => $q->orderByRaw('monthly_rent is null, monthly_rent asc'),
+                fn (Builder $q) => $q->orderByRaw('rent_amount is null, rent_amount asc'),
                 fn (Builder $q) => $q->when(
                     ($filters['sort'] ?? 'newest') === 'priciest',
-                    fn (Builder $inner) => $inner->orderByRaw('monthly_rent is null, monthly_rent desc'),
+                    fn (Builder $inner) => $inner->orderByRaw('rent_amount is null, rent_amount desc'),
                     fn (Builder $inner) => $inner->orderByDesc('units.id'),
                 ),
             );

@@ -135,7 +135,8 @@ class PropertyController extends Controller
                 'name' => $unit->name,
                 'type' => $unit->type,
                 'status' => $unit->status,
-                'monthly_rent' => $unit->monthly_rent,
+                'rent_amount' => $unit->rent_amount,
+                'rent_frequency' => $unit->rent_frequency,
             ]);
 
         $year = $request->input('year') ? (int) $request->input('year') : null;

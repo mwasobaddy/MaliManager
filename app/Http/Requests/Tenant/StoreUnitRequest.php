@@ -4,6 +4,7 @@ namespace App\Http\Requests\Tenant;
 
 use App\Models\Unit;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 /**
  * Guards POST {property}/units.
@@ -31,7 +32,8 @@ class StoreUnitRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'type' => ['nullable', 'string', 'max:255'],
-            'monthly_rent' => ['nullable', 'numeric', 'min:0'],
+            'rent_frequency' => ['required', 'string', Rule::in(['daily', 'weekly', 'monthly', 'yearly'])],
+            'rent_amount' => ['nullable', 'numeric', 'min:0'],
             'photos' => ['nullable', 'array', 'max:'.Unit::MAX_PHOTOS],
             'photos.*' => ['file', 'mimes:jpg,jpeg,png,webp', 'max:8192'],
             'reuse_photo_ids' => ['nullable', 'array', 'max:'.Unit::MAX_PHOTOS],

@@ -63,8 +63,8 @@ final class SemanticLayer
                 'label' => 'Units',
                 'model' => Unit::class,
                 'scopes' => [Scope::ORG, Scope::PLATFORM],
-                'numeric' => ['monthly_rent', 'deposit'],
-                'dimensions' => ['property_id', 'status', 'type', 'created_at'],
+                'numeric' => ['rent_amount', 'deposit'],
+                'dimensions' => ['property_id', 'status', 'type', 'rent_frequency', 'created_at'],
                 'date_columns' => ['created_at'],
                 'text_columns' => ['name', 'type', 'status'],
                 'scope' => fn (Builder $q, Scope $s) => $s->type === Scope::ORG

@@ -31,6 +31,9 @@ use Spatie\MediaLibrary\InteractsWithMedia;
  * @property float|null $rent_amount
  * @property string|null $rent_frequency
  * @property int|null $rent_due_day
+ * @property int|null $rent_due_weekday
+ * @property int|null $rent_due_month
+ * @property \Carbon|null $overdue_since
  * @property string|null $currency
  * @property float|null $deposit
  * @property string|null $agreement_text
@@ -66,6 +69,9 @@ class Lease extends Model implements HasMedia
         'rent_amount',
         'rent_frequency',
         'rent_due_day',
+        'rent_due_weekday',
+        'rent_due_month',
+        'overdue_since',
         'currency',
         'deposit',
         'agreement_text',
@@ -82,6 +88,9 @@ class Lease extends Model implements HasMedia
         'rent_amount' => 'float',
         'deposit' => 'float',
         'rent_due_day' => 'integer',
+        'rent_due_weekday' => 'integer',
+        'rent_due_month' => 'integer',
+        'overdue_since' => 'date',
         'last_reminded_at' => 'datetime',
     ];
 

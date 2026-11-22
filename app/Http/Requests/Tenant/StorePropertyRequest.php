@@ -33,7 +33,8 @@ class StorePropertyRequest extends FormRequest
             'units' => ['nullable', 'array', 'max:100'],
             'units.*.name' => ['required', 'string', 'max:255'],
             'units.*.type' => ['nullable', 'string', 'max:255'],
-            'units.*.monthly_rent' => ['nullable', 'numeric', 'min:0'],
+            'units.*.rent_frequency' => ['required', 'string', Rule::in(['daily', 'weekly', 'monthly', 'yearly'])],
+            'units.*.rent_amount' => ['nullable', 'numeric', 'min:0'],
             // Nested per-unit photos: the form posts one file input per unit
             // draft, named `units[0][photos][]` and so on.
             'units.*.photos' => ['nullable', 'array', 'max:'.Unit::MAX_PHOTOS],

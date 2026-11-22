@@ -114,18 +114,20 @@ final class OccupantPresenter
     }
 
     /**
-     * @return array<int, array{id: int, name: string, type: string|null, status: string}>
+     * @return array<int, array{id: int, name: string, type: string|null, status: string, rent_amount: string|null, rent_frequency: string|null}>
      */
     public static function units(Property $property): array
     {
         return $property->units()
             ->orderBy('name')
-            ->get(['id', 'name', 'type', 'status'])
+            ->get(['id', 'name', 'type', 'status', 'rent_amount', 'rent_frequency'])
             ->map(fn ($unit) => [
                 'id' => $unit->id,
                 'name' => $unit->name,
                 'type' => $unit->type,
                 'status' => $unit->status,
+                'rent_amount' => $unit->rent_amount,
+                'rent_frequency' => $unit->rent_frequency,
             ])
             ->all();
     }

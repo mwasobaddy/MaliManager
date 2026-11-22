@@ -52,7 +52,8 @@ class OccupantSeeder extends Seeder
                         // with the leases the seeder itself creates below.
                         'status' => 'vacant',
                         'type' => '1 Bedroom',
-                        'monthly_rent' => 25000,
+                        'rent_frequency' => 'monthly',
+                        'rent_amount' => 25000,
                         'deposit' => 25000,
                         'created_by' => $owner->id,
                     ],

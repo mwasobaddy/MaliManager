@@ -255,7 +255,7 @@ class DashboardService extends Service
      * @param  array<int, int>  $orgIds
      * @param  iterable<int, array{id: int, name: string}>  $properties
      * @return array{
-     *     units_grid: list<array{property: string, units: list<array{id: int, name: string, status: string, overdue: bool, occupant: string|null, type: string|null, monthly_rent: string|null}>}>,
+     *     units_grid: list<array{property: string, units: list<array{id: int, name: string, status: string, overdue: bool, occupant: string|null, type: string|null, rent_amount: string|null, rent_frequency: string|null}>}>,
      *     timing: array{early: int, on_time: int, late: int},
      *     tax: list<array{label: string, total: string, properties: list<array{property: string, total: string}>}>,
      *     pnl: array{income_ytd: string, expenses_ytd: string, net_ytd: string, expenses_by_category: list<array{category: string, total: string}>},
@@ -653,13 +653,13 @@ class DashboardService extends Service
             ->whereIn('property_id', $propertyIds)
             ->where('status', 'vacant')
             ->orderBy('name')
-            ->get(['id', 'name', 'property_id', 'monthly_rent']);
+            ->get(['id', 'name', 'property_id', 'rent_amount', 'rent_frequency']);
 
         foreach ($vacant as $unit) {
             $items[] = [
                 'severity' => 'info',
-                'text' => $unit->monthly_rent !== null
-                    ? "{$unit->name} is vacant — {$unit->monthly_rent}/mo uncollected."
+                'text' => $unit->rent_amount !== null
+                    ? "{$unit->name} is vacant — {$unit->rent_amount}{$unit->rentSuffix()} uncollected."
                     : "{$unit->name} is vacant — list it.",
                 'href' => '/'.($slugs[$unit->property_id] ?? '')."/occupants?create=1&unit={$unit->id}",
                 'linkText' => $unit->name,
@@ -886,12 +886,12 @@ class DashboardService extends Service
         $labels = $this->axisLabels($year, $month);
 
         // Unit composition (always current, not affected by filters).
-        $units = $property->units()->get(['status', 'monthly_rent']);
+        $units = $property->units()->get(['status', 'rent_amount', 'rent_frequency']);
         $totalUnits = $units->count();
         $occupied = $units->where('status', 'occupied')->count();
         $vacant = $units->where('status', 'vacant')->count();
         $inMaintenance = $units->where('status', 'maintenance')->count();
-        $rentPotential = (float) $units->sum(fn ($unit) => (float) $unit->monthly_rent);
+        $rentPotential = (float) $units->sum(fn ($unit) => $unit->monthlyEquivalent());
         $occupancyRate = $totalUnits > 0 ? (int) round($occupied / $totalUnits * 100) : 0;
 
         $unitStatus = [
@@ -1081,7 +1081,7 @@ class DashboardService extends Service
      *
      * @param  array<int, int>  $propertyIds
      * @param  array<int, string>  $propertyNames
-     * @return list<array{property: string, units: list<array{id: int, name: string, status: string, overdue: bool, occupant: string|null, type: string|null, monthly_rent: string|null}>}>
+     * @return list<array{property: string, units: list<array{id: int, name: string, status: string, overdue: bool, occupant: string|null, type: string|null, rent_amount: string|null, rent_frequency: string|null}>}>
      */
     private function unitsGrid(array $propertyIds, array $propertyNames): array
     {
@@ -1107,7 +1107,7 @@ class DashboardService extends Service
             $units = Unit::query()
                 ->where('property_id', $propertyId)
                 ->orderBy('name')
-                ->get(['id', 'name', 'status', 'type', 'monthly_rent'])
+                ->get(['id', 'name', 'status', 'type', 'rent_amount', 'rent_frequency'])
                 ->map(fn (Unit $unit): array => [
                     'id' => $unit->id,
                     'name' => $unit->name,
@@ -1117,7 +1117,8 @@ class DashboardService extends Service
                         ? trim($lease->person->first_name.' '.$lease->person->last_name)
                         : null,
                     'type' => $unit->type,
-                    'monthly_rent' => $unit->monthly_rent !== null ? (string) $unit->monthly_rent : null,
+                    'rent_amount' => $unit->rent_amount !== null ? (string) $unit->rent_amount : null,
+                    'rent_frequency' => $unit->rent_frequency,
                 ])
                 ->all();
 

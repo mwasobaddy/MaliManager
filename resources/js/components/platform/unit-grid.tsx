@@ -36,6 +36,15 @@ export function UnitGridCard({
         maintenance: 'bg-status-warning-bg text-status-warning-fg',
     };
 
+    const suffix = (unit: UnitGridBuilding['units'][number]): string =>
+        unit.rent_frequency === 'daily'
+            ? '/day'
+            : unit.rent_frequency === 'weekly'
+              ? '/wk'
+              : unit.rent_frequency === 'yearly'
+                ? '/yr'
+                : '/mo';
+
     return (
         <Card>
             <CardHeader className="pb-2">
@@ -77,7 +86,7 @@ export function UnitGridCard({
                             {building.units.map((unit) => (
                                 <div
                                     key={unit.id}
-                                    title={`${unit.name} · ${unit.type ?? unit.status}${unit.monthly_rent && currency ? ` · ${formatMoney(unit.monthly_rent, currency)}` : ''}${unit.occupant ? ` · ${unit.occupant}` : ''}`}
+                                    title={`${unit.name} · ${unit.type ?? unit.status}${unit.rent_amount && currency ? ` · ${formatMoney(unit.rent_amount, currency)}${suffix(unit)}` : ''}${unit.occupant ? ` · ${unit.occupant}` : ''}`}
                                     className={`rounded-lg border px-2 py-2 text-center ${fill[unit.status] ?? 'bg-muted text-muted-foreground'} ${unit.overdue ? 'ring-2 ring-status-danger' : ''}`}
                                 >
                                     <p className="truncate text-xs font-semibold">
@@ -88,12 +97,13 @@ export function UnitGridCard({
                                             unit.occupant ??
                                             unit.status}
                                     </p>
-                                    {unit.monthly_rent !== null && currency && (
+                                    {unit.rent_amount !== null && currency && (
                                         <p className="truncate text-[10px] font-semibold tabular-nums">
                                             {formatMoney(
-                                                unit.monthly_rent,
+                                                unit.rent_amount,
                                                 currency,
                                             )}
+                                            {suffix(unit)}
                                         </p>
                                     )}
                                 </div>
