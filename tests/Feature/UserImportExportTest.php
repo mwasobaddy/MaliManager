@@ -181,3 +181,17 @@ test('the role filter is exposed to the index for the radio group', function () 
             ->where('sort.direction', 'desc'),
         );
 });
+
+test('export can be limited to chosen columns', function () {
+    User::factory()->create(['email' => 'ada@example.com']);
+
+    $csv = $this->actingAs($this->admin)
+        ->get(route('platform.users.export').'?columns[]=Email&columns[]=Status')
+        ->assertOk()
+        ->streamedContent();
+
+    $lines = array_values(array_filter(explode("\n", trim($csv))));
+
+    expect($lines[0])->toBe('Email,Status')
+        ->and($csv)->toContain('ada@example.com');
+});

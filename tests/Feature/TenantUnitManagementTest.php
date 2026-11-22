@@ -584,3 +584,104 @@ test('staff without unit.manage cannot export units', function () {
             'do not have permission',
         ));
 });
+
+function unitCsv(array $rows): string
+{
+    $handle = fopen('php://temp', 'r+');
+
+    foreach ($rows as $row) {
+        fputcsv($handle, $row);
+    }
+
+    rewind($handle);
+    $content = (string) stream_get_contents($handle);
+    fclose($handle);
+
+    $path = tempnam(sys_get_temp_dir(), 'units').'.csv';
+    file_put_contents($path, $content);
+
+    return $path;
+}
+
+test('units import creates rows and updates by id', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $property = makeUnitProperty($owner);
+    $existing = makeUnit($property, $owner, ['name' => 'A1']);
+
+    $path = unitCsv([
+        ['ID', 'Name', 'Type', 'Billing frequency', 'Rent amount', 'Status', 'Property', 'Photos', 'Created at'],
+        [$existing->id, 'A1-Renamed', '2 Bedroom', 'weekly', '7000', 'vacant', $property->name, '0', ''],
+        ['', 'B2', 'Studio', 'daily', '2500', 'vacant', $property->name, '0', ''],
+    ]);
+
+    $this->actingAs($owner)
+        ->post(tenantUrl($property->organization, '/units/import'), [
+            'file' => new UploadedFile($path, 'units.csv', 'text/csv', null, true),
+        ])
+        ->assertRedirect();
+
+    expect($existing->fresh()->name)->toBe('A1-Renamed')
+        ->and($existing->fresh()->rent_frequency)->toBe('weekly')
+        ->and(Unit::where('property_id', $property->id)->where('name', 'B2')->exists())->toBeTrue();
+});
+
+test('units import skips bad rows with a per-row report', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $property = makeUnitProperty($owner);
+
+    $path = unitCsv([
+        ['ID', 'Name', 'Type', 'Billing frequency', 'Rent amount', 'Status', 'Property', 'Photos', 'Created at'],
+        ['', '', 'Studio', 'monthly', '2500', 'vacant', $property->name, '0', ''],
+        ['', 'B2', 'Studio', 'fortnightly', '2500', 'vacant', $property->name, '0', ''],
+        ['', 'B3', 'Studio', 'monthly', '2500', 'occupied', $property->name, '0', ''],
+        ['', 'B4', 'Studio', 'monthly', '2500', 'vacant', 'No Such Place', '0', ''],
+        ['', 'B5', 'Studio', 'monthly', '2500', 'vacant', $property->name, '7', ''],
+    ]);
+
+    $this->actingAs($owner)
+        ->post(tenantUrl($property->organization, '/units/import'), [
+            'file' => new UploadedFile($path, 'units.csv', 'text/csv', null, true),
+        ])
+        ->assertRedirect()
+        ->assertSessionHas('inertia.flash_data', fn (array $flash) => str_contains(
+            $flash['toast']['message'] ?? '',
+            '1 imported, 4 failed',
+        ));
+
+    expect(Unit::where('property_id', $property->id)->where('name', 'B5')->exists())->toBeTrue();
+});
+
+test('staff without both unit keys cannot import units', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $property = makeUnitProperty($owner);
+    $staff = staffWith($owner, $property->organization, ['unit.manage', 'unit.create']);
+
+    $path = unitCsv([['ID', 'Name'], ['', 'B9']]);
+
+    $this->actingAs($staff)
+        ->post(tenantUrl($property->organization, '/units/import'), [
+            'file' => new UploadedFile($path, 'units.csv', 'text/csv', null, true),
+        ])
+        ->assertRedirect()
+        ->assertSessionHas('inertia.flash_data', fn (array $flash) => str_contains(
+            $flash['toast']['message'] ?? '',
+            'do not have permission',
+        ));
+
+    expect(Unit::where('property_id', $property->id)->where('name', 'B9')->exists())->toBeFalse();
+});
+
+test('units export honors a column subset', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $property = makeUnitProperty($owner);
+    makeUnit($property, $owner, ['name' => 'A1']);
+
+    $response = $this->actingAs($owner)
+        ->get(tenantUrl($property->organization, '/units/export?columns[]=Name&columns[]=Rent+amount'))
+        ->assertOk();
+
+    $lines = array_values(array_filter(explode("\n", trim($response->streamedContent()))));
+
+    expect($lines[0])->toBe('Name,"Rent amount"')
+        ->and($lines[1])->toContain('A1');
+});

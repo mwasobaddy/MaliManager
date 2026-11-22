@@ -3,10 +3,13 @@
 namespace App\Http\Controllers\Tenant;
 
 use App\Actions\Properties\ExportUnits;
+use App\Actions\Properties\ImportUnits;
 use App\Actions\Properties\UpdatePropertyUnit;
+use App\Concerns\FlashesImportResult;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Tenant\DestroyUnitRequest;
 use App\Http\Requests\Tenant\ExportUnitsRequest;
+use App\Http\Requests\Tenant\ImportUnitsRequest;
 use App\Http\Requests\Tenant\StoreUnitRequest;
 use App\Http\Requests\Tenant\UnitIndexRequest;
 use App\Http\Requests\Tenant\UnitShowRequest;
@@ -26,6 +29,8 @@ use Inertia\Response;
 
 class UnitController extends Controller
 {
+    use FlashesImportResult;
+
     /**
      * Every unit in the organization, across properties.
      *
@@ -122,6 +127,17 @@ class UnitController extends Controller
             $csv->filename,
             ['Content-Type' => 'text/csv'],
         );
+    }
+
+    /**
+     * Bulk upsert shaped like the export. The sheet stays open with the
+     * per-row report when anything fails.
+     */
+    public function import(ImportUnitsRequest $request, ImportUnits $import): RedirectResponse
+    {
+        $result = $import->handle($request->toData());
+
+        return $this->respondToImport($result, 'unit', 'units', 'tenant.units.index');
     }
 
     /**

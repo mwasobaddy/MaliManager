@@ -10,11 +10,12 @@ import {
     Plus,
     Search,
     Trash2,
+    Upload,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActionIconButton } from '@/components/action-icon-button';
 import ConfirmDeleteOverlay from '@/components/confirm-delete-overlay';
-import { downloadCsv } from '@/components/csv-actions';
+import { CsvImportSheet, downloadCsv } from '@/components/csv-actions';
 import { CsvExportSheet } from '@/components/csv-export-sheet';
 import { LabelledIconButton } from '@/components/labelled-icon-button';
 import { PhotoPicker } from '@/components/photo-picker';
@@ -120,6 +121,10 @@ export default function UnitsIndex({
     // Export rides on the same gate as the page itself: anyone trusted to
     // browse the units may download the same list. No unit.export key exists.
     const canExport = (context?.permissions ?? []).includes('unit.manage');
+    // Import upserts, so it needs both the create and the edit keys.
+    const canImport =
+        (context?.permissions ?? []).includes('unit.create') &&
+        (context?.permissions ?? []).includes('unit.edit');
 
     const [editTarget, setEditTarget] = useState<UnitRow | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<UnitRow | null>(null);
@@ -286,6 +291,7 @@ export default function UnitsIndex({
 
     const isCreateOpen = query.get('create') === '1';
     const isExportOpen = query.get('export') === '1';
+    const isImportOpen = query.get('import') === '1';
 
     /** Spoken description of the active filters, for the export sheet. */
     const activeFilterSummary =
@@ -301,7 +307,7 @@ export default function UnitsIndex({
      * The filters the export has to carry. Reusing them is the point: "Export
      * all" must mean "everything the table is showing", not "everything".
      */
-    function exportParams(scope: 'all' | 'page') {
+    function exportParams(scope: 'all' | 'page', columns: string[]) {
         return {
             search: filters.search,
             status: filters.status,
@@ -309,12 +315,16 @@ export default function UnitsIndex({
             sort: sort.column ?? '',
             direction: sort.direction,
             scope,
+            columns,
             ...(scope === 'page' ? { page: units.current_page } : {}),
         };
     }
 
-    function runExport(scope: 'all' | 'page') {
-        downloadCsv(unitRoutes.exportMethod().url, exportParams(scope));
+    function runExport(scope: 'all' | 'page', columns: string[]) {
+        downloadCsv(
+            unitRoutes.exportMethod().url,
+            exportParams(scope, columns),
+        );
         setOverlayParam('export', null);
     }
 
@@ -516,6 +526,16 @@ export default function UnitsIndex({
                                 tooltip="Download the filtered units as CSV"
                                 color="teal"
                                 onClick={() => setOverlayParam('export', '1')}
+                                className="w-auto max-w-20 sm:max-w-24"
+                            />
+                        )}
+                        {canImport && (
+                            <LabelledIconButton
+                                icon={<Upload />}
+                                label="Import"
+                                tooltip="Create or update units from a CSV shaped like the export"
+                                color="default"
+                                onClick={() => setOverlayParam('import', '1')}
                                 className="w-auto max-w-20 sm:max-w-24"
                             />
                         )}
@@ -1179,7 +1199,39 @@ export default function UnitsIndex({
                 pageCount={units.data.length}
                 currentPage={units.current_page}
                 activeFilters={activeFilterSummary}
+                columns={[
+                    'ID',
+                    'Name',
+                    'Type',
+                    'Billing frequency',
+                    'Rent amount',
+                    'Status',
+                    'Property',
+                    'Photos',
+                    'Created at',
+                ]}
                 onExport={runExport}
+            />
+
+            <CsvImportSheet
+                open={isImportOpen}
+                onClose={() => setOverlayParam('import', null)}
+                route={unitRoutes.importMethod}
+                idPrefix="units"
+                title="Import units"
+                description="Upload a CSV shaped like the export to create units, or update them by ID. The Photos column is read-only metadata — images cannot travel in a CSV."
+                required={['Name', 'Property']}
+                optional={[
+                    'ID (match to update)',
+                    'Type',
+                    'Billing frequency (daily, weekly, monthly, yearly)',
+                    'Rent amount',
+                    'Status (vacant or maintenance)',
+                    'Photos (ignored)',
+                    'Created at (ignored)',
+                ]}
+                canImport={canImport}
+                buttonLabel="Import"
             />
         </>
     );

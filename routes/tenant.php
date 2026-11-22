@@ -139,6 +139,9 @@ Route::middleware([
             // Before the show route: otherwise `export` binds as {unit}.
             Route::get('/units/export', [UnitController::class, 'export'])
                 ->name('tenant.units.export');
+            Route::post('/units/import', [UnitController::class, 'import'])
+                ->middleware(['sub-permission:unit.create', 'sub-permission:unit.edit'])
+                ->name('tenant.units.import');
             Route::get('/units/{unit}', [UnitController::class, 'show'])
                 ->name('tenant.units.show');
 
