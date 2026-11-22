@@ -30,7 +30,7 @@ class AddPropertyUnit extends Service
                 'created_by' => $user->id,
             ]));
 
-            $this->attachUnitPhotos($unit, $data['photos'] ?? []);
+            $this->attachAdditionalUnitPhotos($unit, $data);
 
             return $unit;
         });

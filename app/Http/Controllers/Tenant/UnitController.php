@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Tenant;
 
+use App\Actions\Properties\UpdatePropertyUnit;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Tenant\DestroyUnitRequest;
 use App\Http\Requests\Tenant\StoreUnitRequest;
@@ -119,6 +120,10 @@ class UnitController extends Controller
             'plan' => [
                 'units_limit' => TenancyContext::organization()?->effectivePlan()?->units_limit,
             ],
+            // Units that already hold photos, for the reuse picker.
+            'photoLibrary' => ($organization = TenancyContext::organization()) !== null
+                ? app(PropertyService::class)->photoLibrary($organization)
+                : [],
             // Unit types come from the platform property-type catalogue so
             // every tenant picks from the same admin-curated list.
             'unitTypes' => PropertyType::query()
@@ -185,8 +190,7 @@ class UnitController extends Controller
     }
 
     /**
-     * Scalar fields only: name, type, rent. Photos are added at creation
-     * and status follows the leases, so neither is editable here.
+     * Scalars, an optional move, and appended photos — handled by the action.
      */
     public function update(UpdateUnitRequest $request, Unit $unit): RedirectResponse
     {
@@ -195,7 +199,7 @@ class UnitController extends Controller
             404,
         );
 
-        $unit->update($request->validated());
+        app(UpdatePropertyUnit::class)->handle($unit, $request->validated());
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Unit updated.']);
 

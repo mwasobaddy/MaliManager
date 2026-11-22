@@ -12,6 +12,8 @@ use App\Models\User;
 use App\Services\TenantService;
 use Database\Seeders\PlansSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
     (new RolesAndPermissionsSeeder)->run();
@@ -203,4 +205,165 @@ test('a unit from another organization answers 404', function () {
             'name' => 'A1-Hacked',
         ])
         ->assertNotFound();
+});
+
+test('an edit can move a unit with no leases to another property', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $property = makeUnitProperty($owner);
+    $other = $property->organization->properties()->create([
+        'name' => 'Second Block',
+        'slug' => 'second-block',
+        'status' => 'active',
+        'created_by' => $owner->id,
+    ]);
+    $unit = makeUnit($property, $owner, ['name' => 'A1']);
+
+    $this->actingAs($owner)
+        ->put(tenantUrl($property->organization, "/units/{$unit->id}"), [
+            'name' => 'A1',
+            'property_id' => $other->id,
+        ])
+        ->assertRedirect();
+
+    expect($unit->fresh()->property_id)->toBe($other->id);
+});
+
+test('an edit cannot move a unit with an active lease', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $property = makeUnitProperty($owner);
+    $other = $property->organization->properties()->create([
+        'name' => 'Second Block',
+        'slug' => 'second-block',
+        'status' => 'active',
+        'created_by' => $owner->id,
+    ]);
+    $unit = makeUnit($property, $owner, ['name' => 'A1', 'status' => 'occupied']);
+    occupyUnit($property, $unit, $owner);
+
+    $this->actingAs($owner)
+        ->put(tenantUrl($property->organization, "/units/{$unit->id}"), [
+            'name' => 'A1',
+            'property_id' => $other->id,
+        ])
+        ->assertRedirect()
+        ->assertSessionHas('inertia.flash_data', fn (array $flash) => str_contains(
+            $flash['toast']['message'] ?? '',
+            'active lease',
+        ));
+
+    expect($unit->fresh()->property_id)->toBe($property->id);
+});
+
+test('an edit appends uploaded photos', function () {
+    Storage::fake('public');
+
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $property = makeUnitProperty($owner);
+    $unit = makeUnit($property, $owner);
+
+    $this->actingAs($owner)
+        ->put(tenantUrl($property->organization, "/units/{$unit->id}"), [
+            'name' => 'A1',
+            'photos' => [UploadedFile::fake()->image('new.jpg')],
+        ])
+        ->assertRedirect();
+
+    expect($unit->fresh()->getMedia('photos'))->toHaveCount(1);
+});
+
+test('an edit can reuse another unit’s photos without moving them', function () {
+    Storage::fake('public');
+
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $property = makeUnitProperty($owner);
+    $source = makeUnit($property, $owner, ['name' => 'A1']);
+    $target = makeUnit($property, $owner, ['name' => 'A2']);
+
+    $source->addMedia(UploadedFile::fake()->image('shared.jpg'))->toMediaCollection('photos');
+    $sourcePhotoId = $source->getMedia('photos')->firstOrFail()->getKey();
+
+    $this->actingAs($owner)
+        ->put(tenantUrl($property->organization, "/units/{$target->id}"), [
+            'name' => 'A2',
+            'reuse_photo_ids' => [$sourcePhotoId],
+        ])
+        ->assertRedirect();
+
+    // The target gains its own copy; the source keeps its photo.
+    expect($target->fresh()->getMedia('photos'))->toHaveCount(1)
+        ->and($source->fresh()->getMedia('photos'))->toHaveCount(1)
+        ->and(
+            $target->fresh()->getMedia('photos')->first()->getPath()
+            !== $source->fresh()->getMedia('photos')->first()->getPath(),
+        )->toBeTrue();
+});
+
+test('reuse ignores media from another organization', function () {
+    Storage::fake('public');
+
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $property = makeUnitProperty($owner);
+    $target = makeUnit($property, $owner);
+
+    $stranger = User::factory()->create(['onboarded_at' => now()]);
+    $strangerProperty = makeUnitProperty($stranger, 'other-towers');
+    $strangerUnit = makeUnit($strangerProperty, $stranger);
+    $strangerUnit->addMedia(UploadedFile::fake()->image('theirs.jpg'))->toMediaCollection('photos');
+    $foreignId = $strangerUnit->getMedia('photos')->firstOrFail()->getKey();
+
+    $this->actingAs($owner)
+        ->put(tenantUrl($property->organization, "/units/{$target->id}"), [
+            'name' => 'A2',
+            'reuse_photo_ids' => [$foreignId],
+        ])
+        ->assertRedirect();
+
+    expect($target->fresh()->getMedia('photos'))->toHaveCount(0);
+});
+
+test('the photo cap counts uploads and reused photos together', function () {
+    Storage::fake('public');
+
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $property = makeUnitProperty($owner);
+    $unit = makeUnit($property, $owner);
+
+    foreach (range(1, Unit::MAX_PHOTOS) as $i) {
+        $unit->addMedia(UploadedFile::fake()->image("p{$i}.jpg"))->toMediaCollection('photos');
+    }
+
+    $this->actingAs($owner)
+        ->put(tenantUrl($property->organization, "/units/{$unit->id}"), [
+            'name' => 'A1',
+            'photos' => [UploadedFile::fake()->image('extra.jpg')],
+        ])
+        ->assertRedirect()
+        ->assertSessionHas('inertia.flash_data', fn (array $flash) => str_contains(
+            $flash['toast']['message'] ?? '',
+            'at most',
+        ));
+
+    expect($unit->fresh()->getMedia('photos'))->toHaveCount(Unit::MAX_PHOTOS);
+});
+
+test('creating a unit can reuse another unit’s photos', function () {
+    Storage::fake('public');
+
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $property = makeUnitProperty($owner);
+    $source = makeUnit($property, $owner, ['name' => 'A1']);
+
+    $source->addMedia(UploadedFile::fake()->image('shared.jpg'))->toMediaCollection('photos');
+    $sourcePhotoId = $source->getMedia('photos')->firstOrFail()->getKey();
+
+    $this->actingAs($owner)
+        ->post(tenantUrl($property->organization, "/{$property->slug}/units"), [
+            'name' => 'A2',
+            'reuse_photo_ids' => [$sourcePhotoId],
+        ])
+        ->assertRedirect();
+
+    $created = Unit::where('property_id', $property->id)->where('name', 'A2')->firstOrFail();
+
+    expect($created->getMedia('photos'))->toHaveCount(1);
 });

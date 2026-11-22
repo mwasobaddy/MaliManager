@@ -15,6 +15,7 @@ import { ActionIconButton } from '@/components/action-icon-button';
 import ConfirmDeleteOverlay from '@/components/confirm-delete-overlay';
 import { LabelledIconButton } from '@/components/labelled-icon-button';
 import { PhotoPicker } from '@/components/photo-picker';
+import type { PhotoLibraryUnit } from '@/components/photo-picker';
 import { SearchableSelect } from '@/components/searchable-select';
 import { DataTable } from '@/components/data-table';
 import Heading from '@/components/heading';
@@ -67,6 +68,8 @@ type Props = {
     plan: { units_limit: number | null };
     /** Admin-curated catalogue backing the type dropdown. */
     unitTypes: string[];
+    /** Other units' photos, offered for reuse. */
+    photoLibrary: PhotoLibraryUnit[];
 };
 
 /** Debounce so a fast typist issues one request, not one per keystroke. */
@@ -97,6 +100,7 @@ export default function UnitsIndex({
     properties,
     plan,
     unitTypes,
+    photoLibrary,
 }: Props) {
     const query = useQuery();
 
@@ -107,6 +111,15 @@ export default function UnitsIndex({
 
     const [editTarget, setEditTarget] = useState<UnitRow | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<UnitRow | null>(null);
+    const [editPropertyId, setEditPropertyId] = useState<string | null>(null);
+
+    // The property picker is local state, so reseed it per row. The form
+    // below remounts by key, but this state lives outside it.
+    useEffect(() => {
+        setEditPropertyId(
+            editTarget ? String(editTarget.property.id ?? '') : null,
+        );
+    }, [editTarget?.id]);
 
     // The delete overlay is local state, so it closes itself once the
     // fresh props come back without the row. A failed confirm (wrong
@@ -741,11 +754,16 @@ export default function UnitsIndex({
                                     </span>
                                     <PhotoPicker
                                         id="create-unit-photos"
+                                        library={photoLibrary}
                                         error={
                                             Object.entries(errors ?? {}).find(
                                                 ([key]) =>
                                                     key === 'photos' ||
-                                                    key.startsWith('photos.'),
+                                                    key.startsWith('photos.') ||
+                                                    key === 'reuse_photo_ids' ||
+                                                    key.startsWith(
+                                                        'reuse_photo_ids.',
+                                                    ),
                                             )?.[1] as string | undefined
                                         }
                                     />
@@ -772,7 +790,7 @@ export default function UnitsIndex({
                         }
                     }}
                     title={`Edit ${editTarget.name}`}
-                    description="Update the name, type or rent for this unit."
+                    description="Update the property, name, type, rent or photos for this unit."
                     footer={
                         <OverlayFooter
                             onCancel={() => setEditTarget(null)}
@@ -797,6 +815,47 @@ export default function UnitsIndex({
                     >
                         {({ processing, errors }) => (
                             <>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="edit-unit-property">
+                                        Property
+                                    </Label>
+                                    <Select
+                                        value={editPropertyId ?? ''}
+                                        onValueChange={setEditPropertyId}
+                                        disabled={
+                                            editTarget.status === 'occupied'
+                                        }
+                                    >
+                                        <SelectTrigger id="edit-unit-property">
+                                            <SelectValue placeholder="Choose a property" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {properties.map((property) => (
+                                                <SelectItem
+                                                    key={property.id}
+                                                    value={String(property.id)}
+                                                >
+                                                    {property.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <input
+                                        type="hidden"
+                                        name="property_id"
+                                        value={editPropertyId ?? ''}
+                                    />
+                                    {editTarget.status === 'occupied' ? (
+                                        <p className="text-xs text-muted-foreground">
+                                            Occupied units stay in their
+                                            property until the lease ends.
+                                        </p>
+                                    ) : (
+                                        <InputError
+                                            message={errors.property_id}
+                                        />
+                                    )}
+                                </div>
                                 <div className="grid gap-2">
                                     <Label htmlFor="edit-unit-name">
                                         Unit name
@@ -837,6 +896,33 @@ export default function UnitsIndex({
                                         }
                                     />
                                     <InputError message={errors.monthly_rent} />
+                                </div>
+                                <div className="grid gap-2">
+                                    <span className="text-sm leading-none font-medium">
+                                        Add photos{' '}
+                                        <span className="font-normal text-muted-foreground">
+                                            (optional)
+                                        </span>
+                                    </span>
+                                    <PhotoPicker
+                                        id="edit-unit-photos"
+                                        library={photoLibrary}
+                                        excludeUnitId={editTarget.id}
+                                        alreadyAttached={
+                                            editTarget.photos_count
+                                        }
+                                        error={
+                                            Object.entries(errors ?? {}).find(
+                                                ([key]) =>
+                                                    key === 'photos' ||
+                                                    key.startsWith('photos.') ||
+                                                    key === 'reuse_photo_ids' ||
+                                                    key.startsWith(
+                                                        'reuse_photo_ids.',
+                                                    ),
+                                            )?.[1] as string | undefined
+                                        }
+                                    />
                                 </div>
                                 {processing && (
                                     <p className="text-sm text-muted-foreground">

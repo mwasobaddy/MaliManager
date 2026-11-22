@@ -27,4 +27,33 @@ class PropertyService extends Service
     {
         return app(AddPropertyUnit::class)->handle($property, $user, $data);
     }
+
+    /**
+     * Every photo already stored on the organization's units, grouped by
+     * unit for the reuse picker. Small enough to ship whole: photos are
+     * capped per unit and portfolios are small.
+     *
+     * @return list<array{unit_id: int, unit_name: string, property_name: string, photos: list<array{id: int, url: string, name: string}>}>
+     */
+    public function photoLibrary(Organization $organization): array
+    {
+        $propertyIds = $organization->properties()->pluck('id');
+
+        return Unit::query()
+            ->whereIn('property_id', $propertyIds)
+            ->whereHas('media', fn ($query) => $query->where('collection_name', 'photos'))
+            ->with([
+                'property:id,name',
+                'media' => fn ($query) => $query->where('collection_name', 'photos')->orderBy('order_column'),
+            ])
+            ->orderBy('name')
+            ->get()
+            ->map(fn (Unit $unit): array => [
+                'unit_id' => $unit->id,
+                'unit_name' => $unit->name,
+                'property_name' => $unit->property?->name ?? '',
+                'photos' => $unit->photoPayload(),
+            ])
+            ->all();
+    }
 }

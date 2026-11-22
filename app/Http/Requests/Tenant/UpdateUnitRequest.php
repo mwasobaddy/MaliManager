@@ -2,8 +2,10 @@
 
 namespace App\Http\Requests\Tenant;
 
+use App\Models\Unit;
 use App\Support\TenancyContext;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 /**
  * Editing one unit.
@@ -11,6 +13,8 @@ use Illuminate\Foundation\Http\FormRequest;
  * Asserts organization membership; the unit's own organization match is still
  * checked in the action, where a cross-organization id answers 404 rather than
  * a generic denial. Permission rides on `sub-permission:unit.edit`.
+ * `property_id` is scoped to the tenancy's properties so a unit cannot be
+ * filed under another organization's building.
  */
 class UpdateUnitRequest extends FormRequest
 {
@@ -36,6 +40,18 @@ class UpdateUnitRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'type' => ['nullable', 'string', 'max:255'],
             'monthly_rent' => ['nullable', 'numeric', 'min:0'],
+            'property_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('properties', 'id')->where(
+                    'organization_id',
+                    TenancyContext::organization()?->id,
+                ),
+            ],
+            'photos' => ['nullable', 'array', 'max:'.Unit::MAX_PHOTOS],
+            'photos.*' => ['file', 'mimes:jpg,jpeg,png,webp', 'max:8192'],
+            'reuse_photo_ids' => ['nullable', 'array', 'max:'.Unit::MAX_PHOTOS],
+            'reuse_photo_ids.*' => ['integer', 'min:1'],
         ];
     }
 }

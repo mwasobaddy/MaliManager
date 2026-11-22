@@ -34,6 +34,8 @@ class StoreUnitRequest extends FormRequest
             'monthly_rent' => ['nullable', 'numeric', 'min:0'],
             'photos' => ['nullable', 'array', 'max:'.Unit::MAX_PHOTOS],
             'photos.*' => ['file', 'mimes:jpg,jpeg,png,webp', 'max:8192'],
+            'reuse_photo_ids' => ['nullable', 'array', 'max:'.Unit::MAX_PHOTOS],
+            'reuse_photo_ids.*' => ['integer', 'min:1'],
         ];
     }
 }
