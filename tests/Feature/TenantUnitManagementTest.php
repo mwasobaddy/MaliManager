@@ -403,3 +403,62 @@ test('an edit cannot file a unit under another organization’s property', funct
 
     expect($unit->fresh()->property_id)->toBe($property->id);
 });
+
+test('a cover photo can be set and switched between photos', function () {
+    Storage::fake('public');
+
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $property = makeUnitProperty($owner);
+    $unit = makeUnit($property, $owner);
+
+    foreach (['one.jpg', 'two.jpg'] as $file) {
+        $unit->addMedia(UploadedFile::fake()->image($file))->toMediaCollection('photos');
+    }
+
+    $ids = $unit->fresh()->getMedia('photos')->pluck('id')->all();
+
+    $this->actingAs($owner)
+        ->put(tenantUrl($property->organization, "/units/{$unit->id}"), [
+            'name' => 'A1',
+            'cover_photo_id' => $ids[1],
+        ])
+        ->assertRedirect();
+
+    $flags = $unit->fresh()->getMedia('photos')->mapWithKeys(
+        fn ($media) => [$media->getKey() => (bool) $media->getCustomProperty('cover', false)],
+    )->all();
+
+    expect($flags)->toBe([$ids[0] => false, $ids[1] => true]);
+
+    $props = $this->actingAs($owner)
+        ->get(tenantUrl($property->organization, '/units'))
+        ->assertOk()
+        ->viewData('page')['props'];
+
+    expect($props['units']['data'][0]['thumbnail'])
+        ->toBe($unit->fresh()->getMedia('photos')->firstWhere('id', $ids[1])->getUrl())
+        ->and($props['units']['data'][0]['photos'][1]['cover'])->toBeTrue();
+});
+
+test('a cover id from another unit is ignored, not applied', function () {
+    Storage::fake('public');
+
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $property = makeUnitProperty($owner);
+    $unit = makeUnit($property, $owner, ['name' => 'A1']);
+    $other = makeUnit($property, $owner, ['name' => 'A2']);
+
+    $unit->addMedia(UploadedFile::fake()->image('mine.jpg'))->toMediaCollection('photos');
+    $other->addMedia(UploadedFile::fake()->image('theirs.jpg'))->toMediaCollection('photos');
+    $foreignId = $other->getMedia('photos')->firstOrFail()->getKey();
+
+    $this->actingAs($owner)
+        ->put(tenantUrl($property->organization, "/units/{$unit->id}"), [
+            'name' => 'A1',
+            'cover_photo_id' => $foreignId,
+        ])
+        ->assertRedirect();
+
+    expect($unit->fresh()->getMedia('photos')->first()->getCustomProperty('cover', false))
+        ->toBeFalse();
+});

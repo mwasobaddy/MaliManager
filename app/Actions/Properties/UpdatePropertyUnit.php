@@ -25,15 +25,15 @@ class UpdatePropertyUnit extends Service
     public function handle(Unit $unit, array $data): Unit
     {
         return $this->transaction(function () use ($unit, $data) {
-            $propertyId = isset($data['property_id']) && $data['property_id'] !== ''
-                ? (int) $data['property_id']
-                : null;
+            if (isset($data['property_id']) && $data['property_id'] !== '') {
+                $propertyId = (int) $data['property_id'];
 
-            if ($propertyId !== null && $propertyId !== (int) $unit->property_id) {
-                $this->moveToProperty(
-                    $unit,
-                    Property::query()->findOrFail($propertyId),
-                );
+                if ($propertyId !== (int) $unit->property_id) {
+                    $this->moveToProperty(
+                        $unit,
+                        Property::query()->findOrFail($propertyId),
+                    );
+                }
             }
 
             $unit->update([
@@ -43,9 +43,40 @@ class UpdatePropertyUnit extends Service
             ]);
 
             $this->attachAdditionalUnitPhotos($unit, $data);
+            $this->applyCoverPhoto($unit, $data['cover_photo_id'] ?? null);
 
             return $unit;
         });
+    }
+
+    /**
+     * Marks one of the unit's own photos as its cover. A stale or foreign id
+     * is ignored rather than failing the save — the cover is cosmetic
+     * metadata, and a photo deleted between load and submit should not block
+     * a name or rent change.
+     */
+    private function applyCoverPhoto(Unit $unit, mixed $coverPhotoId): void
+    {
+        $coverPhotoId = is_numeric($coverPhotoId) ? (int) $coverPhotoId : null;
+
+        if ($coverPhotoId === null) {
+            return;
+        }
+
+        $photos = $unit->getMedia('photos');
+
+        if (! $photos->contains('id', $coverPhotoId)) {
+            return;
+        }
+
+        foreach ($photos as $photo) {
+            if ($photo->getKey() === $coverPhotoId) {
+                $photo->setCustomProperty('cover', true);
+            } else {
+                $photo->forgetCustomProperty('cover');
+            }
+            $photo->save();
+        }
     }
 
     private function moveToProperty(Unit $unit, Property $property): void

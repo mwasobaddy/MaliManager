@@ -52,6 +52,7 @@ class UpdateUnitRequest extends FormRequest
             'photos.*' => ['file', 'mimes:jpg,jpeg,png,webp', 'max:8192'],
             'reuse_photo_ids' => ['nullable', 'array', 'max:'.Unit::MAX_PHOTOS],
             'reuse_photo_ids.*' => ['integer', 'min:1'],
+            'cover_photo_id' => ['nullable', 'integer', 'min:1'],
         ];
     }
 }

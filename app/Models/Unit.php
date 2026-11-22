@@ -153,13 +153,13 @@ class Unit extends Model implements HasMedia
      * The unit's photos as plain arrays for Inertia.
      *
      * Media models carry a lot of machinery that the page does not need, and
-     * shipping them would pull conversions and custom properties into the
-     * payload. Only url and file_name, matching what inspections and
+     * shipping them would pull conversions into the payload. Only url,
+     * file_name and the cover flag, matching what inspections and
      * maintenance already send — `getSize()` would stat the file on disk for
      * every photo on the page, and the browser reports a size anyway when the
      * image fails to load.
      *
-     * @return list<array{id: int, url: string, name: string}>
+     * @return list<array{id: int, url: string, name: string, cover: bool}>
      */
     public function photoPayload(): array
     {
@@ -168,6 +168,7 @@ class Unit extends Model implements HasMedia
                 'id' => $media->getKey(),
                 'url' => $media->getUrl(),
                 'name' => $media->file_name,
+                'cover' => (bool) $media->getCustomProperty('cover', false),
             ])
             ->values()
             ->all();

@@ -98,7 +98,9 @@ class UnitController extends Controller
                 // along for the edit sheet, filtered in memory from the
                 // already eager-loaded media. Capped at 12 per unit, so a
                 // full page stays a small payload.
-                'thumbnail' => $unit->getFirstMedia('photos')?->getUrl(),
+                'thumbnail' => ($unit->getMedia('photos')->first(
+                    fn ($media): bool => (bool) $media->getCustomProperty('cover', false),
+                ) ?? $unit->getFirstMedia('photos'))?->getUrl(),
                 'photos' => $unit->photoPayload(),
                 'property' => [
                     'id' => $unit->property?->id,

@@ -38,6 +38,7 @@ import {
 } from '@/components/ui/select';
 import { formatMoney } from '@/lib/format-money';
 import { duplicateUnitName } from '@/lib/unit-names';
+import { cn } from '@/lib/utils';
 import { store as storeUnit } from '@/routes/tenant/properties/units';
 import * as unitRoutes from '@/routes/tenant/units';
 
@@ -50,7 +51,7 @@ type UnitRow = {
     monthly_rent: string | null;
     photos_count: number;
     thumbnail: string | null;
-    photos: { id: number; url: string; name: string }[];
+    photos: { id: number; url: string; name: string; cover: boolean }[];
     property: { id: number | null; name: string | null; slug: string | null };
 };
 
@@ -117,6 +118,7 @@ export default function UnitsIndex({
     const [editPropertyId, setEditPropertyId] = useState<string | null>(null);
     const [createNameError, setCreateNameError] = useState<string | null>(null);
     const [editNameError, setEditNameError] = useState<string | null>(null);
+    const [coverPhotoId, setCoverPhotoId] = useState<number | null>(null);
 
     // The property picker is local state, so reseed it per row. The form
     // below remounts by key, but this state lives outside it.
@@ -125,6 +127,9 @@ export default function UnitsIndex({
             editTarget ? String(editTarget.property.id ?? '') : null,
         );
         setEditNameError(null);
+        setCoverPhotoId(
+            editTarget?.photos.find((photo) => photo.cover)?.id ?? null,
+        );
     }, [editTarget?.id]);
 
     // The delete overlay is local state, so it closes itself once the
@@ -958,21 +963,55 @@ export default function UnitsIndex({
                                     </span>
                                     {editTarget.photos.length > 0 && (
                                         <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
-                                            {editTarget.photos.map((photo) => (
-                                                <div
-                                                    key={photo.id}
-                                                    className="overflow-hidden rounded-lg border border-border-strong"
-                                                >
-                                                    <img
-                                                        src={photo.url}
-                                                        alt={photo.name}
-                                                        loading="lazy"
-                                                        className="aspect-square w-full object-cover"
-                                                    />
-                                                </div>
-                                            ))}
+                                            {editTarget.photos.map((photo) => {
+                                                const isCover =
+                                                    coverPhotoId === photo.id;
+
+                                                return (
+                                                    <div
+                                                        key={photo.id}
+                                                        className={cn(
+                                                            'group relative overflow-hidden rounded-lg border',
+                                                            isCover
+                                                                ? 'border-brand-primary ring-2 ring-brand-primary/40'
+                                                                : 'border-border-strong',
+                                                        )}
+                                                    >
+                                                        <img
+                                                            src={photo.url}
+                                                            alt={photo.name}
+                                                            loading="lazy"
+                                                            className="aspect-square w-full object-cover"
+                                                        />
+                                                        {isCover ? (
+                                                            <span className="absolute bottom-1 left-1 rounded bg-brand-primary px-1 text-[10px] font-medium text-white">
+                                                                Cover
+                                                            </span>
+                                                        ) : (
+                                                            <button
+                                                                type="button"
+                                                                aria-label={`Set ${photo.name} as cover`}
+                                                                title="Set as cover"
+                                                                onClick={() =>
+                                                                    setCoverPhotoId(
+                                                                        photo.id,
+                                                                    )
+                                                                }
+                                                                className="absolute inset-x-1 bottom-1 rounded bg-background/90 px-1 py-0.5 text-[10px] font-medium text-muted-foreground opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 hover:text-foreground"
+                                                            >
+                                                                Set as cover
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
                                         </div>
                                     )}
+                                    <input
+                                        type="hidden"
+                                        name="cover_photo_id"
+                                        value={coverPhotoId ?? ''}
+                                    />
                                     <PhotoPicker
                                         id="edit-unit-photos"
                                         library={photoLibrary}
