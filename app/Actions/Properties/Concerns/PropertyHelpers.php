@@ -4,6 +4,7 @@ namespace App\Actions\Properties\Concerns;
 
 use App\Models\Unit;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
@@ -87,9 +88,20 @@ trait PropertyHelpers
             ->whereIn('id', $mediaIds)
             ->where('model_type', $unit->getMorphClass())
             ->whereIn('model_id', $unitIds)
-            ->get();
+            ->get()
+            // whereIn returns database order, not the requested order — and
+            // the requested order is the whole point of the picker, since
+            // the first photo doubles as the cover fallback.
+            ->sortBy(fn (Media $item): int|false => array_search($item->getKey(), $mediaIds, true))
+            ->values();
 
         foreach ($media as $item) {
+            // Rows can outlive their files (manual disk cleanups, failed
+            // uploads): skip the ghost instead of failing the whole save.
+            if (! Storage::disk($item->disk)->exists($item->getPathRelativeToRoot())) {
+                continue;
+            }
+
             $unit->addMediaFromDisk($item->getPathRelativeToRoot(), $item->disk)
                 ->toMediaCollection('photos');
         }

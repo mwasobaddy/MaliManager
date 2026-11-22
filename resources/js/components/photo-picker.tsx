@@ -1,5 +1,17 @@
-import { Check, ImagePlus, Images, X } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Check, GripVertical, ImagePlus, Images, X } from 'lucide-react';
+import {
+    Children,
+    isValidElement,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+} from 'react';
+import type {
+    PointerEvent as ReactPointerEvent,
+    ReactNode,
+    RefObject,
+} from 'react';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -28,6 +40,11 @@ export type PhotoLibraryUnit = {
     photos: PhotoLibraryPhoto[];
 };
 
+type UploadEntry = {
+    file: File;
+    url: string;
+};
+
 type PhotoPickerProps = {
     /** Field name for uploads. The input posts one file per entry. */
     name?: string;
@@ -45,11 +62,23 @@ type PhotoPickerProps = {
     id?: string;
 };
 
+type StripName = 'uploads' | 'reused';
+
+type DragState = {
+    list: StripName;
+    index: number;
+};
+
 /**
  * Upload picker with an optional reuse library: identical units share stock
  * photos, so landlords pick from already-uploaded pictures instead of
  * re-shooting every room. Uploads post through the native file input;
  * reused ids post as hidden inputs and the backend copies the files.
+ *
+ * Both preview strips reorder by drag (pointer events, so touch works) and
+ * by arrow keys on the grip handle. The submitted order follows the
+ * displayed order — and since an explicit cover falls back to the first
+ * photo, dragging doubles as choosing the face of the unit.
  */
 export function PhotoPicker({
     name = 'photos[]',
@@ -62,11 +91,21 @@ export function PhotoPicker({
     id = 'photo-picker',
 }: PhotoPickerProps) {
     const inputRef = useRef<HTMLInputElement>(null);
-    const [files, setFiles] = useState<File[]>([]);
-    const [previews, setPreviews] = useState<string[]>([]);
+    const [uploads, setUploads] = useState<UploadEntry[]>([]);
     const [reused, setReused] = useState<PhotoLibraryPhoto[]>([]);
     const [reuseUnitId, setReuseUnitId] = useState<string>('');
     const [clientError, setClientError] = useState<string | null>(null);
+    const [drag, setDrag] = useState<DragState | null>(null);
+    const [dropIndex, setDropIndex] = useState<number | null>(null);
+
+    // Every object URL ever minted, so removals revoke exactly what they
+    // drop and unmount revokes the rest.
+    const liveUrls = useRef<Set<string>>(new Set());
+    const dragRef = useRef<DragState | null>(null);
+    const tileRefs = useRef<Record<StripName, (HTMLDivElement | null)[]>>({
+        uploads: [],
+        reused: [],
+    });
 
     const usableLibrary = useMemo(
         () =>
@@ -80,34 +119,26 @@ export function PhotoPicker({
         (entry) => String(entry.unit_id) === reuseUnitId,
     );
     const remaining = Math.max(0, max - alreadyAttached);
-    const chosen = previews.length + reused.length;
+    const chosen = uploads.length + reused.length;
 
-    // Object URLs leak for the life of the page unless revoked.
     useEffect(() => {
+        const urls = liveUrls.current;
+
         return () => {
-            previews.forEach((url) => URL.revokeObjectURL(url));
+            urls.forEach((url) => URL.revokeObjectURL(url));
+            urls.clear();
         };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    function syncPreviews(files: File[]) {
-        setPreviews((old) => {
-            old.forEach((url) => URL.revokeObjectURL(url));
-
-            return files.map((file) => URL.createObjectURL(file));
-        });
-    }
-
-    function writeFiles(next: File[]) {
+    function writeUploads(next: UploadEntry[]) {
         const transfer = new DataTransfer();
-        next.forEach((file) => transfer.items.add(file));
+        next.forEach((entry) => transfer.items.add(entry.file));
 
         if (inputRef.current) {
             inputRef.current.files = transfer.files;
         }
 
-        setFiles(next);
-        syncPreviews(next);
+        setUploads(next);
     }
 
     function handleChange(event: React.ChangeEvent<HTMLInputElement>) {
@@ -130,21 +161,107 @@ export function PhotoPicker({
         }
 
         const room = Math.max(0, remaining - reused.length);
-        const kept = [...files, ...valid].slice(0, room);
+        const additions = valid
+            .slice(0, Math.max(0, room - uploads.length))
+            .map((file) => {
+                const url = URL.createObjectURL(file);
+                liveUrls.current.add(url);
 
-        if (files.length + valid.length > room) {
+                return { file, url };
+            });
+
+        if (uploads.length + valid.length > room) {
             setClientError(
                 `Keep it to ${remaining} photos total — extras were dropped.`,
             );
         }
 
         // Write the surviving files back so the form posts exactly these.
-        writeFiles(kept);
+        writeUploads([...uploads, ...additions]);
     }
 
     function removeUploadAt(index: number) {
+        const gone = uploads[index];
+
+        if (gone) {
+            liveUrls.current.delete(gone.url);
+            URL.revokeObjectURL(gone.url);
+        }
+
         setClientError(null);
-        writeFiles(files.filter((_, i) => i !== index));
+        writeUploads(uploads.filter((_, i) => i !== index));
+    }
+
+    function moveEntry(list: StripName, from: number, to: number) {
+        // The list may have shrunk mid-drag (a remove tap lands
+        // underneath the pointer); a stale index commits nothing.
+        if (list === 'uploads') {
+            const moved = uploads[from];
+
+            if (moved === undefined) {
+                return;
+            }
+
+            const next = uploads.filter((_, i) => i !== from);
+            next.splice(Math.min(Math.max(to, 0), next.length), 0, moved);
+            writeUploads(next);
+        } else {
+            const moved = reused[from];
+
+            if (moved === undefined) {
+                return;
+            }
+
+            const next = reused.filter((_, i) => i !== from);
+            next.splice(Math.min(Math.max(to, 0), next.length), 0, moved);
+            setReused(next);
+        }
+    }
+
+    function endDrag(commit: boolean) {
+        const current = dragRef.current;
+        dragRef.current = null;
+
+        if (commit && current && dropIndex !== null) {
+            moveEntry(current.list, current.index, dropIndex);
+        }
+
+        setDrag(null);
+        setDropIndex(null);
+    }
+
+    function handleDropMove(event: React.PointerEvent, list: StripName) {
+        const current = dragRef.current;
+
+        if (!current || current.list !== list) {
+            return;
+        }
+
+        // Walk the strip minus the dragged tile; the first tile whose
+        // centre sits past the pointer is where the gap goes.
+        const tiles = tileRefs.current[list].filter(
+            (_, i) => i !== current.index,
+        );
+        let next = tiles.length;
+
+        for (let i = 0; i < tiles.length; i++) {
+            const rect = tiles[i]?.getBoundingClientRect();
+
+            if (!rect) {
+                continue;
+            }
+
+            if (
+                event.clientY < rect.top + rect.height / 2 ||
+                (event.clientY < rect.bottom &&
+                    event.clientX < rect.left + rect.width / 2)
+            ) {
+                next = i;
+                break;
+            }
+        }
+
+        setDropIndex(next);
     }
 
     function toggleReuse(photo: PhotoLibraryPhoto) {
@@ -154,7 +271,7 @@ export function PhotoPicker({
                 return current.filter((entry) => entry.id !== photo.id);
             }
 
-            if (current.length + previews.length >= remaining) {
+            if (current.length + uploads.length >= remaining) {
                 setClientError(
                     `Keep it to ${remaining} photos total — remove one first.`,
                 );
@@ -204,64 +321,157 @@ export function PhotoPicker({
                         ` (${alreadyAttached} already attached)`}
                 </span>
             </div>
-            {(previews.length > 0 || reused.length > 0) && (
+            {(uploads.length > 0 || reused.length > 0) && (
                 <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
-                    {previews.map((url, index) => (
-                        <div
-                            key={url}
-                            className="group relative overflow-hidden rounded-lg border border-border-strong"
-                        >
-                            <img
-                                src={url}
-                                alt={`New photo ${index + 1}`}
-                                className="aspect-square w-full object-cover"
-                            />
-                            <button
-                                type="button"
-                                aria-label={`Remove new photo ${index + 1}`}
-                                onClick={() => removeUploadAt(index)}
+                    <ReorderStrip
+                        list="uploads"
+                        drag={drag}
+                        dropIndex={dropIndex}
+                        tileRefs={tileRefs}
+                        onPointerDown={(index) => (event) => {
+                            if (
+                                event.pointerType === 'mouse' &&
+                                event.button !== 0
+                            ) {
+                                return;
+                            }
+
+                            dragRef.current = {
+                                list: 'uploads',
+                                index,
+                            };
+                            setDrag({ list: 'uploads', index });
+                            setDropIndex(index);
+                            try {
+                                event.currentTarget.setPointerCapture(
+                                    event.pointerId,
+                                );
+                            } catch {
+                                // Touch already captures implicitly and some
+                                // pointers cannot be captured: moves still
+                                // bubble through the strip either way.
+                            }
+                            event.preventDefault();
+                        }}
+                        onPointerMove={(event) =>
+                            handleDropMove(event, 'uploads')
+                        }
+                        onPointerUp={() => endDrag(true)}
+                        onPointerCancel={() => endDrag(false)}
+                        onMoveKey={(index, delta) =>
+                            moveEntry('uploads', index, index + delta)
+                        }
+                    >
+                        {uploads.map((entry, index) => (
+                            <div
+                                key={entry.url}
                                 className={cn(
-                                    'absolute top-1 right-1 rounded-full bg-background/90 p-1',
-                                    'text-muted-foreground hover:text-destructive',
+                                    'group relative overflow-hidden rounded-lg border border-border-strong',
+                                    drag?.list === 'uploads' &&
+                                        drag.index === index &&
+                                        'opacity-40',
                                 )}
                             >
-                                <X className="size-3.5" />
-                            </button>
-                        </div>
-                    ))}
-                    {reused.map((photo) => (
-                        <div
-                            key={`reused-${photo.id}`}
-                            className="group relative overflow-hidden rounded-lg border border-brand-primary/50"
-                        >
-                            <img
-                                src={photo.url}
-                                alt={photo.name}
-                                loading="lazy"
-                                className="aspect-square w-full object-cover"
-                            />
-                            <span className="absolute bottom-1 left-1 rounded bg-background/90 px-1 text-[10px] font-medium text-foreground">
-                                Reused
-                            </span>
-                            <button
-                                type="button"
-                                aria-label={`Remove reused photo ${photo.name}`}
-                                onClick={() =>
-                                    setReused((current) =>
-                                        current.filter(
-                                            (entry) => entry.id !== photo.id,
-                                        ),
-                                    )
-                                }
+                                <img
+                                    src={entry.url}
+                                    alt={`New photo ${index + 1}`}
+                                    draggable={false}
+                                    className="aspect-square w-full object-cover"
+                                />
+                                <button
+                                    type="button"
+                                    aria-label={`Remove new photo ${index + 1}`}
+                                    onClick={() => removeUploadAt(index)}
+                                    className={cn(
+                                        'absolute top-1 right-1 rounded-full bg-background/90 p-1',
+                                        'text-muted-foreground hover:text-destructive',
+                                    )}
+                                >
+                                    <X className="size-3.5" />
+                                </button>
+                            </div>
+                        ))}
+                    </ReorderStrip>
+                    <ReorderStrip
+                        list="reused"
+                        drag={drag}
+                        dropIndex={dropIndex}
+                        tileRefs={tileRefs}
+                        onPointerDown={(index) => (event) => {
+                            if (
+                                event.pointerType === 'mouse' &&
+                                event.button !== 0
+                            ) {
+                                return;
+                            }
+
+                            dragRef.current = {
+                                list: 'reused',
+                                index,
+                            };
+                            setDrag({ list: 'reused', index });
+                            setDropIndex(index);
+                            try {
+                                event.currentTarget.setPointerCapture(
+                                    event.pointerId,
+                                );
+                            } catch {
+                                // Touch already captures implicitly and some
+                                // pointers cannot be captured: moves still
+                                // bubble through the strip either way.
+                            }
+                            event.preventDefault();
+                        }}
+                        onPointerMove={(event) =>
+                            handleDropMove(event, 'reused')
+                        }
+                        onPointerUp={() => endDrag(true)}
+                        onPointerCancel={() => endDrag(false)}
+                        onMoveKey={(index, delta) =>
+                            moveEntry('reused', index, index + delta)
+                        }
+                    >
+                        {reused.map((photo, index) => (
+                            <div
+                                key={`reused-${photo.id}`}
                                 className={cn(
-                                    'absolute top-1 right-1 rounded-full bg-background/90 p-1',
-                                    'text-muted-foreground hover:text-destructive',
+                                    'group relative overflow-hidden rounded-lg border border-brand-primary/50',
+                                    drag?.list === 'reused' &&
+                                        drag.index === index &&
+                                        'opacity-40',
                                 )}
                             >
-                                <X className="size-3.5" />
-                            </button>
-                        </div>
-                    ))}
+                                <img
+                                    src={photo.url}
+                                    alt={photo.name}
+                                    loading="lazy"
+                                    draggable={false}
+                                    className="aspect-square w-full object-cover"
+                                />
+                                <span className="absolute bottom-1 left-1 rounded bg-background/90 px-1 text-[10px] font-medium text-foreground">
+                                    Reused
+                                </span>
+                                <button
+                                    type="button"
+                                    aria-label={`Remove reused photo ${photo.name}`}
+                                    onClick={() =>
+                                        setReused((current) =>
+                                            current.filter(
+                                                (entry) =>
+                                                    entry.id !== photo.id,
+                                            ),
+                                        )
+                                    }
+                                    className={cn(
+                                        'absolute top-1 right-1 rounded-full bg-background/90 p-1',
+                                        'text-muted-foreground hover:text-destructive',
+                                    )}
+                                >
+                                    <X className="size-3.5" />
+                                </button>
+                            </div>
+                        ))}
+                    </ReorderStrip>
                 </div>
             )}
             {usableLibrary.length > 0 && (
@@ -316,6 +526,7 @@ export function PhotoPicker({
                                             src={photo.url}
                                             alt={photo.name}
                                             loading="lazy"
+                                            draggable={false}
                                             className="aspect-square w-full object-cover"
                                         />
                                         {picked && (
@@ -332,5 +543,128 @@ export function PhotoPicker({
             )}
             <InputError message={clientError ?? error} />
         </div>
+    );
+}
+
+type ReorderStripProps = {
+    list: StripName;
+    drag: DragState | null;
+    dropIndex: number | null;
+    tileRefs: RefObject<Record<StripName, (HTMLDivElement | null)[]>>;
+    onPointerDown: (
+        index: number,
+    ) => (event: ReactPointerEvent<HTMLButtonElement>) => void;
+    onPointerMove: (event: ReactPointerEvent) => void;
+    onPointerUp: () => void;
+    onPointerCancel: () => void;
+    onMoveKey: (index: number, delta: -1 | 1) => void;
+    children: ReactNode[];
+};
+
+/**
+ * Renders strip children with a dashed gap where the dragged tile would
+ * land and a grip on every tile. Children order matches the data order;
+ * the gap is positional only until drop commits.
+ */
+function ReorderStrip({
+    list,
+    drag,
+    dropIndex,
+    tileRefs,
+    onPointerDown,
+    onPointerMove,
+    onPointerUp,
+    onPointerCancel,
+    onMoveKey,
+    children,
+}: ReorderStripProps) {
+    const items = Children.toArray(children);
+    const active = drag?.list === list ? drag : null;
+    // Drop position in the order without the dragged tile; the commit
+    // inserts there, so the indicator must speak the same coordinates.
+    const removedLength = active ? items.length - 1 : items.length;
+    const at = dropIndex ?? active?.index ?? null;
+    const showTrailing =
+        active !== null &&
+        at !== null &&
+        at >= removedLength &&
+        at !== active.index;
+
+    return (
+        <>
+            {items.map((child, dataIndex) => {
+                const isDragged = active?.index === dataIndex;
+                const removedPos =
+                    active && dataIndex > active.index
+                        ? dataIndex - 1
+                        : dataIndex;
+                const showBar =
+                    active !== null &&
+                    !isDragged &&
+                    removedPos === dropIndex &&
+                    dropIndex !== active.index;
+
+                return (
+                    <div
+                        key={`${list}-tile-${dataIndex}`}
+                        ref={(node) => {
+                            tileRefs.current[list][dataIndex] = node;
+                        }}
+                        onPointerMove={onPointerMove}
+                        onPointerUp={onPointerUp}
+                        onPointerCancel={onPointerCancel}
+                        className="relative"
+                    >
+                        {showBar && (
+                            <span
+                                aria-hidden
+                                className="absolute top-1 bottom-1 -left-1.5 z-10 w-1 rounded-full bg-brand-primary"
+                            />
+                        )}
+                        <div className={cn(isDragged && 'opacity-40')}>
+                            {child}
+                        </div>
+                        <button
+                            type="button"
+                            aria-label={`Drag to reorder photo ${dataIndex + 1}`}
+                            title="Drag to reorder"
+                            onPointerDown={onPointerDown(dataIndex)}
+                            onKeyDown={(event) => {
+                                if (
+                                    event.key !== 'ArrowLeft' &&
+                                    event.key !== 'ArrowRight' &&
+                                    event.key !== 'ArrowUp' &&
+                                    event.key !== 'ArrowDown'
+                                ) {
+                                    return;
+                                }
+
+                                event.preventDefault();
+                                onMoveKey(
+                                    dataIndex,
+                                    event.key === 'ArrowLeft' ||
+                                        event.key === 'ArrowUp'
+                                        ? -1
+                                        : 1,
+                                );
+                            }}
+                            className={cn(
+                                'absolute top-1 left-1 rounded-full bg-background/90 p-1',
+                                'cursor-grab [touch-action:none] text-muted-foreground hover:text-foreground active:cursor-grabbing',
+                            )}
+                        >
+                            <GripVertical className="size-3.5" />
+                        </button>
+                    </div>
+                );
+            })}
+            {showTrailing && (
+                <div
+                    key={`${list}-gap`}
+                    aria-hidden
+                    className="aspect-square rounded-lg border-2 border-dashed border-brand-primary/60"
+                />
+            )}
+        </>
     );
 }

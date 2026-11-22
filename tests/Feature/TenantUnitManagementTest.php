@@ -478,3 +478,60 @@ test('a cover id from another unit is ignored, not applied', function () {
     expect($unit->fresh()->getMedia('photos')->first()->getCustomProperty('cover', false))
         ->toBeFalse();
 });
+
+test('reused photos copy in the requested order, not id order', function () {
+    Storage::fake('public');
+
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $property = makeUnitProperty($owner);
+    $source = makeUnit($property, $owner, ['name' => 'A1']);
+    $target = makeUnit($property, $owner, ['name' => 'A2']);
+
+    foreach (['one.jpg', 'two.jpg', 'three.jpg'] as $file) {
+        $source->addMedia(UploadedFile::fake()->image($file))->toMediaCollection('photos');
+    }
+
+    $ids = $source->fresh()->getMedia('photos')->pluck('id')->all();
+    $reversed = array_reverse($ids);
+
+    $this->actingAs($owner)
+        ->put(tenantUrl($property->organization, "/units/{$target->id}"), [
+            'name' => 'A2',
+            'rent_frequency' => 'monthly',
+            'reuse_photo_ids' => $reversed,
+        ])
+        ->assertRedirect();
+
+    expect(
+        $target->fresh()->getMedia('photos')->map->file_name->all(),
+    )->toBe(['three.jpg', 'two.jpg', 'one.jpg']);
+});
+
+test('reuse skips library photos whose files are gone', function () {
+    Storage::fake('public');
+
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $property = makeUnitProperty($owner);
+    $source = makeUnit($property, $owner, ['name' => 'A1']);
+    $target = makeUnit($property, $owner, ['name' => 'A2']);
+
+    foreach (['kept.jpg', 'ghost.jpg'] as $file) {
+        $source->addMedia(UploadedFile::fake()->image($file))->toMediaCollection('photos');
+    }
+
+    $media = $source->fresh()->getMedia('photos');
+    $ghost = $media->firstWhere('file_name', 'ghost.jpg');
+    Storage::disk($ghost->disk)->delete($ghost->getPathRelativeToRoot());
+    $keptId = $media->firstWhere('file_name', 'kept.jpg')->getKey();
+
+    $this->actingAs($owner)
+        ->put(tenantUrl($property->organization, "/units/{$target->id}"), [
+            'name' => 'A2',
+            'rent_frequency' => 'monthly',
+            'reuse_photo_ids' => [$ghost->getKey(), $keptId],
+        ])
+        ->assertRedirect();
+
+    // The save succeeds with the surviving photo; the ghost is skipped.
+    expect($target->fresh()->getMedia('photos')->map->file_name->all())->toBe(['kept.jpg']);
+});
