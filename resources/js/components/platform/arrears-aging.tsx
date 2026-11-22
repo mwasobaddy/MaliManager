@@ -12,7 +12,7 @@ export function ArrearsAgingCard({ aging }: { aging: AgingRow[] }) {
     const max = Math.max(...aging.map((row) => Number(row.total)), 1);
 
     return (
-        <Card>
+        <Card className='h-full'>
             <CardHeader className="pb-2">
                 <CardTitle className="text-base font-medium">
                     Arrears aging

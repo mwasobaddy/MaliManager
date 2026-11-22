@@ -6,12 +6,12 @@ import { ComboChart } from '@/components/dashboard/combo-chart';
 import { StatsCards } from '@/components/dashboard/stats-cards';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
-import { SearchableSelect } from '@/components/searchable-select';
 import { AlertsPanel } from '@/components/platform/alerts-panel';
 import { ArrearsAgingCard } from '@/components/platform/arrears-aging';
 import { DefaulterTable } from '@/components/platform/defaulter-table';
 import { RentCollectionHero } from '@/components/platform/rent-collection-hero';
 import { UnitGridCard } from '@/components/platform/unit-grid';
+import { SearchableSelect } from '@/components/searchable-select';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -420,6 +420,7 @@ export default function PropertiesDashboard({
                                                 Type
                                             </Label>
                                             <SearchableSelect
+                                                className="w-full"
                                                 id="unit-type"
                                                 name="type"
                                                 options={unitTypes}

@@ -45,6 +45,16 @@ class AuthLanding
             }
         }
 
+        // Work-door check: on a tenant domain, anyone without an active
+        // membership in this organization does not belong here — not even
+        // with valid credentials. Bounce them to their own front door
+        // with an explanation instead of teleporting them silently.
+        $bounced = self::bounceNonMember($user, $request);
+
+        if ($bounced !== null) {
+            return $bounced;
+        }
+
         $access = app(PropertyAccessService::class);
         $organizations = $access->organizationsWithProperties($user);
         $properties = self::flattenProperties($organizations);
@@ -142,6 +152,52 @@ class AuthLanding
         $scheme = $request->secure() ? 'https' : 'http';
 
         return "{$scheme}://{$domain}/{$path}";
+    }
+
+    /**
+     * URL of the user's own tenant home when they authenticated on a
+     * domain they are not an active member of, or null when they belong
+     * here (or there is nowhere to bounce to). Platform admins always
+     * pass through: impersonation and platform work ride on their
+     * session.
+     */
+    private static function bounceNonMember(User $user, Request $request): ?string
+    {
+        if (! TenancyContext::initialized()) {
+            return null;
+        }
+
+        $organization = TenancyContext::organization();
+
+        if ($organization === null || $user->isPlatformAdmin()) {
+            return null;
+        }
+
+        $membership = $user->membershipFor($organization);
+
+        if ($membership !== null && ($membership->status ?? 'active') === 'active') {
+            return null;
+        }
+
+        $home = $user->organizations()
+            ->wherePivot('status', 'active')
+            ->orderBy('organizations.id')
+            ->first();
+
+        $domain = $home?->tenant?->domains()->first()?->domain;
+
+        if ($home === null || $domain === null) {
+            return null;
+        }
+
+        Inertia::flash('toast', [
+            'type' => 'warning',
+            'message' => "Signed in as {$home->name} — that account has no access to {$organization->name}.",
+        ]);
+
+        $scheme = $request->secure() ? 'https' : 'http';
+
+        return "{$scheme}://{$domain}/overview";
     }
 
     private static function organizationLanding(Organization $organization, Request $request): string

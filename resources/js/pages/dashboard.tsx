@@ -13,9 +13,9 @@ import { AttentionTable } from '@/components/platform/attention-table';
 import { CohortHeatmap } from '@/components/platform/cohort-heatmap';
 import { DefaulterTable } from '@/components/platform/defaulter-table';
 import { FailuresTable } from '@/components/platform/failures-table';
-import { LandMap } from '@/components/platform/land-map';
 import { FunnelChart } from '@/components/platform/funnel-chart';
 import { KpiCard, snapshotSpark } from '@/components/platform/kpi-card';
+import { LandMap } from '@/components/platform/land-map';
 import {
     OperationsPanels,
     formatLatency,
@@ -26,7 +26,6 @@ import {
     ChartSkeleton,
     SectionSkeleton,
 } from '@/components/platform/section-skeleton';
-import { UnitGridCard } from '@/components/platform/unit-grid';
 import type {
     Adoption,
     Growth,
@@ -37,6 +36,7 @@ import type {
     Overview,
     Payments,
 } from '@/components/platform/types';
+import { UnitGridCard } from '@/components/platform/unit-grid';
 import { Button } from '@/components/ui/button';
 import {
     Card,
