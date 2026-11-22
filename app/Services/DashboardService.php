@@ -572,8 +572,11 @@ class DashboardService extends Service
     }
 
     /**
-     * Landlord to-do list, plain text by the marketing rule: overdue
-     * tenants past a week, leases expiring within 30 days. Stale urgent
+     * Landlord to-do list, plain text by the marketing rule: one row per
+     * condition, danger first. Overdue tenants past a week carry the
+     * outstanding amount, expiring leases the end date, vacant units the
+     * lost rent. Capped at 15 rows so the panel stays scannable; the
+     * defaulter and expiry sections carry the full lists. Stale urgent
      * maintenance already reports through flags, so it stays out.
      *
      * @param  array<int, int>  $orgIds
@@ -588,41 +591,76 @@ class DashboardService extends Service
             return [];
         }
 
-        $items = [];
-
-        $overdueWeek = Lease::query()
+        $leases = Lease::query()
             ->whereIn('organization_id', $orgIds)
             ->whereIn('property_id', $propertyIds)
             ->where('status', 'active')
+            ->whereNotNull('unit_id')
+            ->with(['unit:id,name', 'person:id,first_name,last_name'])
             ->get();
 
-        $weekOverdue = collect($this->arrears->balancesFor($overdueWeek))
-            ->filter(fn (array $balance): bool => $balance['overdue'] && $balance['days_overdue'] > 7)
-            ->count();
+        $items = [];
 
-        if ($weekOverdue > 0) {
+        // Overdue past a week, worst first.
+        $balances = collect($this->arrears->balancesFor($leases))
+            ->filter(fn (array $balance): bool => $balance['overdue'] && $balance['days_overdue'] > 7)
+            ->sortByDesc(fn (array $balance): int => $balance['days_overdue']);
+
+        foreach ($balances as $balance) {
             $items[] = [
                 'severity' => 'danger',
-                'text' => "{$weekOverdue} tenant".($weekOverdue > 1 ? 's' : '').' more than 7 days overdue.',
+                'text' => self::leaseWho($balance['lease'])." is {$balance['days_overdue']} days overdue — {$balance['outstanding']} outstanding.",
             ];
         }
 
-        $expiring = Lease::query()
-            ->whereIn('organization_id', $orgIds)
-            ->whereIn('property_id', $propertyIds)
-            ->where('status', 'active')
-            ->whereNotNull('ends_at')
-            ->whereBetween('ends_at', [now()->toDateString(), now()->addDays(30)->toDateString()])
-            ->count();
+        // Leases expiring within 30 days, soonest first.
+        $today = now()->toDateString();
+        $expiring = $leases
+            ->filter(fn (Lease $lease): bool => $lease->ends_at !== null
+                && $lease->ends_at->toDateString() >= $today
+                && $lease->ends_at->toDateString() <= now()->addDays(30)->toDateString())
+            ->sortBy(fn (Lease $lease): string => $lease->ends_at->toDateString());
 
-        if ($expiring > 0) {
+        foreach ($expiring as $lease) {
+            $daysLeft = now()->startOfDay()->diffInDays($lease->ends_at->startOfDay());
             $items[] = [
                 'severity' => 'warning',
-                'text' => "{$expiring} lease".($expiring > 1 ? 's expire' : ' expires').' within 30 days — line up renewals.',
+                'text' => self::leaseWho($lease)."'s lease ends {$lease->ends_at->toDateString()} ({$daysLeft}d) — line up a renewal.",
             ];
         }
 
-        return $items;
+        // Vacant units, by name.
+        $vacant = Unit::query()
+            ->whereIn('property_id', $propertyIds)
+            ->where('status', 'vacant')
+            ->orderBy('name')
+            ->get(['id', 'name', 'monthly_rent']);
+
+        foreach ($vacant as $unit) {
+            $items[] = [
+                'severity' => 'info',
+                'text' => $unit->monthly_rent !== null
+                    ? "{$unit->name} is vacant — {$unit->monthly_rent}/mo uncollected."
+                    : "{$unit->name} is vacant — list it.",
+            ];
+        }
+
+        return array_slice($items, 0, 15);
+    }
+
+    /**
+     * "Jane Doe (A1)" for a lease, falling back to the unit name when no
+     * occupant is attached.
+     */
+    private static function leaseWho(Lease $lease): string
+    {
+        $name = trim(($lease->person?->first_name ?? '').' '.($lease->person?->last_name ?? ''));
+
+        if ($name === '') {
+            return $lease->unit?->name ?? 'A lease';
+        }
+
+        return $lease->unit ? "{$name} ({$lease->unit->name})" : $name;
     }
 
     /**

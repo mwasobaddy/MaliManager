@@ -181,6 +181,78 @@ test('org-level pages show no property context without a prior visit', function 
     expect($context['property'] ?? null)->toBeNull();
 });
 
+test('property attention lists one row per condition capped at fifteen', function () {
+    $user = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createTestOrganization($user);
+    $property = $organization->properties()->create([
+        'name' => 'Attention Courts',
+        'slug' => 'attention-courts',
+        'status' => 'active',
+        'created_by' => $user->id,
+    ]);
+
+    $property->units()->createMany([
+        ['name' => 'A1', 'status' => 'occupied', 'monthly_rent' => 25000, 'created_by' => $user->id],
+        ['name' => 'A2', 'status' => 'vacant', 'monthly_rent' => 20000, 'created_by' => $user->id],
+    ]);
+
+    $occupant = Occupant::factory()->create(['organization_id' => $organization->id]);
+
+    Lease::factory()->create([
+        'organization_id' => $organization->id,
+        'property_id' => $property->id,
+        'unit_id' => $property->units()->where('name', 'A1')->value('id'),
+        'person_id' => $occupant->person_id,
+        'status' => 'active',
+        'starts_at' => now()->subMonthsNoOverflow(2)->toDateString(),
+        'ends_at' => now()->addDays(20)->toDateString(),
+        'rent_amount' => 25000,
+        'rent_due_day' => 5,
+    ]);
+
+    $attention = $this->actingAs($user)
+        ->get(tenantUrl($organization, '/attention-courts/dashboard'))
+        ->assertOk()
+        ->viewData('page')['props']['stats']['attention'];
+
+    // One overdue row, one expiring row for the same lease, one vacant row.
+    expect($attention)->toHaveCount(3)
+        ->and($attention[0]['severity'])->toBe('danger')
+        ->and($attention[0]['text'])->toContain('A1')
+        ->and($attention[0]['text'])->toContain('days overdue')
+        ->and($attention[1]['severity'])->toBe('warning')
+        ->and($attention[1]['text'])->toContain('A1')
+        ->and($attention[2]['severity'])->toBe('info')
+        ->and($attention[2]['text'])->toContain('A2');
+});
+
+test('property attention caps vacant rows at fifteen', function () {
+    $user = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createTestOrganization($user);
+    $property = $organization->properties()->create([
+        'name' => 'Big Block',
+        'slug' => 'big-block',
+        'status' => 'active',
+        'created_by' => $user->id,
+    ]);
+
+    $units = [];
+
+    for ($i = 1; $i <= 20; $i++) {
+        $units[] = ['name' => "U{$i}", 'status' => 'vacant', 'monthly_rent' => 10000, 'created_by' => $user->id];
+    }
+
+    $property->units()->createMany($units);
+
+    $attention = $this->actingAs($user)
+        ->get(tenantUrl($organization, '/big-block/dashboard'))
+        ->assertOk()
+        ->viewData('page')['props']['stats']['attention'];
+
+    expect($attention)->toHaveCount(15)
+        ->and($attention[0]['severity'])->toBe('info');
+});
+
 test('property dashboard carries collection, attention, expiry and unit grid', function () {
     $user = User::factory()->create(['onboarded_at' => now()]);
     $organization = createTestOrganization($user);
