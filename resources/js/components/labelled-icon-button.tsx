@@ -21,6 +21,7 @@ const iconChipVariants = cva(
             color: {
                 primary: 'bg-primary text-primary-foreground',
                 brand: 'bg-brand-primary text-white',
+                teal: 'bg-brand-accent text-on-accent',
                 view: 'bg-action-view text-white',
                 edit: 'bg-action-edit text-white',
                 danger: 'bg-action-danger text-white',
@@ -38,6 +39,7 @@ const labelToneVariants = cva('text-xs leading-tight font-medium', {
         color: {
             primary: 'text-foreground',
             brand: 'text-foreground',
+            teal: 'text-foreground',
             view: 'text-foreground',
             edit: 'text-foreground',
             danger: 'text-destructive',
@@ -65,7 +67,8 @@ type LabelledIconButtonProps = {
      * a span to keep the explanation reachable by mouse, keyboard and touch.
      */
     disabledReason?: string | null;
-    color?: 'primary' | 'brand' | 'view' | 'edit' | 'danger' | 'default';
+    color?:
+        'primary' | 'brand' | 'teal' | 'view' | 'edit' | 'danger' | 'default';
     /** Inertia target for navigation; omit for a <button>. */
     href?: InertiaLinkProps['href'];
     onClick?: () => void;

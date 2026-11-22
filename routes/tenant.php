@@ -136,6 +136,9 @@ Route::middleware([
         Route::middleware('sub-permission:unit.manage')->group(function () {
             Route::get('/units', [UnitController::class, 'index'])
                 ->name('tenant.units.index');
+            // Before the show route: otherwise `export` binds as {unit}.
+            Route::get('/units/export', [UnitController::class, 'export'])
+                ->name('tenant.units.export');
             Route::get('/units/{unit}', [UnitController::class, 'show'])
                 ->name('tenant.units.show');
 

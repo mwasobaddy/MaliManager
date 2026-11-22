@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers\Tenant;
 
+use App\Actions\Properties\ExportUnits;
 use App\Actions\Properties\UpdatePropertyUnit;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Tenant\DestroyUnitRequest;
+use App\Http\Requests\Tenant\ExportUnitsRequest;
 use App\Http\Requests\Tenant\StoreUnitRequest;
 use App\Http\Requests\Tenant\UnitIndexRequest;
 use App\Http\Requests\Tenant\UnitShowRequest;
@@ -17,7 +19,6 @@ use App\Services\PropertyService;
 use App\Services\StaffService;
 use App\Support\AuthLanding;
 use App\Support\TenancyContext;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -25,13 +26,6 @@ use Inertia\Response;
 
 class UnitController extends Controller
 {
-    private const SORTABLE = [
-        'name' => 'units.name',
-        'rent' => 'units.rent_amount',
-        'status' => 'units.status',
-        'photos' => 'units.id',
-    ];
-
     /**
      * Every unit in the organization, across properties.
      *
@@ -42,47 +36,15 @@ class UnitController extends Controller
      */
     public function index(UnitIndexRequest $request): Response
     {
-        $sort = $request->string('sort')->toString();
-        $sortColumn = self::SORTABLE[$sort] ?? null;
-        $direction = $request->string('direction')->toString() === 'asc' ? 'asc' : 'desc';
-
         $units = Unit::query()
-            ->whereHas(
-                'property',
-                fn (Builder $query) => $query->where(
-                    'organization_id',
-                    TenancyContext::organization()?->id,
-                ),
-            )
+            ->tenantIndex((int) TenancyContext::organization()?->id, [
+                'search' => $request->string('search')->trim()->toString(),
+                'status' => $request->string('status')->toString(),
+                'property' => $request->string('property')->toString(),
+                'sort' => $request->string('sort')->toString(),
+                'direction' => $request->string('direction')->toString(),
+            ])
             ->with(['property:id,name,slug', 'media'])
-            ->when(
-                $request->string('search')->trim()->toString(),
-                fn (Builder $query, string $search) => $query->where(
-                    fn (Builder $inner) => $inner->where('units.name', 'like', "%{$search}%")
-                        ->orWhere('units.type', 'like', "%{$search}%")
-                        ->orWhereHas(
-                            'property',
-                            fn (Builder $property) => $property->where('name', 'like', "%{$search}%"),
-                        ),
-                ),
-            )
-            ->when(
-                $request->string('status')->toString() !== '',
-                fn (Builder $query) => $query->where('units.status', $request->string('status')->toString()),
-            )
-            ->when(
-                $request->string('property')->toString() !== '',
-                fn (Builder $query) => $query->whereHas(
-                    'property',
-                    fn (Builder $property) => $property->where('id', $request->integer('property')),
-                ),
-            )
-            ->when(
-                $sortColumn !== null,
-                fn (Builder $query) => $query->orderBy($sortColumn, $direction),
-            )
-            ->when($sortColumn === null, fn (Builder $query) => $query->orderBy('units.name'))
-            ->orderBy('units.id')
             ->paginate(18)
             ->withQueryString()
             ->through(fn (Unit $unit): array => [
@@ -143,6 +105,23 @@ class UnitController extends Controller
                 ->pluck('name')
                 ->all(),
         ]);
+    }
+
+    /**
+     * Streams the CSV. `scope=page` honours the pagination the user is looking
+     * at; anything else exports the whole filtered set.
+     */
+    public function export(ExportUnitsRequest $request, ExportUnits $export): \Symfony\Component\HttpFoundation\Response
+    {
+        $csv = $export->handle($request->toData());
+
+        return response()->streamDownload(
+            function () use ($csv): void {
+                echo $csv->content;
+            },
+            $csv->filename,
+            ['Content-Type' => 'text/csv'],
+        );
     }
 
     /**

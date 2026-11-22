@@ -3,6 +3,7 @@ import { usePage } from '@inertiajs/react';
 import type { ColumnDef, SortingState } from '@tanstack/react-table';
 import {
     Building2,
+    Download,
     ImageOff,
     ListFilter,
     Pencil,
@@ -13,6 +14,8 @@ import {
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActionIconButton } from '@/components/action-icon-button';
 import ConfirmDeleteOverlay from '@/components/confirm-delete-overlay';
+import { downloadCsv } from '@/components/csv-actions';
+import { CsvExportSheet } from '@/components/csv-export-sheet';
 import { LabelledIconButton } from '@/components/labelled-icon-button';
 import { PhotoPicker } from '@/components/photo-picker';
 import type { PhotoLibraryUnit } from '@/components/photo-picker';
@@ -114,6 +117,9 @@ export default function UnitsIndex({
     const canCreate = (context?.permissions ?? []).includes('unit.create');
     const canEdit = (context?.permissions ?? []).includes('unit.edit');
     const canDelete = (context?.permissions ?? []).includes('unit.delete');
+    // Export rides on the same gate as the page itself: anyone trusted to
+    // browse the units may download the same list. No unit.export key exists.
+    const canExport = (context?.permissions ?? []).includes('unit.manage');
 
     const [editTarget, setEditTarget] = useState<UnitRow | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<UnitRow | null>(null);
@@ -279,6 +285,38 @@ export default function UnitsIndex({
     }
 
     const isCreateOpen = query.get('create') === '1';
+    const isExportOpen = query.get('export') === '1';
+
+    /** Spoken description of the active filters, for the export sheet. */
+    const activeFilterSummary =
+        [
+            filters.search ? 'the search' : '',
+            filters.status ? 'the status filter' : '',
+            filters.property ? 'the property filter' : '',
+        ]
+            .filter(Boolean)
+            .join(' and ') || null;
+
+    /**
+     * The filters the export has to carry. Reusing them is the point: "Export
+     * all" must mean "everything the table is showing", not "everything".
+     */
+    function exportParams(scope: 'all' | 'page') {
+        return {
+            search: filters.search,
+            status: filters.status,
+            property: filters.property,
+            sort: sort.column ?? '',
+            direction: sort.direction,
+            scope,
+            ...(scope === 'page' ? { page: units.current_page } : {}),
+        };
+    }
+
+    function runExport(scope: 'all' | 'page') {
+        downloadCsv(unitRoutes.exportMethod().url, exportParams(scope));
+        setOverlayParam('export', null);
+    }
 
     // Default to the filtered property so "Add unit" from a filtered list
     // lands in the right building; fall back to the first property.
@@ -460,16 +498,28 @@ export default function UnitsIndex({
                         title="Units"
                         description="Every rentable unit across your properties, with the photos attached to each."
                     />
-                    {canCreate && properties.length > 0 && (
-                        <LabelledIconButton
-                            icon={<Plus />}
-                            label="Add unit"
-                            tooltip="Add a unit to one of your properties"
-                            color="primary"
-                            onClick={openCreate}
-                            className="max-w-20 sm:max-w-24"
-                        />
-                    )}
+                    <div className="flex flex-wrap items-start gap-3">
+                        {canCreate && properties.length > 0 && (
+                            <LabelledIconButton
+                                icon={<Plus />}
+                                label="Add unit"
+                                tooltip="Add a unit to one of your properties"
+                                color="primary"
+                                onClick={openCreate}
+                                className="w-auto max-w-20 sm:max-w-24"
+                            />
+                        )}
+                        {canExport && (
+                            <LabelledIconButton
+                                icon={<Download />}
+                                label="Export"
+                                tooltip="Download the filtered units as CSV"
+                                color="teal"
+                                onClick={() => setOverlayParam('export', '1')}
+                                className="w-auto max-w-20 sm:max-w-24"
+                            />
+                        )}
+                    </div>
                 </div>
 
                 <Card className="gap-0 py-0">
@@ -1120,6 +1170,17 @@ export default function UnitsIndex({
                     description="This removes the unit and its photos. Occupied units cannot be deleted — end the lease first."
                 />
             )}
+
+            <CsvExportSheet
+                open={isExportOpen}
+                onClose={() => setOverlayParam('export', null)}
+                canExport={canExport}
+                total={units.total}
+                pageCount={units.data.length}
+                currentPage={units.current_page}
+                activeFilters={activeFilterSummary}
+                onExport={runExport}
+            />
         </>
     );
 }

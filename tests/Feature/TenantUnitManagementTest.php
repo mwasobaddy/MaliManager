@@ -535,3 +535,52 @@ test('reuse skips library photos whose files are gone', function () {
     // The save succeeds with the surviving photo; the ghost is skipped.
     expect($target->fresh()->getMedia('photos')->map->file_name->all())->toBe(['kept.jpg']);
 });
+
+test('units export downloads the filtered set as csv', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $property = makeUnitProperty($owner);
+    makeUnit($property, $owner, ['name' => 'A1']);
+    makeUnit($property, $owner, ['name' => 'B2', 'rent_frequency' => 'weekly', 'rent_amount' => 7000]);
+
+    $response = $this->actingAs($owner)
+        ->get(tenantUrl($property->organization, '/units/export?search=B2'))
+        ->assertOk();
+
+    expect($response->headers->get('Content-Type'))->toContain('text/csv');
+
+    $lines = array_values(array_filter(explode("\n", trim($response->streamedContent()))));
+
+    expect($lines)->toHaveCount(2)
+        ->and($lines[0])->toContain('Billing frequency')
+        ->and($lines[1])->toContain('B2')
+        ->and($lines[1])->toContain('weekly');
+});
+
+test('units export page scope honors pagination', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $property = makeUnitProperty($owner);
+    makeUnit($property, $owner, ['name' => 'A1']);
+
+    $response = $this->actingAs($owner)
+        ->get(tenantUrl($property->organization, '/units/export?scope=page&page=2'))
+        ->assertOk();
+
+    $lines = array_values(array_filter(explode("\n", trim($response->streamedContent()))));
+
+    // Only the header: page two is empty.
+    expect($lines)->toHaveCount(1);
+});
+
+test('staff without unit.manage cannot export units', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $property = makeUnitProperty($owner);
+    $staff = staffWith($owner, $property->organization, ['unit.edit']);
+
+    $this->actingAs($staff)
+        ->get(tenantUrl($property->organization, '/units/export'))
+        ->assertRedirect()
+        ->assertSessionHas('inertia.flash_data', fn (array $flash) => str_contains(
+            $flash['toast']['message'] ?? '',
+            'do not have permission',
+        ));
+});

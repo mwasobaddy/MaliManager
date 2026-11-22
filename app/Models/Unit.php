@@ -40,6 +40,66 @@ class Unit extends Model implements HasMedia
      */
     public const MAX_PHOTOS = 12;
 
+    /**
+     * Sortable index columns, shared by the table and the CSV export.
+     *
+     * @var array<string, string>
+     */
+    public const SORTABLE = [
+        'name' => 'units.name',
+        'rent' => 'units.rent_amount',
+        'status' => 'units.status',
+        'photos' => 'units.id',
+    ];
+
+    /**
+     * The organization-wide unit listing: tenancy scoping plus the index's
+     * search, status, property and sort filters. Shared by the table and the
+     * CSV export so "Export all" can never disagree with the table it was
+     * clicked from.
+     *
+     * @param  array{search?: string, status?: string, property?: int|string, sort?: string, direction?: string}  $filters
+     */
+    public function scopeTenantIndex(Builder $query, int $organizationId, array $filters): Builder
+    {
+        $sortColumn = self::SORTABLE[$filters['sort'] ?? ''] ?? null;
+        $direction = ($filters['direction'] ?? '') === 'asc' ? 'asc' : 'desc';
+
+        return $query
+            ->whereHas(
+                'property',
+                fn (Builder $property) => $property->where('organization_id', $organizationId),
+            )
+            ->when(
+                trim((string) ($filters['search'] ?? '')),
+                fn (Builder $builder, string $search) => $builder->where(
+                    fn (Builder $inner) => $inner->where('units.name', 'like', "%{$search}%")
+                        ->orWhere('units.type', 'like', "%{$search}%")
+                        ->orWhereHas(
+                            'property',
+                            fn (Builder $property) => $property->where('name', 'like', "%{$search}%"),
+                        ),
+                ),
+            )
+            ->when(
+                ($filters['status'] ?? '') !== '',
+                fn (Builder $builder) => $builder->where('units.status', (string) $filters['status']),
+            )
+            ->when(
+                ($filters['property'] ?? '') !== '',
+                fn (Builder $builder) => $builder->whereHas(
+                    'property',
+                    fn (Builder $property) => $property->where('id', (int) $filters['property']),
+                ),
+            )
+            ->when(
+                $sortColumn !== null,
+                fn (Builder $builder) => $builder->orderBy($sortColumn, $direction),
+            )
+            ->when($sortColumn === null, fn (Builder $builder) => $builder->orderBy('units.name'))
+            ->orderBy('units.id');
+    }
+
     protected $fillable = [
         'property_id',
         'name',
