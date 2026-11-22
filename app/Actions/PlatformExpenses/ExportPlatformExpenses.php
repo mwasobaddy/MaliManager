@@ -19,6 +19,9 @@ use App\Support\CsvExport;
  */
 class ExportPlatformExpenses extends Service
 {
+    /** Column picker source: the sheet lists these, the download keeps the ticked ones. */
+    public const HEADERS = ['Spent on', 'Category', 'Amount', 'Currency', 'Vendor', 'Notes'];
+
     public function handle(ExportPlatformExpensesData $data): CsvExport
     {
         $query = PlatformExpense::query()
@@ -46,10 +49,11 @@ class ExportPlatformExpenses extends Service
             $expense->notes ?? '',
         ]);
 
-        return CsvExport::fromRows(
+        return CsvExport::fromSelectedColumns(
             'platform-expenses.csv',
-            ['Spent on', 'Category', 'Amount', 'Currency', 'Vendor', 'Notes'],
+            self::HEADERS,
             $rows,
+            $data->columns,
         );
     }
 }

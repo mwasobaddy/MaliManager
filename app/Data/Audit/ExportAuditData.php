@@ -14,5 +14,5 @@ final readonly class ExportAuditData
         public string $sortColumn,
         public string $sortDirection,
         public ?string $tenantId,
-    ) {}
+        public array $columns, ) {}
 }

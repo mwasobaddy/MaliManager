@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Tenant;
 
+use App\Actions\Properties\ExportUnits;
 use App\Data\Units\ExportUnitsData;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -34,6 +35,8 @@ class ExportUnitsRequest extends FormRequest
             'property' => ['nullable', 'string', 'max:64'],
             'sort' => ['nullable', 'string', 'max:64'],
             'direction' => ['nullable', Rule::in(['asc', 'desc'])],
+            'columns' => ['nullable', 'array'],
+            'columns.*' => ['string', Rule::in(ExportUnits::HEADERS)],
         ];
     }
 
@@ -47,6 +50,7 @@ class ExportUnitsRequest extends FormRequest
             property: $this->string('property')->toString(),
             sort: $this->string('sort')->toString(),
             direction: $this->string('direction')->toString(),
+            columns: array_values(array_filter((array) $this->input('columns', []), 'is_string')),
         );
     }
 }

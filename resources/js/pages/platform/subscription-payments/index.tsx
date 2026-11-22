@@ -489,7 +489,7 @@ export default function SubscriptionPaymentsIndex({
     );
 
     /** Current filters as export query params, shared by both scopes. */
-    function exportParams(scope: 'all' | 'page') {
+    function exportParams(scope: 'all' | 'page', columns: string[]) {
         return {
             search: filters.search,
             from: filters.from,
@@ -497,14 +497,15 @@ export default function SubscriptionPaymentsIndex({
             sort: sort.column ?? '',
             direction: sort.direction,
             scope,
+            columns,
             ...(scope === 'page' ? { page: payments.current_page } : {}),
         };
     }
 
-    function runExport(scope: 'all' | 'page') {
+    function runExport(scope: 'all' | 'page', columns: string[]) {
         downloadCsv(
             subscriptionPaymentRoutes.exportMethod().url,
-            exportParams(scope),
+            exportParams(scope, columns),
         );
         setOverlayParam('export', null, { replace: true });
     }
@@ -905,6 +906,7 @@ export default function SubscriptionPaymentsIndex({
                 pageCount={payments.data.length}
                 currentPage={payments.current_page}
                 activeFilters={activeFilterSummary}
+                columns={['Received on', 'Organization', 'Plan', 'Amount', 'Currency', 'Method', 'Reference', 'Notes']}
                 onExport={runExport}
             />
 

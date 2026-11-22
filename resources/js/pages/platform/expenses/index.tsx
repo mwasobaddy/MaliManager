@@ -446,18 +446,19 @@ export default function PlatformExpensesIndex({
     );
 
     /** Current filters as export query params, shared by both scopes. */
-    function exportParams(scope: 'all' | 'page') {
+    function exportParams(scope: 'all' | 'page', columns: string[]) {
         return {
             ...currentFilters(),
             sort: sort.column ?? '',
             direction: sort.direction,
             scope,
+            columns,
             ...(scope === 'page' ? { page: expenses.current_page } : {}),
         };
     }
 
-    function runExport(scope: 'all' | 'page') {
-        downloadCsv(expenseRoutes.exportMethod().url, exportParams(scope));
+    function runExport(scope: 'all' | 'page', columns: string[]) {
+        downloadCsv(expenseRoutes.exportMethod().url, exportParams(scope, columns));
         setOverlayParam('export', null, { replace: true });
     }
 
@@ -902,6 +903,7 @@ export default function PlatformExpensesIndex({
                 pageCount={expenses.data.length}
                 currentPage={expenses.current_page}
                 activeFilters={activeFilterSummary}
+                columns={['Spent on', 'Category', 'Amount', 'Currency', 'Vendor', 'Notes']}
                 onExport={runExport}
             />
 

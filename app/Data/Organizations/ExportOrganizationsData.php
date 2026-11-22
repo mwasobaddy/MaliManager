@@ -11,5 +11,5 @@ final readonly class ExportOrganizationsData
         public int $page,
         public string $search,
         public string $status,
-    ) {}
+        public array $columns, ) {}
 }

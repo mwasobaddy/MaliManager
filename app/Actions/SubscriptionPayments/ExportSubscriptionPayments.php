@@ -18,6 +18,9 @@ use App\Support\CsvExport;
  */
 class ExportSubscriptionPayments extends Service
 {
+    /** Column picker source: the sheet lists these, the download keeps the ticked ones. */
+    public const HEADERS = ['Received on', 'Organization', 'Plan', 'Amount', 'Currency', 'Method', 'Reference', 'Notes'];
+
     public function handle(ExportSubscriptionPaymentsData $data): CsvExport
     {
         $query = SubscriptionPayment::query()
@@ -44,10 +47,11 @@ class ExportSubscriptionPayments extends Service
             $payment->notes ?? '',
         ]);
 
-        return CsvExport::fromRows(
+        return CsvExport::fromSelectedColumns(
             'subscription-payments.csv',
-            ['Received on', 'Organization', 'Plan', 'Amount', 'Currency', 'Method', 'Reference', 'Notes'],
+            self::HEADERS,
             $rows,
+            $data->columns,
         );
     }
 }

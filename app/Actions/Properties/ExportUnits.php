@@ -15,6 +15,9 @@ use App\Support\TenancyContext;
  */
 class ExportUnits extends Service
 {
+    /** Column picker source: the sheet lists these, the download keeps the ticked ones. */
+    public const HEADERS = ['ID', 'Name', 'Type', 'Billing frequency', 'Rent amount', 'Status', 'Property', 'Photos', 'Created at'];
+
     public function handle(ExportUnitsData $data): CsvExport
     {
         $query = Unit::query()
@@ -45,10 +48,11 @@ class ExportUnits extends Service
 
         $suffix = $data->scope === 'page' ? '-page'.$data->page : '-all';
 
-        return CsvExport::fromRows(
+        return CsvExport::fromSelectedColumns(
             'units'.$suffix.'.csv',
-            ['ID', 'Name', 'Type', 'Billing frequency', 'Rent amount', 'Status', 'Property', 'Photos', 'Created at'],
+            self::HEADERS,
             $rows,
+            $data->columns,
         );
     }
 }

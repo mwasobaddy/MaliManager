@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Platform;
 
+use App\Actions\Audit\ExportAuditLog;
 use App\Data\Audit\ExportAuditData;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -35,6 +36,8 @@ class ExportAuditRequest extends FormRequest
             'tenant_id' => ['nullable', 'string', 'max:191'],
             'sort' => ['nullable', 'string', 'max:64'],
             'direction' => ['nullable', Rule::in(['asc', 'desc'])],
+            'columns' => ['nullable', 'array'],
+            'columns.*' => ['string', Rule::in(ExportAuditLog::HEADERS)],
         ];
     }
 
@@ -48,6 +51,7 @@ class ExportAuditRequest extends FormRequest
             sortColumn: $this->string('sort')->toString(),
             sortDirection: $this->string('direction')->toString(),
             tenantId: null,
+            columns: array_values(array_filter((array) $this->input('columns', []), 'is_string')),
         );
     }
 }

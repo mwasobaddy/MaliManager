@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Platform;
 
+use App\Actions\PlatformExpenses\ExportPlatformExpenses;
 use App\Data\PlatformExpenses\ExportPlatformExpensesData;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -31,6 +32,8 @@ class ExportPlatformExpensesRequest extends FormRequest
             'category' => ['nullable', 'string', 'max:64'],
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date', 'after_or_equal:from'],
+            'columns' => ['nullable', 'array'],
+            'columns.*' => ['string', Rule::in(ExportPlatformExpenses::HEADERS)],
         ];
     }
 
@@ -43,6 +46,7 @@ class ExportPlatformExpensesRequest extends FormRequest
             category: $this->string('category')->trim()->toString(),
             from: $this->string('from')->toString(),
             to: $this->string('to')->toString(),
+            columns: array_values(array_filter((array) $this->input('columns', []), 'is_string')),
         );
     }
 }

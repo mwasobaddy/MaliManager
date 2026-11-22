@@ -19,6 +19,9 @@ use App\Support\CsvExport;
  */
 class ExportOrganizations extends Service
 {
+    /** Column picker source: the sheet lists these, the download keeps the ticked ones. */
+    public const HEADERS = ['ID', 'Name', 'Slug', 'Email', 'Phone', 'Status', 'Plan', 'Domain', 'Users', 'Created at'];
+
     public function handle(ExportOrganizationsData $data): CsvExport
     {
         $query = Organization::query()
@@ -53,10 +56,11 @@ class ExportOrganizations extends Service
 
         $suffix = $data->scope === 'page' ? '-page'.$data->page : '-all';
 
-        return CsvExport::fromRows(
+        return CsvExport::fromSelectedColumns(
             'organizations'.$suffix.'.csv',
-            ['ID', 'Name', 'Slug', 'Email', 'Phone', 'Status', 'Plan', 'Domain', 'Users', 'Created at'],
+            self::HEADERS,
             $rows,
+            $data->columns,
         );
     }
 }

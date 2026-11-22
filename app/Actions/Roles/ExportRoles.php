@@ -18,6 +18,9 @@ use App\Support\CsvExport;
  */
 class ExportRoles extends Service
 {
+    /** Column picker source: the sheet lists these, the download keeps the ticked ones. */
+    public const HEADERS = ['Name', 'Permissions', 'Status', 'Users', 'Protected'];
+
     public function handle(ExportRolesData $data): CsvExport
     {
         $query = Role::query()
@@ -41,10 +44,11 @@ class ExportRoles extends Service
             $role->isProtected() ? 'yes' : 'no',
         ]);
 
-        return CsvExport::fromRows(
+        return CsvExport::fromSelectedColumns(
             'roles.csv',
-            ['Name', 'Permissions', 'Status', 'Users', 'Protected'],
+            self::HEADERS,
             $rows,
+            $data->columns,
         );
     }
 }

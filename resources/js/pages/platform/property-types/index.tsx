@@ -241,17 +241,18 @@ export default function PropertyTypesIndex({
         );
     }
 
-    function exportParams(scope: 'all' | 'page') {
+    function exportParams(scope: 'all' | 'page', columns: string[]) {
         return {
             search: filters.search,
             category: filters.category,
             scope,
+            columns,
             ...(scope === 'page' ? { page: propertyTypes.current_page } : {}),
         };
     }
 
-    function runExport(scope: 'all' | 'page') {
-        downloadCsv(typeRoutes.exportMethod().url, exportParams(scope));
+    function runExport(scope: 'all' | 'page', columns: string[]) {
+        downloadCsv(typeRoutes.exportMethod().url, exportParams(scope, columns));
         setOverlayParam('export', null, { replace: true });
     }
 
@@ -708,6 +709,7 @@ export default function PropertyTypesIndex({
                 pageCount={propertyTypes.data.length}
                 currentPage={propertyTypes.current_page}
                 activeFilters={activeFilterSummary}
+                columns={['Name', 'Category', 'Properties in use', 'Description']}
                 onExport={runExport}
             />
 

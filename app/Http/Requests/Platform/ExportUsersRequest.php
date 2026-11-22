@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Platform;
 
+use App\Actions\Users\ExportUsers;
 use App\Data\Users\ExportUsersData;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -30,6 +31,8 @@ class ExportUsersRequest extends FormRequest
             'search' => ['nullable', 'string', 'max:255'],
             'status' => ['nullable', 'string', 'max:64'],
             'role' => ['nullable', 'string', 'max:191'],
+            'columns' => ['nullable', 'array'],
+            'columns.*' => ['string', Rule::in(ExportUsers::HEADERS)],
         ];
     }
 
@@ -41,6 +44,7 @@ class ExportUsersRequest extends FormRequest
             search: $this->string('search')->trim()->toString(),
             status: $this->string('status')->toString(),
             role: $this->string('role')->toString(),
+            columns: array_values(array_filter((array) $this->input('columns', []), 'is_string')),
         );
     }
 }

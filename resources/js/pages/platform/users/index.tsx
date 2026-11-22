@@ -227,7 +227,7 @@ export default function UsersIndex({
      * The filters the export has to carry. Reusing them is the point: "Export
      * all" must mean "everything the table is showing", not "everything".
      */
-    function exportParams(scope: 'all' | 'page') {
+    function exportParams(scope: 'all' | 'page', columns: string[]) {
         return {
             search: filters.search,
             status: filters.status,
@@ -235,12 +235,13 @@ export default function UsersIndex({
             sort: sort.column ?? '',
             direction: sort.direction,
             scope,
+            columns,
             ...(scope === 'page' ? { page: users.current_page } : {}),
         };
     }
 
-    function runExport(scope: 'all' | 'page') {
-        downloadCsv(usersRoutes.exportMethod().url, exportParams(scope));
+    function runExport(scope: 'all' | 'page', columns: string[]) {
+        downloadCsv(usersRoutes.exportMethod().url, exportParams(scope, columns));
         setOverlayParam('export', null, { replace: true });
     }
 
@@ -806,6 +807,7 @@ export default function UsersIndex({
                 pageCount={users.data.length}
                 currentPage={users.current_page}
                 activeFilters={activeFilterSummary}
+                columns={['ID', 'First name', 'Last name', 'Email', 'Phone', 'Status', 'Roles', 'Created at']}
                 onExport={runExport}
             />
 

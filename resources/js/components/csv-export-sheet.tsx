@@ -1,6 +1,10 @@
+import { useState } from 'react';
 import { Download } from 'lucide-react';
 import { OverlayFooter } from '@/components/overlay-footer';
 import { ResponsiveOverlay } from '@/components/responsive-overlay';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
 
 type ExportSheetProps = {
     open: boolean;
@@ -14,16 +18,19 @@ type ExportSheetProps = {
     currentPage: number;
     /** Human description of the active filters, or null when none are set. */
     activeFilters: string | null;
+    /** Every column the backend can emit, in download order. */
+    columns: string[];
     /** Downloads the file and closes the sheet. */
-    onExport: (scope: 'all' | 'page') => void;
+    onExport: (scope: 'all' | 'page', columns: string[]) => void;
 };
 
 /**
- * The "all matching vs this page" chooser for a CSV export.
+ * What-rows plus which-columns chooser for a CSV export.
  *
- * It exists because "Export all" on a filtered table is ambiguous: the user
- * cannot tell whether they are getting the 15 rows they can see or the 4,000
- * behind them. Saying it out loud costs one click and removes the surprise.
+ * It exists because "Export" on a filtered table is ambiguous twice over:
+ * the user cannot tell whether they are getting the rows they can see or
+ * everything behind them, nor which columns will be in the file. One scope
+ * radio plus ticked columns answers both before the download starts.
  */
 export function CsvExportSheet({
     open,
@@ -33,58 +40,127 @@ export function CsvExportSheet({
     pageCount,
     currentPage,
     activeFilters,
+    columns,
     onExport,
 }: ExportSheetProps) {
+    const [scope, setScope] = useState<'all' | 'page'>('all');
+    const [selected, setSelected] = useState<string[]>(columns);
+
     if (!canExport) {
         return null;
+    }
+
+    // Reopening starts from everything ticked: a previous un-tick is a
+    // decision about that download, not a preference for the next one.
+    function reset(next: boolean) {
+        if (next) {
+            setScope('all');
+            setSelected(columns);
+        }
+
+        if (!next) {
+            onClose();
+        }
+    }
+
+    function toggle(column: string) {
+        setSelected((current) =>
+            current.includes(column)
+                ? current.filter((entry) => entry !== column)
+                : [...current, column],
+        );
     }
 
     return (
         <ResponsiveOverlay
             open={open}
-            onOpenChange={(next) => {
-                if (!next) {
-                    onClose();
-                }
-            }}
+            onOpenChange={reset}
             title="Export CSV"
-            description="Choose how many rows to include."
+            description="Choose the rows and columns to include."
             footer={
                 <OverlayFooter
                     onCancel={onClose}
                     actions={[
                         {
-                            label: 'Current page',
-                            tone: 'secondary',
-                            onClick: () => onExport('page'),
-                        },
-                        {
-                            label: 'Export all',
+                            label: `Export${selected.length === columns.length ? '' : ` ${selected.length} of ${columns.length} columns`}`,
                             icon: <Download className="size-4" />,
-                            onClick: () => onExport('all'),
+                            disabled: selected.length === 0,
+                            onClick: () => onExport(scope, selected),
                         },
                     ]}
                 />
             }
         >
-            <div className="space-y-3 py-2 text-sm">
-                <div className="rounded-lg border border-border-strong bg-background p-3">
-                    <div className="font-medium">All matching</div>
-                    <div className="text-muted-foreground mt-1 text-xs">
-                        Every row matching{' '}
-                        {activeFilters ?? 'everything — no filters are active'}.{' '}
-                        Ignores pagination — {total} row
-                        {total === 1 ? '' : 's'} in total.
-                    </div>
-                </div>
+            <div className="space-y-4 py-2 text-sm">
+                <fieldset className="grid gap-2">
+                    <legend className="text-sm font-medium">Rows</legend>
+                    {(
+                        [
+                            [
+                                'all',
+                                'All matching',
+                                `Every row matching ${activeFilters ?? 'everything — no filters are active'}. Ignores pagination — ${total} row${total === 1 ? '' : 's'} in total.`,
+                            ],
+                            [
+                                'page',
+                                'Current page',
+                                `Only the ${pageCount} row${pageCount === 1 ? '' : 's'} visible on page ${currentPage}.`,
+                            ],
+                        ] as const
+                    ).map(([value, title, hint]) => (
+                        <label
+                            key={value}
+                            className={cn(
+                                'flex cursor-pointer items-start gap-2.5 rounded-lg border border-border-strong bg-background p-3',
+                                scope === value && 'border-brand-primary/50',
+                            )}
+                        >
+                            <input
+                                type="radio"
+                                name="export-scope"
+                                value={value}
+                                checked={scope === value}
+                                onChange={() => setScope(value)}
+                                className="mt-0.5"
+                            />
+                            <span>
+                                <span className="font-medium">{title}</span>
+                                <span className="mt-1 block text-xs text-muted-foreground">
+                                    {hint}
+                                </span>
+                            </span>
+                        </label>
+                    ))}
+                </fieldset>
 
-                <div className="rounded-lg border border-border-strong bg-background p-3">
-                    <div className="font-medium">Current page</div>
-                    <div className="text-muted-foreground mt-1 text-xs">
-                        Only the {pageCount} row{pageCount === 1 ? '' : 's'}{' '}
-                        visible on page {currentPage}.
+                <fieldset className="grid gap-2">
+                    <legend className="text-sm font-medium">
+                        Columns{' '}
+                        <span className="font-normal text-muted-foreground">
+                            ({selected.length} of {columns.length})
+                        </span>
+                    </legend>
+                    <div className="grid gap-1">
+                        {columns.map((column) => (
+                            <div
+                                key={column}
+                                className="flex items-center gap-2.5 rounded-md px-1 py-1.5 hover:bg-muted/50"
+                            >
+                                <Checkbox
+                                    id={`export-column-${column}`}
+                                    checked={selected.includes(column)}
+                                    onCheckedChange={() => toggle(column)}
+                                />
+                                <Label
+                                    htmlFor={`export-column-${column}`}
+                                    className="flex-1 cursor-pointer text-sm font-normal"
+                                >
+                                    {column}
+                                </Label>
+                            </div>
+                        ))}
                     </div>
-                </div>
+                </fieldset>
             </div>
         </ResponsiveOverlay>
     );

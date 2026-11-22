@@ -171,12 +171,22 @@ export function CsvImportSheet({
  */
 export function downloadCsv(
     routeUrl: string,
-    params: Record<string, string | number>,
+    params: Record<string, string | number | string[]>,
 ): void {
     const url = new URL(routeUrl, window.location.origin);
 
     for (const [key, value] of Object.entries(params)) {
-        if (value !== '') {
+        if (value === '' || (Array.isArray(value) && value.length === 0)) {
+            continue;
+        }
+
+        if (Array.isArray(value)) {
+            // PHP parses repeated `columns[]` into an array; a single
+            // comma-joined value would arrive as one unknown column.
+            value.forEach((entry) =>
+                url.searchParams.append(`${key}[]`, entry),
+            );
+        } else {
             url.searchParams.set(key, String(value));
         }
     }

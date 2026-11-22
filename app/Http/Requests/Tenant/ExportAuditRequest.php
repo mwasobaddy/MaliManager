@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Tenant;
 
+use App\Actions\Audit\ExportAuditLog;
 use App\Data\Audit\ExportAuditData;
 use App\Enums\SubPermissionKey;
 use App\Support\TenancyContext;
@@ -45,6 +46,8 @@ class ExportAuditRequest extends FormRequest
             'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
             'sort' => ['nullable', 'string', 'max:64'],
             'direction' => ['nullable', Rule::in(['asc', 'desc'])],
+            'columns' => ['nullable', 'array'],
+            'columns.*' => ['string', Rule::in(ExportAuditLog::HEADERS)],
         ];
     }
 
@@ -58,6 +61,7 @@ class ExportAuditRequest extends FormRequest
             sortColumn: $this->string('sort')->toString(),
             sortDirection: $this->string('direction')->toString(),
             tenantId: TenancyContext::tenantId(),
+            columns: array_values(array_filter((array) $this->input('columns', []), 'is_string')),
         );
     }
 }

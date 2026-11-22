@@ -163,17 +163,18 @@ export default function OrganizationsIndex({
      * The filters the export has to carry. Reusing them is the point: "Export
      * all" must mean "everything the table is showing", not "everything".
      */
-    function exportParams(scope: 'all' | 'page') {
+    function exportParams(scope: 'all' | 'page', columns: string[]) {
         return {
             search: filters.search,
             status: filters.status,
             scope,
+            columns,
             ...(scope === 'page' ? { page: organizations.current_page } : {}),
         };
     }
 
-    function runExport(scope: 'all' | 'page') {
-        downloadCsv(orgRoutes.exportMethod().url, exportParams(scope));
+    function runExport(scope: 'all' | 'page', columns: string[]) {
+        downloadCsv(orgRoutes.exportMethod().url, exportParams(scope, columns));
         setOverlayParam('export', null, { replace: true });
     }
 
@@ -988,6 +989,7 @@ export default function OrganizationsIndex({
                 pageCount={organizations.data.length}
                 currentPage={organizations.current_page}
                 activeFilters={activeFilterSummary}
+                columns={['ID', 'Name', 'Slug', 'Email', 'Phone', 'Status', 'Plan', 'Domain', 'Users', 'Created at']}
                 onExport={runExport}
             />
 

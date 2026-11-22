@@ -18,6 +18,9 @@ use App\Support\CsvExport;
  */
 class ExportPropertyTypes extends Service
 {
+    /** Column picker source: the sheet lists these, the download keeps the ticked ones. */
+    public const HEADERS = ['Name', 'Category', 'Properties in use', 'Description'];
+
     public function handle(ExportPropertyTypesData $data): CsvExport
     {
         $query = PropertyType::query()
@@ -40,10 +43,11 @@ class ExportPropertyTypes extends Service
             $type->description ?? '',
         ]);
 
-        return CsvExport::fromRows(
+        return CsvExport::fromSelectedColumns(
             'property-types.csv',
-            ['Name', 'Category', 'Properties in use', 'Description'],
+            self::HEADERS,
             $rows,
+            $data->columns,
         );
     }
 }

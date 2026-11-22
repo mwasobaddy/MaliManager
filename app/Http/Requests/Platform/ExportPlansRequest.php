@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Platform;
 
+use App\Actions\Plans\ExportPlans;
 use App\Data\Plans\ExportPlansData;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -29,6 +30,8 @@ class ExportPlansRequest extends FormRequest
             'page' => ['nullable', 'integer', 'min:1'],
             'search' => ['nullable', 'string', 'max:255'],
             'status' => ['nullable', 'string', 'max:64'],
+            'columns' => ['nullable', 'array'],
+            'columns.*' => ['string', Rule::in(ExportPlans::HEADERS)],
         ];
     }
 
@@ -39,6 +42,7 @@ class ExportPlansRequest extends FormRequest
             page: max(1, (int) $this->integer('page', 1)),
             search: $this->string('search')->trim()->toString(),
             status: $this->string('status')->toString(),
+            columns: array_values(array_filter((array) $this->input('columns', []), 'is_string')),
         );
     }
 }

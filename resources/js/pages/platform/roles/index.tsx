@@ -274,18 +274,19 @@ export default function RolesIndex({
      * The filters the export has to carry, so "Export all" means "everything
      * the table is showing" rather than everything.
      */
-    function exportParams(scope: 'all' | 'page') {
+    function exportParams(scope: 'all' | 'page', columns: string[]) {
         return {
             search: filters.search,
             status: filters.status,
             type: filters.type,
             scope,
+            columns,
             ...(scope === 'page' ? { page: roles.current_page } : {}),
         };
     }
 
-    function runExport(scope: 'all' | 'page') {
-        downloadCsv(roleRoutes.exportMethod().url, exportParams(scope));
+    function runExport(scope: 'all' | 'page', columns: string[]) {
+        downloadCsv(roleRoutes.exportMethod().url, exportParams(scope, columns));
         setOverlayParam('export', null, { replace: true });
     }
 
@@ -953,6 +954,7 @@ export default function RolesIndex({
                 pageCount={roles.data.length}
                 currentPage={roles.current_page}
                 activeFilters={activeFilterSummary}
+                columns={['Name', 'Permissions', 'Status', 'Users', 'Protected']}
                 onExport={runExport}
             />
 

@@ -12,5 +12,5 @@ final readonly class ExportSubscriptionPaymentsData
         public string $search,
         public string $from,
         public string $to,
-    ) {}
+        public array $columns, ) {}
 }

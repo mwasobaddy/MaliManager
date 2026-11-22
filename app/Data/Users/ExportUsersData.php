@@ -12,5 +12,5 @@ final readonly class ExportUsersData
         public string $search,
         public string $status,
         public string $role,
-    ) {}
+        public array $columns, ) {}
 }

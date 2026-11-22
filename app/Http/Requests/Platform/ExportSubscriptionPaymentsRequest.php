@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Platform;
 
+use App\Actions\SubscriptionPayments\ExportSubscriptionPayments;
 use App\Data\SubscriptionPayments\ExportSubscriptionPaymentsData;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -30,6 +31,8 @@ class ExportSubscriptionPaymentsRequest extends FormRequest
             'search' => ['nullable', 'string', 'max:255'],
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date', 'after_or_equal:from'],
+            'columns' => ['nullable', 'array'],
+            'columns.*' => ['string', Rule::in(ExportSubscriptionPayments::HEADERS)],
         ];
     }
 
@@ -41,6 +44,7 @@ class ExportSubscriptionPaymentsRequest extends FormRequest
             search: $this->string('search')->trim()->toString(),
             from: $this->string('from')->toString(),
             to: $this->string('to')->toString(),
+            columns: array_values(array_filter((array) $this->input('columns', []), 'is_string')),
         );
     }
 }

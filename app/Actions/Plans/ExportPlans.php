@@ -17,6 +17,9 @@ use App\Support\CsvExport;
  */
 class ExportPlans extends Service
 {
+    /** Column picker source: the sheet lists these, the download keeps the ticked ones. */
+    public const HEADERS = ['Name', 'Slug', 'Description', 'Currency', 'Price', 'Properties limit', 'Units limit', 'Features', 'Sort order', 'Active'];
+
     public function handle(ExportPlansData $data): CsvExport
     {
         $query = Plan::query()
@@ -46,10 +49,11 @@ class ExportPlans extends Service
             $plan->is_active ? '1' : '0',
         ]);
 
-        return CsvExport::fromRows(
+        return CsvExport::fromSelectedColumns(
             'plans.csv',
-            ['Name', 'Slug', 'Description', 'Currency', 'Price', 'Properties limit', 'Units limit', 'Features', 'Sort order', 'Active'],
+            self::HEADERS,
             $rows,
+            $data->columns,
         );
     }
 }

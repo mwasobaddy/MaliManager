@@ -509,19 +509,20 @@ export default function PlansIndex({
     );
 
     /** Current filters as export query params, shared by both scopes. */
-    function exportParams(scope: 'all' | 'page') {
+    function exportParams(scope: 'all' | 'page', columns: string[]) {
         return {
             search: filters.search,
             status: filters.status,
             sort: sort.column ?? '',
             direction: sort.direction,
             scope,
+            columns,
             ...(scope === 'page' ? { page: plans.current_page } : {}),
         };
     }
 
-    function runExport(scope: 'all' | 'page') {
-        downloadCsv(planRoutes.exportMethod().url, exportParams(scope));
+    function runExport(scope: 'all' | 'page', columns: string[]) {
+        downloadCsv(planRoutes.exportMethod().url, exportParams(scope, columns));
         setOverlayParam('export', null, { replace: true });
     }
 
@@ -895,6 +896,7 @@ export default function PlansIndex({
                 pageCount={plans.data.length}
                 currentPage={plans.current_page}
                 activeFilters={activeFilterSummary}
+                columns={['Name', 'Slug', 'Description', 'Currency', 'Price', 'Properties limit', 'Units limit', 'Features', 'Sort order', 'Active']}
                 onExport={runExport}
             />
 

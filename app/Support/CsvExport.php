@@ -36,4 +36,44 @@ final readonly class CsvExport
 
         return new self($filename, $content);
     }
+
+    /**
+     * Same as fromRows, but only the requested headers survive — in the
+     * sheet's order, not the export's. Unknown names are ignored rather
+     * than failing the download, because a stale bookmarked column list
+     * should degrade to fewer columns, not an error page.
+     *
+     * @param  array<int, string>  $headers
+     * @param  iterable<int, array<int, mixed>>  $rows
+     * @param  array<int, string>  $selected
+     */
+    public static function fromSelectedColumns(string $filename, array $headers, iterable $rows, array $selected): self
+    {
+        if ($selected === []) {
+            return self::fromRows($filename, $headers, $rows);
+        }
+
+        $indexes = [];
+
+        foreach ($selected as $name) {
+            $index = array_search($name, $headers, true);
+
+            if ($index !== false && ! in_array($index, $indexes, true)) {
+                $indexes[] = $index;
+            }
+        }
+
+        if ($indexes === []) {
+            return self::fromRows($filename, $headers, $rows);
+        }
+
+        $keptHeaders = array_map(fn (int $index): string => $headers[$index], $indexes);
+        $keptRows = [];
+
+        foreach ($rows as $row) {
+            $keptRows[] = array_map(fn (int $index): mixed => array_values($row)[$index] ?? '', $indexes);
+        }
+
+        return self::fromRows($filename, $keptHeaders, $keptRows);
+    }
 }

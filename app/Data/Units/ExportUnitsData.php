@@ -14,5 +14,5 @@ final readonly class ExportUnitsData
         public string $property,
         public string $sort,
         public string $direction,
-    ) {}
+        public array $columns, ) {}
 }

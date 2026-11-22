@@ -18,6 +18,9 @@ use App\Support\CsvExport;
  */
 class ExportAuditLog extends Service
 {
+    /** Column picker source: the sheet lists these, the download keeps the ticked ones. */
+    public const HEADERS = ['Time', 'Actor', 'Event', 'Category', 'Subject', 'Description', 'IP address'];
+
     public function __construct(private AuditService $audit) {}
 
     public function handle(ExportAuditData $data): CsvExport
@@ -44,10 +47,11 @@ class ExportAuditLog extends Service
             ];
         });
 
-        return CsvExport::fromRows(
+        return CsvExport::fromSelectedColumns(
             'audit-log.csv',
-            ['Time', 'Actor', 'Event', 'Category', 'Subject', 'Description', 'IP address'],
+            self::HEADERS,
             $rows,
+            $data->columns,
         );
     }
 }

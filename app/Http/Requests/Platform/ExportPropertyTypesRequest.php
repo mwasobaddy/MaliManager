@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Platform;
 
+use App\Actions\PropertyTypes\ExportPropertyTypes;
 use App\Data\PropertyTypes\ExportPropertyTypesData;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -29,6 +30,8 @@ class ExportPropertyTypesRequest extends FormRequest
             'page' => ['nullable', 'integer', 'min:1'],
             'search' => ['nullable', 'string', 'max:255'],
             'category' => ['nullable', 'string', 'max:64'],
+            'columns' => ['nullable', 'array'],
+            'columns.*' => ['string', Rule::in(ExportPropertyTypes::HEADERS)],
         ];
     }
 
@@ -39,6 +42,7 @@ class ExportPropertyTypesRequest extends FormRequest
             page: max(1, (int) $this->integer('page', 1)),
             search: $this->string('search')->trim()->toString(),
             category: $this->string('category')->toString(),
+            columns: array_values(array_filter((array) $this->input('columns', []), 'is_string')),
         );
     }
 }

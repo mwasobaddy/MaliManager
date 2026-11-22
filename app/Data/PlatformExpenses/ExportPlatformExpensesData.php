@@ -13,5 +13,5 @@ final readonly class ExportPlatformExpensesData
         public string $category,
         public string $from,
         public string $to,
-    ) {}
+        public array $columns, ) {}
 }

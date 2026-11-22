@@ -11,5 +11,5 @@ final readonly class ExportPropertyTypesData
         public int $page,
         public string $search,
         public string $category,
-    ) {}
+        public array $columns, ) {}
 }
