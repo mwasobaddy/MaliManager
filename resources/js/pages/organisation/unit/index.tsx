@@ -5,6 +5,7 @@ import { Building2, ImageOff, ListFilter, Search, Plus } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActionIconButton } from '@/components/action-icon-button';
 import { LabelledIconButton } from '@/components/labelled-icon-button';
+import { SearchableSelect } from '@/components/searchable-select';
 import { DataTable } from '@/components/data-table';
 import Heading from '@/components/heading';
 import { OverlayFooter } from '@/components/overlay-footer';
@@ -54,6 +55,8 @@ type Props = {
         units_count: number;
     }[];
     plan: { units_limit: number | null };
+    /** Admin-curated catalogue backing the type dropdown. */
+    unitTypes: string[];
 };
 
 /** Debounce so a fast typist issues one request, not one per keystroke. */
@@ -79,7 +82,12 @@ function useQuery(): URLSearchParams {
     }, [url]);
 }
 
-export default function UnitsIndex({ units, properties, plan }: Props) {
+export default function UnitsIndex({
+    units,
+    properties,
+    plan,
+    unitTypes,
+}: Props) {
     const query = useQuery();
 
     const { context } = usePage().props;
@@ -636,11 +644,12 @@ export default function UnitsIndex({ units, properties, plan }: Props) {
                                     <Label htmlFor="create-unit-type">
                                         Type
                                     </Label>
-                                    <Input
+                                    <SearchableSelect
                                         id="create-unit-type"
                                         name="type"
-                                        type="text"
-                                        placeholder="1 Bedroom"
+                                        options={unitTypes}
+                                        placeholder="Select a type…"
+                                        searchPlaceholder="Search types…"
                                     />
                                 </div>
                                 <div className="grid gap-2">

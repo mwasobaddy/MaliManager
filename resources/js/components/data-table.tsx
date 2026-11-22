@@ -4,7 +4,7 @@ import {
     useReactTable,
 } from '@tanstack/react-table';
 import type { ColumnDef, RowData, SortingState } from '@tanstack/react-table';
-import { ArrowDown, ArrowUp, ChevronsUpDown } from 'lucide-react';
+import { ArrowDown, ArrowUp, ChevronsUpDown, SearchX } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useLayoutEffect, useRef, useState } from 'react';
 import { Empty } from '@/components/ui/empty';
@@ -78,6 +78,19 @@ export function DataTable<TData>({
     loadingRows,
     className,
 }: DataTableProps<TData>) {
+    // A bare string renders as an unstyled table cell. Wrap it in the
+    // shared empty state so every filtered-to-nothing table gets the
+    // icon, centering and rhythm instead of a stray sentence.
+    const emptyContent =
+        typeof empty === 'string' ? (
+            <Empty
+                compact
+                icon={<SearchX className="size-4" />}
+                title={empty}
+            />
+        ) : (
+            empty
+        );
     const table = useReactTable({
         data,
         columns,
@@ -265,7 +278,7 @@ export function DataTable<TData>({
                     ) : table.getRowModel().rows.length === 0 ? (
                         <tr>
                             <td colSpan={columns.length} className="px-3">
-                                {empty}
+                                {emptyContent}
                             </td>
                         </tr>
                     ) : (

@@ -1,5 +1,6 @@
 import { Head, Link } from '@inertiajs/react';
 import { ArrowLeft, Building2, ImageOff } from 'lucide-react';
+import { Empty } from '@/components/ui/empty';
 import Heading from '@/components/heading';
 import { Card } from '@/components/ui/card';
 import { formatMoney } from '@/lib/format-money';
@@ -92,10 +93,12 @@ export default function UnitShow({ unit }: Props) {
                     </div>
 
                     {unit.photos.length === 0 ? (
-                        <div className="flex items-center gap-2 p-8 text-sm text-muted-foreground">
-                            <ImageOff className="size-4 shrink-0" />
-                            No photos yet. Add them when creating the unit.
-                        </div>
+                        <Empty
+                            compact
+                            icon={<ImageOff className="size-4" />}
+                            title="No photos yet"
+                            description="Add them when creating the unit."
+                        />
                     ) : (
                         <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3 lg:grid-cols-4">
                             {unit.photos.map((photo) => (

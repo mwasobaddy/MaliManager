@@ -161,6 +161,13 @@ class PropertyController extends Controller
             'plan' => [
                 'units_limit' => $property->organization->effectivePlan()?->units_limit,
             ],
+            // Same catalogue as the units index: one admin-curated list.
+            'unitTypes' => PropertyType::query()
+                ->where('status', 'active')
+                ->orderBy('sort_order')
+                ->orderBy('name')
+                ->pluck('name')
+                ->all(),
         ]);
     }
 

@@ -7,6 +7,7 @@ use App\Http\Requests\Tenant\StoreUnitRequest;
 use App\Http\Requests\Tenant\UnitIndexRequest;
 use App\Http\Requests\Tenant\UnitShowRequest;
 use App\Models\Property;
+use App\Models\PropertyType;
 use App\Models\Unit;
 use App\Services\PropertyService;
 use App\Services\StaffService;
@@ -115,6 +116,14 @@ class UnitController extends Controller
             'plan' => [
                 'units_limit' => TenancyContext::organization()?->effectivePlan()?->units_limit,
             ],
+            // Unit types come from the platform property-type catalogue so
+            // every tenant picks from the same admin-curated list.
+            'unitTypes' => PropertyType::query()
+                ->where('status', 'active')
+                ->orderBy('sort_order')
+                ->orderBy('name')
+                ->pluck('name')
+                ->all(),
         ]);
     }
 

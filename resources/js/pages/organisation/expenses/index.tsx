@@ -1,8 +1,9 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { Pencil, Receipt, Plus } from 'lucide-react';
+import { Pencil, Plus, Receipt, SearchX } from 'lucide-react';
 import { useState } from 'react';
 import { LabelledIconButton } from '@/components/labelled-icon-button';
 import Heading from '@/components/heading';
+import { Empty } from '@/components/ui/empty';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Pagination } from '@/components/ui/pagination';
@@ -109,9 +110,11 @@ export default function ExpensesIndex({
                 </div>
 
                 {expenses.data.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                        No expenses recorded yet.
-                    </p>
+                    <Empty
+                        icon={<Receipt className="size-4" />}
+                        title="No expenses recorded yet"
+                        description="Maintenance, renovation and other costs will appear here."
+                    />
                 ) : (
                     <div className="overflow-x-auto rounded-xl border border-input">
                         <table className="w-full text-sm">

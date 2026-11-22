@@ -1,9 +1,10 @@
 import { Form, Head, Link, router } from '@inertiajs/react';
-import { FileText, Pencil, Plus, Trash2 } from 'lucide-react';
+import { FileText, LayoutGrid, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { ActionIconButton } from '@/components/action-icon-button';
 import ConfirmDeleteOverlay from '@/components/confirm-delete-overlay';
 import Heading from '@/components/heading';
+import { Empty } from '@/components/ui/empty';
 import InputError from '@/components/input-error';
 import { OverlayFooter } from '@/components/overlay-footer';
 import PasswordInput from '@/components/password-input';
@@ -360,10 +361,12 @@ export default function LandParcelShow({
                             )}
 
                             {sections.length === 0 ? (
-                                <p className="mt-4 text-sm text-muted-foreground">
-                                    No sections yet. Add a section to lease part
-                                    of this parcel.
-                                </p>
+                                <Empty
+                                    compact
+                                    icon={<LayoutGrid className="size-4" />}
+                                    title="No sections yet"
+                                    description="Add a section to lease part of this parcel."
+                                />
                             ) : (
                                 <ul className="mt-4 divide-y divide-border rounded-lg border">
                                     {sections.map((section) => (

@@ -1,7 +1,8 @@
 import { Head, Link } from '@inertiajs/react';
-import { Pencil, Trash2, Plus } from 'lucide-react';
+import { FileText, Pencil, Plus, Trash2 } from 'lucide-react';
 import { LabelledIconButton } from '@/components/labelled-icon-button';
 import Heading from '@/components/heading';
+import { Empty } from '@/components/ui/empty';
 import { Button } from '@/components/ui/button';
 import agreementTemplates from '@/routes/tenant/agreement-templates';
 
@@ -65,10 +66,11 @@ export default function AgreementTemplatesIndex({
                 </div>
 
                 {templates.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                        No templates yet. Create one to reuse it across
-                        occupants.
-                    </p>
+                    <Empty
+                        icon={<FileText className="size-4" />}
+                        title="No templates yet"
+                        description="Create one to reuse it across occupants."
+                    />
                 ) : (
                     <table className="w-full text-sm">
                         <thead>

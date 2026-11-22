@@ -4,13 +4,14 @@ import { useState } from 'react';
 import type { ComboPoint } from '@/components/dashboard/combo-chart';
 import { ComboChart } from '@/components/dashboard/combo-chart';
 import { StatsCards } from '@/components/dashboard/stats-cards';
+import Heading from '@/components/heading';
+import InputError from '@/components/input-error';
+import { SearchableSelect } from '@/components/searchable-select';
 import { AlertsPanel } from '@/components/platform/alerts-panel';
 import { ArrearsAgingCard } from '@/components/platform/arrears-aging';
 import { DefaulterTable } from '@/components/platform/defaulter-table';
 import { RentCollectionHero } from '@/components/platform/rent-collection-hero';
 import { UnitGridCard } from '@/components/platform/unit-grid';
-import Heading from '@/components/heading';
-import InputError from '@/components/input-error';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -143,6 +144,8 @@ type Props = {
     plan: Plan;
     year: number | null;
     month: number | null;
+    /** Admin-curated catalogue backing the type dropdown. */
+    unitTypes: string[];
 };
 
 export default function PropertiesDashboard({
@@ -153,6 +156,7 @@ export default function PropertiesDashboard({
     plan,
     year,
     month,
+    unitTypes,
 }: Props) {
     const [addUnit, setAddUnit] = useState(false);
     const [filterYear, setFilterYear] = useState<string>(
@@ -415,11 +419,12 @@ export default function PropertiesDashboard({
                                             <Label htmlFor="unit-type">
                                                 Type
                                             </Label>
-                                            <Input
+                                            <SearchableSelect
                                                 id="unit-type"
                                                 name="type"
-                                                type="text"
-                                                placeholder="1 Bedroom"
+                                                options={unitTypes}
+                                                placeholder="Select a type…"
+                                                searchPlaceholder="Search types…"
                                             />
                                         </div>
                                         <div className="grid gap-2">

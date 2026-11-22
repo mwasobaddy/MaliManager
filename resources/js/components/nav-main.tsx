@@ -26,7 +26,7 @@ export type NavGroup = {
 };
 
 function NavItemLink({ item }: { item: NavItem }) {
-    const { isCurrentUrl } = useCurrentUrl();
+    const { isCurrentUrl, currentUrl } = useCurrentUrl();
 
     if (item.onClick) {
         return (
@@ -41,10 +41,18 @@ function NavItemLink({ item }: { item: NavItem }) {
         );
     }
 
+    // Boundary-aware prefix match: `/properties` parents `/properties/create`
+    // but not a property slugged `properties-plus`.
+    const prefixActive =
+        item.activePrefix !== undefined &&
+        (currentUrl === item.activePrefix ||
+            currentUrl.startsWith(`${item.activePrefix}/`));
+    const exactActive = item.href !== undefined && isCurrentUrl(item.href);
+
     return (
         <SidebarMenuButton
             asChild
-            isActive={isCurrentUrl(item.href)}
+            isActive={(item.isActive ?? exactActive) || prefixActive}
             tooltip={{ children: item.title }}
         >
             <Link href={item.href} prefetch>

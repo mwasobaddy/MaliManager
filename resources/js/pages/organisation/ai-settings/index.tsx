@@ -1,6 +1,8 @@
 import { Head, router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
+import { ChartNoAxesColumn } from 'lucide-react';
 import Heading from '@/components/heading';
+import { Empty } from '@/components/ui/empty';
 import InputError from '@/components/input-error';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -331,9 +333,11 @@ export default function AiSettings({
                     </CardHeader>
                     <CardContent>
                         {usage.length === 0 ? (
-                            <p className="text-sm text-muted-foreground">
-                                No AI usage recorded yet.
-                            </p>
+                            <Empty
+                                compact
+                                icon={<ChartNoAxesColumn className="size-4" />}
+                                title="No AI usage recorded yet"
+                            />
                         ) : (
                             <table className="w-full text-sm">
                                 <thead>

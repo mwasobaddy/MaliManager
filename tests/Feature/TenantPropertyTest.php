@@ -5,6 +5,7 @@ use App\Models\Occupant;
 use App\Models\Organization;
 use App\Models\Plan;
 use App\Models\Property;
+use App\Models\PropertyType;
 use App\Models\SubPermission;
 use App\Models\SubRole;
 use App\Models\User;
@@ -179,6 +180,39 @@ test('org-level pages show no property context without a prior visit', function 
         ->viewData('page')['props']['context'];
 
     expect($context['property'] ?? null)->toBeNull();
+});
+
+test('unit forms receive the property-type catalogue', function () {
+    $user = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createTestOrganization($user);
+    $property = $organization->properties()->create([
+        'name' => 'Catalogue Courts',
+        'slug' => 'catalogue-courts',
+        'status' => 'active',
+        'created_by' => $user->id,
+    ]);
+
+    $expected = PropertyType::query()
+        ->where('status', 'active')
+        ->orderBy('sort_order')
+        ->orderBy('name')
+        ->pluck('name')
+        ->all();
+
+    expect($expected)->not->toBeEmpty();
+
+    $indexProps = $this->actingAs($user)
+        ->get(tenantUrl($organization, '/units'))
+        ->assertOk()
+        ->viewData('page')['props'];
+
+    $dashboardProps = $this->actingAs($user)
+        ->get(tenantUrl($organization, '/catalogue-courts/dashboard'))
+        ->assertOk()
+        ->viewData('page')['props'];
+
+    expect($indexProps['unitTypes'])->toBe($expected)
+        ->and($dashboardProps['unitTypes'])->toBe($expected);
 });
 
 test('property attention lists one row per condition capped at fifteen', function () {

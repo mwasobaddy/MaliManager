@@ -164,11 +164,13 @@ export function AppSidebar() {
         href: NavItem['href'],
         icon: NavItem['icon'],
         onClick?: () => void,
+        activePrefix?: NavItem['activePrefix'],
     ): NavItem => ({
         title,
         href,
         icon,
         onClick,
+        activePrefix,
     });
 
     // Opens the cross-organization property picker so an admin can jump to a
@@ -213,9 +215,19 @@ export function AppSidebar() {
                         'Units',
                         unitsIndex({ query: { property: property.id } }),
                         Building2,
+                        undefined,
+                        '/units',
                     ),
                     ...(canManageOccupants
-                        ? [item('Occupants', occupantsIndex(slug), UserRound)]
+                        ? [
+                              item(
+                                  'Occupants',
+                                  occupantsIndex(slug),
+                                  UserRound,
+                                  undefined,
+                                  `/${slug}/occupants`,
+                              ),
+                          ]
                         : []),
                     ...(canViewLeases
                         ? [
@@ -223,6 +235,8 @@ export function AppSidebar() {
                                   'Leases',
                                   leasesIndex({ property: slug }),
                                   ScrollText,
+                                  undefined,
+                                  `/${slug}/leases`,
                               ),
                               item(
                                   'Deposit refunds',
@@ -237,6 +251,8 @@ export function AppSidebar() {
                                   'Inspections',
                                   inspectionsIndex(slug),
                                   ClipboardCheck,
+                                  undefined,
+                                  `/${slug}/inspections`,
                               ),
                           ]
                         : []),
@@ -244,7 +260,15 @@ export function AppSidebar() {
                         ? [item('Meter readings', meterReadingsIndex(), Gauge)]
                         : []),
                     ...(canManageMaintenance
-                        ? [item('Maintenance', maintenanceIndex(), Wrench)]
+                        ? [
+                              item(
+                                  'Maintenance',
+                                  maintenanceIndex(),
+                                  Wrench,
+                                  undefined,
+                                  '/maintenance',
+                              ),
+                          ]
                         : []),
                 ],
             },
@@ -252,10 +276,26 @@ export function AppSidebar() {
                 label: 'Money',
                 items: [
                     ...(canManageExpenses
-                        ? [item('Expenses', expensesIndex(), ReceiptText)]
+                        ? [
+                              item(
+                                  'Expenses',
+                                  expensesIndex(),
+                                  ReceiptText,
+                                  undefined,
+                                  '/expenses',
+                              ),
+                          ]
                         : []),
                     ...(canManagePayments
-                        ? [item('Payments', paymentsIndex(), Banknote)]
+                        ? [
+                              item(
+                                  'Payments',
+                                  paymentsIndex(),
+                                  Banknote,
+                                  undefined,
+                                  '/payments',
+                              ),
+                          ]
                         : []),
                 ],
             },
@@ -263,7 +303,15 @@ export function AppSidebar() {
                 label: 'Manage',
                 items: [
                     ...(canManageStaff
-                        ? [item('Team', staffIndex(), Users)]
+                        ? [
+                              item(
+                                  'Team',
+                                  staffIndex(),
+                                  Users,
+                                  undefined,
+                                  '/staff',
+                              ),
+                          ]
                         : []),
                     ...(isOwner
                         ? [item('AI settings', aiSettingsEdit(), Sparkles)]
@@ -276,14 +324,32 @@ export function AppSidebar() {
                                       property: slug,
                                   }),
                                   FileText,
+                                  undefined,
+                                  `/${slug}/agreement-templates`,
                               ),
                           ]
                         : []),
                     ...(canViewAudit
-                        ? [item('Audit log', auditIndex(), History)]
+                        ? [
+                              item(
+                                  'Audit log',
+                                  auditIndex(),
+                                  History,
+                                  undefined,
+                                  '/audit',
+                              ),
+                          ]
                         : []),
                     ...(canViewReports
-                        ? [item('Reports', reportsNavIndex(), BarChart3)]
+                        ? [
+                              item(
+                                  'Reports',
+                                  reportsNavIndex(),
+                                  BarChart3,
+                                  undefined,
+                                  '/reports',
+                              ),
+                          ]
                         : []),
                     ...(aiEnabled && canManageTemplates
                         ? [item('AI drafting', draftingPageIndex(), Wand2)]
@@ -304,12 +370,20 @@ export function AppSidebar() {
                                   'Manage properties',
                                   propertiesIndex(),
                                   ArrowLeftRight,
+                                  undefined,
+                                  '/properties',
                               ),
                           ]
                         : []),
                     ...(canManageUnits
                         ? [
-                              item('Units', unitsIndex(), DoorOpen),
+                              item(
+                                  'Units',
+                                  unitsIndex(),
+                                  DoorOpen,
+                                  undefined,
+                                  '/units',
+                              ),
                               item(
                                   'Meter readings',
                                   meterReadingsIndex(),
@@ -318,7 +392,15 @@ export function AppSidebar() {
                           ]
                         : []),
                     ...(canManageLandParcels
-                        ? [item('Land parcels', landParcelsIndex(), Map)]
+                        ? [
+                              item(
+                                  'Land parcels',
+                                  landParcelsIndex(),
+                                  Map,
+                                  undefined,
+                                  '/land-parcels',
+                              ),
+                          ]
                         : []),
                 ],
             },
@@ -326,10 +408,26 @@ export function AppSidebar() {
                 label: 'Money',
                 items: [
                     ...(canManageExpenses
-                        ? [item('Expenses', expensesIndex(), ReceiptText)]
+                        ? [
+                              item(
+                                  'Expenses',
+                                  expensesIndex(),
+                                  ReceiptText,
+                                  undefined,
+                                  '/expenses',
+                              ),
+                          ]
                         : []),
                     ...(canManagePayments
-                        ? [item('Payments', paymentsIndex(), Banknote)]
+                        ? [
+                              item(
+                                  'Payments',
+                                  paymentsIndex(),
+                                  Banknote,
+                                  undefined,
+                                  '/payments',
+                              ),
+                          ]
                         : []),
                     ...(canViewLeases
                         ? [
@@ -346,7 +444,15 @@ export function AppSidebar() {
                 label: 'Upkeep',
                 items: [
                     ...(canManageMaintenance
-                        ? [item('Maintenance', maintenanceIndex(), Wrench)]
+                        ? [
+                              item(
+                                  'Maintenance',
+                                  maintenanceIndex(),
+                                  Wrench,
+                                  undefined,
+                                  '/maintenance',
+                              ),
+                          ]
                         : []),
                 ],
             },
@@ -354,7 +460,15 @@ export function AppSidebar() {
                 label: 'Administration',
                 items: [
                     ...(canManageStaff
-                        ? [item('Staff', staffIndex(), Users)]
+                        ? [
+                              item(
+                                  'Staff',
+                                  staffIndex(),
+                                  Users,
+                                  undefined,
+                                  '/staff',
+                              ),
+                          ]
                         : []),
                     ...(isOwner
                         ? [item('Billing', billingShow(), CreditCard)]
@@ -365,17 +479,35 @@ export function AppSidebar() {
                                   'Agreement templates',
                                   agreementTemplatesIndex(),
                                   FileText,
+                                  undefined,
+                                  '/agreement-templates',
                               ),
                           ]
                         : []),
                     ...(canViewReports
-                        ? [item('Reports', reportsNavIndex(), BarChart3)]
+                        ? [
+                              item(
+                                  'Reports',
+                                  reportsNavIndex(),
+                                  BarChart3,
+                                  undefined,
+                                  '/reports',
+                              ),
+                          ]
                         : []),
                     ...(aiEnabled && canManageTemplates
                         ? [item('AI drafting', draftingPageIndex(), Wand2)]
                         : []),
                     ...(canViewAudit
-                        ? [item('Audit log', auditIndex(), History)]
+                        ? [
+                              item(
+                                  'Audit log',
+                                  auditIndex(),
+                                  History,
+                                  undefined,
+                                  '/audit',
+                              ),
+                          ]
                         : []),
                 ],
             },
