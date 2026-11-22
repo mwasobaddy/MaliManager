@@ -4,7 +4,7 @@ import type { ColumnDef, SortingState } from '@tanstack/react-table';
 import {
     Download,
     ListFilter,
-    Pencil,
+    SquarePen,
     Plus,
     Search,
     Tag,
@@ -357,7 +357,7 @@ export default function PropertyTypesIndex({
                             onClick={(event) => event.stopPropagation()}
                         >
                             <ActionIconButton
-                                icon={<Pencil />}
+                                icon={<SquarePen />}
                                 label={`Edit ${type.name}`}
                                 color="edit"
                                 disabled={!canEdit}
@@ -552,7 +552,7 @@ export default function PropertyTypesIndex({
                                 {
                                     label: 'Edit',
                                     tone: 'secondary',
-                                    icon: <Pencil className="size-4" />,
+                                    icon: <SquarePen className="size-4" />,
                                     onClick: () => openRow(viewedType, 'edit'),
                                     ...(canEdit ? {} : { disabled: true }),
                                 },

@@ -3,7 +3,7 @@ import type { ColumnDef, SortingState } from '@tanstack/react-table';
 import {
     Download,
     ListFilter,
-    Pencil,
+    SquarePen,
     Plus,
     Search,
     Trash2,
@@ -431,7 +431,7 @@ export default function UsersIndex({
                                         onClick={() => setSuspendTarget(user)}
                                     />
                                     <ActionIconButton
-                                        icon={<Pencil />}
+                                        icon={<SquarePen />}
                                         label={`Edit ${user.name}`}
                                         color="edit"
                                         onClick={() => openRow(user, 'edit')}
@@ -607,7 +607,7 @@ export default function UsersIndex({
                                 {
                                     label: 'Edit',
                                     tone: 'secondary',
-                                    icon: <Pencil className="size-4" />,
+                                    icon: <SquarePen className="size-4" />,
                                     onClick: () => openRow(viewedUser!, 'edit'),
                                     ...(canEdit ? {} : { disabled: true }),
                                 },

@@ -6,7 +6,7 @@ import {
     Download,
     ListFilter,
     LogIn,
-    Pencil,
+    SquarePen,
     Plus,
     Search,
     Trash2,
@@ -527,7 +527,7 @@ export default function OrganizationsIndex({
                             )}
                             {canEdit && (
                                 <ActionIconButton
-                                    icon={<Pencil />}
+                                    icon={<SquarePen />}
                                     label={`Edit ${organization.name}`}
                                     color="edit"
                                     onClick={() =>
@@ -715,7 +715,7 @@ export default function OrganizationsIndex({
                                 {
                                     label: 'Edit',
                                     tone: 'secondary',
-                                    icon: <Pencil className="size-4" />,
+                                    icon: <SquarePen className="size-4" />,
                                     onClick: () =>
                                         openRow(viewedOrganization, 'edit'),
                                     ...(canEdit ? {} : { disabled: true }),

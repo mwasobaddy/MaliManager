@@ -15,10 +15,7 @@ import { cn } from '@/lib/utils';
  *   as the colour while avoiding a second filled pill in the row.
  */
 export type OverlayActionTone =
-    | 'primary'
-    | 'secondary'
-    | 'danger'
-    | 'danger-ghost';
+    'primary' | 'secondary' | 'danger' | 'danger-ghost';
 
 const TONE_VARIANT = {
     primary: 'default',
@@ -75,13 +72,12 @@ type OverlayFooterProps = {
  * because a stacked `flex-col` makes each button stretch to the full panel
  * width, and a wall of full-width buttons reads as a list, not an action.
  *
- * **Colour.** Cancel is always `shadcndefault` — the neutral fill, the same
- * chrome as the overlay's close button, so the two dismiss controls match.
- * It is deliberately *not* `ghost` (too little presence beside a filled
- * primary) and never `outline` (beside a destructive primary, an outlined
- * Cancel gives two competing pills and the destructive verb stops owning the
- * row). One rule for every dialog beats a rule that shifts with the primary's
- * tone.
+ * **Colour.** Cancel is always `shadcndefault` — a visible outline on the
+ * overlay surface, the same chrome as the overlay's close control, so the
+ * two dismiss controls match. It is deliberately *not* `ghost` (too little
+ * presence beside a filled primary) and never a second fill (which would
+ * compete with the primary verb). One rule for every dialog beats a rule
+ * that shifts with the primary's tone.
  *
  * Tone is decided by *meaning*, never by position — a second `secondary` action
  * sits beside the primary without demoting the primary.

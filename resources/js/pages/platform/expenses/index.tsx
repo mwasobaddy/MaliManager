@@ -4,7 +4,7 @@ import type { ColumnDef, SortingState } from '@tanstack/react-table';
 import {
     Download,
     ListFilter,
-    Pencil,
+    SquarePen,
     Plus,
     Receipt,
     Search,
@@ -396,7 +396,7 @@ export default function PlatformExpensesIndex({
                         >
                             {canEdit && (
                                 <ActionIconButton
-                                    icon={<Pencil />}
+                                    icon={<SquarePen />}
                                     label={`Edit expense from ${
                                         expense.vendor_name ??
                                         CATEGORY_LABELS[expense.category] ??
@@ -607,7 +607,7 @@ export default function PlatformExpensesIndex({
                                 {
                                     label: 'Edit',
                                     tone: 'secondary',
-                                    icon: <Pencil className="size-4" />,
+                                    icon: <SquarePen className="size-4" />,
                                     onClick: () =>
                                         viewedExpense &&
                                         openRow(viewedExpense, 'edit'),

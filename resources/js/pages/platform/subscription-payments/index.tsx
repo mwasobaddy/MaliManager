@@ -5,7 +5,7 @@ import {
     Building2,
     Download,
     ListFilter,
-    Pencil,
+    SquarePen,
     Plus,
     Receipt,
     Search,
@@ -443,7 +443,7 @@ export default function SubscriptionPaymentsIndex({
                         >
                             {canEdit && (
                                 <ActionIconButton
-                                    icon={<Pencil />}
+                                    icon={<SquarePen />}
                                     label={`Edit payment from ${
                                         payment.organization?.name ??
                                         'this organization'
@@ -648,7 +648,7 @@ export default function SubscriptionPaymentsIndex({
                                 {
                                     label: 'Edit',
                                     tone: 'secondary',
-                                    icon: <Pencil className="size-4" />,
+                                    icon: <SquarePen className="size-4" />,
                                     onClick: () =>
                                         viewedPayment &&
                                         openRow(viewedPayment, 'edit'),

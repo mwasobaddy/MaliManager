@@ -98,7 +98,7 @@ type ActionIconButtonProps = React.ComponentProps<typeof Button> & {
  * Navigation — pass `asChild` and the child, not `icon`:
  *   <ActionIconButton asChild label="Edit organization" color="edit">
  *       <Link href={routes.edit(org.id)}>
- *           <Pencil />
+ *           <SquarePen />
  *       </Link>
  *   </ActionIconButton>
  *

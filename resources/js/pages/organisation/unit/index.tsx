@@ -6,7 +6,7 @@ import {
     Download,
     ImageOff,
     ListFilter,
-    Pencil,
+    SquarePen,
     Plus,
     Search,
     Trash2,
@@ -470,7 +470,7 @@ export default function UnitsIndex({
                         >
                             {canEdit && (
                                 <ActionIconButton
-                                    icon={<Pencil />}
+                                    icon={<SquarePen />}
                                     label={`Edit ${unit.name}`}
                                     color="edit"
                                     onClick={() => setEditTarget(unit)}

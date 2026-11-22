@@ -5,7 +5,7 @@ import {
     Download,
     Layers,
     ListFilter,
-    Pencil,
+    SquarePen,
     Plus,
     Search,
     Trash2,
@@ -469,7 +469,7 @@ export default function PlansIndex({
                             )}
                             {canEdit && (
                                 <ActionIconButton
-                                    icon={<Pencil />}
+                                    icon={<SquarePen />}
                                     label={`Edit ${plan.name}`}
                                     color="edit"
                                     onClick={() => openRow(plan, 'edit')}
@@ -662,7 +662,7 @@ export default function PlansIndex({
                                 {
                                     label: 'Edit',
                                     tone: 'secondary',
-                                    icon: <Pencil className="size-4" />,
+                                    icon: <SquarePen className="size-4" />,
                                     onClick: () =>
                                         viewedPlan &&
                                         openRow(viewedPlan, 'edit'),

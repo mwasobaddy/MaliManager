@@ -1,5 +1,5 @@
 import { Form, Head, Link, router } from '@inertiajs/react';
-import { FileText, LayoutGrid, Pencil, Plus, Trash2 } from 'lucide-react';
+import { FileText, LayoutGrid, SquarePen, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { ActionIconButton } from '@/components/action-icon-button';
 import ConfirmDeleteOverlay from '@/components/confirm-delete-overlay';
@@ -152,7 +152,7 @@ export default function LandParcelShow({
                         {canEditLandParcel && (
                             <Button asChild>
                                 <Link href={edit(parcel.slug)}>
-                                    <Pencil className="size-4" />
+                                    <SquarePen className="size-4" />
                                     Edit
                                 </Link>
                             </Button>

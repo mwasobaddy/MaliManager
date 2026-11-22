@@ -1,5 +1,5 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { Pencil, Printer, Receipt, Plus } from 'lucide-react';
+import { SquarePen, Printer, Receipt, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { LabelledIconButton } from '@/components/labelled-icon-button';
 import Heading from '@/components/heading';
@@ -212,7 +212,7 @@ export default function PaymentsIndex({ payments, statuses }: Props) {
                                                     }
                                                     aria-label={`Edit payment for ${payment.tenant_name ?? payment.unit_name ?? `payment ${payment.id}`}`}
                                                 >
-                                                    <Pencil className="size-4" />
+                                                    <SquarePen className="size-4" />
                                                 </Link>
                                             </Button>
                                         </td>

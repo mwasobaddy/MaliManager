@@ -1,5 +1,5 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { Pencil, Plus, Receipt, SearchX } from 'lucide-react';
+import { SquarePen, Plus, Receipt, SearchX } from 'lucide-react';
 import { useState } from 'react';
 import { LabelledIconButton } from '@/components/labelled-icon-button';
 import Heading from '@/components/heading';
@@ -191,7 +191,7 @@ export default function ExpensesIndex({
                                                     })}
                                                     aria-label={`Edit expense for ${expense.asset_name}`}
                                                 >
-                                                    <Pencil className="size-4" />
+                                                    <SquarePen className="size-4" />
                                                 </Link>
                                             </Button>
                                         </td>

@@ -4,7 +4,7 @@ import type { ColumnDef, SortingState } from '@tanstack/react-table';
 import {
     Download,
     ListFilter,
-    Pencil,
+    SquarePen,
     Plus,
     Power,
     Search,
@@ -426,7 +426,7 @@ export default function RolesIndex({
                             onClick={(event) => event.stopPropagation()}
                         >
                             <ActionIconButton
-                                icon={<Pencil />}
+                                icon={<SquarePen />}
                                 label={`Edit ${role.name}`}
                                 color="edit"
                                 disabled={!canEdit}
@@ -685,7 +685,7 @@ export default function RolesIndex({
                                 {
                                     label: 'Edit',
                                     tone: 'secondary',
-                                    icon: <Pencil className="size-4" />,
+                                    icon: <SquarePen className="size-4" />,
                                     onClick: () => openRow(viewedRole, 'edit'),
                                     ...(canEdit ? {} : { disabled: true }),
                                 },

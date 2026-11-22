@@ -92,7 +92,7 @@ export function CsvExportSheet({
             }
         >
             <div className="space-y-4 py-2 text-sm">
-                <fieldset className="grid gap-2">
+                <fieldset className="grid gap-1">
                     <legend className="text-sm font-medium">Rows</legend>
                     {(
                         [
@@ -111,8 +111,8 @@ export function CsvExportSheet({
                         <label
                             key={value}
                             className={cn(
-                                'flex cursor-pointer items-start gap-2.5 rounded-lg border border-border-strong bg-background p-3',
-                                scope === value && 'border-brand-primary/50',
+                                'flex cursor-pointer items-start gap-2.5 rounded-lg px-1 py-2 hover:bg-muted/50',
+                                scope === value && 'bg-muted/50',
                             )}
                         >
                             <input
@@ -121,11 +121,13 @@ export function CsvExportSheet({
                                 value={value}
                                 checked={scope === value}
                                 onChange={() => setScope(value)}
-                                className="mt-0.5"
+                                className="mt-1 accent-brand-accent"
                             />
                             <span>
-                                <span className="font-medium">{title}</span>
-                                <span className="mt-1 block text-xs text-muted-foreground">
+                                <span className="text-sm font-medium">
+                                    {title}
+                                </span>
+                                <span className="mt-0.5 block text-xs text-muted-foreground">
                                     {hint}
                                 </span>
                             </span>
@@ -134,28 +136,38 @@ export function CsvExportSheet({
                 </fieldset>
 
                 <fieldset className="grid gap-2">
-                    <div className="flex items-center justify-between">
-                        <legend className="text-sm font-medium">
-                            Columns{' '}
-                            <span className="font-normal text-muted-foreground">
-                                ({selected.length} of {columns.length})
-                            </span>
-                        </legend>
-                        <button
-                            type="button"
-                            onClick={() =>
+                    <legend className="text-sm font-medium">
+                        Columns{' '}
+                        <span className="font-normal text-muted-foreground">
+                            ({selected.length} of {columns.length})
+                        </span>
+                    </legend>
+                    <div className="flex items-center gap-2.5 rounded-md px-1 py-1.5 hover:bg-muted/50">
+                        <Checkbox
+                            id="export-columns-all"
+                            checked={
+                                selected.length === columns.length
+                                    ? true
+                                    : selected.length === 0
+                                      ? false
+                                      : 'indeterminate'
+                            }
+                            onCheckedChange={() =>
                                 setSelected(
                                     selected.length === columns.length
                                         ? []
                                         : [...columns],
                                 )
                             }
-                            className="text-xs font-medium text-brand-accent underline-offset-2 hover:underline"
+                        />
+                        <Label
+                            htmlFor="export-columns-all"
+                            className="flex-1 cursor-pointer text-sm font-medium"
                         >
                             {selected.length === columns.length
                                 ? 'Deselect all'
                                 : 'Select all'}
-                        </button>
+                        </Label>
                     </div>
                     <div className="grid grid-cols-2 gap-1 sm:grid-cols-3">
                         {columns.map((column) => (

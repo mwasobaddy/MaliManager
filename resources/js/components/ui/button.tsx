@@ -19,7 +19,7 @@ const buttonVariants = cva(
          * `secondary`: same look today, different intent, so they can diverge.
          */
         shadcndefault:
-          "bg-background border-border-strong text-foreground shadow-xs hover:bg-muted",
+          "border border-border-strong bg-background text-foreground shadow-xs hover:bg-muted",
         destructive:
           "bg-action-danger text-on-danger shadow-xs hover:brightness-95 ",
         /** §6.1 Danger ghost — opens a confirmation, does not destroy. */

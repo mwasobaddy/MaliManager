@@ -1,5 +1,5 @@
 import { Head, Link } from '@inertiajs/react';
-import { FileText, Pencil, Plus, Trash2 } from 'lucide-react';
+import { FileText, SquarePen, Plus, Trash2 } from 'lucide-react';
 import { LabelledIconButton } from '@/components/labelled-icon-button';
 import Heading from '@/components/heading';
 import { Empty } from '@/components/ui/empty';
@@ -123,7 +123,7 @@ export default function AgreementTemplatesIndex({
                                                               )
                                                     }
                                                 >
-                                                    <Pencil className="size-4" />
+                                                    <SquarePen className="size-4" />
                                                 </Link>
                                             </Button>
                                             <Button

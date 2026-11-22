@@ -4,7 +4,7 @@ import {
     FileText,
     LogOut,
     Mail,
-    Pencil,
+    SquarePen,
     Phone,
     Trash2,
     Users,
@@ -465,7 +465,7 @@ export default function OccupantsIndex({
                                           {
                                               label: 'Edit',
                                               icon: (
-                                                  <Pencil className="size-4" />
+                                                  <SquarePen className="size-4" />
                                               ),
                                               onClick: () => {
                                                   ensureFormOptions();
