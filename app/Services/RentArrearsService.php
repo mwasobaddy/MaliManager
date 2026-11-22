@@ -81,6 +81,35 @@ class RentArrearsService extends Service
     }
 
     /**
+     * The first due date with a balance still owing, or null when the lease
+     * is paid up. Walks periods oldest-first, accumulating the per-period
+     * rent against what was actually received — this is what the 1am flag
+     * job stores as `overdue_since`.
+     */
+    public function firstOverdueDate(Lease $lease): ?CarbonImmutable
+    {
+        $dueDates = $this->dueDates($lease);
+
+        if ($dueDates === []) {
+            return null;
+        }
+
+        $rent = number_format((float) ($lease->rent_amount ?? 0), 2, '.', '');
+        $paid = number_format((float) $lease->payments()->where('status', 'received')->sum('amount'), 2, '.', '');
+        $expected = '0.00';
+
+        foreach ($dueDates as $due) {
+            $expected = bcadd($expected, $rent, 2);
+
+            if (bccomp($expected, $paid, 2) === 1) {
+                return $due;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Ids of overdue leases, optionally restricted to properties (staff
      * see only delegated ones). Drives the leases index overdue filter.
      *
@@ -139,19 +168,78 @@ class RentArrearsService extends Service
             return $this->monthlyDueDates($lease, $start, $today, $end);
         }
 
-        $length = match ($lease->rent_frequency) {
-            'daily' => 1,
-            'weekly' => 7,
-            'yearly' => 365,
-            default => 30,
-        };
+        if ($lease->rent_frequency === 'weekly') {
+            return $this->weeklyDueDates($lease, $start, $today, $end);
+        }
 
+        if ($lease->rent_frequency === 'yearly') {
+            return $this->yearlyDueDates($lease, $start, $today, $end);
+        }
+
+        // Daily (and anything unknown): step whole periods from the start —
+        // every day is a due date for daily, so there is nothing to snap to.
+        $length = $lease->rent_frequency === 'daily' ? 1 : 30;
         $dates = [];
         $periodStart = $start;
 
         while (! $periodStart->greaterThan($today) && ($end === null || $periodStart->lessThan($end))) {
             $dates[] = $periodStart;
             $periodStart = $periodStart->addDays($length);
+        }
+
+        return $dates;
+    }
+
+    /**
+     * Weekly dues snap to the chosen weekday, falling back to the start
+     * weekday when none was picked.
+     *
+     * @return list<CarbonImmutable>
+     */
+    private function weeklyDueDates(Lease $lease, CarbonImmutable $start, CarbonImmutable $today, ?CarbonImmutable $end): array
+    {
+        $cursor = $start;
+
+        if ($lease->rent_due_weekday !== null) {
+            $weekday = min(max($lease->rent_due_weekday, 0), 6);
+            $cursor = $start->addDays(($weekday - $start->dayOfWeek + 7) % 7);
+        }
+
+        $dates = [];
+
+        while (! $cursor->greaterThan($today) && ($end === null || $cursor->lessThan($end))) {
+            $dates[] = $cursor;
+            $cursor = $cursor->addWeek();
+        }
+
+        return $dates;
+    }
+
+    /**
+     * Yearly dues land on the chosen month and day, clamped to the month
+     * length (a Feb 29 lease is due Feb 28 off leap years), defaulting to
+     * the start anniversary.
+     *
+     * @return list<CarbonImmutable>
+     */
+    private function yearlyDueDates(Lease $lease, CarbonImmutable $start, CarbonImmutable $today, ?CarbonImmutable $end): array
+    {
+        $month = $lease->rent_due_month !== null ? min(max($lease->rent_due_month, 1), 12) : $start->month;
+        $day = $lease->rent_due_day !== null ? min(max($lease->rent_due_day, 1), 31) : $start->day;
+
+        $dates = [];
+
+        for ($year = $start->year; $year <= $today->year + 1; $year++) {
+            $due = CarbonImmutable::create($year, $month, 1)->startOfDay();
+            $due = $due->setDay(min($day, $due->daysInMonth));
+
+            if ($due->greaterThan($today) || ($end !== null && ! $due->lessThan($end))) {
+                break;
+            }
+
+            if (! $due->lessThan($start)) {
+                $dates[] = $due;
+            }
         }
 
         return $dates;

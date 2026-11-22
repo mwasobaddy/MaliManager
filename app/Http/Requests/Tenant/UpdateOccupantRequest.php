@@ -32,6 +32,8 @@ class UpdateOccupantRequest extends FormRequest
             'lease.rent_amount' => ['nullable', 'numeric', 'min:0'],
             'lease.rent_frequency' => ['nullable', 'string', Rule::in(['daily', 'weekly', 'monthly', 'yearly'])],
             'lease.rent_due_day' => ['nullable', 'integer', 'min:1', 'max:31'],
+            'lease.rent_due_weekday' => ['nullable', 'integer', 'min:0', 'max:6'],
+            'lease.rent_due_month' => ['nullable', 'integer', 'min:1', 'max:12'],
             'lease.deposit' => ['nullable', 'numeric', 'min:0'],
             'lease.currency' => ['nullable', 'string', 'size:3'],
             'lease.agreement_text' => ['nullable', 'string'],

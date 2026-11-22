@@ -1,6 +1,7 @@
 import { DoorOpen } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import DocumentBuilder from '@/components/document-builder';
+import { FrequencySelect } from '@/components/frequency-select';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import type { TemplateToken } from '@/components/rich-text-editor';
@@ -22,6 +23,8 @@ type Unit = {
     name: string;
     type: string | null;
     status: string;
+    rent_amount: string | number | null;
+    rent_frequency: string | null;
 };
 
 type AgreementTemplateOption = {
@@ -37,9 +40,11 @@ type GroupedTemplates = {
 
 type LeaseDefaults = {
     starts_at?: string | null;
-    rent_amount?: number | null;
+    rent_amount?: number | string | null;
     rent_frequency?: string | null;
-    rent_due_day?: number | null;
+    rent_due_day?: number | string | null;
+    rent_due_weekday?: number | string | null;
+    rent_due_month?: number | string | null;
     deposit?: number | null;
     currency?: string | null;
     agreement_text?: string | null;
@@ -69,7 +74,29 @@ type Props = {
     defaults?: Defaults;
 };
 
-const FREQUENCIES = ['daily', 'weekly', 'monthly', 'yearly'];
+const WEEKDAYS = [
+    'Sunday',
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+];
+const MONTHS = [
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
+];
 const CURRENCIES = ['KES', 'USD', 'EUR', 'GBP'];
 const STATUSES = ['active', 'inactive', 'moved_out'];
 
@@ -97,6 +124,50 @@ export default function OccupantFormFields({
     const [rentFrequency, setRentFrequency] = useState(
         defaults.lease?.rent_frequency ?? 'monthly',
     );
+    const [rentAmount, setRentAmount] = useState(
+        defaults.lease?.rent_amount != null
+            ? String(defaults.lease.rent_amount)
+            : '',
+    );
+    const [rentDueDay, setRentDueDay] = useState(
+        defaults.lease?.rent_due_day != null
+            ? String(defaults.lease.rent_due_day)
+            : '',
+    );
+    const [rentDueWeekday, setRentDueWeekday] = useState(
+        defaults.lease?.rent_due_weekday != null
+            ? String(defaults.lease.rent_due_weekday)
+            : '',
+    );
+    const [rentDueMonth, setRentDueMonth] = useState(
+        defaults.lease?.rent_due_month != null
+            ? String(defaults.lease.rent_due_month)
+            : '',
+    );
+
+    // Prefill billing from the allocated unit when a fresh lease is being
+    // drafted (no lease defaults yet): one unit, no ambiguity. Anything the
+    // landlord then edits stays edited — this only fires on selection
+    // change. Editing an occupant never reaches here, because existing
+    // leases keep their own terms.
+    const hasLeaseDefaults = defaults.lease != null;
+    useEffect(() => {
+        if (hasLeaseDefaults || unitIds.length !== 1) {
+            return;
+        }
+
+        const picked = units.find((unit) => unit.id === unitIds[0]);
+
+        if (!picked) {
+            return;
+        }
+
+        setRentFrequency(picked.rent_frequency ?? 'monthly');
+
+        if (picked.rent_amount != null) {
+            setRentAmount(String(picked.rent_amount));
+        }
+    }, [unitIds, hasLeaseDefaults, units]);
     const [currency, setCurrency] = useState(defaults.lease?.currency ?? 'KES');
     const [agreementText, setAgreementText] = useState(
         defaults.lease?.agreement_text ?? '<p></p>',
@@ -243,30 +314,12 @@ export default function OccupantFormFields({
                         <Label htmlFor={`${idPrefix}-lease-rent_frequency`}>
                             Rent frequency
                         </Label>
-                        <input
-                            type="hidden"
+                        <FrequencySelect
+                            id={`${idPrefix}-lease-rent_frequency`}
                             name="lease[rent_frequency]"
                             value={rentFrequency}
-                        />
-                        <Select
-                            value={rentFrequency}
                             onValueChange={setRentFrequency}
-                        >
-                            <SelectTrigger
-                                id={`${idPrefix}-lease-rent_frequency`}
-                                className="w-full"
-                            >
-                                <SelectValue placeholder="Select frequency" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {FREQUENCIES.map((value) => (
-                                    <SelectItem key={value} value={value}>
-                                        {value.charAt(0).toUpperCase() +
-                                            value.slice(1)}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                        />
                         <InputError message={errors['lease.rent_frequency']} />
                     </div>
 
@@ -281,30 +334,164 @@ export default function OccupantFormFields({
                             min="0"
                             step="0.01"
                             placeholder="25000"
-                            defaultValue={lease.rent_amount ?? ''}
+                            value={rentAmount}
+                            onChange={(event) =>
+                                setRentAmount(event.target.value)
+                            }
                         />
+                        <p className="text-xs text-muted-foreground">
+                            Prefilled from the unit — per{' '}
+                            {rentFrequency === 'daily'
+                                ? 'day'
+                                : rentFrequency === 'weekly'
+                                  ? 'week'
+                                  : rentFrequency === 'yearly'
+                                    ? 'year'
+                                    : 'month'}
+                            . Editable.
+                        </p>
                         <InputError message={errors['lease.rent_amount']} />
                     </div>
 
-                    <div className="grid gap-2">
-                        <Label htmlFor={`${idPrefix}-lease-rent_due_day`}>
-                            Rent due day
-                        </Label>
-                        <Input
-                            id={`${idPrefix}-lease-rent_due_day`}
-                            name="lease[rent_due_day]"
-                            type="number"
-                            min="1"
-                            max="31"
-                            placeholder="5"
-                            defaultValue={lease.rent_due_day ?? ''}
-                        />
-                        <p className="text-xs text-muted-foreground">
-                            Day of the month rent falls due. Empty means the
-                            lease start anniversary.
-                        </p>
-                        <InputError message={errors['lease.rent_due_day']} />
-                    </div>
+                    {rentFrequency === 'daily' ? (
+                        <div className="grid gap-2">
+                            <Label>Rent due</Label>
+                            <p className="text-sm text-muted-foreground">
+                                Daily rent accrues every day — no due date to
+                                choose.
+                            </p>
+                        </div>
+                    ) : rentFrequency === 'weekly' ? (
+                        <div className="grid gap-2">
+                            <Label
+                                htmlFor={`${idPrefix}-lease-rent_due_weekday`}
+                            >
+                                Rent due weekday
+                            </Label>
+                            <input
+                                type="hidden"
+                                name="lease[rent_due_weekday]"
+                                value={rentDueWeekday}
+                            />
+                            <Select
+                                value={rentDueWeekday}
+                                onValueChange={setRentDueWeekday}
+                            >
+                                <SelectTrigger
+                                    id={`${idPrefix}-lease-rent_due_weekday`}
+                                    className="w-full"
+                                >
+                                    <SelectValue placeholder="Select weekday" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {WEEKDAYS.map((day, index) => (
+                                        <SelectItem
+                                            key={day}
+                                            value={String(index)}
+                                        >
+                                            {day}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground">
+                                The weekday each week&apos;s rent falls due.
+                                Empty means the lease start weekday.
+                            </p>
+                            <InputError
+                                message={errors['lease.rent_due_weekday']}
+                            />
+                        </div>
+                    ) : rentFrequency === 'yearly' ? (
+                        <>
+                            <div className="grid gap-2">
+                                <Label
+                                    htmlFor={`${idPrefix}-lease-rent_due_month`}
+                                >
+                                    Rent due month
+                                </Label>
+                                <input
+                                    type="hidden"
+                                    name="lease[rent_due_month]"
+                                    value={rentDueMonth}
+                                />
+                                <Select
+                                    value={rentDueMonth}
+                                    onValueChange={setRentDueMonth}
+                                >
+                                    <SelectTrigger
+                                        id={`${idPrefix}-lease-rent_due_month`}
+                                        className="w-full"
+                                    >
+                                        <SelectValue placeholder="Select month" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {MONTHS.map((month, index) => (
+                                            <SelectItem
+                                                key={month}
+                                                value={String(index + 1)}
+                                            >
+                                                {month}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <InputError
+                                    message={errors['lease.rent_due_month']}
+                                />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label
+                                    htmlFor={`${idPrefix}-lease-rent_due_day`}
+                                >
+                                    Rent due day
+                                </Label>
+                                <Input
+                                    id={`${idPrefix}-lease-rent_due_day`}
+                                    name="lease[rent_due_day]"
+                                    type="number"
+                                    min="1"
+                                    max="31"
+                                    placeholder="5"
+                                    value={rentDueDay}
+                                    onChange={(event) =>
+                                        setRentDueDay(event.target.value)
+                                    }
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    Day of the due month rent falls due.
+                                </p>
+                                <InputError
+                                    message={errors['lease.rent_due_day']}
+                                />
+                            </div>
+                        </>
+                    ) : (
+                        <div className="grid gap-2">
+                            <Label htmlFor={`${idPrefix}-lease-rent_due_day`}>
+                                Rent due day
+                            </Label>
+                            <Input
+                                id={`${idPrefix}-lease-rent_due_day`}
+                                name="lease[rent_due_day]"
+                                type="number"
+                                min="1"
+                                max="31"
+                                placeholder="5"
+                                value={rentDueDay}
+                                onChange={(event) =>
+                                    setRentDueDay(event.target.value)
+                                }
+                            />
+                            <p className="text-xs text-muted-foreground">
+                                Day of the month rent falls due. Empty means the
+                                lease start anniversary.
+                            </p>
+                            <InputError
+                                message={errors['lease.rent_due_day']}
+                            />
+                        </div>
+                    )}
 
                     <div className="grid gap-2">
                         <Label htmlFor={`${idPrefix}-lease-deposit`}>
