@@ -62,6 +62,7 @@ export function PhotoPicker({
     id = 'photo-picker',
 }: PhotoPickerProps) {
     const inputRef = useRef<HTMLInputElement>(null);
+    const [files, setFiles] = useState<File[]>([]);
     const [previews, setPreviews] = useState<string[]>([]);
     const [reused, setReused] = useState<PhotoLibraryPhoto[]>([]);
     const [reuseUnitId, setReuseUnitId] = useState<string>('');
@@ -97,7 +98,22 @@ export function PhotoPicker({
         });
     }
 
+    function writeFiles(next: File[]) {
+        const transfer = new DataTransfer();
+        next.forEach((file) => transfer.items.add(file));
+
+        if (inputRef.current) {
+            inputRef.current.files = transfer.files;
+        }
+
+        setFiles(next);
+        syncPreviews(next);
+    }
+
     function handleChange(event: React.ChangeEvent<HTMLInputElement>) {
+        // The dialog replaces the input's files on every pick, so the
+        // component's own list is the source of truth — otherwise adding
+        // photos one at a time silently drops the earlier ones.
         const picked = Array.from(event.target.files ?? []);
         const valid = picked.filter(
             (file) =>
@@ -114,41 +130,21 @@ export function PhotoPicker({
         }
 
         const room = Math.max(0, remaining - reused.length);
-        const kept = valid.slice(0, room);
+        const kept = [...files, ...valid].slice(0, room);
 
-        if (valid.length > room) {
+        if (files.length + valid.length > room) {
             setClientError(
                 `Keep it to ${remaining} photos total — extras were dropped.`,
             );
         }
 
         // Write the surviving files back so the form posts exactly these.
-        const transfer = new DataTransfer();
-        kept.forEach((file) => transfer.items.add(file));
-
-        if (inputRef.current) {
-            inputRef.current.files = transfer.files;
-        }
-
-        syncPreviews(kept);
+        writeFiles(kept);
     }
 
     function removeUploadAt(index: number) {
-        const input = inputRef.current;
-
-        if (!input?.files) {
-            return;
-        }
-
-        const transfer = new DataTransfer();
-        Array.from(input.files).forEach((file, i) => {
-            if (i !== index) {
-                transfer.items.add(file);
-            }
-        });
-        input.files = transfer.files;
         setClientError(null);
-        syncPreviews(Array.from(transfer.files));
+        writeFiles(files.filter((_, i) => i !== index));
     }
 
     function toggleReuse(photo: PhotoLibraryPhoto) {

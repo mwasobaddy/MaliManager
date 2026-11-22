@@ -37,6 +37,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { formatMoney } from '@/lib/format-money';
+import { duplicateUnitName } from '@/lib/unit-names';
 import { store as storeUnit } from '@/routes/tenant/properties/units';
 import * as unitRoutes from '@/routes/tenant/units';
 
@@ -49,6 +50,7 @@ type UnitRow = {
     monthly_rent: string | null;
     photos_count: number;
     thumbnail: string | null;
+    photos: { id: number; url: string; name: string }[];
     property: { id: number | null; name: string | null; slug: string | null };
 };
 
@@ -64,6 +66,7 @@ type Props = {
         name: string;
         slug: string;
         units_count: number;
+        unit_names: string[];
     }[];
     plan: { units_limit: number | null };
     /** Admin-curated catalogue backing the type dropdown. */
@@ -112,6 +115,8 @@ export default function UnitsIndex({
     const [editTarget, setEditTarget] = useState<UnitRow | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<UnitRow | null>(null);
     const [editPropertyId, setEditPropertyId] = useState<string | null>(null);
+    const [createNameError, setCreateNameError] = useState<string | null>(null);
+    const [editNameError, setEditNameError] = useState<string | null>(null);
 
     // The property picker is local state, so reseed it per row. The form
     // below remounts by key, but this state lives outside it.
@@ -119,6 +124,7 @@ export default function UnitsIndex({
         setEditPropertyId(
             editTarget ? String(editTarget.property.id ?? '') : null,
         );
+        setEditNameError(null);
     }, [editTarget?.id]);
 
     // The delete overlay is local state, so it closes itself once the
@@ -716,8 +722,27 @@ export default function UnitsIndex({
                                         type="text"
                                         required
                                         placeholder="A1"
+                                        onChange={() =>
+                                            setCreateNameError(null)
+                                        }
+                                        onBlur={(event) => {
+                                            const clash =
+                                                createProperty == null
+                                                    ? null
+                                                    : duplicateUnitName(
+                                                          event.target.value,
+                                                          createProperty.unit_names,
+                                                      );
+                                            setCreateNameError(
+                                                clash === null
+                                                    ? null
+                                                    : `A unit called “${clash}” already exists in ${createProperty?.name}.`,
+                                            );
+                                        }}
                                     />
-                                    <InputError message={errors.name} />
+                                    <InputError
+                                        message={errors.name ?? createNameError}
+                                    />
                                 </div>
                                 <div className="grid gap-2">
                                     <Label htmlFor="create-unit-type">
@@ -730,6 +755,7 @@ export default function UnitsIndex({
                                         placeholder="Select a type…"
                                         searchPlaceholder="Search types…"
                                     />
+                                    <InputError message={errors.type} />
                                 </div>
                                 <div className="grid gap-2">
                                     <Label htmlFor="create-unit-rent">
@@ -771,7 +797,11 @@ export default function UnitsIndex({
                                 <InputError message={errors.plan} />
                                 <Button
                                     type="submit"
-                                    disabled={processing || atUnitLimit}
+                                    disabled={
+                                        processing ||
+                                        atUnitLimit ||
+                                        createNameError !== null
+                                    }
                                 >
                                     {processing ? 'Adding…' : 'Add unit'}
                                 </Button>
@@ -799,6 +829,7 @@ export default function UnitsIndex({
                                     label: 'Save changes',
                                     form: 'unit-edit-form',
                                     type: 'submit',
+                                    disabled: editNameError !== null,
                                 },
                             ]}
                         />
@@ -866,8 +897,29 @@ export default function UnitsIndex({
                                         type="text"
                                         required
                                         defaultValue={editTarget.name}
+                                        onChange={() => setEditNameError(null)}
+                                        onBlur={(event) => {
+                                            const names =
+                                                properties.find(
+                                                    (property) =>
+                                                        String(property.id) ===
+                                                        editPropertyId,
+                                                )?.unit_names ?? [];
+                                            const clash = duplicateUnitName(
+                                                event.target.value,
+                                                names,
+                                                editTarget.name,
+                                            );
+                                            setEditNameError(
+                                                clash === null
+                                                    ? null
+                                                    : `A unit called “${clash}” already exists here.`,
+                                            );
+                                        }}
                                     />
-                                    <InputError message={errors.name} />
+                                    <InputError
+                                        message={errors.name ?? editNameError}
+                                    />
                                 </div>
                                 <div className="grid gap-2">
                                     <Label htmlFor="edit-unit-type">Type</Label>
@@ -904,6 +956,23 @@ export default function UnitsIndex({
                                             (optional)
                                         </span>
                                     </span>
+                                    {editTarget.photos.length > 0 && (
+                                        <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
+                                            {editTarget.photos.map((photo) => (
+                                                <div
+                                                    key={photo.id}
+                                                    className="overflow-hidden rounded-lg border border-border-strong"
+                                                >
+                                                    <img
+                                                        src={photo.url}
+                                                        alt={photo.name}
+                                                        loading="lazy"
+                                                        className="aspect-square w-full object-cover"
+                                                    />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                     <PhotoPicker
                                         id="edit-unit-photos"
                                         library={photoLibrary}

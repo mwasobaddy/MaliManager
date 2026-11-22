@@ -367,3 +367,39 @@ test('creating a unit can reuse another unit’s photos', function () {
 
     expect($created->getMedia('photos'))->toHaveCount(1);
 });
+
+test('the units index ships photos and names for the edit sheet', function () {
+    Storage::fake('public');
+
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $property = makeUnitProperty($owner);
+    $unit = makeUnit($property, $owner, ['name' => 'A1']);
+    $unit->addMedia(UploadedFile::fake()->image('front.jpg'))->toMediaCollection('photos');
+
+    $props = $this->actingAs($owner)
+        ->get(tenantUrl($property->organization, '/units'))
+        ->assertOk()
+        ->viewData('page')['props'];
+
+    expect($props['units']['data'][0]['photos'])->toHaveCount(1)
+        ->and($props['units']['data'][0]['photos'][0])->toHaveKeys(['id', 'url', 'name'])
+        ->and($props['properties'][0]['unit_names'])->toContain('A1');
+});
+
+test('an edit cannot file a unit under another organization’s property', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $property = makeUnitProperty($owner);
+    $unit = makeUnit($property, $owner);
+
+    $stranger = User::factory()->create(['onboarded_at' => now()]);
+    $strangerProperty = makeUnitProperty($stranger, 'other-towers');
+
+    $this->actingAs($owner)
+        ->put(tenantUrl($property->organization, "/units/{$unit->id}"), [
+            'name' => 'A1',
+            'property_id' => $strangerProperty->id,
+        ])
+        ->assertSessionHasErrors('property_id');
+
+    expect($unit->fresh()->property_id)->toBe($property->id);
+});

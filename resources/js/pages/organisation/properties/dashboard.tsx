@@ -31,6 +31,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { formatMoney } from '@/lib/format-money';
+import { duplicateUnitName } from '@/lib/unit-names';
 import { index } from '@/routes/tenant/properties';
 import { store as storeUnit } from '@/routes/tenant/properties/units';
 
@@ -159,6 +160,7 @@ export default function PropertiesDashboard({
     unitTypes,
 }: Props) {
     const [addUnit, setAddUnit] = useState(false);
+    const [inlineNameError, setInlineNameError] = useState<string | null>(null);
     const [filterYear, setFilterYear] = useState<string>(
         year ? String(year) : '',
     );
@@ -370,7 +372,10 @@ export default function PropertiesDashboard({
                 <UnitGridCard
                     grid={stats.units_grid}
                     currency={organization.currency}
-                    onAdd={() => setAddUnit(true)}
+                    onAdd={() => {
+                        setInlineNameError(null);
+                        setAddUnit(true);
+                    }}
                     addDisabledReason={
                         atUnitLimit ? 'Your plan allows no more units' : null
                     }
@@ -412,8 +417,31 @@ export default function PropertiesDashboard({
                                                 type="text"
                                                 required
                                                 placeholder="A1"
+                                                onChange={() =>
+                                                    setInlineNameError(null)
+                                                }
+                                                onBlur={(event) => {
+                                                    const clash =
+                                                        duplicateUnitName(
+                                                            event.target.value,
+                                                            units.map(
+                                                                (unit) =>
+                                                                    unit.name,
+                                                            ),
+                                                        );
+                                                    setInlineNameError(
+                                                        clash === null
+                                                            ? null
+                                                            : `A unit called “${clash}” already exists in ${property.name}.`,
+                                                    );
+                                                }}
                                             />
-                                            <InputError message={errors.name} />
+                                            <InputError
+                                                message={
+                                                    errors.name ??
+                                                    inlineNameError
+                                                }
+                                            />
                                         </div>
                                         <div className="grid gap-2">
                                             <Label htmlFor="unit-type">
@@ -427,6 +455,7 @@ export default function PropertiesDashboard({
                                                 placeholder="Select a type…"
                                                 searchPlaceholder="Search types…"
                                             />
+                                            <InputError message={errors.type} />
                                         </div>
                                         <div className="grid gap-2">
                                             <Label htmlFor="unit-rent">
@@ -456,7 +485,10 @@ export default function PropertiesDashboard({
                                             </Button>
                                             <Button
                                                 type="submit"
-                                                disabled={processing}
+                                                disabled={
+                                                    processing ||
+                                                    inlineNameError !== null
+                                                }
                                             >
                                                 {processing ? 'Adding…' : 'Add'}
                                             </Button>

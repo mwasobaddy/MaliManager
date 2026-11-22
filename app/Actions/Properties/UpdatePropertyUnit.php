@@ -25,12 +25,14 @@ class UpdatePropertyUnit extends Service
     public function handle(Unit $unit, array $data): Unit
     {
         return $this->transaction(function () use ($unit, $data) {
-            if (array_key_exists('property_id', $data)
-                && (int) $data['property_id'] !== (int) $unit->property_id
-            ) {
+            $propertyId = isset($data['property_id']) && $data['property_id'] !== ''
+                ? (int) $data['property_id']
+                : null;
+
+            if ($propertyId !== null && $propertyId !== (int) $unit->property_id) {
                 $this->moveToProperty(
                     $unit,
-                    Property::query()->findOrFail((int) $data['property_id']),
+                    Property::query()->findOrFail($propertyId),
                 );
             }
 

@@ -94,9 +94,12 @@ class UnitController extends Controller
                 'monthly_rent' => $unit->monthly_rent,
                 'deposit' => $unit->deposit,
                 'photos_count' => $unit->getMedia('photos')->count(),
-                // Only the first photo inline; the rest are behind the sheet so
-                // a page of 18 units does not ship 200 image URLs.
+                // Only the first photo renders inline; the full set rides
+                // along for the edit sheet, filtered in memory from the
+                // already eager-loaded media. Capped at 12 per unit, so a
+                // full page stays a small payload.
                 'thumbnail' => $unit->getFirstMedia('photos')?->getUrl(),
+                'photos' => $unit->photoPayload(),
                 'property' => [
                     'id' => $unit->property?->id,
                     'name' => $unit->property?->name,
@@ -109,12 +112,16 @@ class UnitController extends Controller
             'properties' => TenancyContext::organization()?->properties()
                 ->orderBy('name')
                 ->withCount('units')
+                ->with('units:id,property_id,name')
                 ->get(['id', 'name', 'slug'])
                 ->map(fn (Property $property): array => [
                     'id' => $property->id,
                     'name' => $property->name,
                     'slug' => $property->slug,
                     'units_count' => $property->units_count ?? 0,
+                    // Names for the duplicate check on blur; ids alone
+                    // cannot tell "A1" from "a1" without another trip.
+                    'unit_names' => $property->units->pluck('name')->all(),
                 ])
                 ->all() ?? [],
             'plan' => [
