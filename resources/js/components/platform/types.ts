@@ -162,5 +162,7 @@ export type UnitGridBuilding = {
         status: string;
         overdue: boolean;
         occupant: string | null;
+        type: string | null;
+        monthly_rent: string | null;
     }>;
 };

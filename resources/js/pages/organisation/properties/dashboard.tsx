@@ -1,5 +1,5 @@
 import { Form, Head, Link, router, usePage } from '@inertiajs/react';
-import { Building2, DoorOpen, Plus } from 'lucide-react';
+import { DoorOpen } from 'lucide-react';
 import { useState } from 'react';
 import type { ComboPoint } from '@/components/dashboard/combo-chart';
 import { ComboChart } from '@/components/dashboard/combo-chart';
@@ -127,6 +127,8 @@ type PropertyStat = {
             status: string;
             overdue: boolean;
             occupant: string | null;
+            type: string | null;
+            monthly_rent: string | null;
         }>;
     }>;
 };
@@ -307,27 +309,12 @@ export default function PropertiesDashboard({
                             variant: 'accent',
                         },
                         {
-                            label: 'In Maintenance',
-                            value: stats.in_maintenance,
-                            variant: 'primary',
-                        },
-                        {
                             label: 'Monthly Rent Potential',
                             value: formatMoney(
                                 stats.rent_potential,
                                 organization.currency,
                             ),
                             variant: 'primary',
-                        },
-                        {
-                            label: 'Open Maintenance',
-                            value: stats.open_maintenance,
-                            variant: 'primary',
-                        },
-                        {
-                            label: 'Active Leases',
-                            value: stats.active_leases,
-                            variant: 'accent',
                         },
                     ]}
                 />
@@ -374,78 +361,37 @@ export default function PropertiesDashboard({
                     </Card>
                 )}
 
-                <UnitGridCard grid={stats.units_grid} />
-
-                <ComboChart
-                    title="Property activity"
-                    data={stats.operations_monthly}
-                    series={[
-                        {
-                            key: 'rent_roll',
-                            label: 'Rent roll',
-                            color: 'var(--chart-1)',
-                            type: 'area',
-                            axis: 'left',
-                        },
-                        {
-                            key: 'maintenance',
-                            label: 'Maintenance',
-                            color: 'var(--chart-2)',
-                            type: 'bar',
-                            axis: 'right',
-                        },
-                        {
-                            key: 'new_leases',
-                            label: 'New leases',
-                            color: 'var(--chart-3)',
-                            type: 'line',
-                            axis: 'right',
-                        },
-                    ]}
+                <UnitGridCard
+                    grid={stats.units_grid}
+                    currency={organization.currency}
+                    onAdd={() => setAddUnit(true)}
+                    addDisabledReason={
+                        atUnitLimit ? 'Your plan allows no more units' : null
+                    }
+                    addTooltip="Add a unit to this property"
                 />
 
-                <Card>
-                    <CardHeader>
-                        <div className="flex items-center justify-between gap-4">
+                {atUnitLimit && (
+                    <p className="text-sm text-destructive">
+                        Your current plan allows up to {plan.units_limit} units.
+                        Please upgrade your plan to add more.
+                    </p>
+                )}
+
+                {addUnit && (
+                    <Card>
+                        <CardHeader>
                             <div className="flex items-center gap-2">
                                 <DoorOpen className="size-4 text-muted-foreground" />
-                                <CardTitle>Units</CardTitle>
-                                <CardDescription>
-                                    {units.length} total
-                                </CardDescription>
+                                <CardTitle>Add unit</CardTitle>
                             </div>
-                            {!addUnit && (
-                                <Button
-                                    size="sm"
-                                    onClick={() => setAddUnit(true)}
-                                    disabled={atUnitLimit}
-                                    title={
-                                        atUnitLimit
-                                            ? 'Your plan allows no more units'
-                                            : undefined
-                                    }
-                                >
-                                    <Plus className="size-4" />
-                                    Add unit
-                                </Button>
-                            )}
-                        </div>
-                    </CardHeader>
-                    <CardContent>
-                        {atUnitLimit && (
-                            <p className="mb-4 text-sm text-destructive">
-                                Your current plan allows up to{' '}
-                                {plan.units_limit} units. Please upgrade your
-                                plan to add more.
-                            </p>
-                        )}
-
-                        {addUnit && (
+                        </CardHeader>
+                        <CardContent>
                             <Form
                                 method="post"
                                 action={storeUnit(property.slug)}
                                 options={{ preserveScroll: true }}
-                                className="mb-6 grid gap-4 rounded-lg border border-input p-4 md:grid-cols-[1fr_1fr_1fr_auto]"
+                                className="grid gap-4 md:grid-cols-[1fr_1fr_1fr_auto]"
                                 onSuccess={() => setAddUnit(false)}
                             >
                                 {({ processing, errors }) => (
@@ -511,74 +457,37 @@ export default function PropertiesDashboard({
                                     </>
                                 )}
                             </Form>
-                        )}
+                        </CardContent>
+                    </Card>
+                )}
 
-                        {units.length === 0 ? (
-                            <div className="py-10 text-center">
-                                <Building2 className="mx-auto size-8 text-muted-foreground" />
-                                <p className="mt-3 text-sm font-medium">
-                                    No units yet
-                                </p>
-                                <p className="mt-1 text-sm text-muted-foreground">
-                                    Add your first unit to start managing
-                                    tenants and leases.
-                                </p>
-                                {!addUnit && (
-                                    <Button
-                                        className="mt-4"
-                                        onClick={() => setAddUnit(true)}
-                                        disabled={atUnitLimit}
-                                        title={
-                                            atUnitLimit
-                                                ? 'Your plan allows no more units'
-                                                : undefined
-                                        }
-                                    >
-                                        <Plus className="size-4" />
-                                        Add your first unit
-                                    </Button>
-                                )}
-                            </div>
-                        ) : (
-                            <div className="divide-y divide-border rounded-lg border">
-                                {units.map((unit) => (
-                                    <div
-                                        key={unit.id}
-                                        className="flex items-center justify-between gap-4 px-4 py-3"
-                                    >
-                                        <div className="min-w-0">
-                                            <p className="truncate text-sm font-medium">
-                                                {unit.name}
-                                            </p>
-                                            <p className="truncate text-sm text-muted-foreground">
-                                                {unit.type ?? 'Unit'}
-                                            </p>
-                                        </div>
-                                        <div className="flex items-center gap-3">
-                                            {unit.monthly_rent !== null && (
-                                                <p className="text-sm font-medium">
-                                                    {formatMoney(
-                                                        unit.monthly_rent,
-                                                        organization.currency,
-                                                    )}
-                                                </p>
-                                            )}
-                                            <Badge
-                                                variant={
-                                                    unit.status === 'vacant'
-                                                        ? 'secondary'
-                                                        : 'default'
-                                                }
-                                            >
-                                                {unit.status}
-                                            </Badge>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
+                <ComboChart
+                    title="Property activity"
+                    data={stats.operations_monthly}
+                    series={[
+                        {
+                            key: 'rent_roll',
+                            label: 'Rent roll',
+                            color: 'var(--chart-1)',
+                            type: 'area',
+                            axis: 'left',
+                        },
+                        {
+                            key: 'maintenance',
+                            label: 'Maintenance',
+                            color: 'var(--chart-2)',
+                            type: 'bar',
+                            axis: 'right',
+                        },
+                        {
+                            key: 'new_leases',
+                            label: 'New leases',
+                            color: 'var(--chart-3)',
+                            type: 'line',
+                            axis: 'right',
+                        },
+                    ]}
+                />
             </div>
         </>
     );

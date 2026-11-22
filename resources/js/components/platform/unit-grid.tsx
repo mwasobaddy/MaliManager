@@ -1,3 +1,5 @@
+import { Plus } from 'lucide-react';
+import { LabelledIconButton } from '@/components/labelled-icon-button';
 import {
     Card,
     CardContent,
@@ -5,9 +7,29 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
+import { formatMoney } from '@/lib/format-money';
 import type { UnitGridBuilding } from './types';
 
-export function UnitGridCard({ grid }: { grid: UnitGridBuilding[] }) {
+type UnitGridCardProps = {
+    grid: UnitGridBuilding[];
+    /** ISO currency code for the rent line; omitted hides it. */
+    currency?: string;
+    /** When set, a platform-style add button sits in the header. */
+    onAdd?: () => void;
+    /** Plan-limit (or other) reason: disables the button, tooltip carries it. */
+    addDisabledReason?: string | null;
+    addLabel?: string;
+    addTooltip?: string;
+};
+
+export function UnitGridCard({
+    grid,
+    currency,
+    onAdd,
+    addDisabledReason,
+    addLabel = 'Add unit',
+    addTooltip = 'Add a unit here',
+}: UnitGridCardProps) {
     const fill: Record<string, string> = {
         occupied: 'bg-status-success-bg text-status-success-fg',
         vacant: 'bg-status-neutral-bg text-status-neutral-fg',
@@ -17,12 +39,28 @@ export function UnitGridCard({ grid }: { grid: UnitGridBuilding[] }) {
     return (
         <Card>
             <CardHeader className="pb-2">
-                <CardTitle className="text-base font-medium">
-                    Unit map
-                </CardTitle>
-                <CardDescription>
-                    Every unit at a glance — the red ring marks arrears.
-                </CardDescription>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <CardTitle className="text-base font-medium">
+                            Unit map
+                        </CardTitle>
+                        <CardDescription>
+                            Every unit at a glance — the red ring marks arrears.
+                        </CardDescription>
+                    </div>
+                    {onAdd && (
+                        <LabelledIconButton
+                            icon={<Plus />}
+                            label={addLabel}
+                            tooltip={addTooltip}
+                            color="primary"
+                            onClick={onAdd}
+                            disabled={addDisabledReason != null}
+                            disabledReason={addDisabledReason}
+                            className="max-w-20 sm:max-w-24"
+                        />
+                    )}
+                </div>
             </CardHeader>
             <CardContent className="flex flex-col gap-4">
                 {grid.length === 0 && (
@@ -39,15 +77,25 @@ export function UnitGridCard({ grid }: { grid: UnitGridBuilding[] }) {
                             {building.units.map((unit) => (
                                 <div
                                     key={unit.id}
-                                    title={`${unit.name} · ${unit.status}${unit.occupant ? ` · ${unit.occupant}` : ''}`}
+                                    title={`${unit.name} · ${unit.type ?? unit.status}${unit.monthly_rent && currency ? ` · ${formatMoney(unit.monthly_rent, currency)}` : ''}${unit.occupant ? ` · ${unit.occupant}` : ''}`}
                                     className={`rounded-lg border px-2 py-2 text-center ${fill[unit.status] ?? 'bg-muted text-muted-foreground'} ${unit.overdue ? 'ring-2 ring-status-danger' : ''}`}
                                 >
                                     <p className="truncate text-xs font-semibold">
                                         {unit.name}
                                     </p>
                                     <p className="truncate text-[10px] opacity-80">
-                                        {unit.occupant ?? unit.status}
+                                        {unit.type ??
+                                            unit.occupant ??
+                                            unit.status}
                                     </p>
+                                    {unit.monthly_rent !== null && currency && (
+                                        <p className="truncate text-[10px] font-semibold tabular-nums">
+                                            {formatMoney(
+                                                unit.monthly_rent,
+                                                currency,
+                                            )}
+                                        </p>
+                                    )}
                                 </div>
                             ))}
                         </div>

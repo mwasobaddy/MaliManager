@@ -220,7 +220,9 @@ test('property dashboard carries collection, attention, expiry and unit grid', f
         ->and($stats['collection']['defaulters'][0]['can_remind'])->toBeTrue()
         ->and($stats['expiring_leases'])->toHaveCount(1)
         ->and($stats['units_grid'])->toHaveCount(1)
-        ->and($stats['units_grid'][0]['units'])->toHaveCount(2);
+        ->and($stats['units_grid'][0]['units'])->toHaveCount(2)
+        ->and($stats['units_grid'][0]['units'][0])->toHaveKeys(['id', 'name', 'status', 'overdue', 'occupant', 'type', 'monthly_rent'])
+        ->and($stats['units_grid'][0]['units'][0]['monthly_rent'])->toBe('25000.00');
 });
 
 test('free plan property limit prevents a second property', function () {

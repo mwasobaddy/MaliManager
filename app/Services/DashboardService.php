@@ -255,7 +255,7 @@ class DashboardService extends Service
      * @param  array<int, int>  $orgIds
      * @param  iterable<int, array{id: int, name: string}>  $properties
      * @return array{
-     *     units_grid: list<array{property: string, units: list<array{id: int, name: string, status: string, overdue: bool, occupant: string|null}>}>,
+     *     units_grid: list<array{property: string, units: list<array{id: int, name: string, status: string, overdue: bool, occupant: string|null, type: string|null, monthly_rent: string|null}>}>,
      *     timing: array{early: int, on_time: int, late: int},
      *     tax: list<array{label: string, total: string, properties: list<array{property: string, total: string}>}>,
      *     pnl: array{income_ytd: string, expenses_ytd: string, net_ytd: string, expenses_by_category: list<array{category: string, total: string}>},
@@ -1022,7 +1022,7 @@ class DashboardService extends Service
      *
      * @param  array<int, int>  $propertyIds
      * @param  array<int, string>  $propertyNames
-     * @return list<array{property: string, units: list<array{id: int, name: string, status: string, overdue: bool, occupant: string|null}>}>
+     * @return list<array{property: string, units: list<array{id: int, name: string, status: string, overdue: bool, occupant: string|null, type: string|null, monthly_rent: string|null}>}>
      */
     private function unitsGrid(array $propertyIds, array $propertyNames): array
     {
@@ -1048,7 +1048,7 @@ class DashboardService extends Service
             $units = Unit::query()
                 ->where('property_id', $propertyId)
                 ->orderBy('name')
-                ->get(['id', 'name', 'status'])
+                ->get(['id', 'name', 'status', 'type', 'monthly_rent'])
                 ->map(fn (Unit $unit): array => [
                     'id' => $unit->id,
                     'name' => $unit->name,
@@ -1057,6 +1057,8 @@ class DashboardService extends Service
                     'occupant' => ($lease = $leasesByUnit->get($unit->id)) !== null && $lease->person !== null
                         ? trim($lease->person->first_name.' '.$lease->person->last_name)
                         : null,
+                    'type' => $unit->type,
+                    'monthly_rent' => $unit->monthly_rent !== null ? (string) $unit->monthly_rent : null,
                 ])
                 ->all();
 
