@@ -4,7 +4,6 @@ import { OverlayFooter } from '@/components/overlay-footer';
 import { ResponsiveOverlay } from '@/components/responsive-overlay';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { cn } from '@/lib/utils';
 
 type ExportSheetProps = {
     open: boolean;
@@ -110,10 +109,7 @@ export function CsvExportSheet({
                     ).map(([value, title, hint]) => (
                         <label
                             key={value}
-                            className={cn(
-                                'flex cursor-pointer items-start gap-2.5 rounded-lg px-1 py-2 hover:bg-muted/50',
-                                scope === value && 'bg-muted/50',
-                            )}
+                            className="flex cursor-pointer items-start gap-2.5 px-1 py-2"
                         >
                             <input
                                 type="radio"
