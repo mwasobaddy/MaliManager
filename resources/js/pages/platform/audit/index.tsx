@@ -496,7 +496,7 @@ export default function AdminAuditIndex({
                             <ActionIconButton
                                 icon={<Download />}
                                 label="Export CSV"
-                                color="default"
+                                color="teal"
                                 onClick={() => setOverlayParam('export', '1')}
                             />
                         )}

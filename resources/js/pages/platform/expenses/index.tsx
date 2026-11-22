@@ -528,7 +528,7 @@ export default function PlatformExpensesIndex({
                             <ActionIconButton
                                 icon={<Upload />}
                                 label="Import from CSV"
-                                color="default"
+                                color="teal"
                                 onClick={() => setOverlayParam('import', '1')}
                             />
                         )}
@@ -536,7 +536,7 @@ export default function PlatformExpensesIndex({
                             <ActionIconButton
                                 icon={<Download />}
                                 label="Export"
-                                color="default"
+                                color="teal"
                                 onClick={() => setOverlayParam('export', '1')}
                             />
                         )}

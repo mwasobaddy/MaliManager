@@ -11,28 +11,25 @@ import { cn } from '@/lib/utils';
 /**
  * Colors for table row actions.
  *
- * v2 §7.3 is **neutral at rest, tinted on hover**. v1 gave every row a filled
- * View/Edit/Delete chip, so the same three colours repeated down every column
- * and the table read as a wall of badges before you got to the data. The icons
- * are identical on every row, so colour was never carrying unique information
- * at rest — it was decoration. Hovering is where it earns its place: it says
- * what the button does *before* you commit to it, which is the moment the
- * distinction is actually useful.
+ * Row actions are **solid at rest, brightness-shifted on hover**: view is
+ * blue, edit is green, delete is red, so the action reads before the
+ * tooltip does. Hover darkens in light mode and lightens in dark mode
+ * (`dark:` brightness), keeping white icons at AA on both canvases — the
+ * fills are fixed tokens for exactly that reason, not the theme-flipping
+ * tints. (v2 §7.3 ran these neutral-at-rest; reversed by owner request —
+ * the wall-of-badges concern stands, so keep these three to row actions
+ * only and never promote them to page-level CTAs.)
  *
- * Each maps to a token that has its own light and dark values in
- * resources/css/app.css, so a swatch re-tints itself with the theme and no
- * `dark:` variants are needed here.
+ * Each maps to a token in resources/css/app.css.
  */
 const actionColorVariants = cva('', {
     variants: {
         color: {
             default: 'bg-muted text-muted-foreground hover:bg-accent',
             primary: 'bg-primary text-primary-foreground hover:bg-primary/90',
-            /* v2 §7.3 — neutral at rest, tinted on hover. See the block
-               comment above for why the v1 fills went away. */
-            view: 'bg-muted text-muted-foreground hover:bg-brand-accent-100 hover:text-accent-text focus-visible:ring-accent-text/30',
-            edit: 'bg-muted text-muted-foreground hover:bg-brand-primary-100 hover:text-primary-text focus-visible:ring-primary-text/30',
-            danger: 'bg-muted text-muted-foreground hover:bg-status-danger-bg hover:text-status-danger focus-visible:ring-status-danger/30',
+            view: 'bg-action-view-fill text-white hover:brightness-90 focus-visible:ring-action-view-fill/40 dark:hover:brightness-125',
+            edit: 'bg-action-edit-fill text-white hover:brightness-90 focus-visible:ring-action-edit-fill/40 dark:hover:brightness-125',
+            danger: 'bg-action-danger-fill text-white hover:brightness-90 focus-visible:ring-action-danger-fill/40 dark:hover:brightness-125',
             brand: 'bg-muted text-muted-foreground hover:bg-brand-primary-100 hover:text-primary-text focus-visible:ring-primary-text/30',
             accent: 'bg-brand-accent/12 text-brand-accent hover:bg-brand-accent/20 focus-visible:ring-brand-accent/30',
             /**

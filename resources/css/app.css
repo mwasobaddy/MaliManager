@@ -118,6 +118,17 @@
     --color-action-view: var(--action-view);
     --color-action-edit: var(--action-edit);
     --color-action-danger: var(--action-danger);
+    /*
+     * Solid row-action fills. Deliberately fixed across themes (not the
+     * theme-flipping status tokens): a deep fill keeps a white icon at
+     * AA on both the sand canvas and the charcoal one, while the
+     * flipping tints would go pastel-on-white in dark mode. Hover
+     * brightness is theme-aware in the component (darker in light,
+     * lighter in dark).
+     */
+    --color-action-view-fill: var(--action-view-fill);
+    --color-action-edit-fill: var(--action-edit-fill);
+    --color-action-danger-fill: var(--action-danger-fill);
     --color-status-success: var(--status-success);
     --color-status-danger: var(--status-danger);
     --color-status-warning: var(--status-warning);
@@ -211,11 +222,14 @@
     --destructive: #c53030;
     --destructive-foreground: #ffffff;
     /* v2 §2.5: view/edit are deprecated aliases kept only so existing call
-       sites keep compiling. Row actions are neutral at rest and tint on
-       hover, so these are text tokens, never fills. */
+       sites keep compiling. The row-action fills live in
+       --action-*-fill (fixed across themes for white-icon contrast). */
     --action-view: var(--accent-text);
     --action-edit: var(--primary-text);
     --action-danger: #c53030;
+    --action-view-fill: #2b6cb0;
+    --action-edit-fill: #276749;
+    --action-danger-fill: #c53030;
     --status-success: #276749;
     --status-danger: #c53030;
     --status-warning: #b7791f;
