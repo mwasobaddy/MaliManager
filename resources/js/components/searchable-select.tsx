@@ -12,12 +12,22 @@ type SearchableSelectProps = {
     /** Form field name. Submitted through a hidden input. */
     name: string;
     options: Array<string | SearchableSelectOption>;
+    /** Uncontrolled initial value. Ignored when `value` is set. */
     defaultValue?: string;
+    /** Controlled value. Pair with `onValueChange`. */
+    value?: string;
+    onValueChange?: (value: string) => void;
     placeholder?: string;
     searchPlaceholder?: string;
+    /** Text shown when the filter matches nothing. */
+    emptyText?: string;
     ariaLabel?: string;
     disabled?: boolean;
-    triggerClassName?: string;
+    required?: boolean;
+    /** Extra classes on the trigger (width, margins, alignment). */
+    className?: string;
+    /** Extra classes on the dropdown content. */
+    contentClassName?: string;
     id?: string;
 };
 
@@ -31,11 +41,16 @@ export function SearchableSelect({
     name,
     options,
     defaultValue = '',
+    value: controlledValue,
+    onValueChange,
     placeholder = 'Select…',
     searchPlaceholder = 'Search…',
+    emptyText = 'No types match.',
     ariaLabel,
     disabled = false,
-    triggerClassName,
+    required = false,
+    className,
+    contentClassName,
     id,
 }: SearchableSelectProps) {
     const normalized = useMemo<SearchableSelectOption[]>(
@@ -47,9 +62,19 @@ export function SearchableSelect({
             ),
         [options],
     );
-    const [value, setValue] = useState(defaultValue);
+    const [internalValue, setInternalValue] = useState(defaultValue);
     const [query, setQuery] = useState('');
     const searchRef = useRef<HTMLInputElement>(null);
+
+    const isControlled = controlledValue !== undefined;
+    const value = isControlled ? controlledValue : internalValue;
+
+    function handleChange(next: string) {
+        if (!isControlled) {
+            setInternalValue(next);
+        }
+        onValueChange?.(next);
+    }
 
     const filtered = useMemo(() => {
         const needle = query.trim().toLowerCase();
@@ -67,11 +92,17 @@ export function SearchableSelect({
 
     return (
         <>
-            <input type="hidden" name={name} value={value} />
+            <input
+                type="hidden"
+                name={name}
+                value={value}
+                required={required}
+            />
             <SelectPrimitive.Root
                 value={value}
-                onValueChange={setValue}
+                onValueChange={handleChange}
                 disabled={disabled}
+                required={required}
                 onOpenChange={(open) => {
                     if (open) {
                         setQuery('');
@@ -84,7 +115,7 @@ export function SearchableSelect({
                     aria-label={ariaLabel ?? placeholder}
                     className={cn(
                         'flex h-9 w-full items-center justify-between gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm whitespace-nowrap shadow-xs transition-[color,box-shadow] outline-none disabled:cursor-not-allowed disabled:opacity-50 [&>span]:truncate',
-                        triggerClassName,
+                        className,
                     )}
                 >
                     <SelectPrimitive.Value placeholder={placeholder}>
@@ -99,7 +130,10 @@ export function SearchableSelect({
                         position="popper"
                         sideOffset={4}
                         avoidCollisions
-                        className="relative z-50 max-h-(--radix-select-content-available-height) min-w-[8rem] origin-(--radix-select-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-md border bg-popover text-popover-foreground shadow-md"
+                        className={cn(
+                            'relative z-50 max-h-(--radix-select-content-available-height) min-w-[8rem] origin-(--radix-select-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-md border bg-popover text-popover-foreground shadow-md',
+                            contentClassName,
+                        )}
                     >
                         <div className="sticky top-0 z-10 border-b bg-popover p-2">
                             <div className="relative">
@@ -125,7 +159,7 @@ export function SearchableSelect({
                             {filtered.length === 0 ? (
                                 <p className="flex items-center gap-2 px-2 py-6 text-sm text-muted-foreground">
                                     <SearchX className="size-4" />
-                                    No types match.
+                                    {emptyText}
                                 </p>
                             ) : (
                                 filtered.map((option) => (
