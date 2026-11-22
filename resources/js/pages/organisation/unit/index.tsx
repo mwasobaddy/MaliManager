@@ -674,6 +674,15 @@ export default function UnitsIndex({
                     <OverlayFooter
                         onCancel={() => setOverlayParam('create', null)}
                         cancelLabel="Cancel"
+                        actions={[
+                            {
+                                label: 'Add unit',
+                                form: 'unit-create-form',
+                                type: 'submit',
+                                disabled:
+                                    atUnitLimit || createNameError !== null,
+                            },
+                        ]}
                     />
                 }
             >
@@ -687,12 +696,13 @@ export default function UnitsIndex({
                 )}
                 {createProperty && (
                     <Form
+                        id="unit-create-form"
                         method="post"
                         action={storeUnit(createProperty.slug)}
                         options={{ preserveScroll: true }}
                         onSuccess={closeCreate}
                     >
-                        {({ processing, errors }) => (
+                        {({ errors }) => (
                             <div className="grid gap-4 py-2">
                                 <div className="grid gap-2">
                                     <Label htmlFor="create-unit-property">
@@ -800,16 +810,6 @@ export default function UnitsIndex({
                                     />
                                 </div>
                                 <InputError message={errors.plan} />
-                                <Button
-                                    type="submit"
-                                    disabled={
-                                        processing ||
-                                        atUnitLimit ||
-                                        createNameError !== null
-                                    }
-                                >
-                                    {processing ? 'Adding…' : 'Add unit'}
-                                </Button>
                             </div>
                         )}
                     </Form>
