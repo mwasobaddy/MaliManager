@@ -48,6 +48,25 @@ const actionColorVariants = cva('', {
     },
 });
 
+/**
+ * Ghost-hover locks. `variant="ghost"` ships
+ * `hover:bg-accent hover:text-accent-foreground` — a terracotta wash that
+ * paints over the solid row-action fills and flips their icons on hover.
+ * tailwind-merge drops it wherever the color variant names its own hover
+ * bg/text, but `view`/`edit`/`danger` hover via a brightness filter (a
+ * different utility, so both survive) and `primary`/`accent`/`teal` name no
+ * hover text (so the flip survives). Each entry re-locks exactly what its
+ * color leaves exposed; `default` and `brand` fully specify hover already.
+ */
+const ghostHoverLocks = {
+    view: 'hover:bg-action-view-fill hover:text-white',
+    edit: 'hover:bg-action-edit-fill hover:text-white',
+    danger: 'hover:bg-action-danger-fill hover:text-white',
+    primary: 'hover:text-primary-foreground',
+    accent: 'hover:text-brand-accent',
+    teal: 'hover:text-on-accent',
+} as const;
+
 type ActionIconButtonProps = React.ComponentProps<typeof Button> & {
     /**
      * The icon to render. Leave off the size class — the button sizes it.
@@ -137,6 +156,9 @@ export function ActionIconButton({
                 // coarse pointers; fine pointers keep the compact 36px.
                 'coarse:min-h-11 coarse:min-w-11',
                 actionColorVariants({ color }),
+                color !== 'default' &&
+                    color !== 'brand' &&
+                    ghostHoverLocks[color],
                 className,
             )}
             {...props}
