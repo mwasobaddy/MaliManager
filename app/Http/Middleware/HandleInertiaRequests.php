@@ -262,7 +262,10 @@ class HandleInertiaRequests extends Middleware
 
     /**
      * The sub-permission keys the current user holds in the active
-     * tenancy. Owners implicitly hold every permission.
+     * tenancy. Owners implicitly hold every permission, and platform
+     * admins bypass the checks on the routes — the shared UI gates must
+     * match, or an admin who can delete via the API sees a page with no
+     * action buttons at all.
      *
      * @return array<int, string>
      */
@@ -272,7 +275,7 @@ class HandleInertiaRequests extends Middleware
             return [];
         }
 
-        if ($user->isOwnerOf($organization)) {
+        if ($user->isPlatformAdmin() || $user->isOwnerOf($organization)) {
             return array_map(fn (SubPermissionKey $key) => $key->value, SubPermissionKey::cases());
         }
 
