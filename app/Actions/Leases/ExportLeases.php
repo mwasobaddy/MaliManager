@@ -32,7 +32,7 @@ class ExportLeases extends Service
                 'sort' => $data->sort,
                 'direction' => $data->direction,
             ])
-            ->with(['person:id,first_name,last_name', 'unit:id,name']);
+            ->with(['person:id,first_name,last_name', 'unit:id,name', 'property:id,name', 'media' => fn ($query) => $query->where('collection_name', 'agreement')]);
 
         if ($data->scope === 'page') {
             $query->forPage($data->page, 18);

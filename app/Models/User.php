@@ -89,6 +89,16 @@ class User extends Authenticatable implements PasskeyUser
     }
 
     /**
+     * Ownership answers already given this request, keyed by organization
+     * id. Row-level gates (`DeletionTier::allows`) ask per row, so without
+     * this an 18-row table repeats the same EXISTS query 18 times. The
+     * instance is request-scoped, so nothing survives into the next request.
+     *
+     * @var array<int, bool>
+     */
+    private array $ownershipMemo = [];
+
+    /**
      * Whether billing and rent reminders reach this user by SMS rather
      * than email. Chosen during onboarding, editable in settings.
      */
@@ -102,10 +112,11 @@ class User extends Authenticatable implements PasskeyUser
      */
     public function isOwnerOf(Organization $organization): bool
     {
-        return $this->organizations()
-            ->where('organizations.id', $organization->id)
-            ->wherePivot('is_owner', true)
-            ->exists();
+        return $this->ownershipMemo[$organization->id]
+            ??= $this->organizations()
+                ->where('organizations.id', $organization->id)
+                ->wherePivot('is_owner', true)
+                ->exists();
     }
 
     /**

@@ -54,7 +54,7 @@ class LeaseController extends Controller
                 'sort' => $request->string('sort')->toString(),
                 'direction' => $request->string('direction')->toString(),
             ])
-            ->with(['person:id,first_name,last_name,email', 'unit:id,name'])
+            ->with(['person:id,first_name,last_name,email', 'unit:id,name', 'property:id,name', 'media' => fn ($query) => $query->where('collection_name', 'agreement')])
             ->paginate(18)
             ->withQueryString();
 
@@ -197,7 +197,7 @@ class LeaseController extends Controller
         $lease = Lease::query()
             ->where('property_id', $property->id)
             ->whereKey($id)
-            ->with(['person:id,first_name,last_name,email', 'unit:id,name'])
+            ->with(['person:id,first_name,last_name,email', 'unit:id,name', 'property:id,name', 'media' => fn ($query) => $query->where('collection_name', 'agreement')])
             ->first();
 
         if (! $lease) {
