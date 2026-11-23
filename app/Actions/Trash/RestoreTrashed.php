@@ -3,10 +3,12 @@
 namespace App\Actions\Trash;
 
 use App\Models\Organization;
+use App\Models\Role;
 use App\Models\User;
 use App\Services\Service;
 use App\Services\TrashService;
 use App\Support\TrashModules;
+use Spatie\Permission\PermissionRegistrar;
 
 /**
  * Restores soft-deleted rows back to their lists.
@@ -61,8 +63,14 @@ class RestoreTrashed extends Service
                 continue;
             }
 
-            $this->transaction(function () use ($model): void {
+            $this->transaction(function () use ($moduleKey, $model): void {
                 $model->restore();
+
+                // Restored permissions stay invisible until spatie's cache
+                // is flushed — same flush the delete path performs.
+                if ($moduleKey === 'roles') {
+                    app(PermissionRegistrar::class)->forgetCachedPermissions();
+                }
             });
 
             $restored[] = $id;
@@ -100,6 +108,18 @@ class RestoreTrashed extends Service
 
             if ($clash) {
                 return 'Another account already uses this email.';
+            }
+        }
+
+        if ($moduleKey === 'roles') {
+            $clash = Role::query()
+                ->where('name', $model->name)
+                ->where('guard_name', $model->guard_name)
+                ->where('id', '!=', $model->getKey())
+                ->exists();
+
+            if ($clash) {
+                return 'Another role already uses this name.';
             }
         }
 

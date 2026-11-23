@@ -193,8 +193,8 @@ test('a built-in role cannot be deactivated', function () {
 
 // ----------------------------------------------------------------- deleting --
 
-test('deleting a custom role moves its holders to searcher', function () {
-    $role = makeCustomRole();
+test('deleting a custom role trashes it with holders and permissions kept', function () {
+    $role = makeCustomRole(permissions: ['user.manage']);
     $user = User::factory()->create(['status' => 'active']);
     $user->assignRole($role);
 
@@ -203,9 +203,78 @@ test('deleting a custom role moves its holders to searcher', function () {
         ->assertRedirect(route('platform.roles.index'));
 
     $user->refresh();
+    app(PermissionRegistrar::class)->forgetCachedPermissions();
 
-    expect(Role::where('name', 'billing-manager')->exists())->toBeFalse()
-        ->and($user->hasRole('searcher'))->toBeTrue();
+    expect($role->fresh()->trashed())->toBeTrue()
+        ->and(DB::table('model_has_roles')->where('role_id', $role->id)->count())->toBe(1)
+        ->and(DB::table('role_has_permissions')->where('role_id', $role->id)->count())->toBe(1)
+        ->and($user->hasPermissionTo('user.manage'))->toBeFalse();
+});
+
+test('permanently deleting a role from trash moves its holders to searcher', function () {
+    $role = makeCustomRole(permissions: ['user.manage']);
+    $user = User::factory()->create(['status' => 'active']);
+    $user->assignRole($role);
+
+    $this->actingAs($this->admin)
+        ->delete(route('platform.roles.destroy', $role), ['password' => 'password'])
+        ->assertRedirect();
+
+    $this->actingAs($this->admin)
+        ->delete(route('platform.trash.force'), [
+            'module' => 'roles',
+            'ids' => [$role->id],
+            'password' => 'password',
+        ])
+        ->assertRedirect();
+
+    $user->refresh();
+
+    expect(Role::withTrashed()->find($role->id))->toBeNull()
+        ->and($user->hasRole('searcher'))->toBeTrue()
+        ->and(DB::table('model_has_roles')->where('role_id', $role->id)->count())->toBe(0)
+        ->and(DB::table('role_has_permissions')->where('role_id', $role->id)->count())->toBe(0);
+});
+
+test('a trashed role can be restored whole', function () {
+    $role = makeCustomRole(permissions: ['user.manage']);
+    $user = User::factory()->create(['status' => 'active']);
+    $user->assignRole($role);
+
+    $this->actingAs($this->admin)
+        ->delete(route('platform.roles.destroy', $role), ['password' => 'password'])
+        ->assertRedirect();
+
+    $this->actingAs($this->admin)
+        ->post(route('platform.trash.restore'), [
+            'module' => 'roles',
+            'ids' => [$role->id],
+            'password' => 'password',
+        ])
+        ->assertRedirect();
+
+    $user->refresh();
+    app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+    expect($role->fresh()->trashed())->toBeFalse()
+        ->and($role->fresh()->permissions->pluck('name')->all())->toBe(['user.manage'])
+        ->and($user->hasPermissionTo('user.manage'))->toBeTrue();
+});
+
+test('bulk delete skips built-in roles and trashes the rest', function () {
+    $custom = makeCustomRole();
+    $admin = Role::where('name', 'admin')->firstOrFail();
+
+    $this->actingAs($this->admin)
+        ->delete(route('platform.trash.bulk'), [
+            'module' => 'roles',
+            'ids' => [$custom->id, $admin->id],
+            'password' => 'password',
+        ])
+        ->assertRedirect();
+
+    expect($custom->fresh()->trashed())->toBeTrue()
+        ->and($admin->fresh()->trashed())->toBeFalse();
 });
 
 test('deleting a role requires the current password', function () {
@@ -215,10 +284,11 @@ test('deleting a role requires the current password', function () {
         ->delete(route('platform.roles.destroy', $role), ['password' => 'wrong'])
         ->assertSessionHasErrors('password');
 
-    expect(Role::where('name', 'billing-manager')->exists())->toBeTrue();
+    expect(Role::where('name', 'billing-manager')->exists())->toBeTrue()
+        ->and($role->fresh()->trashed())->toBeFalse();
 });
 
-test('deleting a role leaves no dangling pivot rows', function () {
+test('deleting a role leaves its pivots for restore; force clears them', function () {
     $role = makeCustomRole();
     $user = User::factory()->create(['status' => 'active']);
     $user->assignRole($role);
@@ -226,6 +296,16 @@ test('deleting a role leaves no dangling pivot rows', function () {
 
     $this->actingAs($this->admin)
         ->delete(route('platform.roles.destroy', $role), ['password' => 'password']);
+
+    expect(DB::table('model_has_roles')->where('role_id', $role->id)->count())->toBe(1)
+        ->and(DB::table('role_has_permissions')->where('role_id', $role->id)->count())->toBe(1);
+
+    $this->actingAs($this->admin)
+        ->delete(route('platform.trash.force'), [
+            'module' => 'roles',
+            'ids' => [$role->id],
+            'password' => 'password',
+        ]);
 
     expect(DB::table('model_has_roles')->where('role_id', $role->id)->count())->toBe(0)
         ->and(DB::table('role_has_permissions')->where('role_id', $role->id)->count())->toBe(0);

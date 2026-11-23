@@ -2,6 +2,7 @@
 
 namespace App\Actions\Trash;
 
+use App\Actions\Roles\DeleteRole;
 use App\Models\Organization;
 use App\Models\User;
 use App\Services\Service;
@@ -48,6 +49,16 @@ class ForceDeleteTrashed extends Service
 
             if ($model === null) {
                 $skipped[] = ['id' => $id, 'reason' => 'Not found in your trash.'];
+
+                continue;
+            }
+
+            // Roles keep their users and permissions while trashed, so the
+            // permanent delete reassigns holders to searcher first — the
+            // same safety the old destroy carried.
+            if ($moduleKey === 'roles') {
+                app(DeleteRole::class)->force($model);
+                $deleted[] = $id;
 
                 continue;
             }

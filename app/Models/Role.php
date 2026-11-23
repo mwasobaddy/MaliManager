@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\PlatformRole;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Permission\Models\Role as SpatieRole;
 
 /**
@@ -21,6 +22,8 @@ use Spatie\Permission\Models\Role as SpatieRole;
  */
 class Role extends SpatieRole
 {
+    use SoftDeletes;
+
     protected $fillable = ['name', 'guard_name', 'is_active'];
 
     protected $casts = [

@@ -62,11 +62,9 @@ class RoleManagementService
     }
 
     /**
-     * Delete a custom role, handing its users to `searcher` first.
-     *
-     * Spatie does not cascade on delete, so the pivots are cleared explicitly.
-     * Leaving them would leave `model_has_roles` pointing at a role id that no
-     * longer exists, and `hasRole()` would go quiet about a role that is gone.
+     * Trash a custom role, keeping its users and permissions attached for
+     * restore. Holders lose effective access while it sits in the trash;
+     * permanent deletion from the trash hands them to `searcher` first.
      */
     public function delete(Role $role): void
     {

@@ -14,6 +14,7 @@ use App\Models\Payment;
 use App\Models\Plan;
 use App\Models\PlatformExpense;
 use App\Models\PropertyType;
+use App\Models\Role;
 use App\Models\SubscriptionPayment;
 use App\Models\Unit;
 use App\Models\User;
@@ -153,6 +154,16 @@ final class TrashModules
                 'singular' => 'property type',
                 'permission' => 'deletePropertyTypes',
                 'scope' => 'central',
+            ],
+            'roles' => [
+                'model' => Role::class,
+                'label' => 'Roles',
+                'singular' => 'role',
+                'permission' => 'deleteRoles',
+                'scope' => 'central',
+                // Roles are platform-global objects with no creator column,
+                // so the delete gate is the whole fence — no created_by tier.
+                'tier' => 'gate',
             ],
         ];
     }

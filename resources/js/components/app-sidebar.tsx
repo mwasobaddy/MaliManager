@@ -179,6 +179,7 @@ export function AppSidebar() {
         'subscription.delete',
         'platform-expense.delete',
         'property-type.delete',
+        'role.delete',
     ].some((permission) => authPermissions.includes(permission));
     const { open, hasAssets } = usePropertyPicker();
 

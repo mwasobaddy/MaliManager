@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActionIconButton } from '@/components/action-icon-button';
+import { BulkDeleteBar } from '@/components/bulk-delete-bar';
 import ConfirmDeleteOverlay from '@/components/confirm-delete-overlay';
 import { CsvImportSheet, downloadCsv } from '@/components/csv-actions';
 import { CsvExportSheet } from '@/components/csv-export-sheet';
@@ -33,6 +34,7 @@ import { Label } from '@/components/ui/label';
 import { Pagination } from '@/components/ui/pagination';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import * as roleRoutes from '@/routes/platform/roles';
+import { bulk as trashBulk } from '@/routes/platform/trash';
 import { index as usersIndex } from '@/routes/platform/users';
 
 type PermissionRef = { value: string; label: string };
@@ -133,6 +135,16 @@ export default function RolesIndex({
     const isExportOpen = query.get('export') === '1';
 
     const [isTableLoading, setIsTableLoading] = useState(false);
+    const [bulkOpen, setBulkOpen] = useState(false);
+    const [selectedIds, setSelectedIds] = useState<number[]>([]);
+
+    // Selection never outlives the page: a refetch that drops a row also
+    // drops its tick, so the bulk payload can only name visible rows.
+    useEffect(() => {
+        setSelectedIds((current) =>
+            current.filter((id) => roles.data.some((role) => role.id === id)),
+        );
+    }, [roles.data]);
 
     /** Spoken description of the active filters, for the export sheet. */
     const activeFilterSummary =
@@ -498,6 +510,16 @@ export default function RolesIndex({
                     )}
                 </div>
 
+                <BulkDeleteBar
+                    pageIds={roles.data.map((role) => role.id)}
+                    selectedIds={selectedIds}
+                    onSelectionChange={setSelectedIds}
+                    onDelete={() => setBulkOpen(true)}
+                    onClear={() => setSelectedIds([])}
+                    canDelete={canDelete}
+                    noun="roles"
+                />
+
                 <Card className="gap-0 py-0">
                     <div className="flex flex-wrap items-center gap-2 border-b border-border-strong p-4">
                         <div className="relative min-w-56 flex-1">
@@ -549,6 +571,12 @@ export default function RolesIndex({
                         sorting={sorting}
                         onSortingChange={applySorting}
                         loading={isTableLoading}
+                        selectable={canDelete}
+                        selectedIds={selectedIds.map(String)}
+                        onSelectionChange={(ids) =>
+                            setSelectedIds(ids.map(Number))
+                        }
+                        selectionLabel={(role) => `Select role ${role.label}`}
                         onRowClick={(role) => openRow(role, 'view')}
                         empty="No roles match your filters."
                     />
@@ -807,13 +835,43 @@ export default function RolesIndex({
                     title={`Delete ${viewedRole.label}?`}
                     description={
                         <>
-                            This permanently removes{' '}
-                            <strong>{viewedRole.label}</strong> and revokes its
-                            permissions. {viewedRole.users_count} user(s)
-                            holding it move to <strong>searcher</strong>.
-                            Confirm with your password — it cannot be undone.
+                            <strong>{viewedRole.label}</strong> moves to trash
+                            with its permissions and holders kept, so it can be
+                            restored whole. Holders lose its permissions while
+                            it sits there. Permanently deleting it from the
+                            trash moves {viewedRole.users_count} user(s) to{' '}
+                            <strong>searcher</strong>.
                         </>
                     }
+                />
+            )}
+
+            {canDelete && bulkOpen && selectedIds.length > 0 && (
+                <ConfirmDeleteOverlay
+                    open
+                    onOpenChange={(open) => {
+                        if (!open) {
+                            setBulkOpen(false);
+                        }
+                    }}
+                    action={trashBulk().url}
+                    payload={{ module: 'roles', ids: selectedIds }}
+                    title={
+                        selectedIds.length === 1
+                            ? 'Delete this role?'
+                            : `Delete ${selectedIds.length} roles?`
+                    }
+                    description="They move to trash with permissions and holders kept, so they can be restored whole. Built-in roles are skipped."
+                    submitLabel={
+                        selectedIds.length === 1
+                            ? 'Delete role'
+                            : `Delete ${selectedIds.length} roles`
+                    }
+                    processingLabel="Deleting…"
+                    onSuccess={() => {
+                        setSelectedIds([]);
+                        setBulkOpen(false);
+                    }}
                 />
             )}
 

@@ -3,6 +3,7 @@
 namespace App\Actions\Trash;
 
 use App\Actions\LandParcels\DeleteLandParcelSection;
+use App\Actions\Roles\DeleteRole;
 use App\Models\Lease;
 use App\Models\Organization;
 use App\Models\User;
@@ -122,6 +123,11 @@ class BulkSoftDelete extends Service
         }
 
         if ($organization === null && ! $actor->isPlatformAdmin()) {
+            // Roles are gate-tiered (no creator column) — see TrashModules.
+            if ($moduleKey === 'roles') {
+                return true;
+            }
+
             return (int) ($model->getAttribute('created_by') ?? 0) === (int) $actor->id;
         }
 
@@ -138,6 +144,10 @@ class BulkSoftDelete extends Service
     {
         if ($model->trashed()) {
             return 'Already in the trash.';
+        }
+
+        if ($moduleKey === 'roles' && $model->isProtected()) {
+            return 'Built-in roles cannot be deleted.';
         }
 
         if ($moduleKey === 'units') {
@@ -160,6 +170,7 @@ class BulkSoftDelete extends Service
             match ($moduleKey) {
                 'organizations' => app(OrganizationManagementService::class)->deleteOrganization($model, $actor),
                 'users' => app(UserService::class)->deleteUser($model, $actor),
+                'roles' => $this->deleteRole($model),
                 default => $model->delete(),
             };
 
@@ -177,5 +188,14 @@ class BulkSoftDelete extends Service
             'staff' => app(StaffService::class)->softDelete($organization, $model, $actor),
             default => $model->delete(),
         };
+    }
+
+    /**
+     * Soft-delete a role through the same action as the single delete, so
+     * the protected guard and the permission-cache flush can never drift.
+     */
+    private function deleteRole($model): void
+    {
+        app(DeleteRole::class)->handle($model);
     }
 }

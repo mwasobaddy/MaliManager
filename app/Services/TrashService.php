@@ -142,6 +142,8 @@ class TrashService
 
     /**
      * Base trashed query for a platform module: tier only, no org fence.
+     * Gate-tiered modules (roles — no creator column) skip the created_by
+     * fence; the delete gate that admitted them to this list is the fence.
      */
     public function platformQuery(array $module, User $user): Builder
     {
@@ -150,7 +152,7 @@ class TrashService
 
         $query = $model->newQuery()->onlyTrashed();
 
-        if (! $user->isPlatformAdmin()) {
+        if (! $user->isPlatformAdmin() && ($module['tier'] ?? 'created') !== 'gate') {
             $query->where($model->getTable().'.created_by', $user->id);
         }
 
