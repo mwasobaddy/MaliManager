@@ -218,7 +218,9 @@ test('leases index filters overdue and shows balances', function () {
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->has('leases.data', 2)
-            ->where('leases.data.1.is_overdue', false)
+            // Order between equal start dates is not contractual; match by id.
+            ->where('leases.data', fn ($rows) => collect($rows)->firstWhere('id', $overdue->id)['is_overdue'] === true
+                && collect($rows)->firstWhere('id', $paidUp->id)['is_overdue'] === false)
         );
 });
 

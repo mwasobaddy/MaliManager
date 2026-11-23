@@ -210,6 +210,10 @@ Route::middleware([
         Route::middleware('sub-permission:lease.manage')->group(function () {
             Route::get('/{property:slug}/leases', [LeaseController::class, 'index'])
                 ->name('tenant.leases.index');
+            // Before the /{lease} routes: an unconstrained {lease} would
+            // otherwise swallow `export` as a lease id.
+            Route::get('/{property:slug}/leases/export', [LeaseController::class, 'export'])
+                ->name('tenant.leases.export');
             // Registered before /{lease}/remind: an unconstrained {lease}
             // would otherwise swallow remind-bulk as a lease id.
             Route::post('/{property:slug}/leases/remind-bulk', [LeaseController::class, 'remindBulk'])

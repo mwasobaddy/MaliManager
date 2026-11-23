@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers\Tenant;
 
+use App\Actions\Leases\ExportLeases;
 use App\Actions\Leases\SendBulkRentReminders;
 use App\Actions\Leases\SendRentReminder;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Tenant\EndLeaseRequest;
+use App\Http\Requests\Tenant\ExportLeasesRequest;
 use App\Http\Requests\Tenant\LeaseIndexRequest;
 use App\Http\Requests\Tenant\RemindBulkLeasesRequest;
 use App\Http\Requests\Tenant\RemindLeaseRequest;
@@ -37,51 +39,38 @@ class LeaseController extends Controller
         $expiring = $request->boolean('expiring');
         $overdueOnly = $request->boolean('overdue');
 
+        // Overdue is computed (expected vs received), so the ids are
+        // resolved first and the list constrains to them.
+        $overdueIds = $overdueOnly
+            ? $arrears->overdueLeaseIds($property->organization, [$property->id])
+            : null;
+
         $leases = Lease::query()
-            ->where('property_id', $property->id)
-            ->when(in_array($status, ['active', 'ended'], true), fn ($query) => $query->where('status', $status))
-            // Expiring = active with an end date inside the next 60 days.
-            ->when($expiring, fn ($query) => $query
-                ->where('status', 'active')
-                ->whereNotNull('ends_at')
-                ->whereBetween('ends_at', [now()->toDateString(), now()->addDays(60)->toDateString()]))
-            // Overdue is computed (expected vs received), so the ids are
-            // resolved first and the list constrains to them.
-            ->when($overdueOnly, fn ($query) => $query
-                ->whereIn('id', $arrears->overdueLeaseIds($property->organization, [$property->id])))
+            ->tenantIndex((int) $property->id, [
+                'search' => $request->string('search')->trim()->toString(),
+                'status' => $status,
+                'expiring' => $expiring,
+                'overdue_ids' => $overdueIds,
+                'sort' => $request->string('sort')->toString(),
+                'direction' => $request->string('direction')->toString(),
+            ])
             ->with(['person:id,first_name,last_name,email', 'unit:id,name'])
-            ->orderByDesc('starts_at')
-            ->paginate(15)
+            ->paginate(18)
             ->withQueryString();
 
         $balances = $arrears->balancesFor($leases->getCollection());
 
-        $leases = $leases->through(fn (Lease $lease): array => [
-            'id' => $lease->id,
-            'occupant_id' => $lease->occupant_id,
-            'occupant_name' => trim(($lease->person?->first_name ?? '').' '.($lease->person?->last_name ?? '')),
-            'unit_name' => $lease->unit?->name,
-            'rent_amount' => $lease->rent_amount,
-            'currency' => $lease->currency,
-            'starts_at' => $lease->starts_at?->toDateString(),
-            'ends_at' => $lease->ends_at?->toDateString(),
-            'status' => $lease->status,
-            'property_name' => $lease->property?->name,
-            'expiring_soon' => $lease->status === 'active'
-                && $lease->ends_at !== null
-                && $lease->ends_at->between(now(), now()->addDays(60)),
-            'has_agreement_text' => (bool) $lease->agreement_text,
-            'has_agreement_document' => $lease->getFirstMedia('agreement') !== null,
-            'outstanding' => $balances[$lease->id]['outstanding'] ?? '0.00',
-            'is_overdue' => $balances[$lease->id]['overdue'] ?? false,
-            'days_overdue' => $balances[$lease->id]['days_overdue'] ?? 0,
-            'last_reminded_ago' => $lease->last_reminded_at?->diffForHumans(),
-        ]);
+        $leases = $leases->through(fn (Lease $lease): array => $this->presentLease($lease, $balances));
 
         return Inertia::render('organisation/leases/index', [
             'leases' => $leases,
+            'focusedLease' => $request->string('mode')->toString() === 'view'
+                ? $this->focusedLease($request->integer('lease'), $property, $arrears)
+                : null,
             'filters' => [
+                'search' => $request->string('search')->trim()->toString(),
                 'status' => $status,
+                'expiring' => $expiring,
                 'overdue' => $overdueOnly,
             ],
         ]);
@@ -138,6 +127,84 @@ class LeaseController extends Controller
         ]);
 
         return back();
+    }
+
+    /**
+     * Streams the CSV. `scope=page` honours the pagination the user is
+     * looking at; anything else exports the whole filtered set.
+     */
+    public function export(ExportLeasesRequest $request, Property $property, ExportLeases $export, RentArrearsService $arrears): \Symfony\Component\HttpFoundation\Response
+    {
+        $this->authorizePropertyAccess($request, $property);
+
+        $csv = $export->handle($property, $request->toData(), $arrears);
+
+        return response()->streamDownload(
+            function () use ($csv): void {
+                echo $csv->content;
+            },
+            $csv->filename,
+            ['Content-Type' => 'text/csv'],
+        );
+    }
+
+    /**
+     * The row shape the index table and the view sheet share. Balances ride
+     * along because outstanding and overdue read from them, not the lease.
+     *
+     * @param  array<int, array{outstanding?: string, overdue?: bool, days_overdue?: int}>  $balances
+     * @return array<string, mixed>
+     */
+    private function presentLease(Lease $lease, array $balances): array
+    {
+        return [
+            'id' => $lease->id,
+            'occupant_id' => $lease->occupant_id,
+            'occupant_name' => trim(($lease->person?->first_name ?? '').' '.($lease->person?->last_name ?? '')),
+            'unit_name' => $lease->unit?->name,
+            'rent_amount' => $lease->rent_amount,
+            'currency' => $lease->currency,
+            'starts_at' => $lease->starts_at?->toDateString(),
+            'ends_at' => $lease->ends_at?->toDateString(),
+            'status' => $lease->status,
+            'property_name' => $lease->property?->name,
+            'expiring_soon' => $lease->status === 'active'
+                && $lease->ends_at !== null
+                && $lease->ends_at->between(now(), now()->addDays(60)),
+            'has_agreement_text' => (bool) $lease->agreement_text,
+            'has_agreement_document' => $lease->getFirstMedia('agreement') !== null,
+            'outstanding' => $balances[$lease->id]['outstanding'] ?? '0.00',
+            'is_overdue' => $balances[$lease->id]['overdue'] ?? false,
+            'days_overdue' => $balances[$lease->id]['days_overdue'] ?? 0,
+            'last_reminded_ago' => $lease->last_reminded_at?->diffForHumans(),
+        ];
+    }
+
+    /**
+     * Deep links (?mode=view&lease=) resolve server-side so a lease off the
+     * current page still opens. Scoped to the property like the index
+     * query, so a foreign id resolves to null and the sheet stays shut
+     * instead of leaking a record through the URL.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function focusedLease(int $id, Property $property, RentArrearsService $arrears): ?array
+    {
+        if ($id <= 0) {
+            return null;
+        }
+
+        $lease = Lease::query()
+            ->where('property_id', $property->id)
+            ->whereKey($id)
+            ->with(['person:id,first_name,last_name,email', 'unit:id,name'])
+            ->first();
+
+        if (! $lease) {
+            return null;
+        }
+
+        return $this->presentLease($lease, $arrears->balancesFor($lease->newCollection([$lease])));
     }
 
     private function authorizePropertyAccess(Request $request, Property $property): void

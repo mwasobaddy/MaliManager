@@ -129,6 +129,86 @@ class Lease extends Model implements HasMedia
         return $this->belongsTo(Occupant::class);
     }
 
+    /**
+     * Sort keys the index accepts. `unit` and `occupant` order through
+     * subselects so the listing never needs a join that would collide on
+     * `id` under pagination. Anything else falls back to newest-start
+     * first, matching the list's original order.
+     */
+    public const SORTABLE = [
+        'unit' => 'unit',
+        'occupant' => 'occupant',
+        'rent' => 'leases.rent_amount',
+        'start' => 'leases.starts_at',
+        'end' => 'leases.ends_at',
+        'status' => 'leases.status',
+    ];
+
+    /**
+     * The property-scoped lease listing: the index's search, status,
+     * expiring and overdue filters, then the sort.
+     *
+     * Overdue is computed (expected vs received), so callers resolve the
+     * ids first and pass them in; the scope only constrains to them.
+     *
+     * @param  array{search?: string, status?: string, expiring?: bool, overdue_ids?: int[]|null, sort?: string, direction?: string}  $filters
+     */
+    public function scopeTenantIndex(Builder $query, int $propertyId, array $filters): Builder
+    {
+        $sortKey = self::SORTABLE[$filters['sort'] ?? ''] ?? null;
+        $direction = ($filters['direction'] ?? '') === 'asc' ? 'asc' : 'desc';
+
+        return $query
+            ->where('leases.property_id', $propertyId)
+            ->when(
+                trim((string) ($filters['search'] ?? '')),
+                fn (Builder $builder, string $search) => $builder->where(
+                    fn (Builder $inner) => $inner
+                        ->whereHas('person', fn (Builder $person) => $person->where(
+                            fn (Builder $name) => $name
+                                ->where('persons.first_name', 'like', "%{$search}%")
+                                ->orWhere('persons.last_name', 'like', "%{$search}%")
+                                ->orWhere('persons.email', 'like', "%{$search}%"),
+                        ))
+                        ->orWhereHas('unit', fn (Builder $unit) => $unit
+                            ->where('units.name', 'like', "%{$search}%")),
+                ),
+            )
+            ->when(
+                in_array($filters['status'] ?? '', ['active', 'ended'], true),
+                fn (Builder $builder) => $builder->where('leases.status', (string) $filters['status']),
+            )
+            // Expiring = active with an end date inside the next 60 days.
+            ->when(
+                ! empty($filters['expiring']),
+                fn (Builder $builder) => $builder
+                    ->where('leases.status', 'active')
+                    ->whereNotNull('leases.ends_at')
+                    ->whereBetween('leases.ends_at', [now()->toDateString(), now()->addDays(60)->toDateString()]),
+            )
+            ->when(
+                is_array($filters['overdue_ids'] ?? null),
+                fn (Builder $builder) => $builder->whereIn('leases.id', $filters['overdue_ids'] ?? []),
+            )
+            ->when(
+                $sortKey === 'unit',
+                fn (Builder $builder) => $builder
+                    ->orderBy(Unit::select('name')->whereColumn('units.id', 'leases.unit_id'), $direction),
+            )
+            ->when(
+                $sortKey === 'occupant',
+                fn (Builder $builder) => $builder
+                    ->orderBy(Person::select('first_name')->whereColumn('persons.id', 'leases.person_id'), $direction)
+                    ->orderBy(Person::select('last_name')->whereColumn('persons.id', 'leases.person_id'), $direction),
+            )
+            ->when(
+                $sortKey !== null && $sortKey !== 'unit' && $sortKey !== 'occupant',
+                fn (Builder $builder) => $builder->orderBy($sortKey, $direction),
+            )
+            ->when($sortKey === null, fn (Builder $builder) => $builder->orderByDesc('leases.starts_at'))
+            ->orderByDesc('leases.id');
+    }
+
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class);

@@ -124,3 +124,130 @@ test('ending a lease requires the current password and stamps the end date', fun
         // The occupant role is stripped once no active leases remain.
         ->and($occupant->person->users()->first()?->hasRole('occupant'))->toBeFalse();
 });
+
+function makeTenantLease(Organization $organization, User $owner, Property $property, string $unitName = 'A1', array $overrides = []): Lease
+{
+    $defaults = [
+        'person_id' => Person::create(['first_name' => 'Jane', 'email' => 'jane@x.test', 'status' => 'active'])->id,
+        'organization_id' => $organization->id,
+        'tenant_id' => $organization->tenant_id,
+        'property_id' => $property->id,
+        'unit_id' => $property->units()->create(['name' => $unitName, 'status' => 'occupied', 'created_by' => $owner->id])->id,
+        'starts_at' => '2026-01-01',
+        'rent_amount' => 25000,
+        'currency' => 'KES',
+        'status' => 'active',
+    ];
+
+    return Lease::create([...$defaults, ...$overrides]);
+}
+
+test('search narrows leases by occupant name or unit', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = leaseOrganization($owner);
+    $property = leaseProperty($organization, $owner);
+
+    makeTenantLease($organization, $owner, $property, 'A1', []);
+    makeTenantLease($organization, $owner, $property, 'B2', [
+        'person_id' => Person::create(['first_name' => 'Mark', 'email' => 'mark@x.test', 'status' => 'active'])->id,
+    ]);
+
+    $this->actingAs($owner)
+        ->get(leaseUrl($organization, '/sunset-heights/leases?search=Mark'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('leases.data', fn ($rows) => count($rows) === 1 && $rows[0]['unit_name'] === 'B2'));
+
+    $this->actingAs($owner)
+        ->get(leaseUrl($organization, '/sunset-heights/leases?search=A1'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('leases.data', fn ($rows) => count($rows) === 1 && $rows[0]['occupant_name'] === 'Jane'));
+});
+
+test('leases sort by rent, unit and start date', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = leaseOrganization($owner);
+    $property = leaseProperty($organization, $owner);
+
+    makeTenantLease($organization, $owner, $property, 'A1', ['rent_amount' => 30000, 'starts_at' => '2026-03-01']);
+    makeTenantLease($organization, $owner, $property, 'B2', [
+        'rent_amount' => 20000,
+        'starts_at' => '2026-01-01',
+    ]);
+
+    $this->actingAs($owner)
+        ->get(leaseUrl($organization, '/sunset-heights/leases?sort=rent&direction=asc'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('leases.data.0.rent_amount', 20000)
+            ->where('leases.data.1.rent_amount', 30000));
+
+    $this->actingAs($owner)
+        ->get(leaseUrl($organization, '/sunset-heights/leases?sort=unit&direction=asc'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('leases.data.0.unit_name', 'A1')
+            ->where('leases.data.1.unit_name', 'B2'));
+});
+
+test('the view sheet resolves the focused lease with its balance', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = leaseOrganization($owner);
+    $property = leaseProperty($organization, $owner);
+
+    $lease = makeTenantLease($organization, $owner, $property);
+
+    $this->actingAs($owner)
+        ->get(leaseUrl($organization, "/sunset-heights/leases?mode=view&lease={$lease->id}"))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('organisation/leases/index')
+            ->where('focusedLease.id', $lease->id)
+            ->where('focusedLease.unit_name', 'A1')
+            ->where('focusedLease.occupant_name', 'Jane'));
+
+    $this->actingAs($owner)
+        ->get(leaseUrl($organization, '/sunset-heights/leases?mode=view&lease=999999'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('focusedLease', null));
+});
+
+test('export downloads the filtered set as csv', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = leaseOrganization($owner);
+    $property = leaseProperty($organization, $owner);
+
+    makeTenantLease($organization, $owner, $property, 'A1', []);
+    makeTenantLease($organization, $owner, $property, 'B2', [
+        'status' => 'ended',
+        'ends_at' => '2025-12-01',
+    ]);
+
+    $response = $this->actingAs($owner)
+        ->get(leaseUrl($organization, '/sunset-heights/leases/export?status=active'));
+
+    $response->assertOk();
+    expect($response->headers->get('Content-Type'))->toContain('text/csv');
+
+    $lines = array_values(array_filter(explode("\n", trim($response->streamedContent()))));
+    expect($lines[0])->toContain('Unit')
+        ->and(count($lines))->toBe(2)
+        ->and($lines[1])->toContain('A1');
+});
+
+test('export honors a column subset', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = leaseOrganization($owner);
+    $property = leaseProperty($organization, $owner);
+
+    makeTenantLease($organization, $owner, $property);
+
+    $response = $this->actingAs($owner)
+        ->get(leaseUrl($organization, '/sunset-heights/leases/export?columns[]=Unit&columns[]=Status'));
+
+    $response->assertOk();
+    $lines = array_values(array_filter(explode("\n", trim($response->streamedContent()))));
+    expect($lines[0])->toBe('Unit,Status');
+});
