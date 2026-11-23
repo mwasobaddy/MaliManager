@@ -39,7 +39,7 @@ More button (`TableOverflowMenu`, resources/js/components/table-overflow-menu.ts
 
 ## Row actions read left to right in escalating consequence
 
-Row actions read left to right in escalating consequence: status-changing actions first, then `edit` green, destructive red last — all as solid fills. Move out uses solid `teal`: the `accent` tint reads washed-out and partial next to solid siblings. Never field two reds in one row: a status change is not a delete even when it ends something (a moved-out occupant keeps their history; only trash permanent-delete is destructive).
+Row actions read left to right in escalating consequence: status-changing actions first, then `edit` green, destructive red last — all as solid fills. Move out and Remind use solid `teal`: the `accent` tint reads washed-out and partial next to solid siblings. Never field two reds in one row: a status change is not a delete even when it ends something (a moved-out occupant keeps their history; only trash permanent-delete is destructive).
 
 ## Read-only sheets showcase actions in the header, not the footer
 

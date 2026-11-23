@@ -582,7 +582,7 @@ export default function LeasesIndex({ leases, focusedLease }: Props) {
                                 <ActionIconButton
                                     icon={<Send />}
                                     label={`Remind ${lease.occupant_name ?? 'occupant'} about overdue rent`}
-                                    color="accent"
+                                    color="teal"
                                     onClick={() => sendReminder(lease)}
                                 />
                                 {lease.last_reminded_ago && (
@@ -944,7 +944,7 @@ export default function LeasesIndex({ leases, focusedLease }: Props) {
                                 <Button
                                     type="button"
                                     size="sm"
-                                    className="bg-brand-accent/12 text-brand-accent hover:bg-brand-accent/20"
+                                    className="bg-brand-accent text-on-accent hover:bg-brand-accent/90"
                                     onClick={() =>
                                         sendReminderFromView(viewedLease)
                                     }
