@@ -31,6 +31,7 @@ import { ResponsiveOverlay } from '@/components/responsive-overlay';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Empty } from '@/components/ui/empty';
 import InputError from '@/components/input-error';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -59,6 +60,7 @@ type UnitRow = {
     status: string;
     rent_amount: string | null;
     rent_frequency: string | null;
+    deposit: string | null;
     photos_count: number;
     thumbnail: string | null;
     photos: { id: number; url: string; name: string; cover: boolean }[];
@@ -85,6 +87,12 @@ type Props = {
     unitTypes: string[];
     /** Other units' photos, offered for reuse. */
     photoLibrary: PhotoLibraryUnit[];
+    /**
+     * Server-resolved record for deep links (?mode=view&unit=). Opening from
+     * the list falls back to the visible rows, so this stays null there and
+     * opening costs no extra request.
+     */
+    focusedUnit: UnitRow | null;
 };
 
 /** Debounce so a fast typist issues one request, not one per keystroke. */
@@ -95,6 +103,14 @@ const STATUSES = [
     { value: 'occupied', label: 'Occupied' },
     { value: 'maintenance', label: 'Maintenance' },
 ];
+
+/** Per-period suffix for the rent amount; unknown frequencies read monthly. */
+const FREQUENCY_LABELS: Record<string, string> = {
+    daily: 'day',
+    weekly: 'week',
+    monthly: 'month',
+    yearly: 'year',
+};
 
 /**
  * Read query params off Inertia's page.url, NOT window.location — see the same
@@ -116,6 +132,7 @@ export default function UnitsIndex({
     plan,
     unitTypes,
     photoLibrary,
+    focusedUnit,
 }: Props) {
     const query = useQuery();
 
@@ -308,6 +325,37 @@ export default function UnitsIndex({
     const isCreateOpen = query.get('create') === '1';
     const isExportOpen = query.get('export') === '1';
     const isImportOpen = query.get('import') === '1';
+
+    // The record is a sheet on this page, so the id travels in the URL and
+    // the server resolves it into `focusedUnit`. Falling back to the visible
+    // rows keeps opening from the list a single request.
+    const viewedUnitId = Number(query.get('unit'));
+    const isViewOpen = query.get('mode') === 'view' && viewedUnitId > 0;
+    const viewedUnit = isViewOpen
+        ? (focusedUnit ??
+          units.data.find((unit) => unit.id === viewedUnitId) ??
+          null)
+        : null;
+
+    function openView(unit: UnitRow) {
+        router.get(
+            unitRoutes.index().url,
+            {
+                search: filters.search,
+                status: filters.status,
+                property: filters.property,
+                sort: sort.column ?? '',
+                direction: sort.direction,
+                mode: 'view',
+                unit: unit.id,
+            },
+            { preserveState: true, only: ['units', 'focusedUnit'] },
+        );
+    }
+
+    function closeView() {
+        setOverlayParam('mode', null);
+    }
 
     /** Spoken description of the active filters, for the export sheet. */
     const activeFilterSummary =
@@ -620,9 +668,7 @@ export default function UnitsIndex({
                             setSelectedIds(ids.map(Number))
                         }
                         selectionLabel={(unit) => `Select unit ${unit.name}`}
-                        onRowClick={(unit) =>
-                            router.get(unitRoutes.show(unit.id).url)
-                        }
+                        onRowClick={(unit) => openView(unit)}
                         empty="No units match your filters."
                     />
                 </Card>
@@ -969,6 +1015,104 @@ export default function UnitsIndex({
                     </Form>
                 )}
             </ResponsiveOverlay>
+
+            {viewedUnit && (
+                <ResponsiveOverlay
+                    open={isViewOpen}
+                    onOpenChange={(open) => {
+                        if (!open) {
+                            closeView();
+                        }
+                    }}
+                    title={`Unit ${viewedUnit.name}`}
+                    description="Photos and letting details for this unit."
+                    actions={
+                        canEdit ? (
+                            <Button
+                                type="button"
+                                size="sm"
+                                className="bg-action-edit-fill text-white hover:bg-action-edit-fill hover:brightness-95"
+                                onClick={() => {
+                                    setEditTarget(viewedUnit);
+                                    closeView();
+                                }}
+                            >
+                                <SquarePen className="size-4" />
+                                Edit
+                            </Button>
+                        ) : undefined
+                    }
+                    footer={<OverlayFooter onCancel={closeView} />}
+                >
+                    <dl className="grid gap-x-6 gap-y-3 py-2 text-sm">
+                        {(
+                            [
+                                ['Name', viewedUnit.name],
+                                ['Reference', viewedUnit.slug],
+                                ['Property', viewedUnit.property.name ?? '—'],
+                                ['Type', viewedUnit.type ?? '—'],
+                                ['Status', viewedUnit.status],
+                                [
+                                    'Rent amount',
+                                    `${formatMoney(viewedUnit.rent_amount)} / ${FREQUENCY_LABELS[viewedUnit.rent_frequency ?? ''] ?? 'month'}`,
+                                ],
+                                ['Deposit', formatMoney(viewedUnit.deposit)],
+                            ] as [string, string][]
+                        ).map(([label, value]) => (
+                            <div
+                                key={label}
+                                className="grid grid-cols-[8rem_1fr] gap-2"
+                            >
+                                <dt className="text-muted-foreground">
+                                    {label}
+                                </dt>
+                                <dd className="min-w-0 break-words capitalize">
+                                    {value}
+                                </dd>
+                            </div>
+                        ))}
+                    </dl>
+
+                    <div className="mt-2">
+                        <h2 className="font-medium">
+                            Photos ({viewedUnit.photos.length})
+                        </h2>
+
+                        {viewedUnit.photos.length === 0 ? (
+                            <Empty
+                                compact
+                                icon={<ImageOff className="size-4" />}
+                                title="No photos yet"
+                                description="Photos can be added from the edit sheet."
+                            />
+                        ) : (
+                            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                                {viewedUnit.photos.map((photo) => (
+                                    <a
+                                        key={photo.id}
+                                        href={photo.url}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="group overflow-hidden rounded-lg border border-border-strong"
+                                    >
+                                        <img
+                                            src={photo.url}
+                                            alt={photo.name}
+                                            loading="lazy"
+                                            className="aspect-4/3 w-full object-cover transition group-hover:opacity-90"
+                                        />
+                                        <div className="p-2">
+                                            <div className="truncate text-xs font-medium">
+                                                {photo.name}
+                                            </div>
+                                        </div>
+                                    </a>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </ResponsiveOverlay>
+            )}
 
             {canEdit && editTarget !== null && (
                 <ResponsiveOverlay

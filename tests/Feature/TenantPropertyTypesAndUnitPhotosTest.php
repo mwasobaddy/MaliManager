@@ -484,7 +484,7 @@ test('the units page lists units across properties with their photo counts', fun
         );
 });
 
-test('the unit page shows every photo', function () {
+test('the record url opens the view sheet on the index instead of a page', function () {
     Storage::fake(config('filesystems.default'));
 
     $this->actingAs($this->owner)
@@ -505,11 +505,28 @@ test('the unit page shows every photo', function () {
 
     $this->actingAs($this->owner)
         ->get(unitUrl($this->organization, '/units/'.$unit->id))
+        ->assertRedirect(unitUrl($this->organization, "/units?mode=view&unit={$unit->id}"));
+
+    // The redirect target resolves the record into the sheet, photos and
+    // all, so a deep link off the current page still opens.
+    $this->actingAs($this->owner)
+        ->get(unitUrl($this->organization, "/units?mode=view&unit={$unit->id}"))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('organisation/unit/show')
-            ->has('unit.photos', 2)
-            ->where('unit.property.name', 'Sunset Heights'),
+            ->component('organisation/unit/index')
+            ->where('focusedUnit.name', 'A1')
+            ->where('focusedUnit.deposit', null)
+            ->has('focusedUnit.photos', 2)
+            ->where('focusedUnit.property.name', 'Sunset Heights'),
+        );
+
+    // A foreign id resolves to nothing and the sheet stays shut.
+    $this->actingAs($this->owner)
+        ->get(unitUrl($this->organization, '/units?mode=view&unit=999999'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('organisation/unit/index')
+            ->where('focusedUnit', null),
         );
 });
 

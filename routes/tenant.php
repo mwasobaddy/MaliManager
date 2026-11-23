@@ -143,7 +143,14 @@ Route::middleware([
             Route::post('/units/import', [UnitController::class, 'import'])
                 ->middleware(['sub-permission:unit.create', 'sub-permission:unit.edit'])
                 ->name('tenant.units.import');
+            // The record is a sheet on the index, not a page of its own. This
+            // URL is kept for links and bookmarks; the controller validates
+            // the id and redirects to the query form the page already reads.
+            //
+            // `whereNumber` is load-bearing: without it an unconstrained
+            // `{unit}` would swallow future string segments under /units.
             Route::get('/units/{unit}', [UnitController::class, 'show'])
+                ->whereNumber('unit')
                 ->name('tenant.units.show');
 
             // Utility meters on a unit. Reads are org-wide because a

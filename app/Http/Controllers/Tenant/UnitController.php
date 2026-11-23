@@ -15,9 +15,11 @@ use App\Http\Requests\Tenant\UnitIndexRequest;
 use App\Http\Requests\Tenant\UnitShowRequest;
 use App\Http\Requests\Tenant\UpdateUnitRequest;
 use App\Models\Lease;
+use App\Models\Organization;
 use App\Models\Property;
 use App\Models\PropertyType;
 use App\Models\Unit;
+use App\Models\User;
 use App\Services\PropertyService;
 use App\Services\StaffService;
 use App\Support\AuthLanding;
@@ -56,34 +58,13 @@ class UnitController extends Controller
             ->with(['property:id,name,slug', 'media'])
             ->paginate(18)
             ->withQueryString()
-            ->through(fn (Unit $unit): array => [
-                'id' => $unit->id,
-                'name' => $unit->name,
-                'slug' => $unit->slug,
-                'type' => $unit->type,
-                'status' => $unit->status,
-                'rent_amount' => $unit->rent_amount,
-                'rent_frequency' => $unit->rent_frequency,
-                'deposit' => $unit->deposit,
-                'photos_count' => $unit->getMedia('photos')->count(),
-                // Only the first photo renders inline; the full set rides
-                // along for the edit sheet, filtered in memory from the
-                // already eager-loaded media. Capped at 12 per unit, so a
-                // full page stays a small payload.
-                'thumbnail' => ($unit->getMedia('photos')->first(
-                    fn ($media): bool => (bool) $media->getCustomProperty('cover', false),
-                ) ?? $unit->getFirstMedia('photos'))?->getUrl(),
-                'photos' => $unit->photoPayload(),
-                'property' => [
-                    'id' => $unit->property?->id,
-                    'name' => $unit->property?->name,
-                    'slug' => $unit->property?->slug,
-                ],
-                'deletable' => DeletionTier::allows($actor, $organization, $unit),
-            ]);
+            ->through(fn (Unit $unit): array => $this->presentUnit($unit, $actor, $organization));
 
         return Inertia::render('organisation/unit/index', [
             'units' => $units,
+            'focusedUnit' => $request->string('mode')->toString() === 'view'
+                ? $this->focusedUnit($request->integer('unit'), $actor, $organization)
+                : null,
             'properties' => TenancyContext::organization()?->properties()
                 ->orderBy('name')
                 ->withCount('units')
@@ -146,32 +127,84 @@ class UnitController extends Controller
     }
 
     /**
-     * One unit, with every photo.
+     * The row shape the index table and the view sheet share: scalars, the
+     * cover-first thumbnail, every photo, and the server-computed delete
+     * tier. The view sheet falls back to the visible rows, so the shapes
+     * must stay identical.
+     *
+     * @return array<string, mixed>
      */
-    public function show(UnitShowRequest $request, Unit $unit): Response
+    private function presentUnit(Unit $unit, User $actor, ?Organization $organization): array
+    {
+        return [
+            'id' => $unit->id,
+            'name' => $unit->name,
+            'slug' => $unit->slug,
+            'type' => $unit->type,
+            'status' => $unit->status,
+            'rent_amount' => $unit->rent_amount,
+            'rent_frequency' => $unit->rent_frequency,
+            'deposit' => $unit->deposit,
+            'photos_count' => $unit->getMedia('photos')->count(),
+            // Only the first photo renders inline; the full set rides
+            // along for the edit sheet, filtered in memory from the
+            // already eager-loaded media. Capped at 12 per unit, so a
+            // full page stays a small payload.
+            'thumbnail' => ($unit->getMedia('photos')->first(
+                fn ($media): bool => (bool) $media->getCustomProperty('cover', false),
+            ) ?? $unit->getFirstMedia('photos'))?->getUrl(),
+            'photos' => $unit->photoPayload(),
+            'property' => [
+                'id' => $unit->property?->id,
+                'name' => $unit->property?->name,
+                'slug' => $unit->property?->slug,
+            ],
+            'deletable' => DeletionTier::allows($actor, $organization, $unit),
+        ];
+    }
+
+    /**
+     * Deep links (?mode=view&unit=) resolve server-side so a unit off the
+     * current page still opens. Scoped to the organization like the index
+     * query, so a foreign id resolves to null and the sheet stays shut
+     * instead of leaking a record through the URL.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function focusedUnit(int $id, User $actor, ?Organization $organization): ?array
+    {
+        if ($id <= 0 || $organization === null) {
+            return null;
+        }
+
+        $unit = Unit::query()
+            ->whereKey($id)
+            ->whereHas('property', fn ($query) => $query->where('organization_id', $organization->id))
+            ->with(['property:id,name,slug', 'media'])
+            ->first();
+
+        if (! $unit) {
+            return null;
+        }
+
+        return $this->presentUnit($unit, $actor, $organization);
+    }
+
+    /**
+     * The record is a sheet on the index, not a page of its own. This URL is
+     * kept for links and bookmarks; the controller validates the id and
+     * redirects to the query form the page already reads.
+     */
+    public function show(UnitShowRequest $request, Unit $unit): RedirectResponse
     {
         abort_unless(
             $unit->property?->organization_id === TenancyContext::organization()?->id,
             404,
         );
 
-        return Inertia::render('organisation/unit/show', [
-            'unit' => [
-                'id' => $unit->id,
-                'name' => $unit->name,
-                'slug' => $unit->slug,
-                'type' => $unit->type,
-                'status' => $unit->status,
-                'rent_amount' => $unit->rent_amount,
-                'rent_frequency' => $unit->rent_frequency,
-                'deposit' => $unit->deposit,
-                'photos' => $unit->photoPayload(),
-                'property' => [
-                    'id' => $unit->property?->id,
-                    'name' => $unit->property?->name,
-                    'slug' => $unit->property?->slug,
-                ],
-            ],
+        return redirect()->route('tenant.units.index', [
+            'mode' => 'view',
+            'unit' => $unit->id,
         ]);
     }
 
