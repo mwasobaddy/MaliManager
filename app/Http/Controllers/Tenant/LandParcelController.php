@@ -16,6 +16,7 @@ use App\Models\SubRole;
 use App\Services\LandParcelService;
 use App\Services\StaffService;
 use App\Support\AuthLanding;
+use App\Support\DeletionTier;
 use App\Support\SetupProgress;
 use App\Support\TenancyContext;
 use Illuminate\Http\RedirectResponse;
@@ -96,7 +97,15 @@ class LandParcelController extends Controller
             'managers' => $this->managerNames($landParcel),
             'sections' => $landParcel->sections()
                 ->orderBy('name')
-                ->get(['id', 'name', 'area', 'status', 'notes'])
+                ->get(['id', 'name', 'area', 'status', 'notes', 'created_by'])
+                ->map(fn ($section): array => [
+                    'id' => $section->id,
+                    'name' => $section->name,
+                    'area' => $section->area,
+                    'status' => $section->status,
+                    'notes' => $section->notes,
+                    'deletable' => DeletionTier::allows($user, $landParcel->organization, $section),
+                ])
                 ->all(),
             'canEditLandParcel' => $user->hasSubPermission($organization, SubPermissionKey::LandParcelEdit),
             'canDeleteLandParcel' => $user->hasSubPermission($organization, SubPermissionKey::LandParcelDelete),
@@ -137,6 +146,8 @@ class LandParcelController extends Controller
     public function destroy(DestroyLandParcelRequest $request, LandParcel $landParcel, LandParcelService $service): RedirectResponse
     {
         $this->authorizeAccess($request, $landParcel);
+
+        abort_unless(DeletionTier::allows($request->user(), $landParcel->organization, $landParcel), 403);
 
         $service->softDelete($landParcel);
 

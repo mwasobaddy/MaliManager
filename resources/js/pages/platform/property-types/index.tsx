@@ -50,6 +50,7 @@ type PropertyTypeRow = {
     status: string;
     description: string | null;
     properties_count: number;
+    deletable: boolean;
 };
 
 type Props = {
@@ -388,6 +389,11 @@ export default function PropertyTypesIndex({
                                 label={`Delete ${type.name}`}
                                 color="danger"
                                 disabled={!canDelete}
+                                disabledReason={
+                                    !type.deletable
+                                        ? 'Only its creator or a platform admin can delete this property type.'
+                                        : null
+                                }
                                 onClick={() => openDelete(type)}
                             />
                         </div>

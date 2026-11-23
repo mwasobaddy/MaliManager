@@ -56,6 +56,7 @@ type PaymentRow = {
     method: string | null;
     reference: string | null;
     notes: string | null;
+    deletable: boolean;
 };
 
 type Props = {
@@ -476,6 +477,11 @@ export default function SubscriptionPaymentsIndex({
                                         payment.reference ?? payment.id
                                     }`}
                                     color="danger"
+                                    disabledReason={
+                                        !payment.deletable
+                                            ? 'Only its creator or a platform admin can delete this subscription payment.'
+                                            : null
+                                    }
                                     onClick={() => openDelete(payment)}
                                 />
                             )}

@@ -15,6 +15,7 @@ use App\Models\LandParcel;
 use App\Models\LandParcelSection;
 use App\Models\Lease;
 use App\Services\StaffService;
+use App\Support\DeletionTier;
 use App\Support\TenancyContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -53,6 +54,8 @@ class LandParcelSectionController extends Controller
     {
         $this->authorizeParcelAccess($request, $landParcel);
         abort_if($landParcelSection->land_parcel_id !== $landParcel->id, 404);
+
+        abort_unless(DeletionTier::allows($request->user(), $landParcel->organization, $landParcelSection), 403);
 
         $delete->handle($landParcelSection);
 

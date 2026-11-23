@@ -10,6 +10,7 @@ use App\Models\MaintenanceRequest;
 use App\Models\User;
 use App\Services\MaintenanceRequestService;
 use App\Services\StaffService;
+use App\Support\DeletionTier;
 use App\Support\TenancyContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -27,6 +28,7 @@ class MaintenanceController extends Controller
         $status = $request->string('status')->toString();
         $priority = $request->string('priority')->toString();
         $organization = TenancyContext::organization();
+        $actor = $request->user();
 
         $requests = MaintenanceRequest::query()
             ->where('organization_id', $organization?->id)
@@ -55,6 +57,7 @@ class MaintenanceController extends Controller
                 'resolution_notes' => $item->resolution_notes,
                 'photo_count' => $item->getMedia('photos')->count(),
                 'allowed_transitions' => array_values($service->transitionsFrom($item->status)),
+                'deletable' => DeletionTier::allows($actor, $item->organization, $item),
             ]);
 
         return Inertia::render('organisation/maintenance/index', [
@@ -83,6 +86,8 @@ class MaintenanceController extends Controller
     public function destroy(DestroyRequest $destroyRequest, MaintenanceRequest $record, MaintenanceRequestService $service): RedirectResponse
     {
         $this->authorizeRecordAccess($destroyRequest, $record);
+
+        abort_unless(DeletionTier::allows($destroyRequest->user(), $record->organization, $record), 403);
 
         $service->softDelete($record);
 

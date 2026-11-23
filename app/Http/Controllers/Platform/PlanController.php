@@ -20,6 +20,8 @@ use App\Http\Requests\Platform\StorePlanRequest;
 use App\Http\Requests\Platform\UpdatePlanRequest;
 use App\Http\Requests\Platform\UpdatePlanStatusRequest;
 use App\Models\Plan;
+use App\Models\User;
+use App\Support\DeletionTier;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -65,6 +67,7 @@ class PlanController extends Controller
 
     public function index(PlanIndexRequest $request): Response
     {
+        $actor = $request->user();
         $sort = $request->string('sort')->toString();
         $sortColumn = self::SORTABLE[$sort] ?? null;
         $direction = $request->string('direction')->toString() === 'asc' ? 'asc' : 'desc';
@@ -81,7 +84,7 @@ class PlanController extends Controller
             ->orderBy('id')
             ->paginate(15)
             ->withQueryString()
-            ->through(fn (Plan $plan): array => $this->serialize($plan));
+            ->through(fn (Plan $plan): array => $this->serialize($plan, $actor));
 
         // The row overlay is addressed by URL, so it must work from a shared
         // link and not only from a tap on a visible row. Same fallback as the
@@ -99,7 +102,7 @@ class PlanController extends Controller
 
         return Inertia::render('platform/plans/index', [
             'plans' => $plans,
-            'focusedPlan' => $focused ? $this->serialize($focused) : null,
+            'focusedPlan' => $focused ? $this->serialize($focused, $actor) : null,
             'filters' => [
                 'search' => (string) $request->string('search'),
                 'status' => (string) $request->string('status'),
@@ -117,7 +120,7 @@ class PlanController extends Controller
      *
      * @return array<string, mixed>
      */
-    private function serialize(Plan $plan): array
+    private function serialize(Plan $plan, User $actor): array
     {
         return [
             'id' => $plan->id,
@@ -136,6 +139,7 @@ class PlanController extends Controller
             'is_active' => $plan->is_active,
             'sort_order' => $plan->sort_order,
             'organizations_count' => (int) ($plan->getAttribute('organizations_count') ?? 0),
+            'deletable' => DeletionTier::allows($actor, null, $plan),
         ];
     }
 
@@ -207,6 +211,8 @@ class PlanController extends Controller
 
     public function destroy(DestroyPlanRequest $request, Plan $plan, DeletePlan $action): RedirectResponse
     {
+        abort_unless(DeletionTier::allows($request->user(), null, $plan), 403);
+
         $action->handle($plan);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Plan deleted.']);

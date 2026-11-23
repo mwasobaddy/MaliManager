@@ -18,6 +18,8 @@ use App\Http\Requests\Platform\PropertyTypeIndexRequest;
 use App\Http\Requests\Platform\StorePropertyTypeRequest;
 use App\Http\Requests\Platform\UpdatePropertyTypeRequest;
 use App\Models\PropertyType;
+use App\Models\User;
+use App\Support\DeletionTier;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -51,6 +53,7 @@ class PropertyTypeController extends Controller
 
     public function index(PropertyTypeIndexRequest $request): Response
     {
+        $actor = $request->user();
         $sort = $request->string('sort')->toString();
         $sortColumn = self::SORTABLE[$sort] ?? null;
         $direction = $request->string('direction')->toString() === 'asc' ? 'asc' : 'desc';
@@ -68,7 +71,7 @@ class PropertyTypeController extends Controller
             ->orderBy('id')
             ->paginate(20)
             ->withQueryString()
-            ->through(fn (PropertyType $type): array => $this->serialize($type));
+            ->through(fn (PropertyType $type): array => $this->serialize($type, $actor));
 
         return Inertia::render('platform/property-types/index', [
             'propertyTypes' => $types,
@@ -118,6 +121,8 @@ class PropertyTypeController extends Controller
      */
     public function destroy(DestroyPropertyTypeRequest $request, PropertyType $propertyType, DeletePropertyType $action): RedirectResponse
     {
+        abort_unless(DeletionTier::allows($request->user(), null, $propertyType), 403);
+
         $inUse = $propertyType->usageCount();
         $name = $propertyType->name;
 
@@ -191,7 +196,7 @@ class PropertyTypeController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function serialize(PropertyType $type): array
+    private function serialize(PropertyType $type, User $actor): array
     {
         return [
             'id' => $type->id,
@@ -203,6 +208,7 @@ class PropertyTypeController extends Controller
             'status' => $type->status,
             'description' => $type->description,
             'properties_count' => $type->properties_count ?? 0,
+            'deletable' => DeletionTier::allows($actor, null, $type),
         ];
     }
 

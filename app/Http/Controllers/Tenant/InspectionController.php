@@ -10,6 +10,7 @@ use App\Models\Inspection;
 use App\Models\Property;
 use App\Services\InspectionService;
 use App\Services\StaffService;
+use App\Support\DeletionTier;
 use App\Support\TenancyContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -127,6 +128,8 @@ class InspectionController extends Controller
     {
         $this->authorize($request, $property);
         abort_if($inspection->property_id !== $property->id, 403);
+
+        abort_unless(DeletionTier::allows($request->user(), $property->organization, $inspection), 403);
 
         $service->softDelete($inspection);
 

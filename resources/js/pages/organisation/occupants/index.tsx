@@ -85,6 +85,7 @@ type Occupant = {
     national_id: string | null;
     status: string;
     units: Unit[];
+    deletable: boolean;
     // Present on the record resolved for the view sheet. List rows omit them
     // because the card does not show them, and the sheet is the only reader.
     gender?: string | null;
@@ -454,6 +455,14 @@ export default function OccupantsIndex({
                                                     variant="ghost"
                                                     size="sm"
                                                     className="text-status-danger"
+                                                    disabled={
+                                                        !occupant.deletable
+                                                    }
+                                                    title={
+                                                        !occupant.deletable
+                                                            ? 'Only its creator or the owner can delete this occupant.'
+                                                            : undefined
+                                                    }
                                                     onClick={() =>
                                                         setOverlayParam(
                                                             'mode',

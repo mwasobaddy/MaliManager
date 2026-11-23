@@ -5,7 +5,9 @@ namespace App\Support;
 use App\Models\AgreementTemplate;
 use App\Models\Lease;
 use App\Models\Occupant;
+use App\Models\Organization;
 use App\Models\Property;
+use App\Models\User;
 
 /**
  * Read-models for the occupant screens.
@@ -143,7 +145,7 @@ final class OccupantPresenter
      *
      * @return array<string, mixed>|null
      */
-    public static function focusedOccupant(?int $id, Property $property): ?array
+    public static function focusedOccupant(?int $id, Property $property, ?User $actor = null, ?Organization $organization = null): ?array
     {
         if ($id === null || $id <= 0) {
             return null;
@@ -161,7 +163,7 @@ final class OccupantPresenter
         }
 
         return [
-            ...self::present($occupant, $property),
+            ...self::present($occupant, $property, $actor, $organization),
             'gender' => $occupant->person->gender,
             'added_at' => $occupant->created_at?->toDateString(),
             // The full lease including agreement_text: the edit sheet loads
@@ -174,8 +176,10 @@ final class OccupantPresenter
     /**
      * @return array<string, mixed>
      */
-    public static function present(Occupant $occupant, Property $property): array
+    public static function present(Occupant $occupant, Property $property, ?User $actor = null, ?Organization $organization = null): array
     {
+        $org = $organization ?? $property->organization;
+
         return [
             'id' => $occupant->id,
             'first_name' => $occupant->person->first_name,
@@ -192,6 +196,7 @@ final class OccupantPresenter
                     'status' => $unit->status,
                 ])
                 ->all(),
+            'deletable' => $actor !== null ? DeletionTier::allows($actor, $org, $occupant) : true,
         ];
     }
 }

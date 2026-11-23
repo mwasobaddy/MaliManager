@@ -40,6 +40,7 @@ type ExpenseRow = {
     notes: string | null;
     has_receipt: boolean;
     receipt_url: string | null;
+    deletable: boolean;
 };
 
 type Props = {
@@ -304,6 +305,11 @@ export default function ExpensesIndex({
                                                         icon={<Trash2 />}
                                                         label={`Delete expense for ${expense.asset_name ?? `expense ${expense.id}`}`}
                                                         color="danger"
+                                                        disabledReason={
+                                                            !expense.deletable
+                                                                ? 'Only its creator or the owner can delete this expense.'
+                                                                : null
+                                                        }
                                                         onClick={() =>
                                                             setDeleteTarget(
                                                                 expense,

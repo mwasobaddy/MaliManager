@@ -18,6 +18,8 @@ use App\Http\Requests\Platform\PlatformExpenseIndexRequest;
 use App\Http\Requests\Platform\StorePlatformExpenseRequest;
 use App\Http\Requests\Platform\UpdatePlatformExpenseRequest;
 use App\Models\PlatformExpense;
+use App\Models\User;
+use App\Support\DeletionTier;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -60,6 +62,7 @@ class PlatformExpenseController extends Controller
 
     public function index(PlatformExpenseIndexRequest $request): Response
     {
+        $actor = $request->user();
         $sort = $request->string('sort')->toString();
         $sortColumn = self::SORTABLE[$sort] ?? null;
         $direction = $request->string('direction')->toString() === 'asc' ? 'asc' : 'desc';
@@ -76,7 +79,7 @@ class PlatformExpenseController extends Controller
             ->orderBy('id')
             ->paginate(15)
             ->withQueryString()
-            ->through(fn (PlatformExpense $expense): array => $this->serialize($expense));
+            ->through(fn (PlatformExpense $expense): array => $this->serialize($expense, $actor));
 
         // The row overlay is addressed by URL, so it must work from a shared
         // link and not only from a tap on a visible row.
@@ -90,7 +93,7 @@ class PlatformExpenseController extends Controller
 
         return Inertia::render('platform/expenses/index', [
             'expenses' => $expenses,
-            'focusedExpense' => $focused ? $this->serialize($focused) : null,
+            'focusedExpense' => $focused ? $this->serialize($focused, $actor) : null,
             'filters' => [
                 'search' => (string) $request->string('search'),
                 'category' => (string) $request->string('category'),
@@ -111,7 +114,7 @@ class PlatformExpenseController extends Controller
      *
      * @return array<string, mixed>
      */
-    private function serialize(PlatformExpense $expense): array
+    private function serialize(PlatformExpense $expense, User $actor): array
     {
         return [
             'id' => $expense->id,
@@ -125,6 +128,7 @@ class PlatformExpenseController extends Controller
             'spent_on' => $expense->spent_on?->format('Y-m-d') ?? '',
             'vendor_name' => $expense->vendor_name,
             'notes' => $expense->notes,
+            'deletable' => DeletionTier::allows($actor, null, $expense),
         ];
     }
 
@@ -176,6 +180,8 @@ class PlatformExpenseController extends Controller
 
     public function destroy(DestroyPlatformExpenseRequest $request, PlatformExpense $platformExpense, DeletePlatformExpense $action): RedirectResponse
     {
+        abort_unless(DeletionTier::allows($request->user(), null, $platformExpense), 403);
+
         $action->handle($platformExpense);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Platform expense deleted.']);

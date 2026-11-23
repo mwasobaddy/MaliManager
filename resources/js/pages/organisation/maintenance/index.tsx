@@ -36,6 +36,7 @@ type RequestRow = {
     resolution_notes: string | null;
     photo_count: number;
     allowed_transitions: string[];
+    deletable: boolean;
 };
 
 type StaffOption = { id: number; name: string };
@@ -405,6 +406,12 @@ export default function MaintenanceIndex({
                                                 variant="ghost"
                                                 size="sm"
                                                 className="text-status-danger"
+                                                disabled={!item.deletable}
+                                                title={
+                                                    !item.deletable
+                                                        ? 'Only its creator or the owner can delete this request.'
+                                                        : undefined
+                                                }
                                                 onClick={() =>
                                                     setOverlayParam(
                                                         'mode',

@@ -10,6 +10,7 @@ use App\Http\Requests\Tenant\UpdatePaymentRequest;
 use App\Models\Lease;
 use App\Models\Payment;
 use App\Services\PaymentService;
+use App\Support\DeletionTier;
 use App\Support\TenancyContext;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
@@ -20,6 +21,8 @@ class PaymentController extends Controller
     public function index(PaymentIndexRequest $request): Response
     {
         $status = $request->string('status')->toString();
+        $actor = $request->user();
+        $organization = TenancyContext::organization();
 
         $payments = Payment::query()
             ->where('organization_id', TenancyContext::organization()?->id)
@@ -40,6 +43,7 @@ class PaymentController extends Controller
                 'method' => $payment->method,
                 'status' => $payment->status,
                 'reference' => $payment->reference,
+                'deletable' => DeletionTier::allows($actor, $organization, $payment),
             ]);
 
         return Inertia::render('organisation/payments/index', [
@@ -105,6 +109,8 @@ class PaymentController extends Controller
     public function destroy(DestroyPaymentRequest $request, Payment $payment, PaymentService $service): RedirectResponse
     {
         abort_if($payment->organization_id !== TenancyContext::organization()?->id, 403);
+
+        abort_unless(DeletionTier::allows($request->user(), TenancyContext::organization(), $payment), 403);
 
         $service->softDelete($payment);
 

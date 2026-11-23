@@ -13,6 +13,7 @@ use App\Models\Occupant;
 use App\Models\Property;
 use App\Services\OccupantService;
 use App\Services\StaffService;
+use App\Support\DeletionTier;
 use App\Support\LeaseAgreementTemplate;
 use App\Support\OccupantPresenter;
 use App\Support\TenancyContext;
@@ -27,13 +28,16 @@ class OccupantController extends Controller
     {
         $this->authorizePropertyAccess($request, $property);
 
+        $actor = $request->user();
+        $organization = $property->organization;
+
         $occupants = Occupant::query()
             ->where('organization_id', $property->organization_id)
             ->whereHas('units', fn ($query) => $query->where('units.property_id', $property->id))
             ->with(['person', 'units' => fn ($query) => $query->where('units.property_id', $property->id)])
             ->orderByDesc('created_at')
             ->get()
-            ->map(fn (Occupant $occupant) => OccupantPresenter::present($occupant, $property));
+            ->map(fn (Occupant $occupant) => OccupantPresenter::present($occupant, $property, $actor, $organization));
 
         return Inertia::render('organisation/occupants/index', [
             'organization' => TenancyContext::organization()->only('id', 'name', 'slug'),
@@ -43,7 +47,7 @@ class OccupantController extends Controller
             // resolved here rather than by a page of its own. Scoped to the
             // property, so an id from another property resolves to nothing and
             // the sheet simply does not open.
-            'focusedOccupant' => OccupantPresenter::focusedOccupant($request->integer('occupant') ?: null, $property),
+            'focusedOccupant' => OccupantPresenter::focusedOccupant($request->integer('occupant') ?: null, $property, $actor, $organization),
             // Create and edit are overlays on this page too; the unit list,
             // template library and tokens only load when a sheet opens.
             'units' => Inertia::optional(fn () => OccupantPresenter::units($property)),
@@ -139,6 +143,8 @@ class OccupantController extends Controller
         $this->authorizePropertyAccess($request, $property);
 
         abort_if($occupant->organization_id !== $property->organization_id, 403);
+
+        abort_unless(DeletionTier::allows($request->user(), $property->organization, $occupant), 403);
 
         $occupantService->softDelete($occupant);
 

@@ -20,6 +20,8 @@ use App\Http\Requests\Platform\UpdateSubscriptionPaymentRequest;
 use App\Models\Organization;
 use App\Models\Plan;
 use App\Models\SubscriptionPayment;
+use App\Models\User;
+use App\Support\DeletionTier;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -69,6 +71,7 @@ class SubscriptionPaymentController extends Controller
 
     public function index(SubscriptionPaymentIndexRequest $request): Response
     {
+        $actor = $request->user();
         $sort = $request->string('sort')->toString();
         $sortColumn = self::SORTABLE[$sort] ?? null;
         $direction = $request->string('direction')->toString() === 'asc' ? 'asc' : 'desc';
@@ -84,7 +87,7 @@ class SubscriptionPaymentController extends Controller
             ->orderBy('id')
             ->paginate(15)
             ->withQueryString()
-            ->through(fn (SubscriptionPayment $payment): array => $this->serialize($payment));
+            ->through(fn (SubscriptionPayment $payment): array => $this->serialize($payment, $actor));
 
         // The row overlay is addressed by URL, so it must work from a shared
         // link and not only from a tap on a visible row. Same fallback as the
@@ -101,7 +104,7 @@ class SubscriptionPaymentController extends Controller
 
         return Inertia::render('platform/subscription-payments/index', [
             'payments' => $payments,
-            'focusedPayment' => $focused ? $this->serialize($focused) : null,
+            'focusedPayment' => $focused ? $this->serialize($focused, $actor) : null,
             'filters' => [
                 'search' => (string) $request->string('search'),
                 'from' => (string) $request->string('from'),
@@ -127,7 +130,7 @@ class SubscriptionPaymentController extends Controller
      *
      * @return array<string, mixed>
      */
-    private function serialize(SubscriptionPayment $payment): array
+    private function serialize(SubscriptionPayment $payment, User $actor): array
     {
         return [
             'id' => $payment->id,
@@ -151,6 +154,7 @@ class SubscriptionPaymentController extends Controller
             'method' => $payment->method,
             'reference' => $payment->reference,
             'notes' => $payment->notes,
+            'deletable' => DeletionTier::allows($actor, null, $payment),
         ];
     }
 
@@ -214,6 +218,8 @@ class SubscriptionPaymentController extends Controller
 
     public function destroy(DestroySubscriptionPaymentRequest $request, SubscriptionPayment $subscriptionPayment, DeleteSubscriptionPayment $action): RedirectResponse
     {
+        abort_unless(DeletionTier::allows($request->user(), null, $subscriptionPayment), 403);
+
         $action->handle($subscriptionPayment);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Subscription payment deleted.']);

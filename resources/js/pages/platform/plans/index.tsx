@@ -54,6 +54,7 @@ type PlanRow = {
     is_active: boolean;
     sort_order: number;
     organizations_count: number;
+    deletable: boolean;
 };
 
 type Props = {
@@ -495,6 +496,11 @@ export default function PlansIndex({
                                     icon={<Trash2 />}
                                     label={`Delete ${plan.name}`}
                                     color="danger"
+                                    disabledReason={
+                                        !plan.deletable
+                                            ? 'Only its creator or a platform admin can delete this plan.'
+                                            : null
+                                    }
                                     onClick={() => openDelete(plan)}
                                 />
                             )}

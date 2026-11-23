@@ -61,6 +61,7 @@ type UserRow = {
     roles: { id: number; name: string }[];
     person?: PersonRow | null;
     created_at?: string | null;
+    deletable: boolean;
 };
 
 type RowMode = 'view' | 'edit' | 'delete';
@@ -462,6 +463,11 @@ export default function UsersIndex({
                                     icon={<Trash2 />}
                                     label={`Delete ${user.name}`}
                                     color="danger"
+                                    disabledReason={
+                                        !user.deletable
+                                            ? 'Only its creator or a platform admin can delete this user.'
+                                            : null
+                                    }
                                     onClick={() => setDeleteTarget(user)}
                                 />
                             )}

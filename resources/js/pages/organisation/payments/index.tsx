@@ -40,6 +40,7 @@ type PaymentRow = {
     method: string | null;
     status: string | null;
     reference: string | null;
+    deletable: boolean;
 };
 
 type Props = {
@@ -326,6 +327,11 @@ export default function PaymentsIndex({ payments, statuses }: Props) {
                                                         icon={<Trash2 />}
                                                         label={`Delete payment for ${payment.tenant_name ?? payment.unit_name ?? `payment ${payment.id}`}`}
                                                         color="danger"
+                                                        disabledReason={
+                                                            !payment.deletable
+                                                                ? 'Only its creator or the owner can delete this payment.'
+                                                                : null
+                                                        }
                                                         onClick={() =>
                                                             setDeleteTarget(
                                                                 payment,

@@ -58,6 +58,7 @@ type Section = {
     area: string | null;
     status: string;
     notes: string | null;
+    deletable: boolean;
 };
 
 type LandParcel = {
@@ -421,6 +422,11 @@ export default function LandParcelShow({
                                                             icon={<Trash2 />}
                                                             label={`Delete section ${section.name}`}
                                                             color="danger"
+                                                            disabledReason={
+                                                                !section.deletable
+                                                                    ? 'Only its creator or the owner can delete this section.'
+                                                                    : null
+                                                            }
                                                             onClick={() =>
                                                                 setDeleteSectionId(
                                                                     section.id,

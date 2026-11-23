@@ -21,6 +21,7 @@ class StaffController extends Controller
     public function index(Request $request, StaffService $staffService): Response
     {
         $organization = TenancyContext::organization();
+        $actor = $request->user();
 
         $staff = OrganizationUser::query()
             ->where('organization_id', $organization->id)
@@ -38,6 +39,8 @@ class StaffController extends Controller
                 'properties' => Property::query()
                     ->whereIn('id', $staffService->delegatedPropertyIds($membership))
                     ->get(['id', 'name', 'slug']),
+                'deletable' => $actor->isPlatformAdmin()
+                    || $staffService->membership($organization, $membership->user) !== null,
             ]);
 
         return Inertia::render('organisation/staff/index', [
@@ -144,6 +147,15 @@ class StaffController extends Controller
     public function destroy(DestroyStaffRequest $request, User $staff, StaffService $staffService): RedirectResponse
     {
         $organization = TenancyContext::organization();
+
+        // Staff removal is membership-scoped like the bulk path: the target
+        // must belong to this organization. Owners always hold a membership
+        // row, so they pass naturally; platform admins pass explicitly.
+        abort_unless(
+            $request->user()->isPlatformAdmin()
+                || $staffService->membership($organization, $staff) !== null,
+            403,
+        );
 
         $staffService->softDelete($organization, $staff, $request->user());
 

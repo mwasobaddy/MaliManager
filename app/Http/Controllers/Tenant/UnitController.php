@@ -21,6 +21,7 @@ use App\Models\Unit;
 use App\Services\PropertyService;
 use App\Services\StaffService;
 use App\Support\AuthLanding;
+use App\Support\DeletionTier;
 use App\Support\TenancyContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -41,6 +42,9 @@ class UnitController extends Controller
      */
     public function index(UnitIndexRequest $request): Response
     {
+        $actor = $request->user();
+        $organization = TenancyContext::organization();
+
         $units = Unit::query()
             ->tenantIndex((int) TenancyContext::organization()?->id, [
                 'search' => $request->string('search')->trim()->toString(),
@@ -75,6 +79,7 @@ class UnitController extends Controller
                     'name' => $unit->property?->name,
                     'slug' => $unit->property?->slug,
                 ],
+                'deletable' => DeletionTier::allows($actor, $organization, $unit),
             ]);
 
         return Inertia::render('organisation/unit/index', [
@@ -222,6 +227,8 @@ class UnitController extends Controller
             $unit->property?->organization_id === TenancyContext::organization()?->id,
             404,
         );
+
+        abort_unless(DeletionTier::allows($request->user(), TenancyContext::organization(), $unit), 403);
 
         $occupied = Lease::query()
             ->where('unit_id', $unit->id)

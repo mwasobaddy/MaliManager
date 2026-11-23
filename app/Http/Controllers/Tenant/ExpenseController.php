@@ -12,6 +12,7 @@ use App\Models\Expense;
 use App\Models\LandParcel;
 use App\Models\Property;
 use App\Services\ExpenseService;
+use App\Support\DeletionTier;
 use App\Support\TenancyContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -28,6 +29,8 @@ class ExpenseController extends Controller
     public function index(ExpenseIndexRequest $request): Response
     {
         $category = $request->string('category')->toString();
+        $actor = $request->user();
+        $organization = TenancyContext::organization();
 
         $expenses = Expense::query()
             ->where('organization_id', TenancyContext::organization()?->id)
@@ -49,6 +52,7 @@ class ExpenseController extends Controller
                 'notes' => $expense->notes,
                 'has_receipt' => $expense->media_count > 0,
                 'receipt_url' => $expense->getFirstMedia('receipt')?->getUrl(),
+                'deletable' => DeletionTier::allows($actor, $organization, $expense),
             ]);
 
         return Inertia::render('organisation/expenses/index', [
@@ -123,6 +127,8 @@ class ExpenseController extends Controller
     public function destroy(DestroyExpenseRequest $request, Expense $expense, ExpenseService $service): RedirectResponse
     {
         abort_if($expense->organization_id !== TenancyContext::organization()?->id, 403);
+
+        abort_unless(DeletionTier::allows($request->user(), TenancyContext::organization(), $expense), 403);
 
         $service->softDelete($expense);
 

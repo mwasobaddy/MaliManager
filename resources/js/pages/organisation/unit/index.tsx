@@ -63,6 +63,7 @@ type UnitRow = {
     thumbnail: string | null;
     photos: { id: number; url: string; name: string; cover: boolean }[];
     property: { id: number | null; name: string | null; slug: string | null };
+    deletable: boolean;
 };
 
 type Props = {
@@ -497,9 +498,11 @@ export default function UnitsIndex({
                                     label={`Delete ${unit.name}`}
                                     color="danger"
                                     disabledReason={
-                                        occupied
-                                            ? 'Occupied units cannot be deleted. End the lease first.'
-                                            : null
+                                        !unit.deletable
+                                            ? 'Only its creator or the owner can delete this unit.'
+                                            : occupied
+                                              ? 'Occupied units cannot be deleted. End the lease first.'
+                                              : null
                                     }
                                     onClick={() => setDeleteTarget(unit)}
                                 />

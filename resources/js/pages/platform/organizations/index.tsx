@@ -64,6 +64,7 @@ type OrganizationRow = {
      * instead of failing after the click.
      */
     impersonation_blocked_reason: string | null;
+    deletable: boolean;
 };
 
 type Props = {
@@ -559,6 +560,11 @@ export default function OrganizationsIndex({
                                     icon={<Trash2 />}
                                     label={`Delete ${organization.name}`}
                                     color="danger"
+                                    disabledReason={
+                                        !organization.deletable
+                                            ? 'Only its creator or a platform admin can delete this organization.'
+                                            : null
+                                    }
                                     onClick={() => openDelete(organization)}
                                 />
                             )}

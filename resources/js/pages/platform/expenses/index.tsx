@@ -49,6 +49,7 @@ type ExpenseRow = {
     spent_on: string;
     vendor_name: string | null;
     notes: string | null;
+    deletable: boolean;
 };
 
 type Props = {
@@ -432,6 +433,11 @@ export default function PlatformExpensesIndex({
                                         expense.category
                                     }`}
                                     color="danger"
+                                    disabledReason={
+                                        !expense.deletable
+                                            ? 'Only its creator or a platform admin can delete this platform expense.'
+                                            : null
+                                    }
                                     onClick={() => openDelete(expense)}
                                 />
                             )}

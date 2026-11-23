@@ -20,6 +20,7 @@ use App\Models\Plan;
 use App\Models\User;
 use App\Services\OrganizationManagementService;
 use App\Services\UserService;
+use App\Support\DeletionTier;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -37,6 +38,7 @@ class OrganizationController extends Controller
 
     public function index(OrganizationIndexRequest $request): Response
     {
+        $actor = $request->user();
         // Allowlisted so a crafted `?sort=` can never reach the ORDER BY.
         // `domain` is intentionally absent: it is a host string, not a
         // meaningful ordering key for an admin scanning this list.
@@ -60,7 +62,7 @@ class OrganizationController extends Controller
             ->orderBy('organizations.id')
             ->paginate(15)
             ->withQueryString()
-            ->through(fn (Organization $organization): array => $this->serialize($organization));
+            ->through(fn (Organization $organization): array => $this->serialize($organization, $actor));
 
         // The row overlay is addressed by URL (`?organization=42`), so it has
         // to work from a shared link as well as from a tap. But the row is
@@ -84,7 +86,7 @@ class OrganizationController extends Controller
         return Inertia::render('platform/organizations/index', [
             'organizations' => $organizations,
             'focusedOrganization' => $focused
-                ? $this->serialize($focused)
+                ? $this->serialize($focused, $actor)
                 : null,
             // The edit + create sheets render on this page, so they need the
             // same options the standalone pages got.
@@ -130,7 +132,7 @@ class OrganizationController extends Controller
      *
      * @return array<string, mixed>
      */
-    private function serialize(Organization $organization): array
+    private function serialize(Organization $organization, User $actor): array
     {
         // Whether the impersonate button should be offered. The endpoint refuses
         // when the owner is a platform admin, and a button that is enabled and
@@ -151,6 +153,7 @@ class OrganizationController extends Controller
             'users_count' => $organization->users_count,
             'created_at' => $organization->created_at?->toDateTimeString(),
             'impersonation_blocked_reason' => $this->impersonationBlockedReason($organization, $owner),
+            'deletable' => DeletionTier::allows($actor, null, $organization),
         ];
     }
 
@@ -244,6 +247,8 @@ class OrganizationController extends Controller
 
     public function destroy(DestroyOrganizationRequest $request, Organization $organization): RedirectResponse
     {
+        abort_unless(DeletionTier::allows($request->user(), null, $organization), 403);
+
         $this->service->deleteOrganization($organization, $request->user());
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Organization has been deleted.']);

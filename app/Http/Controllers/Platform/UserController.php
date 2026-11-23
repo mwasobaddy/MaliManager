@@ -16,6 +16,7 @@ use App\Http\Requests\Platform\UserIndexRequest;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\UserService;
+use App\Support\DeletionTier;
 use App\Support\Search;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -49,6 +50,7 @@ class UserController extends Controller
 
     public function index(UserIndexRequest $request): Response
     {
+        $actor = $request->user();
         // Allowlisted so a crafted `?sort=` can never reach the ORDER BY.
         // Roles are a relation and deliberately absent: sorting by them needs a
         // subquery, and it is not an ordering an admin scans this list for.
@@ -69,7 +71,7 @@ class UserController extends Controller
             ->orderBy('id')
             ->paginate(15)
             ->withQueryString()
-            ->through(fn (User $user): array => $this->serialize($user));
+            ->through(fn (User $user): array => $this->serialize($user, $actor));
 
         // The row overlay is addressed by URL, so it must work from a shared
         // link and not only from a tap on a visible row. Same fallback as the
@@ -88,7 +90,7 @@ class UserController extends Controller
 
         return Inertia::render('platform/users/index', [
             'users' => $users,
-            'focusedUser' => $focused ? $this->serialize($focused) : null,
+            'focusedUser' => $focused ? $this->serialize($focused, $actor) : null,
             'filters' => [
                 'search' => (string) $request->string('search'),
                 'status' => (string) $request->string('status'),
@@ -108,7 +110,7 @@ class UserController extends Controller
      *
      * @return array<string, mixed>
      */
-    private function serialize(User $user): array
+    private function serialize(User $user, User $actor): array
     {
         return [
             'id' => $user->id,
@@ -131,6 +133,7 @@ class UserController extends Controller
                 'status' => $user->person->status,
             ] : null,
             'created_at' => $user->created_at?->toDateTimeString(),
+            'deletable' => DeletionTier::allows($actor, null, $user),
         ];
     }
 
@@ -171,6 +174,8 @@ class UserController extends Controller
 
     public function destroy(DestroyUserRequest $request, User $user): RedirectResponse
     {
+        abort_unless(DeletionTier::allows($request->user(), null, $user), 403);
+
         $this->service->deleteUser($user, $request->user());
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'User has been deleted.']);

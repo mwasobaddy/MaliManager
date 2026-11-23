@@ -54,6 +54,7 @@ type StaffMember = {
     status: string;
     sub_role: SubRole | null;
     properties: Property[];
+    deletable: boolean;
 };
 
 type FocusedStaff = {
@@ -342,6 +343,12 @@ export default function StaffIndex({
                                                     variant="ghost"
                                                     size="sm"
                                                     className="text-status-danger"
+                                                    disabled={!member.deletable}
+                                                    title={
+                                                        !member.deletable
+                                                            ? 'Only its creator or the owner can delete this staff member.'
+                                                            : undefined
+                                                    }
                                                     onClick={() =>
                                                         setOverlayParam(
                                                             'mode',
