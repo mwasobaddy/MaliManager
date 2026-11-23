@@ -201,6 +201,19 @@ test('occupants index searches across names, email and units', function () {
         ->get(occupantTenantUrl($organization, '/sunset-heights/occupants?search=Unit+B2'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page->has('occupants.data', 2));
+
+    // Multiple words narrow (AND): the full name matches, a mixed pair does not.
+    $this->actingAs($owner)
+        ->get(occupantTenantUrl($organization, '/sunset-heights/occupants?search=Zawadi+Mwangi'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('occupants.data', 1)
+            ->where('occupants.data.0.email', 'zawadi@example.test'));
+
+    $this->actingAs($owner)
+        ->get(occupantTenantUrl($organization, '/sunset-heights/occupants?search=Zawadi+Diop'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->has('occupants.data', 0));
 });
 
 test('occupants index filters by status', function () {

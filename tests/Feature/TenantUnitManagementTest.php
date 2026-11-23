@@ -399,6 +399,33 @@ test('the units index ships photos and names for the edit sheet', function () {
         ->and($props['properties'][0]['unit_names'])->toContain('A1');
 });
 
+test('unit search matches across words', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $property = makeUnitProperty($owner);
+    makeUnit($property, $owner, ['name' => 'A1', 'type' => '1 Bedroom']);
+    makeUnit($property, $owner, ['name' => 'B2', 'type' => '2 Bedroom']);
+
+    // A single word matches the type column.
+    $this->actingAs($owner)
+        ->get(tenantUrl($property->organization, '/units?search=Bedroom'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('units.data', fn ($rows) => count($rows) === 2));
+
+    // Multiple words narrow (AND): name plus type matches, a mixed pair does not.
+    $this->actingAs($owner)
+        ->get(tenantUrl($property->organization, '/units?search=A1+Bedroom'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('units.data', fn ($rows) => count($rows) === 1 && $rows[0]['name'] === 'A1'));
+
+    $this->actingAs($owner)
+        ->get(tenantUrl($property->organization, '/units?search=A1+2+Bedroom'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('units.data', fn ($rows) => count($rows) === 0));
+});
+
 test('an edit cannot file a unit under another organization’s property', function () {
     $owner = User::factory()->create(['onboarded_at' => now()]);
     $property = makeUnitProperty($owner);

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Models\Concerns\LogsTenantActivity;
+use App\Support\SearchTerms;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -161,17 +162,23 @@ class Lease extends Model implements HasMedia
         return $query
             ->where('leases.property_id', $propertyId)
             ->when(
-                trim((string) ($filters['search'] ?? '')),
-                fn (Builder $builder, string $search) => $builder->where(
-                    fn (Builder $inner) => $inner
-                        ->whereHas('person', fn (Builder $person) => $person->where(
-                            fn (Builder $name) => $name
-                                ->where('persons.first_name', 'like', "%{$search}%")
-                                ->orWhere('persons.last_name', 'like', "%{$search}%")
-                                ->orWhere('persons.email', 'like', "%{$search}%"),
-                        ))
-                        ->orWhereHas('unit', fn (Builder $unit) => $unit
-                            ->where('units.name', 'like', "%{$search}%")),
+                ($terms = SearchTerms::split($filters['search'] ?? '')) !== [],
+                fn (Builder $builder) => $builder->where(
+                    function (Builder $query) use ($terms): void {
+                        foreach ($terms as $term) {
+                            $query->where(
+                                fn (Builder $inner) => $inner
+                                    ->whereHas('person', fn (Builder $person) => $person->where(
+                                        fn (Builder $name) => $name
+                                            ->where('persons.first_name', 'like', "%{$term}%")
+                                            ->orWhere('persons.last_name', 'like', "%{$term}%")
+                                            ->orWhere('persons.email', 'like', "%{$term}%"),
+                                    ))
+                                    ->orWhereHas('unit', fn (Builder $unit) => $unit
+                                        ->where('units.name', 'like', "%{$term}%")),
+                            );
+                        }
+                    },
                 ),
             )
             ->when(

@@ -163,6 +163,18 @@ test('search narrows leases by occupant name or unit', function () {
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('leases.data', fn ($rows) => count($rows) === 1 && $rows[0]['occupant_name'] === 'Jane'));
+
+    // Multiple words narrow (AND): name plus unit matches, a mixed pair does not.
+    $this->actingAs($owner)
+        ->get(leaseUrl($organization, '/sunset-heights/leases?search=Mark+B2'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('leases.data', fn ($rows) => count($rows) === 1 && $rows[0]['unit_name'] === 'B2'));
+
+    $this->actingAs($owner)
+        ->get(leaseUrl($organization, '/sunset-heights/leases?search=Mark+A1'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('leases.data', fn ($rows) => count($rows) === 0));
 });
 
 test('leases sort by rent, unit and start date', function () {

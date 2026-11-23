@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\LogsTenantActivity;
+use App\Support\SearchTerms;
 use Database\Factories\UnitFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -71,14 +72,20 @@ class Unit extends Model implements HasMedia
                 fn (Builder $property) => $property->where('organization_id', $organizationId),
             )
             ->when(
-                trim((string) ($filters['search'] ?? '')),
-                fn (Builder $builder, string $search) => $builder->where(
-                    fn (Builder $inner) => $inner->where('units.name', 'like', "%{$search}%")
-                        ->orWhere('units.type', 'like', "%{$search}%")
-                        ->orWhereHas(
-                            'property',
-                            fn (Builder $property) => $property->where('name', 'like', "%{$search}%"),
-                        ),
+                ($terms = SearchTerms::split($filters['search'] ?? '')) !== [],
+                fn (Builder $builder) => $builder->where(
+                    function (Builder $query) use ($terms): void {
+                        foreach ($terms as $term) {
+                            $query->where(
+                                fn (Builder $inner) => $inner->where('units.name', 'like', "%{$term}%")
+                                    ->orWhere('units.type', 'like', "%{$term}%")
+                                    ->orWhereHas(
+                                        'property',
+                                        fn (Builder $property) => $property->where('name', 'like', "%{$term}%"),
+                                    ),
+                            );
+                        }
+                    },
                 ),
             )
             ->when(

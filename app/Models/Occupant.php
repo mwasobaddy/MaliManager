@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\LogsTenantActivity;
+use App\Support\SearchTerms;
 use App\Support\TenancyContext;
 use Database\Factories\OccupantFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -66,20 +67,26 @@ class Occupant extends Model
             ->where('occupants.organization_id', $organizationId)
             ->whereHas('units', fn (Builder $unit) => $unit->where('units.property_id', $propertyId))
             ->when(
-                trim((string) ($filters['search'] ?? '')),
-                fn (Builder $builder, string $search) => $builder->where(
-                    fn (Builder $inner) => $inner
-                        ->whereHas('person', fn (Builder $person) => $person->where(
-                            fn (Builder $name) => $name
-                                ->where('persons.first_name', 'like', "%{$search}%")
-                                ->orWhere('persons.last_name', 'like', "%{$search}%")
-                                ->orWhere('persons.email', 'like', "%{$search}%")
-                                ->orWhere('persons.phone', 'like', "%{$search}%")
-                                ->orWhere('persons.national_id', 'like', "%{$search}%"),
-                        ))
-                        ->orWhereHas('units', fn (Builder $unit) => $unit
-                            ->where('units.property_id', $propertyId)
-                            ->where('units.name', 'like', "%{$search}%")),
+                ($terms = SearchTerms::split($filters['search'] ?? '')) !== [],
+                fn (Builder $builder) => $builder->where(
+                    function (Builder $query) use ($terms, $propertyId): void {
+                        foreach ($terms as $term) {
+                            $query->where(
+                                fn (Builder $inner) => $inner
+                                    ->whereHas('person', fn (Builder $person) => $person->where(
+                                        fn (Builder $name) => $name
+                                            ->where('persons.first_name', 'like', "%{$term}%")
+                                            ->orWhere('persons.last_name', 'like', "%{$term}%")
+                                            ->orWhere('persons.email', 'like', "%{$term}%")
+                                            ->orWhere('persons.phone', 'like', "%{$term}%")
+                                            ->orWhere('persons.national_id', 'like', "%{$term}%"),
+                                    ))
+                                    ->orWhereHas('units', fn (Builder $unit) => $unit
+                                        ->where('units.property_id', $propertyId)
+                                        ->where('units.name', 'like', "%{$term}%")),
+                            );
+                        }
+                    },
                 ),
             )
             ->when(
