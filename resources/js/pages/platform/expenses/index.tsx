@@ -511,16 +511,6 @@ export default function PlatformExpensesIndex({
                  * the Card's own padding would otherwise inset the search row
                  * relative to the table below it.
                  */}
-                <BulkDeleteBar
-                    pageIds={expenses.data.map((expense) => expense.id)}
-                    selectedIds={selectedIds}
-                    onSelectionChange={setSelectedIds}
-                    onDelete={() => setBulkOpen(true)}
-                    onClear={() => setSelectedIds([])}
-                    canDelete={canDelete}
-                    noun="platform expenses"
-                />
-
                 <Card className="gap-0 py-0">
                     <div className="flex flex-wrap items-center gap-2 border-b border-border-strong p-4">
                         <div className="relative min-w-56 flex-1">
@@ -568,6 +558,15 @@ export default function PlatformExpensesIndex({
                             />
                         )}
                     </div>
+                    <BulkDeleteBar
+                        pageIds={expenses.data.map((expense) => expense.id)}
+                        selectedIds={selectedIds}
+                        onSelectionChange={setSelectedIds}
+                        onDelete={() => setBulkOpen(true)}
+                        onClear={() => setSelectedIds([])}
+                        canDelete={canDelete}
+                        noun="platform expenses"
+                    />
                     <DataTable
                         columns={columns}
                         data={expenses.data}

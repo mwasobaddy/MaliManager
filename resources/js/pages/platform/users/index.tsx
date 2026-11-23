@@ -493,16 +493,6 @@ export default function UsersIndex({
                     )}
                 </div>
 
-                <BulkDeleteBar
-                    pageIds={users.data.map((user) => user.id)}
-                    selectedIds={selectedIds}
-                    onSelectionChange={setSelectedIds}
-                    onDelete={() => setBulkOpen(true)}
-                    onClear={() => setSelectedIds([])}
-                    canDelete={canDelete}
-                    noun="users"
-                />
-
                 {/*
                  * One card = the table's frame. Search/filters live in a header
                  * band above the rows rather than in their own floating card
@@ -561,6 +551,15 @@ export default function UsersIndex({
                             />
                         )}
                     </div>
+                    <BulkDeleteBar
+                        pageIds={users.data.map((user) => user.id)}
+                        selectedIds={selectedIds}
+                        onSelectionChange={setSelectedIds}
+                        onDelete={() => setBulkOpen(true)}
+                        onClear={() => setSelectedIds([])}
+                        canDelete={canDelete}
+                        noun="users"
+                    />
                     <DataTable
                         columns={columns}
                         data={users.data}

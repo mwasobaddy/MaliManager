@@ -107,12 +107,43 @@ export function DataTable<TData>({
         ) : (
             empty
         );
+    // Page ids keyed exactly like the row checkboxes below, so the
+    // header checkbox and the rows can never disagree about the scope:
+    // this page, nothing more.
+    const pageIds = data.map(
+        (row, index) => getRowId?.(row, index) ?? String(index),
+    );
+
     const tableColumns: ColumnDef<TData, unknown>[] = selectable
         ? [
               {
                   id: 'select',
                   enableSorting: false,
-                  header: () => null,
+                  header: () => {
+                      const allSelected =
+                          pageIds.length > 0 &&
+                          pageIds.every((id) => selectedIds.includes(id));
+
+                      return (
+                          <span className="inline-flex">
+                              <Checkbox
+                                  checked={
+                                      allSelected
+                                          ? true
+                                          : selectedIds.length === 0
+                                            ? false
+                                            : 'indeterminate'
+                                  }
+                                  onCheckedChange={() =>
+                                      onSelectionChange?.(
+                                          allSelected ? [] : pageIds,
+                                      )
+                                  }
+                                  aria-label="Select all rows on this page"
+                              />
+                          </span>
+                      );
+                  },
                   cell: ({ row }) => {
                       const checked = selectedIds.includes(row.id);
 
@@ -376,6 +407,9 @@ export function DataTable<TData>({
                                 }
                                 className={cn(
                                     'border-b border-border/60 transition-colors last:border-b-0 hover:bg-bg-base',
+                                    selectable &&
+                                        selectedIds.includes(row.id) &&
+                                        'bg-muted/60 hover:bg-muted/60',
                                     onRowClick &&
                                         'cursor-pointer focus-visible:bg-bg-base focus-visible:ring-[3px] focus-visible:ring-ring focus-visible:outline-none',
                                 )}

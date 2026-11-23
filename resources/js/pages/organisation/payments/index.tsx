@@ -60,6 +60,9 @@ export default function PaymentsIndex({ payments, statuses }: Props) {
     const [deleteTarget, setDeleteTarget] = useState<PaymentRow | null>(null);
     const [bulkOpen, setBulkOpen] = useState(false);
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
+    const pageIds = payments.data.map((payment) => payment.id);
+    const allSelected =
+        pageIds.length > 0 && pageIds.every((id) => selectedIds.includes(id));
 
     // The delete overlay is local state, so it closes itself once the
     // fresh props come back without the row. A failed confirm (wrong
@@ -138,7 +141,7 @@ export default function PaymentsIndex({ payments, statuses }: Props) {
                 </div>
 
                 <BulkDeleteBar
-                    pageIds={payments.data.map((payment) => payment.id)}
+                    pageIds={pageIds}
                     selectedIds={selectedIds}
                     onSelectionChange={setSelectedIds}
                     onDelete={() => setBulkOpen(true)}
@@ -158,7 +161,28 @@ export default function PaymentsIndex({ payments, statuses }: Props) {
                         <table className="w-full text-sm">
                             <thead>
                                 <tr className="border-b text-left text-xs tracking-wide text-muted-foreground uppercase">
-                                    {canDelete && <th className="w-8" />}
+                                    {canDelete && (
+                                        <th className="w-8 px-3 py-2">
+                                            <Checkbox
+                                                checked={
+                                                    allSelected
+                                                        ? true
+                                                        : selectedIds.length ===
+                                                            0
+                                                          ? false
+                                                          : 'indeterminate'
+                                                }
+                                                onCheckedChange={() =>
+                                                    setSelectedIds(
+                                                        allSelected
+                                                            ? []
+                                                            : [...pageIds],
+                                                    )
+                                                }
+                                                aria-label="Select all payments on this page"
+                                            />
+                                        </th>
+                                    )}
                                     <th className="px-3 py-2">Tenant</th>
                                     <th className="px-3 py-2">Property</th>
                                     <th className="px-3 py-2">Unit</th>
@@ -185,7 +209,11 @@ export default function PaymentsIndex({ payments, statuses }: Props) {
                                 {payments.data.map((payment) => (
                                     <tr
                                         key={payment.id}
-                                        className="border-b last:border-0"
+                                        className={
+                                            selectedIds.includes(payment.id)
+                                                ? 'border-b bg-muted/60 last:border-0'
+                                                : 'border-b last:border-0'
+                                        }
                                     >
                                         {canDelete && (
                                             <td className="px-3 py-2">

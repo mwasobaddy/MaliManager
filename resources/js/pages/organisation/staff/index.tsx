@@ -199,6 +199,7 @@ export default function StaffIndex({
                     onDelete={() => setBulkOpen(true)}
                     onClear={() => setSelectedIds([])}
                     canDelete={canDelete}
+                    showSelectAll
                     noun="staff"
                 />
 
@@ -225,7 +226,14 @@ export default function StaffIndex({
                 ) : (
                     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                         {staff.map((member) => (
-                            <Card key={member.id}>
+                            <Card
+                                key={member.id}
+                                className={
+                                    selectedIds.includes(member.id)
+                                        ? 'bg-muted/60'
+                                        : undefined
+                                }
+                            >
                                 <CardHeader>
                                     <div className="flex items-start justify-between gap-4">
                                         {canDelete && (

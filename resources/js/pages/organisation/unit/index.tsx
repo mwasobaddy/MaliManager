@@ -532,16 +532,6 @@ export default function UnitsIndex({
                     )}
                 </div>
 
-                <BulkDeleteBar
-                    pageIds={units.data.map((unit) => unit.id)}
-                    selectedIds={selectedIds}
-                    onSelectionChange={setSelectedIds}
-                    onDelete={() => setBulkOpen(true)}
-                    onClear={() => setSelectedIds([])}
-                    canDelete={canDelete}
-                    noun="units"
-                />
-
                 <Card className="gap-0 py-0">
                     <div className="flex flex-wrap items-center gap-2 border-b border-border-strong p-4">
                         <div className="relative min-w-56 flex-1">
@@ -583,6 +573,16 @@ export default function UnitsIndex({
                             />
                         )}
                     </div>
+
+                    <BulkDeleteBar
+                        pageIds={units.data.map((unit) => unit.id)}
+                        selectedIds={selectedIds}
+                        onSelectionChange={setSelectedIds}
+                        onDelete={() => setBulkOpen(true)}
+                        onClear={() => setSelectedIds([])}
+                        canDelete={canDelete}
+                        noun="units"
+                    />
 
                     <DataTable
                         columns={columns}

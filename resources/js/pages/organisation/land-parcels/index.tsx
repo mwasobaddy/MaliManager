@@ -115,6 +115,7 @@ export default function LandParcelsIndex({
                             onDelete={() => setBulkOpen(true)}
                             onClear={() => setSelectedIds([])}
                             canDelete={canDelete}
+                            showSelectAll
                             noun="land parcels"
                         />
                         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -122,7 +123,11 @@ export default function LandParcelsIndex({
                                 <Link
                                     key={parcel.id}
                                     href={show(parcel.slug)}
-                                    className="rounded-xl border border-input bg-card transition-colors hover:bg-muted"
+                                    className={
+                                        selectedIds.includes(parcel.id)
+                                            ? 'rounded-xl border border-input bg-muted/60 transition-colors hover:bg-muted/60'
+                                            : 'rounded-xl border border-input bg-card transition-colors hover:bg-muted'
+                                    }
                                 >
                                     <Card className="border-0 bg-transparent shadow-none">
                                         <CardHeader>

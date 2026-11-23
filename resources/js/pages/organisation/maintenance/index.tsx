@@ -197,6 +197,7 @@ export default function MaintenanceIndex({
                     onDelete={() => setBulkOpen(true)}
                     onClear={() => setSelectedIds([])}
                     canDelete={canDelete}
+                    showSelectAll
                     noun="maintenance requests"
                 />
 
@@ -212,7 +213,11 @@ export default function MaintenanceIndex({
                             <div
                                 key={item.id}
                                 data-test={`maintenance-${item.id}`}
-                                className="rounded-xl border border-input p-4"
+                                className={
+                                    selectedIds.includes(item.id)
+                                        ? 'rounded-xl border border-input bg-muted/60 p-4'
+                                        : 'rounded-xl border border-input p-4'
+                                }
                             >
                                 <div className="flex flex-wrap items-start justify-between gap-2">
                                     <div className="min-w-0 flex-1">

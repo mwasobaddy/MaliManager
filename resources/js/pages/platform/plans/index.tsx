@@ -563,16 +563,6 @@ export default function PlansIndex({
                     )}
                 </div>
 
-                <BulkDeleteBar
-                    pageIds={plans.data.map((plan) => plan.id)}
-                    selectedIds={selectedIds}
-                    onSelectionChange={setSelectedIds}
-                    onDelete={() => setBulkOpen(true)}
-                    onClear={() => setSelectedIds([])}
-                    canDelete={canDelete}
-                    noun="plans"
-                />
-
                 {/*
                  * One card = the table's frame. Search/filters live in a header
                  * band above the rows rather than in their own floating card
@@ -630,6 +620,15 @@ export default function PlansIndex({
                             />
                         )}
                     </div>
+                    <BulkDeleteBar
+                        pageIds={plans.data.map((plan) => plan.id)}
+                        selectedIds={selectedIds}
+                        onSelectionChange={setSelectedIds}
+                        onDelete={() => setBulkOpen(true)}
+                        onClear={() => setSelectedIds([])}
+                        canDelete={canDelete}
+                        noun="plans"
+                    />
                     <DataTable
                         columns={columns}
                         data={plans.data}

@@ -6,6 +6,16 @@ paths:
 
 # Frontend Rules
 
+## Research before designing UI
+
+Before creating or changing product UI, research how the pattern is
+currently done: search the web for the design-system consensus (Material,
+Carbon, EUI, Helios, and their peers) and apply what the sources agree
+on rather than inventing layout, placement, or selection semantics from
+scratch. Record the settled pattern in `.ai/rules/components.md` so the
+next surface reuses it instead of re-deciding it. Marketing surfaces stay
+exempt — see `.ai/rules/marketing.md`.
+
 ## Wayfinder
 
 - Always regenerate with `php artisan wayfinder:generate --with-form`. The CLI defaults to omitting `.form` variants, which breaks `useForm`/`<Form>` pages with `TS2339: Property 'form' does not exist`. The vite config's `formVariants: true` only applies to dev-time generation, not the CLI.

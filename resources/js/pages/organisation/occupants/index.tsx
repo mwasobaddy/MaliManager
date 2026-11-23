@@ -286,6 +286,7 @@ export default function OccupantsIndex({
                     onDelete={() => setBulkOpen(true)}
                     onClear={() => setSelectedIds([])}
                     canDelete={canDelete}
+                    showSelectAll
                     noun="occupants"
                 />
 
@@ -312,7 +313,14 @@ export default function OccupantsIndex({
                 ) : (
                     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                         {occupants.map((occupant) => (
-                            <Card key={occupant.id}>
+                            <Card
+                                key={occupant.id}
+                                className={
+                                    selectedIds.includes(occupant.id)
+                                        ? 'bg-muted/60'
+                                        : undefined
+                                }
+                            >
                                 <CardHeader>
                                     <div className="flex items-start justify-between gap-4">
                                         {canDelete && (

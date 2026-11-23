@@ -616,18 +616,6 @@ export default function OrganizationsIndex({
                     )}
                 </div>
 
-                <BulkDeleteBar
-                    pageIds={organizations.data.map(
-                        (organization) => organization.id,
-                    )}
-                    selectedIds={selectedIds}
-                    onSelectionChange={setSelectedIds}
-                    onDelete={() => setBulkOpen(true)}
-                    onClear={() => setSelectedIds([])}
-                    canDelete={canDelete}
-                    noun="organizations"
-                />
-
                 {/*
                  * One card = the table's frame. Search/filters live in a header
                  * band above the rows rather than in their own floating card
@@ -682,6 +670,17 @@ export default function OrganizationsIndex({
                             />
                         )}
                     </div>
+                    <BulkDeleteBar
+                        pageIds={organizations.data.map(
+                            (organization) => organization.id,
+                        )}
+                        selectedIds={selectedIds}
+                        onSelectionChange={setSelectedIds}
+                        onDelete={() => setBulkOpen(true)}
+                        onClear={() => setSelectedIds([])}
+                        canDelete={canDelete}
+                        noun="organizations"
+                    />
                     <DataTable
                         columns={columns}
                         data={organizations.data}

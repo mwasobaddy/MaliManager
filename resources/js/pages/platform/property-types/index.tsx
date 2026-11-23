@@ -431,16 +431,6 @@ export default function PropertyTypesIndex({
                     <Pill label="Total" value={propertyTypes.total} />
                 </div>
 
-                <BulkDeleteBar
-                    pageIds={propertyTypes.data.map((type) => type.id)}
-                    selectedIds={selectedIds}
-                    onSelectionChange={setSelectedIds}
-                    onDelete={() => setBulkOpen(true)}
-                    onClear={() => setSelectedIds([])}
-                    canDelete={canDelete}
-                    noun="property types"
-                />
-
                 <Card className="gap-0 py-0">
                     <div className="flex flex-wrap items-center gap-2 border-b border-border-strong p-4">
                         <div className="relative min-w-56 flex-1">
@@ -484,6 +474,16 @@ export default function PropertyTypesIndex({
                             />
                         )}
                     </div>
+
+                    <BulkDeleteBar
+                        pageIds={propertyTypes.data.map((type) => type.id)}
+                        selectedIds={selectedIds}
+                        onSelectionChange={setSelectedIds}
+                        onDelete={() => setBulkOpen(true)}
+                        onClear={() => setSelectedIds([])}
+                        canDelete={canDelete}
+                        noun="property types"
+                    />
 
                     <DataTable
                         columns={columns}

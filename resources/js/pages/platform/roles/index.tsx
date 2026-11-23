@@ -510,16 +510,6 @@ export default function RolesIndex({
                     )}
                 </div>
 
-                <BulkDeleteBar
-                    pageIds={roles.data.map((role) => role.id)}
-                    selectedIds={selectedIds}
-                    onSelectionChange={setSelectedIds}
-                    onDelete={() => setBulkOpen(true)}
-                    onClear={() => setSelectedIds([])}
-                    canDelete={canDelete}
-                    noun="roles"
-                />
-
                 <Card className="gap-0 py-0">
                     <div className="flex flex-wrap items-center gap-2 border-b border-border-strong p-4">
                         <div className="relative min-w-56 flex-1">
@@ -564,6 +554,16 @@ export default function RolesIndex({
                         )}
                     </div>
 
+                    <BulkDeleteBar
+                        pageIds={roles.data.map((role) => role.id)}
+                        selectedIds={selectedIds}
+                        onSelectionChange={setSelectedIds}
+                        onDelete={() => setBulkOpen(true)}
+                        onClear={() => setSelectedIds([])}
+                        canDelete={canDelete}
+                        noun="roles"
+                    />
+
                     <DataTable
                         columns={columns}
                         data={roles.data}
@@ -600,8 +600,11 @@ export default function RolesIndex({
                         >
                             users page
                         </a>
-                        . Deleting or deactivating a role moves everyone holding
-                        it to <strong>searcher</strong>.
+                        . Deleting a role moves it to trash with its holders
+                        kept — they lose its permissions until it is restored or
+                        permanently deleted, which moves them to{' '}
+                        <strong>searcher</strong>. Deactivating moves holders to{' '}
+                        <strong>searcher</strong> right away.
                     </span>
                 </p>
             </div>

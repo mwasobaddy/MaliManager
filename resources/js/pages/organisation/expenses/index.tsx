@@ -65,6 +65,9 @@ export default function ExpensesIndex({
     const [deleteTarget, setDeleteTarget] = useState<ExpenseRow | null>(null);
     const [bulkOpen, setBulkOpen] = useState(false);
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
+    const pageIds = expenses.data.map((expense) => expense.id);
+    const allSelected =
+        pageIds.length > 0 && pageIds.every((id) => selectedIds.includes(id));
 
     // The delete overlay is local state, so it closes itself once the
     // fresh props come back without the row. A failed confirm (wrong
@@ -145,7 +148,7 @@ export default function ExpensesIndex({
                 </div>
 
                 <BulkDeleteBar
-                    pageIds={expenses.data.map((expense) => expense.id)}
+                    pageIds={pageIds}
                     selectedIds={selectedIds}
                     onSelectionChange={setSelectedIds}
                     onDelete={() => setBulkOpen(true)}
@@ -165,7 +168,28 @@ export default function ExpensesIndex({
                         <table className="w-full text-sm">
                             <thead>
                                 <tr className="border-b text-left text-xs tracking-wide text-muted-foreground uppercase">
-                                    {canDelete && <th className="w-8" />}
+                                    {canDelete && (
+                                        <th className="w-8 px-3 py-2">
+                                            <Checkbox
+                                                checked={
+                                                    allSelected
+                                                        ? true
+                                                        : selectedIds.length ===
+                                                            0
+                                                          ? false
+                                                          : 'indeterminate'
+                                                }
+                                                onCheckedChange={() =>
+                                                    setSelectedIds(
+                                                        allSelected
+                                                            ? []
+                                                            : [...pageIds],
+                                                    )
+                                                }
+                                                aria-label="Select all expenses on this page"
+                                            />
+                                        </th>
+                                    )}
                                     <th className="px-3 py-2">Asset</th>
                                     <th className="px-3 py-2">Unit</th>
                                     <th className="px-3 py-2">Category</th>
@@ -183,7 +207,11 @@ export default function ExpensesIndex({
                                 {expenses.data.map((expense) => (
                                     <tr
                                         key={expense.id}
-                                        className="border-b last:border-0"
+                                        className={
+                                            selectedIds.includes(expense.id)
+                                                ? 'border-b bg-muted/60 last:border-0'
+                                                : 'border-b last:border-0'
+                                        }
                                     >
                                         {canDelete && (
                                             <td className="px-3 py-2">

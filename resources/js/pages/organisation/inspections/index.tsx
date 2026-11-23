@@ -35,6 +35,9 @@ export default function InspectionsIndex({ propertySlug, inspections }: Props) {
 
     const [bulkOpen, setBulkOpen] = useState(false);
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
+    const pageIds = inspections.map((inspection) => inspection.id);
+    const allSelected =
+        pageIds.length > 0 && pageIds.every((id) => selectedIds.includes(id));
 
     // Selection never outlives the page: a refetch that drops a row also
     // drops its tick, so the bulk payload can only name visible rows.
@@ -72,7 +75,7 @@ export default function InspectionsIndex({ propertySlug, inspections }: Props) {
                 </div>
 
                 <BulkDeleteBar
-                    pageIds={inspections.map((inspection) => inspection.id)}
+                    pageIds={pageIds}
                     selectedIds={selectedIds}
                     onSelectionChange={setSelectedIds}
                     onDelete={() => setBulkOpen(true)}
@@ -91,7 +94,27 @@ export default function InspectionsIndex({ propertySlug, inspections }: Props) {
                     <table className="w-full text-sm">
                         <thead>
                             <tr className="border-b text-left text-xs tracking-wide text-muted-foreground uppercase">
-                                {canDelete && <th className="w-8" />}
+                                {canDelete && (
+                                    <th className="w-8 px-3 py-2">
+                                        <Checkbox
+                                            checked={
+                                                allSelected
+                                                    ? true
+                                                    : selectedIds.length === 0
+                                                      ? false
+                                                      : 'indeterminate'
+                                            }
+                                            onCheckedChange={() =>
+                                                setSelectedIds(
+                                                    allSelected
+                                                        ? []
+                                                        : [...pageIds],
+                                                )
+                                            }
+                                            aria-label="Select all inspections on this page"
+                                        />
+                                    </th>
+                                )}
                                 <th className="px-3 py-2">Title</th>
                                 <th className="px-3 py-2">Unit</th>
                                 <th className="px-3 py-2">Date</th>
@@ -104,7 +127,11 @@ export default function InspectionsIndex({ propertySlug, inspections }: Props) {
                             {inspections.map((inspection) => (
                                 <tr
                                     key={inspection.id}
-                                    className="border-b last:border-0"
+                                    className={
+                                        selectedIds.includes(inspection.id)
+                                            ? 'border-b bg-muted/60 last:border-0'
+                                            : 'border-b last:border-0'
+                                    }
                                 >
                                     {canDelete && (
                                         <td className="px-3 py-2">
