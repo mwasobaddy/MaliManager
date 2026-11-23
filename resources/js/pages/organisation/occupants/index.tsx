@@ -10,7 +10,8 @@ import {
     Users,
     Plus,
 } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { BulkDeleteBar } from '@/components/bulk-delete-bar';
 import ConfirmDeleteOverlay from '@/components/confirm-delete-overlay';
 import { LabelledIconButton } from '@/components/labelled-icon-button';
 import Heading from '@/components/heading';
@@ -27,6 +28,7 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     Dialog,
     DialogContent,
@@ -45,6 +47,7 @@ import {
     update as updateOccupant,
 } from '@/routes/tenant/occupants';
 import { index as propertiesIndex } from '@/routes/tenant/properties';
+import { bulk as trashBulk } from '@/routes/tenant/trash';
 
 type Property = {
     id: number;
@@ -120,6 +123,19 @@ export default function OccupantsIndex({
     const canCreate = permissions.includes('occupant.create');
     const canEdit = permissions.includes('occupant.edit');
     const canDelete = permissions.includes('occupant.delete');
+
+    const [bulkOpen, setBulkOpen] = useState(false);
+    const [selectedIds, setSelectedIds] = useState<number[]>([]);
+
+    // Selection never outlives the page: a refetch that drops a row also
+    // drops its tick, so the bulk payload can only name visible rows.
+    useEffect(() => {
+        setSelectedIds((current) =>
+            current.filter((id) =>
+                occupants.some((occupant) => occupant.id === id),
+            ),
+        );
+    }, [occupants]);
 
     const { query, setOverlayParam } = useOverlayParam();
 
@@ -263,6 +279,16 @@ export default function OccupantsIndex({
                     )}
                 </div>
 
+                <BulkDeleteBar
+                    pageIds={occupants.map((occupant) => occupant.id)}
+                    selectedIds={selectedIds}
+                    onSelectionChange={setSelectedIds}
+                    onDelete={() => setBulkOpen(true)}
+                    onClear={() => setSelectedIds([])}
+                    canDelete={canDelete}
+                    noun="occupants"
+                />
+
                 {occupants.length === 0 ? (
                     <Card>
                         <CardContent className="py-16 text-center">
@@ -289,6 +315,30 @@ export default function OccupantsIndex({
                             <Card key={occupant.id}>
                                 <CardHeader>
                                     <div className="flex items-start justify-between gap-4">
+                                        {canDelete && (
+                                            <Checkbox
+                                                checked={selectedIds.includes(
+                                                    occupant.id,
+                                                )}
+                                                onCheckedChange={() =>
+                                                    setSelectedIds((current) =>
+                                                        current.includes(
+                                                            occupant.id,
+                                                        )
+                                                            ? current.filter(
+                                                                  (id) =>
+                                                                      id !==
+                                                                      occupant.id,
+                                                              )
+                                                            : [
+                                                                  ...current,
+                                                                  occupant.id,
+                                                              ],
+                                                    )
+                                                }
+                                                aria-label={`Select occupant ${occupant.first_name} ${occupant.last_name ?? ''}`}
+                                            />
+                                        )}
                                         <div className="min-w-0">
                                             <CardTitle className="truncate">
                                                 <Link
@@ -653,6 +703,35 @@ export default function OccupantsIndex({
                     }
                     title={`Remove ${deleteTarget.first_name} ${deleteTarget.last_name ?? ''}`.trim()}
                     description="Their units are released and the occupant record is removed. Confirm with your password — this cannot be undone from the interface."
+                />
+            )}
+
+            {canDelete && bulkOpen && selectedIds.length > 0 && (
+                <ConfirmDeleteOverlay
+                    open
+                    onOpenChange={(open) => {
+                        if (!open) {
+                            setBulkOpen(false);
+                        }
+                    }}
+                    action={trashBulk().url}
+                    payload={{ module: 'occupants', ids: selectedIds }}
+                    title={
+                        selectedIds.length === 1
+                            ? 'Delete this occupant?'
+                            : `Delete ${selectedIds.length} occupants?`
+                    }
+                    description="They move to trash, where they can be restored or permanently deleted."
+                    submitLabel={
+                        selectedIds.length === 1
+                            ? 'Delete occupant'
+                            : `Delete ${selectedIds.length} occupants`
+                    }
+                    processingLabel="Deleting…"
+                    onSuccess={() => {
+                        setSelectedIds([]);
+                        setBulkOpen(false);
+                    }}
                 />
             )}
 

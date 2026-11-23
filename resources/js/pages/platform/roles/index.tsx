@@ -286,7 +286,10 @@ export default function RolesIndex({
     }
 
     function runExport(scope: 'all' | 'page', columns: string[]) {
-        downloadCsv(roleRoutes.exportMethod().url, exportParams(scope, columns));
+        downloadCsv(
+            roleRoutes.exportMethod().url,
+            exportParams(scope, columns),
+        );
         setOverlayParam('export', null, { replace: true });
     }
 
@@ -441,9 +444,7 @@ export default function RolesIndex({
                                                 ? `Deactivate ${role.name}`
                                                 : `Activate ${role.name}`
                                         }
-                                        color={
-                                            role.is_active ? 'danger' : 'view'
-                                        }
+                                        color="default"
                                         disabled={!canEdit}
                                         onClick={() =>
                                             openRow(role, 'deactivate')
@@ -954,7 +955,13 @@ export default function RolesIndex({
                 pageCount={roles.data.length}
                 currentPage={roles.current_page}
                 activeFilters={activeFilterSummary}
-                columns={['Name', 'Permissions', 'Status', 'Users', 'Protected']}
+                columns={[
+                    'Name',
+                    'Permissions',
+                    'Status',
+                    'Users',
+                    'Protected',
+                ]}
                 onExport={runExport}
             />
 

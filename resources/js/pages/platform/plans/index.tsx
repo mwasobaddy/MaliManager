@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActionIconButton } from '@/components/action-icon-button';
+import { BulkDeleteBar } from '@/components/bulk-delete-bar';
 import ConfirmDeleteOverlay from '@/components/confirm-delete-overlay';
 import ConfirmDialog from '@/components/confirm-dialog';
 import { CsvImportSheet, downloadCsv } from '@/components/csv-actions';
@@ -32,6 +33,7 @@ import { Pagination } from '@/components/ui/pagination';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Textarea } from '@/components/ui/textarea';
 import * as planRoutes from '@/routes/platform/plans';
+import { bulk as trashBulk } from '@/routes/platform/trash';
 
 type PlanRow = {
     id: number;
@@ -94,6 +96,8 @@ export default function PlansIndex({
     const errors = (page.props.errors ?? {}) as Record<string, string>;
 
     const [isTableLoading, setIsTableLoading] = useState(false);
+    const [bulkOpen, setBulkOpen] = useState(false);
+    const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [statusTarget, setStatusTarget] = useState<PlanRow | null>(null);
 
     // Read query params off Inertia's page.url, NOT window.location. Inertia
@@ -316,6 +320,14 @@ export default function PlansIndex({
         setSearchDraft(filters.search);
     }
 
+    // Selection never outlives the page: a refetch that drops a row also
+    // drops its tick, so the bulk payload can only name visible rows.
+    useEffect(() => {
+        setSelectedIds((current) =>
+            current.filter((id) => plans.data.some((plan) => plan.id === id)),
+        );
+    }, [plans.data]);
+
     /** Spoken description of the active filters, for the export sheet. */
     const activeFilterSummary =
         [
@@ -522,7 +534,10 @@ export default function PlansIndex({
     }
 
     function runExport(scope: 'all' | 'page', columns: string[]) {
-        downloadCsv(planRoutes.exportMethod().url, exportParams(scope, columns));
+        downloadCsv(
+            planRoutes.exportMethod().url,
+            exportParams(scope, columns),
+        );
         setOverlayParam('export', null, { replace: true });
     }
 
@@ -547,6 +562,16 @@ export default function PlansIndex({
                         />
                     )}
                 </div>
+
+                <BulkDeleteBar
+                    pageIds={plans.data.map((plan) => plan.id)}
+                    selectedIds={selectedIds}
+                    onSelectionChange={setSelectedIds}
+                    onDelete={() => setBulkOpen(true)}
+                    onClear={() => setSelectedIds([])}
+                    canDelete={canDelete}
+                    noun="plans"
+                />
 
                 {/*
                  * One card = the table's frame. Search/filters live in a header
@@ -613,6 +638,12 @@ export default function PlansIndex({
                         onSortingChange={applySorting}
                         loading={isTableLoading}
                         loadingRows={15}
+                        selectable={canDelete}
+                        selectedIds={selectedIds.map(String)}
+                        onSelectionChange={(ids) =>
+                            setSelectedIds(ids.map(Number))
+                        }
+                        selectionLabel={(plan) => `Select plan ${plan.name}`}
                         onRowClick={(plan) => openRow(plan, 'view')}
                         empty="No plans match your filters."
                     />
@@ -719,6 +750,35 @@ export default function PlansIndex({
                             password — this cannot be undone.
                         </>
                     }
+                />
+            )}
+
+            {canDelete && bulkOpen && selectedIds.length > 0 && (
+                <ConfirmDeleteOverlay
+                    open
+                    onOpenChange={(open) => {
+                        if (!open) {
+                            setBulkOpen(false);
+                        }
+                    }}
+                    action={trashBulk().url}
+                    payload={{ module: 'plans', ids: selectedIds }}
+                    title={
+                        selectedIds.length === 1
+                            ? 'Delete this plan?'
+                            : `Delete ${selectedIds.length} plans?`
+                    }
+                    description="They move to trash, where they can be restored or permanently deleted."
+                    submitLabel={
+                        selectedIds.length === 1
+                            ? 'Delete plan'
+                            : `Delete ${selectedIds.length} plans`
+                    }
+                    processingLabel="Deleting…"
+                    onSuccess={() => {
+                        setSelectedIds([]);
+                        setBulkOpen(false);
+                    }}
                 />
             )}
 
@@ -896,7 +956,18 @@ export default function PlansIndex({
                 pageCount={plans.data.length}
                 currentPage={plans.current_page}
                 activeFilters={activeFilterSummary}
-                columns={['Name', 'Slug', 'Description', 'Currency', 'Price', 'Properties limit', 'Units limit', 'Features', 'Sort order', 'Active']}
+                columns={[
+                    'Name',
+                    'Slug',
+                    'Description',
+                    'Currency',
+                    'Price',
+                    'Properties limit',
+                    'Units limit',
+                    'Features',
+                    'Sort order',
+                    'Active',
+                ]}
                 onExport={runExport}
             />
 

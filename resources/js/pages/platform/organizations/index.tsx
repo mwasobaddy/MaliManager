@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActionIconButton } from '@/components/action-icon-button';
+import { BulkDeleteBar } from '@/components/bulk-delete-bar';
 import ConfirmDeleteOverlay from '@/components/confirm-delete-overlay';
 import ConfirmDialog from '@/components/confirm-dialog';
 import { CsvImportSheet, downloadCsv } from '@/components/csv-actions';
@@ -40,6 +41,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import * as orgRoutes from '@/routes/platform/organizations';
+import { bulk as trashBulk } from '@/routes/platform/trash';
 
 type OrganizationRow = {
     id: number;
@@ -99,6 +101,8 @@ export default function OrganizationsIndex({
     owners,
 }: Props) {
     const [isTableLoading, setIsTableLoading] = useState(false);
+    const [bulkOpen, setBulkOpen] = useState(false);
+    const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [statusTarget, setStatusTarget] = useState<OrganizationRow | null>(
         null,
     );
@@ -385,6 +389,18 @@ export default function OrganizationsIndex({
         }
     }, [isCreateOpen, owners]);
 
+    // Selection never outlives the page: a refetch that drops a row also
+    // drops its tick, so the bulk payload can only name visible rows.
+    useEffect(() => {
+        setSelectedIds((current) =>
+            current.filter((id) =>
+                organizations.data.some(
+                    (organization) => organization.id === id,
+                ),
+            ),
+        );
+    }, [organizations.data]);
+
     const columns = useMemo<ColumnDef<OrganizationRow, unknown>[]>(() => {
         const cells: ColumnDef<OrganizationRow, unknown>[] = [
             {
@@ -600,6 +616,18 @@ export default function OrganizationsIndex({
                     )}
                 </div>
 
+                <BulkDeleteBar
+                    pageIds={organizations.data.map(
+                        (organization) => organization.id,
+                    )}
+                    selectedIds={selectedIds}
+                    onSelectionChange={setSelectedIds}
+                    onDelete={() => setBulkOpen(true)}
+                    onClear={() => setSelectedIds([])}
+                    canDelete={canDelete}
+                    noun="organizations"
+                />
+
                 {/*
                  * One card = the table's frame. Search/filters live in a header
                  * band above the rows rather than in their own floating card
@@ -661,6 +689,14 @@ export default function OrganizationsIndex({
                         sorting={sorting}
                         onSortingChange={applySorting}
                         loading={isTableLoading}
+                        selectable={canDelete}
+                        selectedIds={selectedIds.map(String)}
+                        onSelectionChange={(ids) =>
+                            setSelectedIds(ids.map(Number))
+                        }
+                        selectionLabel={(organization) =>
+                            `Select organization ${organization.name}`
+                        }
                         onRowClick={(organization) =>
                             setOverlayParam('mode', 'view', {
                                 keep: {
@@ -777,6 +813,35 @@ export default function OrganizationsIndex({
                             cannot be undone.
                         </>
                     }
+                />
+            )}
+
+            {canDelete && bulkOpen && selectedIds.length > 0 && (
+                <ConfirmDeleteOverlay
+                    open
+                    onOpenChange={(open) => {
+                        if (!open) {
+                            setBulkOpen(false);
+                        }
+                    }}
+                    action={trashBulk().url}
+                    payload={{ module: 'organizations', ids: selectedIds }}
+                    title={
+                        selectedIds.length === 1
+                            ? 'Delete this organization?'
+                            : `Delete ${selectedIds.length} organizations?`
+                    }
+                    description="They move to trash, where they can be restored or permanently deleted."
+                    submitLabel={
+                        selectedIds.length === 1
+                            ? 'Delete organization'
+                            : `Delete ${selectedIds.length} organizations`
+                    }
+                    processingLabel="Deleting…"
+                    onSuccess={() => {
+                        setSelectedIds([]);
+                        setBulkOpen(false);
+                    }}
                 />
             )}
 
@@ -989,7 +1054,18 @@ export default function OrganizationsIndex({
                 pageCount={organizations.data.length}
                 currentPage={organizations.current_page}
                 activeFilters={activeFilterSummary}
-                columns={['ID', 'Name', 'Slug', 'Email', 'Phone', 'Status', 'Plan', 'Domain', 'Users', 'Created at']}
+                columns={[
+                    'ID',
+                    'Name',
+                    'Slug',
+                    'Email',
+                    'Phone',
+                    'Status',
+                    'Plan',
+                    'Domain',
+                    'Users',
+                    'Created at',
+                ]}
                 onExport={runExport}
             />
 

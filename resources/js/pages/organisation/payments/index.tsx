@@ -1,10 +1,14 @@
-import { Head, Link, router } from '@inertiajs/react';
-import { SquarePen, Printer, Receipt, Plus } from 'lucide-react';
-import { useState } from 'react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
+import { SquarePen, Printer, Receipt, Plus, Trash2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { ActionIconButton } from '@/components/action-icon-button';
+import { BulkDeleteBar } from '@/components/bulk-delete-bar';
+import ConfirmDeleteOverlay from '@/components/confirm-delete-overlay';
 import { LabelledIconButton } from '@/components/labelled-icon-button';
 import Heading from '@/components/heading';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Empty } from '@/components/ui/empty';
 import { Pagination } from '@/components/ui/pagination';
 import {
@@ -21,7 +25,9 @@ import {
     create as paymentsCreateRoute,
     edit as paymentsEditRoute,
     show as paymentsShowRoute,
+    destroy as destroyPayment,
 } from '@/routes/tenant/payments';
+import { bulk as trashBulk } from '@/routes/tenant/trash';
 
 type PaymentRow = {
     id: number;
@@ -47,6 +53,35 @@ type Props = {
 
 export default function PaymentsIndex({ payments, statuses }: Props) {
     const [status, setStatus] = useState('');
+
+    const { context } = usePage().props;
+    const canDelete = (context?.permissions ?? []).includes('payment.manage');
+
+    const [deleteTarget, setDeleteTarget] = useState<PaymentRow | null>(null);
+    const [bulkOpen, setBulkOpen] = useState(false);
+    const [selectedIds, setSelectedIds] = useState<number[]>([]);
+
+    // The delete overlay is local state, so it closes itself once the
+    // fresh props come back without the row. A failed confirm (wrong
+    // password) keeps the row — and the overlay — put.
+    useEffect(() => {
+        if (
+            deleteTarget !== null &&
+            !payments.data.some((payment) => payment.id === deleteTarget.id)
+        ) {
+            setDeleteTarget(null);
+        }
+    }, [payments.data, deleteTarget]);
+
+    // Selection never outlives the page: a refetch that drops a row also
+    // drops its tick, so the bulk payload can only name visible rows.
+    useEffect(() => {
+        setSelectedIds((current) =>
+            current.filter((id) =>
+                payments.data.some((payment) => payment.id === id),
+            ),
+        );
+    }, [payments.data]);
 
     const applyFilter = (value: string) => {
         setStatus(value);
@@ -102,6 +137,16 @@ export default function PaymentsIndex({ payments, statuses }: Props) {
                     </div>
                 </div>
 
+                <BulkDeleteBar
+                    pageIds={payments.data.map((payment) => payment.id)}
+                    selectedIds={selectedIds}
+                    onSelectionChange={setSelectedIds}
+                    onDelete={() => setBulkOpen(true)}
+                    onClear={() => setSelectedIds([])}
+                    canDelete={canDelete}
+                    noun="payments"
+                />
+
                 {payments.data.length === 0 ? (
                     <Empty
                         icon={<Receipt className="size-4" />}
@@ -113,6 +158,7 @@ export default function PaymentsIndex({ payments, statuses }: Props) {
                         <table className="w-full text-sm">
                             <thead>
                                 <tr className="border-b text-left text-xs tracking-wide text-muted-foreground uppercase">
+                                    {canDelete && <th className="w-8" />}
                                     <th className="px-3 py-2">Tenant</th>
                                     <th className="px-3 py-2">Property</th>
                                     <th className="px-3 py-2">Unit</th>
@@ -141,6 +187,35 @@ export default function PaymentsIndex({ payments, statuses }: Props) {
                                         key={payment.id}
                                         className="border-b last:border-0"
                                     >
+                                        {canDelete && (
+                                            <td className="px-3 py-2">
+                                                <Checkbox
+                                                    checked={selectedIds.includes(
+                                                        payment.id,
+                                                    )}
+                                                    onCheckedChange={(
+                                                        checked,
+                                                    ) =>
+                                                        setSelectedIds(
+                                                            (current) =>
+                                                                checked === true
+                                                                    ? [
+                                                                          ...current,
+                                                                          payment.id,
+                                                                      ]
+                                                                    : current.filter(
+                                                                          (
+                                                                              id,
+                                                                          ) =>
+                                                                              id !==
+                                                                              payment.id,
+                                                                      ),
+                                                        )
+                                                    }
+                                                    aria-label={`Select payment ${payment.tenant_name ?? payment.unit_name ?? payment.id}`}
+                                                />
+                                            </td>
+                                        )}
                                         <td className="px-3 py-2 font-medium">
                                             {payment.tenant_name ?? '—'}
                                         </td>
@@ -199,22 +274,37 @@ export default function PaymentsIndex({ payments, statuses }: Props) {
                                             </Badge>
                                         </td>
                                         <td className="px-3 py-2 text-right">
-                                            <Button
-                                                asChild
-                                                variant="ghost"
-                                                size="sm"
-                                            >
-                                                <Link
-                                                    href={
-                                                        paymentsEditRoute({
-                                                            payment: payment.id,
-                                                        }).url
-                                                    }
-                                                    aria-label={`Edit payment for ${payment.tenant_name ?? payment.unit_name ?? `payment ${payment.id}`}`}
+                                            <div className="flex justify-end gap-1">
+                                                <Button
+                                                    asChild
+                                                    variant="ghost"
+                                                    size="sm"
                                                 >
-                                                    <SquarePen className="size-4" />
-                                                </Link>
-                                            </Button>
+                                                    <Link
+                                                        href={
+                                                            paymentsEditRoute({
+                                                                payment:
+                                                                    payment.id,
+                                                            }).url
+                                                        }
+                                                        aria-label={`Edit payment for ${payment.tenant_name ?? payment.unit_name ?? `payment ${payment.id}`}`}
+                                                    >
+                                                        <SquarePen className="size-4" />
+                                                    </Link>
+                                                </Button>
+                                                {canDelete && (
+                                                    <ActionIconButton
+                                                        icon={<Trash2 />}
+                                                        label={`Delete payment for ${payment.tenant_name ?? payment.unit_name ?? `payment ${payment.id}`}`}
+                                                        color="danger"
+                                                        onClick={() =>
+                                                            setDeleteTarget(
+                                                                payment,
+                                                            )
+                                                        }
+                                                    />
+                                                )}
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
@@ -238,6 +328,49 @@ export default function PaymentsIndex({ payments, statuses }: Props) {
                         )
                     }
                 />
+
+                {canDelete && deleteTarget !== null && (
+                    <ConfirmDeleteOverlay
+                        open
+                        onOpenChange={(open) => {
+                            if (!open) {
+                                setDeleteTarget(null);
+                            }
+                        }}
+                        action={destroyPayment(deleteTarget.id).url}
+                        title={`Delete payment for ${deleteTarget.tenant_name ?? deleteTarget.unit_name ?? `payment ${deleteTarget.id}`}?`}
+                        description="This payment moves to trash, where it can be restored or permanently deleted."
+                    />
+                )}
+
+                {canDelete && bulkOpen && selectedIds.length > 0 && (
+                    <ConfirmDeleteOverlay
+                        open
+                        onOpenChange={(open) => {
+                            if (!open) {
+                                setBulkOpen(false);
+                            }
+                        }}
+                        action={trashBulk().url}
+                        payload={{ module: 'payments', ids: selectedIds }}
+                        title={
+                            selectedIds.length === 1
+                                ? 'Delete this payment?'
+                                : `Delete ${selectedIds.length} payments?`
+                        }
+                        description="They move to trash, where they can be restored or permanently deleted."
+                        submitLabel={
+                            selectedIds.length === 1
+                                ? 'Delete payment'
+                                : `Delete ${selectedIds.length} payments`
+                        }
+                        processingLabel="Deleting…"
+                        onSuccess={() => {
+                            setSelectedIds([]);
+                            setBulkOpen(false);
+                        }}
+                    />
+                )}
             </div>
         </>
     );

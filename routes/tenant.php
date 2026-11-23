@@ -27,6 +27,7 @@ use App\Http\Controllers\Tenant\PropertyController;
 use App\Http\Controllers\Tenant\ReportController;
 use App\Http\Controllers\Tenant\SetupController;
 use App\Http\Controllers\Tenant\StaffController;
+use App\Http\Controllers\Tenant\TrashController;
 use App\Http\Controllers\Tenant\UnitController;
 use App\Support\TenancyContext;
 use Illuminate\Support\Facades\Route;
@@ -450,6 +451,20 @@ Route::middleware([
             Route::get('/audit/{activity}', [AuditController::class, 'show'])
                 ->name('tenant.audit.show');
         });
+
+        // Central trash: soft-deleted rows grouped by module, with
+        // restore and permanent delete. Reachable without a property so
+        // an empty portfolio can still empty its trash.
+        Route::get('/trash', [TrashController::class, 'index'])
+            ->name('tenant.trash.index');
+        Route::post('/trash/restore', [TrashController::class, 'restore'])
+            ->name('tenant.trash.restore');
+        Route::delete('/trash/force', [TrashController::class, 'force'])
+            ->name('tenant.trash.force');
+        Route::delete('/trash/empty', [TrashController::class, 'empty'])
+            ->name('tenant.trash.empty');
+        Route::delete('/trash/bulk', [TrashController::class, 'bulk'])
+            ->name('tenant.trash.bulk');
 
         // Rich-text editor image upload (agreement templates + lease agreements).
         Route::post('/editor-images', [EditorImageController::class, 'store'])

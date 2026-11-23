@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActionIconButton } from '@/components/action-icon-button';
+import { BulkDeleteBar } from '@/components/bulk-delete-bar';
 import ConfirmDeleteOverlay from '@/components/confirm-delete-overlay';
 import { CsvImportSheet, downloadCsv } from '@/components/csv-actions';
 import { CsvExportSheet } from '@/components/csv-export-sheet';
@@ -35,6 +36,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import * as subscriptionPaymentRoutes from '@/routes/platform/subscription-payments';
+import { bulk as trashBulk } from '@/routes/platform/trash';
 
 type Option = { value: number; label: string };
 
@@ -96,6 +98,8 @@ export default function SubscriptionPaymentsIndex({
     const errors = (page.props.errors ?? {}) as Record<string, string>;
 
     const [isTableLoading, setIsTableLoading] = useState(false);
+    const [bulkOpen, setBulkOpen] = useState(false);
+    const [selectedIds, setSelectedIds] = useState<number[]>([]);
 
     // Read query params off Inertia's page.url, NOT window.location. Inertia
     // pushes history *after* React renders, so window.location is stale during
@@ -268,6 +272,16 @@ export default function SubscriptionPaymentsIndex({
             router.reload({ only: ['organizations', 'plans'] });
         }
     }, [needsOptions, organizations, plans]);
+
+    // Selection never outlives the page: a refetch that drops a row also
+    // drops its tick, so the bulk payload can only name visible rows.
+    useEffect(() => {
+        setSelectedIds((current) =>
+            current.filter((id) =>
+                payments.data.some((payment) => payment.id === id),
+            ),
+        );
+    }, [payments.data]);
 
     // Live search: local input for responsiveness, debounced server round-trip.
     const [searchDraft, setSearchDraft] = useState(filters.search);
@@ -542,6 +556,16 @@ export default function SubscriptionPaymentsIndex({
                  * the Card's own padding would otherwise inset the search row
                  * relative to the table below it.
                  */}
+                <BulkDeleteBar
+                    pageIds={payments.data.map((payment) => payment.id)}
+                    selectedIds={selectedIds}
+                    onSelectionChange={setSelectedIds}
+                    onDelete={() => setBulkOpen(true)}
+                    onClear={() => setSelectedIds([])}
+                    canDelete={canDelete}
+                    noun="subscription payments"
+                />
+
                 <Card className="gap-0 py-0">
                     <div className="flex flex-wrap items-center gap-2 border-b border-border-strong p-4">
                         <div className="relative min-w-56 flex-1">
@@ -597,6 +621,14 @@ export default function SubscriptionPaymentsIndex({
                         onSortingChange={applySorting}
                         loading={isTableLoading}
                         loadingRows={15}
+                        selectable={canDelete}
+                        selectedIds={selectedIds.map(String)}
+                        onSelectionChange={(ids) =>
+                            setSelectedIds(ids.map(Number))
+                        }
+                        selectionLabel={(payment) =>
+                            `Select subscription payment ${payment.reference ?? payment.id}`
+                        }
                         onRowClick={(payment) => openRow(payment, 'view')}
                         empty="No subscription payments match your filters."
                     />
@@ -720,6 +752,38 @@ export default function SubscriptionPaymentsIndex({
                             password — this cannot be undone.
                         </>
                     }
+                />
+            )}
+
+            {canDelete && bulkOpen && selectedIds.length > 0 && (
+                <ConfirmDeleteOverlay
+                    open
+                    onOpenChange={(open) => {
+                        if (!open) {
+                            setBulkOpen(false);
+                        }
+                    }}
+                    action={trashBulk().url}
+                    payload={{
+                        module: 'subscription-payments',
+                        ids: selectedIds,
+                    }}
+                    title={
+                        selectedIds.length === 1
+                            ? 'Delete this subscription payment?'
+                            : `Delete ${selectedIds.length} subscription payments?`
+                    }
+                    description="They move to trash, where they can be restored or permanently deleted."
+                    submitLabel={
+                        selectedIds.length === 1
+                            ? 'Delete subscription payment'
+                            : `Delete ${selectedIds.length} subscription payments`
+                    }
+                    processingLabel="Deleting…"
+                    onSuccess={() => {
+                        setSelectedIds([]);
+                        setBulkOpen(false);
+                    }}
                 />
             )}
 
@@ -906,7 +970,16 @@ export default function SubscriptionPaymentsIndex({
                 pageCount={payments.data.length}
                 currentPage={payments.current_page}
                 activeFilters={activeFilterSummary}
-                columns={['Received on', 'Organization', 'Plan', 'Amount', 'Currency', 'Method', 'Reference', 'Notes']}
+                columns={[
+                    'Received on',
+                    'Organization',
+                    'Plan',
+                    'Amount',
+                    'Currency',
+                    'Method',
+                    'Reference',
+                    'Notes',
+                ]}
                 onExport={runExport}
             />
 

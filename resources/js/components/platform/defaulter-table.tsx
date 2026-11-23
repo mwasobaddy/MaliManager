@@ -99,13 +99,13 @@ export function DefaulterTable({ defaulters }: { defaulters: DefaulterRow[] }) {
                                             ) : (
                                                 <Button
                                                     size="sm"
+                                                    variant="accent"
                                                     onClick={() =>
                                                         remind(
                                                             row.property_slug,
                                                             row.lease_id,
                                                         )
                                                     }
-                                                    className="bg-brand-primary text-white hover:bg-brand-primary-600"
                                                 >
                                                     <BellRing className="size-4" />
                                                     Remind

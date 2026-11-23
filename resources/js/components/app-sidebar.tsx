@@ -18,6 +18,7 @@ import {
     ScrollText,
     Sparkles,
     Tags,
+    Trash2,
     Undo2,
     Users,
     UserRound,
@@ -43,6 +44,7 @@ import { dashboard as centralDashboard } from '@/routes';
 import { home as guestHome } from '@/routes/guest';
 import { index as platformAuditIndex } from '@/routes/platform/audit';
 import { index as platformExpensesIndex } from '@/routes/platform/expenses';
+import { index as platformTrashIndex } from '@/routes/platform/trash';
 import { index as organizationsIndex } from '@/routes/platform/organizations';
 import { index as plansIndex } from '@/routes/platform/plans';
 import { index as propertyTypesIndex } from '@/routes/platform/property-types';
@@ -52,6 +54,7 @@ import { index as usersIndex } from '@/routes/platform/users';
 import { rentals as searcherRentals } from '@/routes/searcher';
 import { index as maintenanceRoute } from '@/routes/searcher/maintenance';
 import { overview as overviewIndex } from '@/routes/tenant';
+import { index as trashIndex } from '@/routes/tenant/trash';
 import agreementTemplates, {
     orgIndex as agreementTemplatesIndex,
 } from '@/routes/tenant/agreement-templates';
@@ -112,6 +115,18 @@ export function AppSidebar() {
     const canRaiseMaintenance =
         usePage().props.auth?.canRaiseMaintenance ?? false;
     const canBecomeLandlord = usePage().props.auth?.canBecomeLandlord ?? false;
+    // Trash shows when the actor may delete anything: the controller then
+    // filters modules by the matching destroy gate, so this is only the
+    // door, never the fence.
+    const canSeeTrash =
+        canManageUnits ||
+        canManageOccupants ||
+        canManageInspections ||
+        canManageMaintenance ||
+        canManageExpenses ||
+        canManagePayments ||
+        canManageStaff ||
+        canManageLandParcels;
 
     type WorkspaceLink = {
         organization_id: number;
@@ -157,6 +172,14 @@ export function AppSidebar() {
     const canAccessAdminDashboard = authPermissions.includes(
         'access admin dashboard',
     );
+    const canSeePlatformTrash = [
+        'user.delete',
+        'organization.delete',
+        'plan.delete',
+        'subscription.delete',
+        'platform-expense.delete',
+        'property-type.delete',
+    ].some((permission) => authPermissions.includes(permission));
     const { open, hasAssets } = usePropertyPicker();
 
     const item = (
@@ -340,6 +363,17 @@ export function AppSidebar() {
                               ),
                           ]
                         : []),
+                    ...(canSeeTrash
+                        ? [
+                              item(
+                                  'Trash',
+                                  trashIndex(),
+                                  Trash2,
+                                  undefined,
+                                  '/trash',
+                              ),
+                          ]
+                        : []),
                     ...(canViewReports
                         ? [
                               item(
@@ -509,6 +543,17 @@ export function AppSidebar() {
                               ),
                           ]
                         : []),
+                    ...(canSeeTrash
+                        ? [
+                              item(
+                                  'Trash',
+                                  trashIndex(),
+                                  Trash2,
+                                  undefined,
+                                  '/trash',
+                              ),
+                          ]
+                        : []),
                 ],
             },
         ];
@@ -540,6 +585,9 @@ export function AppSidebar() {
                 : []),
             ...(canViewAnyAudit
                 ? [item('Platform audit', platformAuditIndex(), History)]
+                : []),
+            ...(canSeePlatformTrash
+                ? [item('Trash', platformTrashIndex(), Trash2)]
                 : []),
         ];
 

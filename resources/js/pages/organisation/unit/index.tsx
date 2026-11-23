@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActionIconButton } from '@/components/action-icon-button';
+import { BulkDeleteBar } from '@/components/bulk-delete-bar';
 import ConfirmDeleteOverlay from '@/components/confirm-delete-overlay';
 import { CsvImportSheet, downloadCsv } from '@/components/csv-actions';
 import { CsvExportSheet } from '@/components/csv-export-sheet';
@@ -45,6 +46,7 @@ import { duplicateUnitName } from '@/lib/unit-names';
 import { FrequencySelect } from '@/components/frequency-select';
 import { cn } from '@/lib/utils';
 import { store as storeUnit } from '@/routes/tenant/properties/units';
+import { bulk as trashBulk } from '@/routes/tenant/trash';
 import * as unitRoutes from '@/routes/tenant/units';
 
 type UnitRow = {
@@ -128,6 +130,8 @@ export default function UnitsIndex({
 
     const [editTarget, setEditTarget] = useState<UnitRow | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<UnitRow | null>(null);
+    const [bulkOpen, setBulkOpen] = useState(false);
+    const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [editPropertyId, setEditPropertyId] = useState<string | null>(null);
     const [createNameError, setCreateNameError] = useState<string | null>(null);
     const [editNameError, setEditNameError] = useState<string | null>(null);
@@ -159,6 +163,14 @@ export default function UnitsIndex({
             setDeleteTarget(null);
         }
     }, [units.data, deleteTarget]);
+
+    // Selection never outlives the page: a refetch that drops a row also
+    // drops its tick, so the bulk payload can only name visible rows.
+    useEffect(() => {
+        setSelectedIds((current) =>
+            current.filter((id) => units.data.some((unit) => unit.id === id)),
+        );
+    }, [units.data]);
 
     const filters = {
         search: query.get('search') ?? '',
@@ -520,6 +532,16 @@ export default function UnitsIndex({
                     )}
                 </div>
 
+                <BulkDeleteBar
+                    pageIds={units.data.map((unit) => unit.id)}
+                    selectedIds={selectedIds}
+                    onSelectionChange={setSelectedIds}
+                    onDelete={() => setBulkOpen(true)}
+                    onClear={() => setSelectedIds([])}
+                    canDelete={canDelete}
+                    noun="units"
+                />
+
                 <Card className="gap-0 py-0">
                     <div className="flex flex-wrap items-center gap-2 border-b border-border-strong p-4">
                         <div className="relative min-w-56 flex-1">
@@ -569,6 +591,12 @@ export default function UnitsIndex({
                         sorting={sorting}
                         onSortingChange={applySorting}
                         loading={isTableLoading}
+                        selectable={canDelete}
+                        selectedIds={selectedIds.map(String)}
+                        onSelectionChange={(ids) =>
+                            setSelectedIds(ids.map(Number))
+                        }
+                        selectionLabel={(unit) => `Select unit ${unit.name}`}
                         onRowClick={(unit) =>
                             router.get(unitRoutes.show(unit.id).url)
                         }
@@ -1182,6 +1210,35 @@ export default function UnitsIndex({
                     action={unitRoutes.destroy(deleteTarget.id).url}
                     title={`Delete ${deleteTarget.name}?`}
                     description="This removes the unit and its photos. Occupied units cannot be deleted — end the lease first."
+                />
+            )}
+
+            {canDelete && bulkOpen && selectedIds.length > 0 && (
+                <ConfirmDeleteOverlay
+                    open
+                    onOpenChange={(open) => {
+                        if (!open) {
+                            setBulkOpen(false);
+                        }
+                    }}
+                    action={trashBulk().url}
+                    payload={{ module: 'units', ids: selectedIds }}
+                    title={
+                        selectedIds.length === 1
+                            ? 'Delete this unit?'
+                            : `Delete ${selectedIds.length} units?`
+                    }
+                    description="They move to trash, where they can be restored or permanently deleted. Occupied units are skipped."
+                    submitLabel={
+                        selectedIds.length === 1
+                            ? 'Delete unit'
+                            : `Delete ${selectedIds.length} units`
+                    }
+                    processingLabel="Deleting…"
+                    onSuccess={() => {
+                        setSelectedIds([]);
+                        setBulkOpen(false);
+                    }}
                 />
             )}
 

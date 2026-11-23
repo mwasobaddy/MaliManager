@@ -1,9 +1,13 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import { Map, Plus } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { BulkDeleteBar } from '@/components/bulk-delete-bar';
+import ConfirmDeleteOverlay from '@/components/confirm-delete-overlay';
 import Heading from '@/components/heading';
 import { LabelledIconButton } from '@/components/labelled-icon-button';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     Card,
     CardContent,
@@ -12,6 +16,7 @@ import {
     CardTitle,
 } from '@/components/ui/card';
 import { create, show } from '@/routes/tenant/land-parcels';
+import { bulk as trashBulk } from '@/routes/tenant/trash';
 
 type Organization = {
     id: number;
@@ -39,6 +44,24 @@ export default function LandParcelsIndex({
     land_parcels,
     canCreateLandParcel,
 }: Props) {
+    const { context } = usePage().props;
+    const canDelete = (context?.permissions ?? []).includes(
+        'land_parcel.delete',
+    );
+
+    const [bulkOpen, setBulkOpen] = useState(false);
+    const [selectedIds, setSelectedIds] = useState<number[]>([]);
+
+    // Selection never outlives the page: a refetch that drops a card also
+    // drops its tick, so the bulk payload can only name visible parcels.
+    useEffect(() => {
+        setSelectedIds((current) =>
+            current.filter((id) =>
+                land_parcels.some((parcel) => parcel.id === id),
+            ),
+        );
+    }, [land_parcels]);
+
     return (
         <>
             <Head title="Land parcels" />
@@ -84,41 +107,125 @@ export default function LandParcelsIndex({
                         </CardContent>
                     </Card>
                 ) : (
-                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                        {land_parcels.map((parcel) => (
-                            <Link
-                                key={parcel.id}
-                                href={show(parcel.slug)}
-                                className="rounded-xl border border-input bg-card transition-colors hover:bg-muted"
-                            >
-                                <Card className="border-0 bg-transparent shadow-none">
-                                    <CardHeader>
-                                        <div className="flex items-center gap-2">
-                                            <Map className="size-4 text-muted-foreground" />
-                                            <CardTitle>{parcel.name}</CardTitle>
-                                        </div>
-                                        <CardDescription>
-                                            {parcel.city
-                                                ? `${parcel.city} · `
-                                                : ''}
-                                            {parcel.zoning}
-                                        </CardDescription>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <Badge
-                                            variant={
-                                                parcel.status === 'active'
-                                                    ? 'default'
-                                                    : 'secondary'
-                                            }
-                                        >
-                                            {parcel.status}
-                                        </Badge>
-                                    </CardContent>
-                                </Card>
-                            </Link>
-                        ))}
-                    </div>
+                    <>
+                        <BulkDeleteBar
+                            pageIds={land_parcels.map((parcel) => parcel.id)}
+                            selectedIds={selectedIds}
+                            onSelectionChange={setSelectedIds}
+                            onDelete={() => setBulkOpen(true)}
+                            onClear={() => setSelectedIds([])}
+                            canDelete={canDelete}
+                            noun="land parcels"
+                        />
+                        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                            {land_parcels.map((parcel) => (
+                                <Link
+                                    key={parcel.id}
+                                    href={show(parcel.slug)}
+                                    className="rounded-xl border border-input bg-card transition-colors hover:bg-muted"
+                                >
+                                    <Card className="border-0 bg-transparent shadow-none">
+                                        <CardHeader>
+                                            <div className="flex items-center gap-2">
+                                                {canDelete && (
+                                                    <span
+                                                        onClick={(e) =>
+                                                            e.stopPropagation()
+                                                        }
+                                                        onKeyDown={(e) =>
+                                                            e.stopPropagation()
+                                                        }
+                                                    >
+                                                        <Checkbox
+                                                            checked={selectedIds.includes(
+                                                                parcel.id,
+                                                            )}
+                                                            onCheckedChange={(
+                                                                checked,
+                                                            ) =>
+                                                                setSelectedIds(
+                                                                    (
+                                                                        current,
+                                                                    ) =>
+                                                                        checked ===
+                                                                        true
+                                                                            ? [
+                                                                                  ...current,
+                                                                                  parcel.id,
+                                                                              ]
+                                                                            : current.filter(
+                                                                                  (
+                                                                                      id,
+                                                                                  ) =>
+                                                                                      id !==
+                                                                                      parcel.id,
+                                                                              ),
+                                                                )
+                                                            }
+                                                            aria-label={`Select parcel ${parcel.name}`}
+                                                        />
+                                                    </span>
+                                                )}
+                                                <Map className="size-4 text-muted-foreground" />
+                                                <CardTitle>
+                                                    {parcel.name}
+                                                </CardTitle>
+                                            </div>
+                                            <CardDescription>
+                                                {parcel.city
+                                                    ? `${parcel.city} · `
+                                                    : ''}
+                                                {parcel.zoning}
+                                            </CardDescription>
+                                        </CardHeader>
+                                        <CardContent>
+                                            <Badge
+                                                variant={
+                                                    parcel.status === 'active'
+                                                        ? 'default'
+                                                        : 'secondary'
+                                                }
+                                            >
+                                                {parcel.status}
+                                            </Badge>
+                                        </CardContent>
+                                    </Card>
+                                </Link>
+                            ))}
+                        </div>
+
+                        {canDelete && bulkOpen && selectedIds.length > 0 && (
+                            <ConfirmDeleteOverlay
+                                open
+                                onOpenChange={(open) => {
+                                    if (!open) {
+                                        setBulkOpen(false);
+                                    }
+                                }}
+                                action={trashBulk().url}
+                                payload={{
+                                    module: 'land-parcels',
+                                    ids: selectedIds,
+                                }}
+                                title={
+                                    selectedIds.length === 1
+                                        ? 'Delete this land parcel?'
+                                        : `Delete ${selectedIds.length} land parcels?`
+                                }
+                                description="They move to trash, where they can be restored or permanently deleted."
+                                submitLabel={
+                                    selectedIds.length === 1
+                                        ? 'Delete land parcel'
+                                        : `Delete ${selectedIds.length} land parcels`
+                                }
+                                processingLabel="Deleting…"
+                                onSuccess={() => {
+                                    setSelectedIds([]);
+                                    setBulkOpen(false);
+                                }}
+                            />
+                        )}
+                    </>
                 )}
             </div>
         </>

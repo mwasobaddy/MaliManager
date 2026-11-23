@@ -1,11 +1,13 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { usePage } from '@inertiajs/react';
 import { Wrench } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { BulkDeleteBar } from '@/components/bulk-delete-bar';
 import ConfirmDeleteOverlay from '@/components/confirm-delete-overlay';
 import Heading from '@/components/heading';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Empty } from '@/components/ui/empty';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -19,6 +21,7 @@ import {
 } from '@/components/ui/select';
 import { useOverlayParam } from '@/hooks/use-overlay-param';
 import { destroy as destroyRequest } from '@/routes/tenant/maintenance';
+import { bulk as trashBulk } from '@/routes/tenant/trash';
 
 type RequestRow = {
     id: number;
@@ -79,6 +82,19 @@ export default function MaintenanceIndex({
         (request) => request.id === deleteTargetId,
     );
     const isDeleteOpen = query.get('mode') === 'delete' && !!deleteTarget;
+
+    const [bulkOpen, setBulkOpen] = useState(false);
+    const [selectedIds, setSelectedIds] = useState<number[]>([]);
+
+    // Selection never outlives the page: a refetch that drops a row also
+    // drops its tick, so the bulk payload can only name visible rows.
+    useEffect(() => {
+        setSelectedIds((current) =>
+            current.filter((id) =>
+                requests.data.some((request) => request.id === id),
+            ),
+        );
+    }, [requests.data]);
 
     // Resolving asks for notes inline instead of a native prompt: the notes
     // are part of the record, so they get a labelled field with validation.
@@ -174,6 +190,16 @@ export default function MaintenanceIndex({
                     </div>
                 </div>
 
+                <BulkDeleteBar
+                    pageIds={requests.data.map((request) => request.id)}
+                    selectedIds={selectedIds}
+                    onSelectionChange={setSelectedIds}
+                    onDelete={() => setBulkOpen(true)}
+                    onClear={() => setSelectedIds([])}
+                    canDelete={canDelete}
+                    noun="maintenance requests"
+                />
+
                 {requests.data.length === 0 ? (
                     <Empty
                         icon={<Wrench className="size-4" />}
@@ -191,6 +217,33 @@ export default function MaintenanceIndex({
                                 <div className="flex flex-wrap items-start justify-between gap-2">
                                     <div className="min-w-0 flex-1">
                                         <div className="flex items-center gap-2">
+                                            {canDelete && (
+                                                <Checkbox
+                                                    checked={selectedIds.includes(
+                                                        item.id,
+                                                    )}
+                                                    onCheckedChange={() =>
+                                                        setSelectedIds(
+                                                            (current) =>
+                                                                current.includes(
+                                                                    item.id,
+                                                                )
+                                                                    ? current.filter(
+                                                                          (
+                                                                              id,
+                                                                          ) =>
+                                                                              id !==
+                                                                              item.id,
+                                                                      )
+                                                                    : [
+                                                                          ...current,
+                                                                          item.id,
+                                                                      ],
+                                                        )
+                                                    }
+                                                    aria-label={`Select request ${item.title}`}
+                                                />
+                                            )}
                                             <span className="font-medium">
                                                 {item.title}
                                             </span>
@@ -458,6 +511,35 @@ export default function MaintenanceIndex({
                         action={destroyRequest(deleteTarget.id).url}
                         title={`Delete “${deleteTarget.title}”?`}
                         description="The request and its notes are removed. Confirm with your password — this cannot be undone from the interface."
+                    />
+                )}
+
+                {canDelete && bulkOpen && selectedIds.length > 0 && (
+                    <ConfirmDeleteOverlay
+                        open
+                        onOpenChange={(open) => {
+                            if (!open) {
+                                setBulkOpen(false);
+                            }
+                        }}
+                        action={trashBulk().url}
+                        payload={{ module: 'maintenance', ids: selectedIds }}
+                        title={
+                            selectedIds.length === 1
+                                ? 'Delete this request?'
+                                : `Delete ${selectedIds.length} requests?`
+                        }
+                        description="They move to trash, where they can be restored or permanently deleted."
+                        submitLabel={
+                            selectedIds.length === 1
+                                ? 'Delete request'
+                                : `Delete ${selectedIds.length} requests`
+                        }
+                        processingLabel="Deleting…"
+                        onSuccess={() => {
+                            setSelectedIds([]);
+                            setBulkOpen(false);
+                        }}
                     />
                 )}
             </div>

@@ -54,3 +54,6 @@ Rent balances are expected-vs-paid per lease: pending and refunded payments neve
 
 ## Inertia view names must match page files exactly
 Inertia::render() does no index fallback: 'searcher/assistant' 500s when the file is searcher/assistant/index.tsx. When adding a render target, assert the component in a Feature test (see AssistantViewsTest) — the Vite manifest miss only surfaces at runtime.
+
+## Scope through trashed parents with withTrashed
+When scoping child rows (units, land-parcel sections) by a SoftDeletes parent, add withTrashed() inside the whereHas constraint and on direct parent reads. Otherwise a trashed parent hides its children from the trash they already sit in.

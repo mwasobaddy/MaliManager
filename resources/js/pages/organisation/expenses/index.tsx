@@ -1,11 +1,15 @@
-import { Head, Link, router } from '@inertiajs/react';
-import { SquarePen, Plus, Receipt, SearchX } from 'lucide-react';
-import { useState } from 'react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
+import { SquarePen, Plus, Receipt, SearchX, Trash2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { ActionIconButton } from '@/components/action-icon-button';
+import { BulkDeleteBar } from '@/components/bulk-delete-bar';
+import ConfirmDeleteOverlay from '@/components/confirm-delete-overlay';
 import { LabelledIconButton } from '@/components/labelled-icon-button';
 import Heading from '@/components/heading';
 import { Empty } from '@/components/ui/empty';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Pagination } from '@/components/ui/pagination';
 import {
     Select,
@@ -18,9 +22,11 @@ import { formatDate } from '@/lib/format-date';
 import { formatMoney } from '@/lib/format-money';
 import {
     create,
+    destroy as destroyExpense,
     edit,
     index as expensesIndexRoute,
 } from '@/routes/tenant/expenses';
+import { bulk as trashBulk } from '@/routes/tenant/trash';
 
 type ExpenseRow = {
     id: number;
@@ -52,6 +58,35 @@ export default function ExpensesIndex({
     categories,
 }: Props) {
     const [category, setCategory] = useState(filters.category || 'all');
+
+    const { context } = usePage().props;
+    const canDelete = (context?.permissions ?? []).includes('expense.manage');
+
+    const [deleteTarget, setDeleteTarget] = useState<ExpenseRow | null>(null);
+    const [bulkOpen, setBulkOpen] = useState(false);
+    const [selectedIds, setSelectedIds] = useState<number[]>([]);
+
+    // The delete overlay is local state, so it closes itself once the
+    // fresh props come back without the row. A failed confirm (wrong
+    // password) keeps the row — and the overlay — put.
+    useEffect(() => {
+        if (
+            deleteTarget !== null &&
+            !expenses.data.some((expense) => expense.id === deleteTarget.id)
+        ) {
+            setDeleteTarget(null);
+        }
+    }, [expenses.data, deleteTarget]);
+
+    // Selection never outlives the page: a refetch that drops a row also
+    // drops its tick, so the bulk payload can only name visible rows.
+    useEffect(() => {
+        setSelectedIds((current) =>
+            current.filter((id) =>
+                expenses.data.some((expense) => expense.id === id),
+            ),
+        );
+    }, [expenses.data]);
 
     const applyFilter = (value: string) => {
         setCategory(value);
@@ -109,6 +144,16 @@ export default function ExpensesIndex({
                     </div>
                 </div>
 
+                <BulkDeleteBar
+                    pageIds={expenses.data.map((expense) => expense.id)}
+                    selectedIds={selectedIds}
+                    onSelectionChange={setSelectedIds}
+                    onDelete={() => setBulkOpen(true)}
+                    onClear={() => setSelectedIds([])}
+                    canDelete={canDelete}
+                    noun="expenses"
+                />
+
                 {expenses.data.length === 0 ? (
                     <Empty
                         icon={<Receipt className="size-4" />}
@@ -120,6 +165,7 @@ export default function ExpensesIndex({
                         <table className="w-full text-sm">
                             <thead>
                                 <tr className="border-b text-left text-xs tracking-wide text-muted-foreground uppercase">
+                                    {canDelete && <th className="w-8" />}
                                     <th className="px-3 py-2">Asset</th>
                                     <th className="px-3 py-2">Unit</th>
                                     <th className="px-3 py-2">Category</th>
@@ -139,6 +185,35 @@ export default function ExpensesIndex({
                                         key={expense.id}
                                         className="border-b last:border-0"
                                     >
+                                        {canDelete && (
+                                            <td className="px-3 py-2">
+                                                <Checkbox
+                                                    checked={selectedIds.includes(
+                                                        expense.id,
+                                                    )}
+                                                    onCheckedChange={(
+                                                        checked,
+                                                    ) =>
+                                                        setSelectedIds(
+                                                            (current) =>
+                                                                checked === true
+                                                                    ? [
+                                                                          ...current,
+                                                                          expense.id,
+                                                                      ]
+                                                                    : current.filter(
+                                                                          (
+                                                                              id,
+                                                                          ) =>
+                                                                              id !==
+                                                                              expense.id,
+                                                                      ),
+                                                        )
+                                                    }
+                                                    aria-label={`Select expense ${expense.asset_name ?? `expense ${expense.id}`}`}
+                                                />
+                                            </td>
+                                        )}
                                         <td className="px-3 py-2 font-medium">
                                             {expense.asset_name}
                                         </td>
@@ -180,20 +255,34 @@ export default function ExpensesIndex({
                                             )}
                                         </td>
                                         <td className="px-3 py-2 text-right">
-                                            <Button
-                                                asChild
-                                                variant="ghost"
-                                                size="sm"
-                                            >
-                                                <Link
-                                                    href={edit({
-                                                        expense: expense.id,
-                                                    })}
-                                                    aria-label={`Edit expense for ${expense.asset_name}`}
+                                            <div className="flex justify-end gap-1">
+                                                <Button
+                                                    asChild
+                                                    variant="ghost"
+                                                    size="sm"
                                                 >
-                                                    <SquarePen className="size-4" />
-                                                </Link>
-                                            </Button>
+                                                    <Link
+                                                        href={edit({
+                                                            expense: expense.id,
+                                                        })}
+                                                        aria-label={`Edit expense for ${expense.asset_name}`}
+                                                    >
+                                                        <SquarePen className="size-4" />
+                                                    </Link>
+                                                </Button>
+                                                {canDelete && (
+                                                    <ActionIconButton
+                                                        icon={<Trash2 />}
+                                                        label={`Delete expense for ${expense.asset_name ?? `expense ${expense.id}`}`}
+                                                        color="danger"
+                                                        onClick={() =>
+                                                            setDeleteTarget(
+                                                                expense,
+                                                            )
+                                                        }
+                                                    />
+                                                )}
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
@@ -220,6 +309,49 @@ export default function ExpensesIndex({
                         )
                     }
                 />
+
+                {canDelete && deleteTarget !== null && (
+                    <ConfirmDeleteOverlay
+                        open
+                        onOpenChange={(open) => {
+                            if (!open) {
+                                setDeleteTarget(null);
+                            }
+                        }}
+                        action={destroyExpense(deleteTarget.id).url}
+                        title={`Delete expense for ${deleteTarget.asset_name ?? `expense ${deleteTarget.id}`}?`}
+                        description="This expense moves to trash, where it can be restored or permanently deleted."
+                    />
+                )}
+
+                {canDelete && bulkOpen && selectedIds.length > 0 && (
+                    <ConfirmDeleteOverlay
+                        open
+                        onOpenChange={(open) => {
+                            if (!open) {
+                                setBulkOpen(false);
+                            }
+                        }}
+                        action={trashBulk().url}
+                        payload={{ module: 'expenses', ids: selectedIds }}
+                        title={
+                            selectedIds.length === 1
+                                ? 'Delete this expense?'
+                                : `Delete ${selectedIds.length} expenses?`
+                        }
+                        description="They move to trash, where they can be restored or permanently deleted."
+                        submitLabel={
+                            selectedIds.length === 1
+                                ? 'Delete expense'
+                                : `Delete ${selectedIds.length} expenses`
+                        }
+                        processingLabel="Deleting…"
+                        onSuccess={() => {
+                            setSelectedIds([]);
+                            setBulkOpen(false);
+                        }}
+                    />
+                )}
             </div>
         </>
     );

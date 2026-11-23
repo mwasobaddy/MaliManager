@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActionIconButton } from '@/components/action-icon-button';
+import { BulkDeleteBar } from '@/components/bulk-delete-bar';
 import ConfirmDeleteOverlay from '@/components/confirm-delete-overlay';
 import { CsvImportSheet, downloadCsv } from '@/components/csv-actions';
 import { CsvExportSheet } from '@/components/csv-export-sheet';
@@ -35,6 +36,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import * as typeRoutes from '@/routes/platform/property-types';
+import { bulk as trashBulk } from '@/routes/platform/trash';
 
 type PropertyTypeRow = {
     id: number;
@@ -123,6 +125,8 @@ export default function PropertyTypesIndex({
     const isExportOpen = query.get('export') === '1';
 
     const [isTableLoading, setIsTableLoading] = useState(false);
+    const [bulkOpen, setBulkOpen] = useState(false);
+    const [selectedIds, setSelectedIds] = useState<number[]>([]);
 
     /** Spoken description of the active filters, for the export sheet. */
     const activeFilterSummary =
@@ -252,9 +256,22 @@ export default function PropertyTypesIndex({
     }
 
     function runExport(scope: 'all' | 'page', columns: string[]) {
-        downloadCsv(typeRoutes.exportMethod().url, exportParams(scope, columns));
+        downloadCsv(
+            typeRoutes.exportMethod().url,
+            exportParams(scope, columns),
+        );
         setOverlayParam('export', null, { replace: true });
     }
+
+    // Selection never outlives the page: a refetch that drops a row also
+    // drops its tick, so the bulk payload can only name visible rows.
+    useEffect(() => {
+        setSelectedIds((current) =>
+            current.filter((id) =>
+                propertyTypes.data.some((type) => type.id === id),
+            ),
+        );
+    }, [propertyTypes.data]);
 
     // Live search: local input for responsiveness, debounced server round-trip.
     const [searchDraft, setSearchDraft] = useState(filters.search);
@@ -414,6 +431,16 @@ export default function PropertyTypesIndex({
                     <Pill label="Total" value={propertyTypes.total} />
                 </div>
 
+                <BulkDeleteBar
+                    pageIds={propertyTypes.data.map((type) => type.id)}
+                    selectedIds={selectedIds}
+                    onSelectionChange={setSelectedIds}
+                    onDelete={() => setBulkOpen(true)}
+                    onClear={() => setSelectedIds([])}
+                    canDelete={canDelete}
+                    noun="property types"
+                />
+
                 <Card className="gap-0 py-0">
                     <div className="flex flex-wrap items-center gap-2 border-b border-border-strong p-4">
                         <div className="relative min-w-56 flex-1">
@@ -465,6 +492,14 @@ export default function PropertyTypesIndex({
                         sorting={sorting}
                         onSortingChange={applySorting}
                         loading={isTableLoading}
+                        selectable={canDelete}
+                        selectedIds={selectedIds.map(String)}
+                        onSelectionChange={(ids) =>
+                            setSelectedIds(ids.map(Number))
+                        }
+                        selectionLabel={(type) =>
+                            `Select property type ${type.name}`
+                        }
                         onRowClick={(type) => openRow(type, 'view')}
                         empty="No property types match your filters."
                     />
@@ -616,6 +651,38 @@ export default function PropertyTypesIndex({
                 />
             )}
 
+            {canDelete && bulkOpen && selectedIds.length > 0 && (
+                <ConfirmDeleteOverlay
+                    open
+                    onOpenChange={(open) => {
+                        if (!open) {
+                            setBulkOpen(false);
+                        }
+                    }}
+                    action={trashBulk().url}
+                    payload={{
+                        module: 'property-types',
+                        ids: selectedIds,
+                    }}
+                    title={
+                        selectedIds.length === 1
+                            ? 'Delete this property type?'
+                            : `Delete ${selectedIds.length} property types?`
+                    }
+                    description="They move to trash, where they can be restored or permanently deleted."
+                    submitLabel={
+                        selectedIds.length === 1
+                            ? 'Delete property type'
+                            : `Delete ${selectedIds.length} property types`
+                    }
+                    processingLabel="Deleting…"
+                    onSuccess={() => {
+                        setSelectedIds([]);
+                        setBulkOpen(false);
+                    }}
+                />
+            )}
+
             <ResponsiveOverlay
                 open={isFiltersOpen}
                 onOpenChange={(open) => {
@@ -709,7 +776,12 @@ export default function PropertyTypesIndex({
                 pageCount={propertyTypes.data.length}
                 currentPage={propertyTypes.current_page}
                 activeFilters={activeFilterSummary}
-                columns={['Name', 'Category', 'Properties in use', 'Description']}
+                columns={[
+                    'Name',
+                    'Category',
+                    'Properties in use',
+                    'Description',
+                ]}
                 onExport={runExport}
             />
 

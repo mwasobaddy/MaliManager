@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActionIconButton } from '@/components/action-icon-button';
+import { BulkDeleteBar } from '@/components/bulk-delete-bar';
 import ConfirmDeleteOverlay from '@/components/confirm-delete-overlay';
 import { CsvImportSheet, downloadCsv } from '@/components/csv-actions';
 import { CsvExportSheet } from '@/components/csv-export-sheet';
@@ -36,6 +37,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import * as expenseRoutes from '@/routes/platform/expenses';
+import { bulk as trashBulk } from '@/routes/platform/trash';
 
 type ExpenseRow = {
     id: number;
@@ -92,6 +94,8 @@ export default function PlatformExpensesIndex({
     const errors = (page.props.errors ?? {}) as Record<string, string>;
 
     const [isTableLoading, setIsTableLoading] = useState(false);
+    const [bulkOpen, setBulkOpen] = useState(false);
+    const [selectedIds, setSelectedIds] = useState<number[]>([]);
 
     // Read query params off Inertia's page.url, NOT window.location. Inertia
     // pushes history *after* React renders, so window.location is stale during
@@ -248,6 +252,16 @@ export default function PlatformExpensesIndex({
             { replace: true },
         );
     }
+
+    // Selection never outlives the page: a refetch that drops a row also
+    // drops its tick, so the bulk payload can only name visible rows.
+    useEffect(() => {
+        setSelectedIds((current) =>
+            current.filter((id) =>
+                expenses.data.some((expense) => expense.id === id),
+            ),
+        );
+    }, [expenses.data]);
 
     // Live search: local input for responsiveness, debounced server round-trip.
     const [searchDraft, setSearchDraft] = useState(filters.search);
@@ -458,7 +472,10 @@ export default function PlatformExpensesIndex({
     }
 
     function runExport(scope: 'all' | 'page', columns: string[]) {
-        downloadCsv(expenseRoutes.exportMethod().url, exportParams(scope, columns));
+        downloadCsv(
+            expenseRoutes.exportMethod().url,
+            exportParams(scope, columns),
+        );
         setOverlayParam('export', null, { replace: true });
     }
 
@@ -494,6 +511,16 @@ export default function PlatformExpensesIndex({
                  * the Card's own padding would otherwise inset the search row
                  * relative to the table below it.
                  */}
+                <BulkDeleteBar
+                    pageIds={expenses.data.map((expense) => expense.id)}
+                    selectedIds={selectedIds}
+                    onSelectionChange={setSelectedIds}
+                    onDelete={() => setBulkOpen(true)}
+                    onClear={() => setSelectedIds([])}
+                    canDelete={canDelete}
+                    noun="platform expenses"
+                />
+
                 <Card className="gap-0 py-0">
                     <div className="flex flex-wrap items-center gap-2 border-b border-border-strong p-4">
                         <div className="relative min-w-56 flex-1">
@@ -549,6 +576,14 @@ export default function PlatformExpensesIndex({
                         onSortingChange={applySorting}
                         loading={isTableLoading}
                         loadingRows={15}
+                        selectable={canDelete}
+                        selectedIds={selectedIds.map(String)}
+                        onSelectionChange={(ids) =>
+                            setSelectedIds(ids.map(Number))
+                        }
+                        selectionLabel={(expense) =>
+                            `Select expense ${expense.vendor_name ?? expense.category}`
+                        }
                         onRowClick={(expense) => openRow(expense, 'view')}
                         empty="No expenses match your filters."
                     />
@@ -681,6 +716,38 @@ export default function PlatformExpensesIndex({
                             this cannot be undone.
                         </>
                     }
+                />
+            )}
+
+            {canDelete && bulkOpen && selectedIds.length > 0 && (
+                <ConfirmDeleteOverlay
+                    open
+                    onOpenChange={(open) => {
+                        if (!open) {
+                            setBulkOpen(false);
+                        }
+                    }}
+                    action={trashBulk().url}
+                    payload={{
+                        module: 'platform-expenses',
+                        ids: selectedIds,
+                    }}
+                    title={
+                        selectedIds.length === 1
+                            ? 'Delete this platform expense?'
+                            : `Delete ${selectedIds.length} platform expenses?`
+                    }
+                    description="They move to trash, where they can be restored or permanently deleted."
+                    submitLabel={
+                        selectedIds.length === 1
+                            ? 'Delete platform expense'
+                            : `Delete ${selectedIds.length} platform expenses`
+                    }
+                    processingLabel="Deleting…"
+                    onSuccess={() => {
+                        setSelectedIds([]);
+                        setBulkOpen(false);
+                    }}
                 />
             )}
 
@@ -903,7 +970,14 @@ export default function PlatformExpensesIndex({
                 pageCount={expenses.data.length}
                 currentPage={expenses.current_page}
                 activeFilters={activeFilterSummary}
-                columns={['Spent on', 'Category', 'Amount', 'Currency', 'Vendor', 'Notes']}
+                columns={[
+                    'Spent on',
+                    'Category',
+                    'Amount',
+                    'Currency',
+                    'Vendor',
+                    'Notes',
+                ]}
                 onExport={runExport}
             />
 

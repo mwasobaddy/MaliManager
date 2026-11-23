@@ -387,7 +387,7 @@ export default function LeasesIndex({ leases, filters }: Props) {
                                                             <ActionIconButton
                                                                 icon={<Send />}
                                                                 label={`Remind ${lease.occupant_name ?? 'occupant'} about overdue rent`}
-                                                                color="view"
+                                                                color="accent"
                                                                 onClick={() =>
                                                                     sendReminder(
                                                                         lease,
@@ -408,7 +408,7 @@ export default function LeasesIndex({ leases, filters }: Props) {
                                                     <ActionIconButton
                                                         asChild
                                                         label="Draft renewal letter"
-                                                        color="edit"
+                                                        color="default"
                                                     >
                                                         <a
                                                             href={`${draftingPage().url}?${new URLSearchParams(

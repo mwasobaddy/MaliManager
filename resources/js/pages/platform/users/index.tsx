@@ -11,6 +11,8 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActionIconButton } from '@/components/action-icon-button';
+import { BulkDeleteBar } from '@/components/bulk-delete-bar';
+import ConfirmDeleteOverlay from '@/components/confirm-delete-overlay';
 import { CsvImportSheet, downloadCsv } from '@/components/csv-actions';
 import { CsvExportSheet } from '@/components/csv-export-sheet';
 import { DataTable } from '@/components/data-table';
@@ -35,6 +37,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import * as usersRoutes from '@/routes/platform/users';
+import { bulk as trashBulk } from '@/routes/platform/trash';
 
 type PersonRow = {
     id: number;
@@ -148,8 +151,18 @@ export default function UsersIndex({
         query.get('filters') !== null && query.get('filters') !== '';
 
     const [deleteTarget, setDeleteTarget] = useState<UserRow | null>(null);
+    const [bulkOpen, setBulkOpen] = useState(false);
+    const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [suspending, setSuspending] = useState(false);
     const [suspendTarget, setSuspendTarget] = useState<UserRow | null>(null);
+
+    // Selection never outlives the page: a refetch that drops a row also
+    // drops its tick, so the bulk payload can only name visible rows.
+    useEffect(() => {
+        setSelectedIds((current) =>
+            current.filter((id) => users.data.some((user) => user.id === id)),
+        );
+    }, [users.data]);
 
     const errors = (page.props.errors ?? {}) as Record<string, string>;
 
@@ -241,7 +254,10 @@ export default function UsersIndex({
     }
 
     function runExport(scope: 'all' | 'page', columns: string[]) {
-        downloadCsv(usersRoutes.exportMethod().url, exportParams(scope, columns));
+        downloadCsv(
+            usersRoutes.exportMethod().url,
+            exportParams(scope, columns),
+        );
         setOverlayParam('export', null, { replace: true });
     }
 
@@ -477,6 +493,16 @@ export default function UsersIndex({
                     )}
                 </div>
 
+                <BulkDeleteBar
+                    pageIds={users.data.map((user) => user.id)}
+                    selectedIds={selectedIds}
+                    onSelectionChange={setSelectedIds}
+                    onDelete={() => setBulkOpen(true)}
+                    onClear={() => setSelectedIds([])}
+                    canDelete={canDelete}
+                    noun="users"
+                />
+
                 {/*
                  * One card = the table's frame. Search/filters live in a header
                  * band above the rows rather than in their own floating card
@@ -542,6 +568,12 @@ export default function UsersIndex({
                         sorting={sorting}
                         onSortingChange={applySorting}
                         loading={isTableLoading}
+                        selectable={canDelete}
+                        selectedIds={selectedIds.map(String)}
+                        onSelectionChange={(ids) =>
+                            setSelectedIds(ids.map(Number))
+                        }
+                        selectionLabel={(user) => `Select user ${user.name}`}
                         onRowClick={(user) => openRow(user, 'view')}
                         empty="No users match your filters."
                     />
@@ -807,7 +839,16 @@ export default function UsersIndex({
                 pageCount={users.data.length}
                 currentPage={users.current_page}
                 activeFilters={activeFilterSummary}
-                columns={['ID', 'First name', 'Last name', 'Email', 'Phone', 'Status', 'Roles', 'Created at']}
+                columns={[
+                    'ID',
+                    'First name',
+                    'Last name',
+                    'Email',
+                    'Phone',
+                    'Status',
+                    'Roles',
+                    'Created at',
+                ]}
                 onExport={runExport}
             />
 
@@ -885,6 +926,35 @@ export default function UsersIndex({
                 title={`Delete ${deleteTarget?.email ?? ''}?`}
                 description="This soft-deletes the user account. Please enter your password to confirm."
             />
+
+            {canDelete && bulkOpen && selectedIds.length > 0 && (
+                <ConfirmDeleteOverlay
+                    open
+                    onOpenChange={(open) => {
+                        if (!open) {
+                            setBulkOpen(false);
+                        }
+                    }}
+                    action={trashBulk().url}
+                    payload={{ module: 'users', ids: selectedIds }}
+                    title={
+                        selectedIds.length === 1
+                            ? 'Delete this user?'
+                            : `Delete ${selectedIds.length} users?`
+                    }
+                    description="They move to trash, where they can be restored or permanently deleted."
+                    submitLabel={
+                        selectedIds.length === 1
+                            ? 'Delete user'
+                            : `Delete ${selectedIds.length} users`
+                    }
+                    processingLabel="Deleting…"
+                    onSuccess={() => {
+                        setSelectedIds([]);
+                        setBulkOpen(false);
+                    }}
+                />
+            )}
 
             <ResponsiveOverlay
                 open={suspendTarget !== null}

@@ -1,7 +1,8 @@
 import { Head, router, usePage } from '@inertiajs/react';
 import { Form } from '@inertiajs/react';
 import { Mail, Phone, Trash2, UserCog, Plus } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { BulkDeleteBar } from '@/components/bulk-delete-bar';
 import { LabelledIconButton } from '@/components/labelled-icon-button';
 import ConfirmDeleteOverlay from '@/components/confirm-delete-overlay';
 import Heading from '@/components/heading';
@@ -17,6 +18,7 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Spinner } from '@/components/ui/spinner';
 import { useOverlayParam } from '@/hooks/use-overlay-param';
 import {
@@ -24,6 +26,7 @@ import {
     store as storeStaff,
     update as updateStaff,
 } from '@/routes/tenant/staff';
+import { bulk as trashBulk } from '@/routes/tenant/trash';
 
 type Organization = {
     id: number;
@@ -82,6 +85,17 @@ export default function StaffIndex({
     const canCreate = permissions.includes('staff.create');
     const canEdit = permissions.includes('staff.edit');
     const canDelete = permissions.includes('staff.delete');
+
+    const [bulkOpen, setBulkOpen] = useState(false);
+    const [selectedIds, setSelectedIds] = useState<number[]>([]);
+
+    // Selection never outlives the page: a refetch that drops a row also
+    // drops its tick, so the bulk payload can only name visible rows.
+    useEffect(() => {
+        setSelectedIds((current) =>
+            current.filter((id) => staff.some((member) => member.id === id)),
+        );
+    }, [staff]);
 
     const { query, setOverlayParam } = useOverlayParam();
 
@@ -178,6 +192,16 @@ export default function StaffIndex({
                     )}
                 </div>
 
+                <BulkDeleteBar
+                    pageIds={staff.map((member) => member.id)}
+                    selectedIds={selectedIds}
+                    onSelectionChange={setSelectedIds}
+                    onDelete={() => setBulkOpen(true)}
+                    onClear={() => setSelectedIds([])}
+                    canDelete={canDelete}
+                    noun="staff"
+                />
+
                 {staff.length === 0 ? (
                     <Card>
                         <CardContent className="py-16 text-center">
@@ -204,6 +228,30 @@ export default function StaffIndex({
                             <Card key={member.id}>
                                 <CardHeader>
                                     <div className="flex items-start justify-between gap-4">
+                                        {canDelete && (
+                                            <Checkbox
+                                                checked={selectedIds.includes(
+                                                    member.id,
+                                                )}
+                                                onCheckedChange={() =>
+                                                    setSelectedIds((current) =>
+                                                        current.includes(
+                                                            member.id,
+                                                        )
+                                                            ? current.filter(
+                                                                  (id) =>
+                                                                      id !==
+                                                                      member.id,
+                                                              )
+                                                            : [
+                                                                  ...current,
+                                                                  member.id,
+                                                              ],
+                                                    )
+                                                }
+                                                aria-label={`Select staff member ${member.name}`}
+                                            />
+                                        )}
                                         <div className="min-w-0">
                                             <CardTitle className="truncate">
                                                 {member.name}
@@ -327,6 +375,35 @@ export default function StaffIndex({
                     action={destroyStaff(deleteTarget.id).url}
                     title={`Remove ${deleteTarget.name}?`}
                     description="They lose access to this organization and its properties immediately. Confirm with your password — this cannot be undone from the interface."
+                />
+            )}
+
+            {canDelete && bulkOpen && selectedIds.length > 0 && (
+                <ConfirmDeleteOverlay
+                    open
+                    onOpenChange={(open) => {
+                        if (!open) {
+                            setBulkOpen(false);
+                        }
+                    }}
+                    action={trashBulk().url}
+                    payload={{ module: 'staff', ids: selectedIds }}
+                    title={
+                        selectedIds.length === 1
+                            ? 'Delete this staff member?'
+                            : `Delete ${selectedIds.length} staff members?`
+                    }
+                    description="They move to trash, where they can be restored or permanently deleted."
+                    submitLabel={
+                        selectedIds.length === 1
+                            ? 'Delete staff member'
+                            : `Delete ${selectedIds.length} staff members`
+                    }
+                    processingLabel="Deleting…"
+                    onSuccess={() => {
+                        setSelectedIds([]);
+                        setBulkOpen(false);
+                    }}
                 />
             )}
 

@@ -8,6 +8,7 @@ import { ArrowDown, ArrowUp, ChevronsUpDown, SearchX } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useLayoutEffect, useRef, useState } from 'react';
 import { Empty } from '@/components/ui/empty';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
@@ -51,6 +52,17 @@ type DataTableProps<TData> = {
      * collapse the table to a single grey line and jump twice.
      */
     loadingRows?: number;
+    /**
+     * Opt-in row selection for bulk actions. When set, a checkbox leads
+     * each row and the selection is keyed by `getRowId` (or the row index
+     * fallback). Select-all lives in the bulk bar above the table, not in
+     * the header — one select-all per view, never two.
+     */
+    selectable?: boolean;
+    selectedIds?: string[];
+    onSelectionChange?: (ids: string[]) => void;
+    /** Accessible name for a row's checkbox. Defaults to `Select row ${id}`. */
+    selectionLabel?: (row: TData) => string;
     className?: string;
 };
 
@@ -76,6 +88,10 @@ export function DataTable<TData>({
     empty = <Empty compact title="Nothing to show." />,
     loading = false,
     loadingRows,
+    selectable = false,
+    selectedIds = [],
+    onSelectionChange,
+    selectionLabel,
     className,
 }: DataTableProps<TData>) {
     // A bare string renders as an unstyled table cell. Wrap it in the
@@ -91,9 +107,46 @@ export function DataTable<TData>({
         ) : (
             empty
         );
+    const tableColumns: ColumnDef<TData, unknown>[] = selectable
+        ? [
+              {
+                  id: 'select',
+                  enableSorting: false,
+                  header: () => null,
+                  cell: ({ row }) => {
+                      const checked = selectedIds.includes(row.id);
+
+                      return (
+                          <span
+                              onClick={(event) => event.stopPropagation()}
+                              className="inline-flex"
+                          >
+                              <Checkbox
+                                  checked={checked}
+                                  onCheckedChange={() =>
+                                      onSelectionChange?.(
+                                          checked
+                                              ? selectedIds.filter(
+                                                    (id) => id !== row.id,
+                                                )
+                                              : [...selectedIds, row.id],
+                                      )
+                                  }
+                                  aria-label={
+                                      selectionLabel?.(row.original) ??
+                                      `Select row ${row.id}`
+                                  }
+                              />
+                          </span>
+                      );
+                  },
+              },
+              ...columns,
+          ]
+        : columns;
     const table = useReactTable({
         data,
-        columns,
+        columns: tableColumns,
         getRowId,
         state: { sorting },
         // Manual sorting: we never sort locally, we ask the server.
@@ -235,7 +288,7 @@ export function DataTable<TData>({
                                 }
                                 aria-hidden="true"
                             >
-                                {columns.map((column, cellIndex) => {
+                                {tableColumns.map((column, cellIndex) => {
                                     const align = column.meta?.align ?? 'left';
 
                                     return (
@@ -277,7 +330,7 @@ export function DataTable<TData>({
                         ))
                     ) : table.getRowModel().rows.length === 0 ? (
                         <tr>
-                            <td colSpan={columns.length} className="px-3">
+                            <td colSpan={tableColumns.length} className="px-3">
                                 {emptyContent}
                             </td>
                         </tr>

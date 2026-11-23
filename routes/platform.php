@@ -10,6 +10,7 @@ use App\Http\Controllers\Platform\PlatformExpenseController;
 use App\Http\Controllers\Platform\PropertyTypeController;
 use App\Http\Controllers\Platform\RolesController;
 use App\Http\Controllers\Platform\SubscriptionPaymentController;
+use App\Http\Controllers\Platform\TrashController;
 use App\Http\Controllers\Platform\UserController;
 use App\Models\Organization;
 use App\Models\Plan;
@@ -52,6 +53,17 @@ Route::middleware(['auth', 'verified', 'admin'])->group(function () {
     Route::delete('platform/assistant/conversations/{id}', [AssistantController::class, 'destroyConversation'])
         ->middleware('can:aiUse')
         ->name('platform.assistant.conversation.destroy');
+});
+
+// Central trash: soft-deleted platform rows grouped by module. No
+// `admin` middleware — the controller filters modules by each delete
+// gate, so scoped non-admins only ever see their own rows.
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('platform/trash', [TrashController::class, 'index'])->name('platform.trash.index');
+    Route::post('platform/trash/restore', [TrashController::class, 'restore'])->name('platform.trash.restore');
+    Route::delete('platform/trash/force', [TrashController::class, 'force'])->name('platform.trash.force');
+    Route::delete('platform/trash/empty', [TrashController::class, 'empty'])->name('platform.trash.empty');
+    Route::delete('platform/trash/bulk', [TrashController::class, 'bulk'])->name('platform.trash.bulk');
 });
 
 // Platform-wide audit view is gated by the central `viewAnyAudit` gate
