@@ -107,6 +107,7 @@ trait OccupantHelpers
                 'email' => $data['email'],
                 'phone' => $data['phone'] ?? null,
                 'national_id' => $data['national_id'] ?? null,
+                'gender' => $data['gender'] ?? null,
                 'status' => 'active',
                 'created_by' => $actor->id,
             ]);
@@ -118,6 +119,7 @@ trait OccupantHelpers
                 'last_name' => $data['last_name'] ?? null,
                 'phone' => $data['phone'] ?? $person->phone,
                 'national_id' => $data['national_id'] ?? $person->national_id,
+                'gender' => $data['gender'] ?? $person->gender,
             ])->save();
         }
 

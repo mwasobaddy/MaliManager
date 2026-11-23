@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Concerns\LogsTenantActivity;
 use App\Support\TenancyContext;
 use Database\Factories\OccupantFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -36,6 +37,67 @@ class Occupant extends Model
     protected static function newFactory(): OccupantFactory
     {
         return OccupantFactory::new();
+    }
+
+    /**
+     * Sort keys the index accepts. `name` orders by the linked person's
+     * name through a subselect so the listing never needs a join that
+     * would collide on `id` under pagination. Anything else falls back to
+     * newest-first, matching the list's original order.
+     */
+    public const SORTABLE = [
+        'name' => 'name',
+        'status' => 'occupants.status',
+        'added' => 'occupants.created_at',
+    ];
+
+    /**
+     * The property-scoped occupant listing: tenancy plus property scoping,
+     * then the index's search, status and sort filters.
+     *
+     * @param  array{search?: string, status?: string, sort?: string, direction?: string}  $filters
+     */
+    public function scopeTenantIndex(Builder $query, int $organizationId, int $propertyId, array $filters): Builder
+    {
+        $sortKey = self::SORTABLE[$filters['sort'] ?? ''] ?? null;
+        $direction = ($filters['direction'] ?? '') === 'asc' ? 'asc' : 'desc';
+
+        return $query
+            ->where('occupants.organization_id', $organizationId)
+            ->whereHas('units', fn (Builder $unit) => $unit->where('units.property_id', $propertyId))
+            ->when(
+                trim((string) ($filters['search'] ?? '')),
+                fn (Builder $builder, string $search) => $builder->where(
+                    fn (Builder $inner) => $inner
+                        ->whereHas('person', fn (Builder $person) => $person->where(
+                            fn (Builder $name) => $name
+                                ->where('persons.first_name', 'like', "%{$search}%")
+                                ->orWhere('persons.last_name', 'like', "%{$search}%")
+                                ->orWhere('persons.email', 'like', "%{$search}%")
+                                ->orWhere('persons.phone', 'like', "%{$search}%")
+                                ->orWhere('persons.national_id', 'like', "%{$search}%"),
+                        ))
+                        ->orWhereHas('units', fn (Builder $unit) => $unit
+                            ->where('units.property_id', $propertyId)
+                            ->where('units.name', 'like', "%{$search}%")),
+                ),
+            )
+            ->when(
+                ($filters['status'] ?? '') !== '',
+                fn (Builder $builder) => $builder->where('occupants.status', (string) $filters['status']),
+            )
+            ->when(
+                $sortKey === 'name',
+                fn (Builder $builder) => $builder
+                    ->orderBy(Person::select('first_name')->whereColumn('persons.id', 'occupants.person_id'), $direction)
+                    ->orderBy(Person::select('last_name')->whereColumn('persons.id', 'occupants.person_id'), $direction),
+            )
+            ->when(
+                $sortKey !== null && $sortKey !== 'name',
+                fn (Builder $builder) => $builder->orderBy($sortKey, $direction),
+            )
+            ->when($sortKey === null, fn (Builder $builder) => $builder->orderByDesc('occupants.created_at'))
+            ->orderByDesc('occupants.id');
     }
 
     public function organization(): BelongsTo

@@ -19,7 +19,6 @@ import {
 } from '@/components/ui/sheet';
 import { useIsMobile } from '@/hooks/use-mobile';
 
-
 type ResponsiveOverlayProps = {
     open: boolean;
     onOpenChange: (open: boolean) => void;
@@ -29,6 +28,16 @@ type ResponsiveOverlayProps = {
     footer?: ReactNode;
     /** Extra classes for the sheet/drawer surface. */
     className?: string;
+    /**
+     * Top-level record actions rendered in the sticky header, below the
+     * description with room cleared for the absolute close button. This is
+     * the research-backed home for sheet actions (GitLab Pajamas, Frontile
+     * and Planview all put header actions next to close): footers stay for
+     * the sheet's own submit + Cancel, while a read-only view sheet keeps a
+     * Cancel-only footer and showcases its actions here instead of stacking
+     * them at the bottom. Callers pass small buttons.
+     */
+    actions?: ReactNode;
 };
 
 /** Shared chrome for the dismiss button, matching the `shadcndefault` Cancel. */
@@ -68,6 +77,7 @@ export function ResponsiveOverlay({
     children,
     footer,
     className,
+    actions,
 }: ResponsiveOverlayProps) {
     const isMobile = useIsMobile();
 
@@ -84,9 +94,12 @@ export function ResponsiveOverlay({
                     <DrawerHeader className="relative !text-left">
                         <DrawerTitle>{title}</DrawerTitle>
                         {description && (
-                            <DrawerDescription>
-                                {description}
-                            </DrawerDescription>
+                            <DrawerDescription>{description}</DrawerDescription>
+                        )}
+                        {actions && (
+                            <div className="flex flex-wrap items-center gap-2 pt-1 pr-10">
+                                {actions}
+                            </div>
                         )}
                         <DrawerClose
                             aria-label="Close"
@@ -111,6 +124,11 @@ export function ResponsiveOverlay({
                     <SheetTitle>{title}</SheetTitle>
                     {description && (
                         <SheetDescription>{description}</SheetDescription>
+                    )}
+                    {actions && (
+                        <div className="flex flex-wrap items-center gap-2 pt-1 pr-10">
+                            {actions}
+                        </div>
                     )}
                 </SheetHeader>
                 <div className="min-h-0 flex-1 overflow-y-auto px-4">

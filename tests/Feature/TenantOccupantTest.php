@@ -148,9 +148,9 @@ test('occupants index is scoped to the property and lists occupants with their u
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('organisation/occupants/index')
-            ->has('occupants', 1)
-            ->where('occupants.0.email', 'sam@acme.test')
-            ->where('occupants.0.units.0.id', $unit->id));
+            ->has('occupants.data', 1)
+            ->where('occupants.data.0.email', 'sam@acme.test')
+            ->where('occupants.data.0.units.0.id', $unit->id));
 });
 
 test('owners bypass sub-permission checks on the occupants index', function () {
@@ -163,6 +163,142 @@ test('owners bypass sub-permission checks on the occupants index', function () {
         ->get(occupantTenantUrl($organization, '/sunset-heights/occupants'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page->component('organisation/occupants/index'));
+});
+
+test('occupants index searches across names, email and units', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createOccupantOrganization($owner);
+    $property = createProperty($organization, $owner, 'sunset-heights');
+
+    $unit = $property->units()->create([
+        'name' => 'Unit B2',
+        'status' => 'occupied',
+        'type' => '2 Bedroom',
+        'rent_amount' => 35000, 'rent_frequency' => 'monthly',
+        'deposit' => 35000,
+        'created_by' => $owner->id,
+    ]);
+
+    addOccupant($organization, $owner, $property, [
+        'first_name' => 'Zawadi',
+        'last_name' => 'Mwangi',
+        'email' => 'zawadi@example.test',
+    ], [$unit->id]);
+    addOccupant($organization, $owner, $property, [
+        'first_name' => 'Amina',
+        'last_name' => 'Diop',
+        'email' => 'amina@example.test',
+    ], [$unit->id]);
+
+    $this->actingAs($owner)
+        ->get(occupantTenantUrl($organization, '/sunset-heights/occupants?search=zawadi'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('occupants.data', 1)
+            ->where('occupants.data.0.email', 'zawadi@example.test'));
+
+    $this->actingAs($owner)
+        ->get(occupantTenantUrl($organization, '/sunset-heights/occupants?search=Unit+B2'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->has('occupants.data', 2));
+});
+
+test('occupants index filters by status', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createOccupantOrganization($owner);
+    $property = createProperty($organization, $owner, 'sunset-heights');
+
+    $unit = $property->units()->create([
+        'name' => 'Unit C3',
+        'status' => 'occupied',
+        'type' => '1 Bedroom',
+        'rent_amount' => 25000, 'rent_frequency' => 'monthly',
+        'deposit' => 25000,
+        'created_by' => $owner->id,
+    ]);
+
+    $active = addOccupant($organization, $owner, $property, ['email' => 'active@example.test'], [$unit->id]);
+    $moved = addOccupant($organization, $owner, $property, ['email' => 'moved@example.test'], [$unit->id]);
+    $moved->update(['status' => 'moved_out']);
+
+    $this->actingAs($owner)
+        ->get(occupantTenantUrl($organization, '/sunset-heights/occupants?status=active'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('occupants.data', 1)
+            ->where('occupants.data.0.email', 'active@example.test'));
+
+    $this->actingAs($owner)
+        ->get(occupantTenantUrl($organization, '/sunset-heights/occupants?status=moved_out'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('occupants.data', 1)
+            ->where('occupants.data.0.email', 'moved@example.test'));
+
+    expect($active->fresh()->trashed())->toBeFalse();
+});
+
+test('occupants index sorts by name and falls back on unknown keys', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createOccupantOrganization($owner);
+    $property = createProperty($organization, $owner, 'sunset-heights');
+
+    $unit = $property->units()->create([
+        'name' => 'Unit D4',
+        'status' => 'occupied',
+        'type' => '1 Bedroom',
+        'rent_amount' => 25000, 'rent_frequency' => 'monthly',
+        'deposit' => 25000,
+        'created_by' => $owner->id,
+    ]);
+
+    addOccupant($organization, $owner, $property, [
+        'first_name' => 'Zawadi',
+        'last_name' => 'Mwangi',
+        'email' => 'zawadi-sort@example.test',
+    ], [$unit->id]);
+    addOccupant($organization, $owner, $property, [
+        'first_name' => 'Amina',
+        'last_name' => 'Diop',
+        'email' => 'amina-sort@example.test',
+    ], [$unit->id]);
+
+    $this->actingAs($owner)
+        ->get(occupantTenantUrl($organization, '/sunset-heights/occupants?sort=name&direction=asc'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('occupants.data.0.email', 'amina-sort@example.test')
+            ->where('occupants.data.1.email', 'zawadi-sort@example.test'));
+
+    $this->actingAs($owner)
+        ->get(occupantTenantUrl($organization, '/sunset-heights/occupants?sort=bogus'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->has('occupants.data', 2));
+});
+
+test('occupants index paginates with metadata', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createOccupantOrganization($owner);
+    $property = createProperty($organization, $owner, 'sunset-heights');
+
+    $unit = $property->units()->create([
+        'name' => 'Unit E5',
+        'status' => 'occupied',
+        'type' => '1 Bedroom',
+        'rent_amount' => 25000, 'rent_frequency' => 'monthly',
+        'deposit' => 25000,
+        'created_by' => $owner->id,
+    ]);
+
+    addOccupant($organization, $owner, $property, ['email' => 'page-one@example.test'], [$unit->id]);
+
+    $this->actingAs($owner)
+        ->get(occupantTenantUrl($organization, '/sunset-heights/occupants'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('occupants.current_page', 1)
+            ->where('occupants.total', 1)
+            ->has('occupants.data', 1));
 });
 
 test('the record url opens the view sheet on the index instead of a page', function () {
@@ -429,6 +565,56 @@ test('owner can add an occupant assigned to a unit', function () {
         ->and($user->person_id)->toBe($occupant->person_id);
 });
 
+test('occupant gender is optional on create and update but constrained when given', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createOccupantOrganization($owner);
+    $property = createProperty($organization, $owner, 'sunset-heights');
+
+    $unit = $property->units()->create([
+        'name' => 'Unit A1',
+        'status' => 'vacant',
+        'type' => '1 Bedroom',
+        'rent_amount' => 25000, 'rent_frequency' => 'monthly',
+        'deposit' => 25000,
+        'created_by' => $owner->id,
+    ]);
+
+    $this->actingAs($owner)
+        ->post(occupantTenantUrl($organization, '/sunset-heights/occupants'), [
+            'first_name' => 'Zawadi',
+            'email' => 'zawadi.gender@acme.test',
+            'status' => 'active',
+            'gender' => 'female',
+            'unit_ids' => [$unit->id],
+        ])->assertRedirect();
+
+    $occupant = Occupant::where('organization_id', $organization->id)
+        ->whereHas('person', fn ($query) => $query->where('email', 'zawadi.gender@acme.test'))
+        ->firstOrFail();
+
+    expect($occupant->person->gender)->toBe('female');
+
+    $this->actingAs($owner)
+        ->put(occupantTenantUrl($organization, "/sunset-heights/occupants/{$occupant->id}"), [
+            'first_name' => 'Zawadi',
+            'email' => 'zawadi.gender@acme.test',
+            'status' => 'active',
+            'gender' => 'male',
+            'unit_ids' => [$unit->id],
+        ])->assertRedirect();
+
+    expect($occupant->fresh()->person->gender)->toBe('male');
+
+    $this->actingAs($owner)
+        ->put(occupantTenantUrl($organization, "/sunset-heights/occupants/{$occupant->id}"), [
+            'first_name' => 'Zawadi',
+            'email' => 'zawadi.gender@acme.test',
+            'status' => 'active',
+            'gender' => 'other',
+            'unit_ids' => [$unit->id],
+        ])->assertSessionHasErrors('gender');
+});
+
 test('adding an occupant who already has an account reuses the user', function () {
     $owner = User::factory()->create(['onboarded_at' => now()]);
     $organization = createOccupantOrganization($owner);
@@ -682,12 +868,12 @@ test('occupant only appears in the property they are assigned to', function () {
     $this->actingAs($owner)
         ->get(occupantTenantUrl($organization, '/sunset-heights/occupants'))
         ->assertOk()
-        ->assertInertia(fn ($page) => $page->has('occupants', 1));
+        ->assertInertia(fn ($page) => $page->has('occupants.data', 1));
 
     $this->actingAs($owner)
         ->get(occupantTenantUrl($organization, '/ocean-view/occupants'))
         ->assertOk()
-        ->assertInertia(fn ($page) => $page->has('occupants', 0));
+        ->assertInertia(fn ($page) => $page->has('occupants.data', 0));
 });
 
 test('creating an occupant stores sanitized agreement html and uploads a document', function () {

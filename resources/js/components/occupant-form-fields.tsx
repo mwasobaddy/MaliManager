@@ -1,11 +1,10 @@
-import { DoorOpen } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { Check, Search, X } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import DocumentBuilder from '@/components/document-builder';
 import { FrequencySelect } from '@/components/frequency-select';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import type { TemplateToken } from '@/components/rich-text-editor';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -58,6 +57,7 @@ type Defaults = {
     email?: string;
     phone?: string | null;
     national_id?: string | null;
+    gender?: string | null;
     status?: string;
     unit_ids?: number[];
     lease?: LeaseDefaults | null;
@@ -72,6 +72,12 @@ type Props = {
     propertyName: string;
     leaseSectionHint?: string;
     defaults?: Defaults;
+    /**
+     * Reports whether the sheet may submit: no local field errors and at
+     * least one unit selected. The page disables the footer submit while
+     * false; the server still validates everything on submit.
+     */
+    onValidityChange?: (valid: boolean) => void;
 };
 
 const WEEKDAYS = [
@@ -116,11 +122,89 @@ export default function OccupantFormFields({
     propertyName,
     leaseSectionHint = "Capture the rental terms. These power the renter's rental history.",
     defaults = {},
+    onValidityChange,
 }: Props) {
     const templateList = [...templates.property, ...templates.organization];
     const [selectedTemplateId, setSelectedTemplateId] = useState('');
     const [status, setStatus] = useState(defaults.status ?? 'active');
     const [unitIds, setUnitIds] = useState<number[]>(defaults.unit_ids ?? []);
+    const [gender, setGender] = useState(defaults.gender ?? 'unspecified');
+    const [unitQuery, setUnitQuery] = useState('');
+    const [unitPickerOpen, setUnitPickerOpen] = useState(false);
+
+    const matchingUnits = useMemo(() => {
+        const needle = unitQuery.trim().toLowerCase();
+
+        if (needle === '') {
+            return units;
+        }
+
+        return units.filter((unit) =>
+            `${unit.name} ${unit.type ?? ''}`.toLowerCase().includes(needle),
+        );
+    }, [units, unitQuery]);
+
+    function toggleUnit(id: number) {
+        setUnitIds((current) =>
+            current.includes(id)
+                ? current.filter((uid) => uid !== id)
+                : [...current, id],
+        );
+    }
+
+    // Live validation mirrors the server rules so the obvious mistakes
+    // surface on blur instead of after a round trip. Submit stays disabled
+    // while anything here fails; the server remains the authority.
+    type FieldErrors = Partial<Record<'first_name' | 'email', string>>;
+
+    const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+
+    useEffect(() => {
+        onValidityChange?.(
+            Object.keys(fieldErrors).length === 0 && unitIds.length > 0,
+        );
+    }, [fieldErrors, unitIds, onValidityChange]);
+
+    function validateField(
+        name: 'first_name' | 'email',
+        value: string,
+    ): string | null {
+        if (name === 'first_name') {
+            return value.trim() === '' ? 'First name is required.' : null;
+        }
+
+        if (value.trim() === '') {
+            return 'Email address is required.';
+        }
+
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())
+            ? null
+            : 'Enter a valid email address.';
+    }
+
+    function setFieldError(
+        name: 'first_name' | 'email',
+        message: string | null,
+    ) {
+        setFieldErrors((current) => {
+            if (message === null) {
+                if (!(name in current)) {
+                    return current;
+                }
+
+                const rest = { ...current };
+                delete rest[name];
+
+                return rest;
+            }
+
+            if (current[name] === message) {
+                return current;
+            }
+
+            return { ...current, [name]: message };
+        });
+    }
     const [rentFrequency, setRentFrequency] = useState(
         defaults.lease?.rent_frequency ?? 'monthly',
     );
@@ -202,8 +286,17 @@ export default function OccupantFormFields({
                         autoComplete="off"
                         placeholder="Jane"
                         defaultValue={defaults.first_name ?? ''}
+                        onBlur={(event) =>
+                            setFieldError(
+                                'first_name',
+                                validateField('first_name', event.target.value),
+                            )
+                        }
+                        onChange={() => setFieldError('first_name', null)}
                     />
-                    <InputError message={errors.first_name} />
+                    <InputError
+                        message={errors.first_name ?? fieldErrors.first_name}
+                    />
                 </div>
 
                 <div className="grid gap-2">
@@ -231,8 +324,15 @@ export default function OccupantFormFields({
                         autoComplete="off"
                         placeholder="jane@example.com"
                         defaultValue={defaults.email ?? ''}
+                        onBlur={(event) =>
+                            setFieldError(
+                                'email',
+                                validateField('email', event.target.value),
+                            )
+                        }
+                        onChange={() => setFieldError('email', null)}
                     />
-                    <InputError message={errors.email} />
+                    <InputError message={errors.email ?? fieldErrors.email} />
                 </div>
 
                 <div className="grid gap-2">
@@ -263,6 +363,41 @@ export default function OccupantFormFields({
                         defaultValue={defaults.national_id ?? ''}
                     />
                     <InputError message={errors.national_id} />
+                </div>
+
+                <div className="grid gap-2">
+                    <Label htmlFor={`${idPrefix}-gender`}>Gender</Label>
+                    <input
+                        type="hidden"
+                        name="gender"
+                        value={gender === 'unspecified' ? '' : gender}
+                    />
+                    <Select value={gender} onValueChange={setGender}>
+                        <SelectTrigger
+                            id={`${idPrefix}-gender`}
+                            className="w-full"
+                        >
+                            <SelectValue placeholder="Select" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {[
+                                {
+                                    value: 'unspecified',
+                                    label: 'Not specified',
+                                },
+                                { value: 'male', label: 'Male' },
+                                { value: 'female', label: 'Female' },
+                            ].map((option) => (
+                                <SelectItem
+                                    key={option.value}
+                                    value={option.value}
+                                >
+                                    {option.label}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    <InputError message={errors.gender} />
                 </div>
 
                 <div className="grid gap-2">
@@ -668,49 +803,152 @@ export default function OccupantFormFields({
                         assigning occupants.
                     </p>
                 ) : (
-                    <div className="grid gap-3">
-                        {units.map((unit) => (
-                            <label
-                                key={unit.id}
-                                className="flex items-center gap-3 rounded-lg border border-input p-3 text-sm transition-colors hover:bg-muted"
+                    <div className="grid gap-2">
+                        {unitIds.length > 0 && (
+                            <div
+                                className="flex flex-wrap gap-1.5"
+                                aria-live="polite"
                             >
-                                <Checkbox
-                                    checked={unitIds.includes(unit.id)}
-                                    onCheckedChange={() => {
-                                        const next = unitIds.includes(unit.id)
-                                            ? unitIds.filter(
-                                                  (uid) => uid !== unit.id,
-                                              )
-                                            : [...unitIds, unit.id];
-                                        setUnitIds(next);
-                                    }}
-                                />
-                                <input
-                                    type="hidden"
-                                    name="unit_ids[]"
-                                    value={String(unit.id)}
-                                    disabled={!unitIds.includes(unit.id)}
-                                />
-                                <DoorOpen className="size-4 text-muted-foreground" />
-                                <span className="font-medium">{unit.name}</span>
-                                {unit.type && (
-                                    <span className="text-muted-foreground">
-                                        {unit.type}
-                                    </span>
-                                )}
-                                <span className="ml-auto">
-                                    <span
-                                        className={`rounded-full px-2 py-0.5 text-xs ${
-                                            unit.status === 'vacant'
-                                                ? 'bg-muted text-muted-foreground'
-                                                : 'bg-primary/10 text-primary'
-                                        }`}
-                                    >
-                                        {unit.status}
-                                    </span>
-                                </span>
-                            </label>
-                        ))}
+                                {unitIds.map((unitId) => {
+                                    const picked = units.find(
+                                        (unit) => unit.id === unitId,
+                                    );
+
+                                    if (!picked) {
+                                        return null;
+                                    }
+
+                                    return (
+                                        <span
+                                            key={unitId}
+                                            className="inline-flex items-center gap-1.5 rounded-full border border-transparent bg-brand-accent py-1 pr-1.5 pl-3 text-xs text-on-accent"
+                                        >
+                                            <span className="font-medium">
+                                                {picked.name}
+                                            </span>
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    toggleUnit(unitId)
+                                                }
+                                                aria-label={`Remove ${picked.name}`}
+                                                className="inline-flex items-center justify-center rounded-full text-on-accent/70 transition-colors hover:text-on-accent"
+                                            >
+                                                <X className="size-3.5" />
+                                            </button>
+                                            <input
+                                                type="hidden"
+                                                name="unit_ids[]"
+                                                value={String(unitId)}
+                                            />
+                                        </span>
+                                    );
+                                })}
+                            </div>
+                        )}
+                        <div
+                            className="relative"
+                            onBlur={(event) => {
+                                if (
+                                    !event.currentTarget.contains(
+                                        event.relatedTarget as Node | null,
+                                    )
+                                ) {
+                                    setUnitPickerOpen(false);
+                                }
+                            }}
+                        >
+                            <Search className="pointer-events-none absolute top-2.5 left-2.5 size-4 text-muted-foreground" />
+                            <Input
+                                id={`${idPrefix}-unit-search`}
+                                type="text"
+                                role="combobox"
+                                aria-expanded={unitPickerOpen}
+                                aria-controls={`${idPrefix}-unit-options`}
+                                aria-label="Search units to assign"
+                                autoComplete="off"
+                                placeholder={
+                                    unitIds.length === 0
+                                        ? 'Search units to add...'
+                                        : 'Search to add more units...'
+                                }
+                                value={unitQuery}
+                                onChange={(event) => {
+                                    setUnitQuery(event.target.value);
+                                    setUnitPickerOpen(true);
+                                }}
+                                onFocus={() => setUnitPickerOpen(true)}
+                                onKeyDown={(event) => {
+                                    if (event.key === 'Escape') {
+                                        setUnitPickerOpen(false);
+                                    }
+                                }}
+                                className="border-border-strong bg-background pr-3 pl-9"
+                            />
+                            {unitPickerOpen && (
+                                <ul
+                                    id={`${idPrefix}-unit-options`}
+                                    role="listbox"
+                                    aria-label="Matching units"
+                                    className="absolute z-10 mt-1 max-h-56 w-full overflow-auto rounded-lg border border-input bg-popover p-1 shadow-md"
+                                >
+                                    {matchingUnits.length === 0 ? (
+                                        <li className="px-3 py-2 text-sm text-muted-foreground">
+                                            {unitQuery.trim() === ''
+                                                ? 'No more units to add.'
+                                                : `No units match “${unitQuery.trim()}”.`}
+                                        </li>
+                                    ) : (
+                                        matchingUnits.map((unit) => {
+                                            const selected = unitIds.includes(
+                                                unit.id,
+                                            );
+
+                                            return (
+                                                <li key={unit.id}>
+                                                    <button
+                                                        type="button"
+                                                        role="option"
+                                                        aria-selected={selected}
+                                                        onMouseDown={(event) =>
+                                                            event.preventDefault()
+                                                        }
+                                                        onClick={() =>
+                                                            toggleUnit(unit.id)
+                                                        }
+                                                        className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm transition-colors hover:bg-muted"
+                                                    >
+                                                        <span className="flex size-4 shrink-0 items-center justify-center">
+                                                            {selected && (
+                                                                <Check className="size-4 text-primary" />
+                                                            )}
+                                                        </span>
+                                                        <span className="min-w-0 flex-1 truncate font-medium">
+                                                            {unit.name}
+                                                        </span>
+                                                        {unit.type && (
+                                                            <span className="truncate text-xs text-muted-foreground">
+                                                                {unit.type}
+                                                            </span>
+                                                        )}
+                                                        <span
+                                                            className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${
+                                                                unit.status ===
+                                                                'vacant'
+                                                                    ? 'bg-muted text-muted-foreground'
+                                                                    : 'bg-primary/10 text-primary'
+                                                            }`}
+                                                        >
+                                                            {unit.status}
+                                                        </span>
+                                                    </button>
+                                                </li>
+                                            );
+                                        })
+                                    )}
+                                </ul>
+                            )}
+                        </div>
                         <InputError message={errors.unit_ids} />
                     </div>
                 )}

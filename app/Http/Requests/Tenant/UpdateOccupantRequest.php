@@ -24,6 +24,7 @@ class UpdateOccupantRequest extends FormRequest
             'email' => ['required', 'string', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:30'],
             'national_id' => ['nullable', 'string', 'max:30'],
+            'gender' => ['nullable', 'string', Rule::in(['male', 'female'])],
             'status' => ['required', 'string', Rule::in(['active', 'inactive', 'moved_out'])],
             'unit_ids' => ['required', 'array', 'min:1'],
             'unit_ids.*' => ['integer', Rule::exists('units', 'id')->where(fn ($query) => $query->where('property_id', $this->propertyId($property)))],
@@ -48,6 +49,10 @@ class UpdateOccupantRequest extends FormRequest
      */
     protected function prepareForValidation(): void
     {
+        if ($this->input('gender') === '') {
+            $this->merge(['gender' => null]);
+        }
+
         if ($this->has('lease.agreement_text')) {
             $this->merge([
                 'lease' => array_merge($this->input('lease', []), [

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Tenant\DestroyOccupantRequest;
 use App\Http\Requests\Tenant\MoveOutOccupantRequest;
 use App\Http\Requests\Tenant\OccupantAccessRequest;
+use App\Http\Requests\Tenant\OccupantIndexRequest;
 use App\Http\Requests\Tenant\StoreOccupantRequest;
 use App\Http\Requests\Tenant\UpdateOccupantRequest;
 use App\Models\Lease;
@@ -24,7 +25,7 @@ use Inertia\Response;
 
 class OccupantController extends Controller
 {
-    public function index(OccupantAccessRequest $request, Property $property): Response
+    public function index(OccupantIndexRequest $request, Property $property): Response
     {
         $this->authorizePropertyAccess($request, $property);
 
@@ -32,12 +33,16 @@ class OccupantController extends Controller
         $organization = $property->organization;
 
         $occupants = Occupant::query()
-            ->where('organization_id', $property->organization_id)
-            ->whereHas('units', fn ($query) => $query->where('units.property_id', $property->id))
+            ->tenantIndex((int) $property->organization_id, (int) $property->id, [
+                'search' => $request->string('search')->trim()->toString(),
+                'status' => $request->string('status')->toString(),
+                'sort' => $request->string('sort')->toString(),
+                'direction' => $request->string('direction')->toString(),
+            ])
             ->with(['person', 'units' => fn ($query) => $query->where('units.property_id', $property->id)])
-            ->orderByDesc('created_at')
-            ->get()
-            ->map(fn (Occupant $occupant) => OccupantPresenter::present($occupant, $property, $actor, $organization));
+            ->paginate(18)
+            ->withQueryString()
+            ->through(fn (Occupant $occupant) => OccupantPresenter::present($occupant, $property, $actor, $organization));
 
         return Inertia::render('organisation/occupants/index', [
             'organization' => TenancyContext::organization()->only('id', 'name', 'slug'),

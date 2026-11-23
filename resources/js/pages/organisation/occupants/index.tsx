@@ -1,18 +1,21 @@
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import { Form } from '@inertiajs/react';
+import type { ColumnDef, SortingState } from '@tanstack/react-table';
 import {
     FileText,
+    ListFilter,
     LogOut,
-    Mail,
+    Search,
     SquarePen,
-    Phone,
     Trash2,
     Users,
     Plus,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ActionIconButton } from '@/components/action-icon-button';
 import { BulkDeleteBar } from '@/components/bulk-delete-bar';
 import ConfirmDeleteOverlay from '@/components/confirm-delete-overlay';
+import { DataTable } from '@/components/data-table';
 import { LabelledIconButton } from '@/components/labelled-icon-button';
 import Heading from '@/components/heading';
 import OccupantFormFields from '@/components/occupant-form-fields';
@@ -21,14 +24,10 @@ import { ResponsiveOverlay } from '@/components/responsive-overlay';
 import type { TemplateToken } from '@/components/rich-text-editor';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from '@/components/ui/card';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Card } from '@/components/ui/card';
+import { Empty } from '@/components/ui/empty';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
     Dialog,
     DialogContent,
@@ -36,11 +35,14 @@ import {
     DialogFooter,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Pagination } from '@/components/ui/pagination';
 import { Spinner } from '@/components/ui/spinner';
 import { useOverlayParam } from '@/hooks/use-overlay-param';
 import {
     agreement as occupantAgreement,
     destroy as destroyOccupant,
+    index as indexRoute,
     moveOut as moveOutOccupant,
     show as showOccupant,
     store as storeOccupant,
@@ -99,9 +101,24 @@ type AgreementTemplateOption = {
     body_html: string;
 };
 
+type Paginator = {
+    data: Occupant[];
+    current_page: number;
+    last_page: number;
+    total: number;
+};
+
+const STATUSES = [
+    { value: 'active', label: 'Active' },
+    { value: 'moved_out', label: 'Moved out' },
+];
+
+/** Debounce so a fast typist issues one request, not one per keystroke. */
+const SEARCH_DEBOUNCE_MS = 350;
+
 type Props = {
     property: Property;
-    occupants: Occupant[];
+    occupants: Paginator;
     focusedOccupant: Occupant | null;
     units?: Unit[];
     templates?: {
@@ -127,23 +144,149 @@ export default function OccupantsIndex({
 
     const [bulkOpen, setBulkOpen] = useState(false);
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
+    // Live-validated by the form sheets below; the footer submit stays
+    // disabled until the visible fields pass. Reset on close so opening a
+    // different row never inherits the previous sheet's verdict.
+    const [createValid, setCreateValid] = useState(true);
+    const [editValid, setEditValid] = useState(true);
+
+    const { query, setOverlayParam } = useOverlayParam();
 
     // Selection never outlives the page: a refetch that drops a row also
     // drops its tick, so the bulk payload can only name visible rows.
     useEffect(() => {
         setSelectedIds((current) =>
             current.filter((id) =>
-                occupants.some((occupant) => occupant.id === id),
+                occupants.data.some((occupant) => occupant.id === id),
             ),
         );
-    }, [occupants]);
+    }, [occupants.data]);
 
-    const { query, setOverlayParam } = useOverlayParam();
+    const filters = {
+        search: query.get('search') ?? '',
+        status: query.get('status') ?? '',
+    };
+
+    const sort = {
+        column: query.get('sort') || null,
+        direction: query.get('direction') === 'asc' ? 'asc' : 'desc',
+    };
+
+    const isFiltered = filters.search !== '' || filters.status !== '';
+
+    const isFiltersOpen =
+        query.get('filters') !== null && query.get('filters') !== '';
+
+    const [isTableLoading, setIsTableLoading] = useState(false);
+
+    const only = ['occupants'];
+
+    function navigateTable(
+        params: Record<string, string | number>,
+        options?: { replace?: boolean },
+    ) {
+        router.get(indexRoute({ property: property.slug }).url, params, {
+            preserveState: true,
+            replace: options?.replace ?? false,
+            only,
+        });
+    }
+
+    function refetchTable(
+        params: Record<string, string | number>,
+        options?: { replace?: boolean },
+    ) {
+        setIsTableLoading(true);
+
+        router.get(indexRoute({ property: property.slug }).url, params, {
+            preserveState: true,
+            replace: options?.replace ?? false,
+            only,
+            onFinish: () => setIsTableLoading(false),
+        });
+    }
+
+    function applySorting(next: SortingState) {
+        const first = next[0];
+
+        refetchTable(
+            {
+                search: filters.search,
+                status: filters.status,
+                sort: first?.id ?? '',
+                direction: first
+                    ? first.desc
+                        ? 'desc'
+                        : 'asc'
+                    : sort.direction,
+            },
+            { replace: true },
+        );
+    }
+
+    function changePage(nextPage: number) {
+        refetchTable(
+            {
+                search: filters.search,
+                status: filters.status,
+                sort: sort.column ?? '',
+                direction: sort.direction,
+                page: nextPage,
+            },
+            { replace: true },
+        );
+    }
+
+    // Live search: local input for responsiveness, debounced server round-trip.
+    const [searchDraft, setSearchDraft] = useState(filters.search);
+    const firstRender = useRef(true);
+
+    useEffect(() => {
+        if (firstRender.current) {
+            firstRender.current = false;
+
+            return;
+        }
+
+        if (searchDraft === filters.search) {
+            return;
+        }
+
+        const timer = window.setTimeout(() => {
+            refetchTable(
+                {
+                    search: searchDraft,
+                    status: filters.status,
+                    sort: sort.column ?? '',
+                    direction: sort.direction,
+                },
+                { replace: true },
+            );
+        }, SEARCH_DEBOUNCE_MS);
+
+        return () => window.clearTimeout(timer);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [searchDraft]);
+
+    const [serverSearch, setServerSearch] = useState(filters.search);
+
+    if (filters.search !== serverSearch) {
+        setServerSearch(filters.search);
+        setSearchDraft(filters.search);
+    }
+
+    const sorting = useMemo<SortingState>(
+        () =>
+            sort.column
+                ? [{ id: sort.column, desc: sort.direction === 'desc' }]
+                : [],
+        [sort.column, sort.direction],
+    );
 
     // The delete modal builds its DELETE URL from the row, so the id travels in
     // the URL beside the mode rather than in component state.
     const deleteTargetId = Number(query.get('occupant'));
-    const deleteTarget = occupants.find(
+    const deleteTarget = occupants.data.find(
         (occupant) => occupant.id === deleteTargetId,
     );
     const isDeleteOpen = query.get('mode') === 'delete' && !!deleteTarget;
@@ -155,7 +298,7 @@ export default function OccupantsIndex({
     const isViewOpen = query.get('mode') === 'view' && viewedOccupantId > 0;
     const viewedOccupant = isViewOpen
         ? (focusedOccupant ??
-          occupants.find((occupant) => occupant.id === viewedOccupantId) ??
+          occupants.data.find((occupant) => occupant.id === viewedOccupantId) ??
           null)
         : null;
 
@@ -185,8 +328,9 @@ export default function OccupantsIndex({
         isMoveOutOpen &&
         (focusedOccupant?.id === viewedOccupantId
             ? focusedOccupant
-            : (occupants.find((occupant) => occupant.id === viewedOccupantId) ??
-              null));
+            : (occupants.data.find(
+                  (occupant) => occupant.id === viewedOccupantId,
+              ) ?? null));
 
     const formOptionsLoaded =
         units !== undefined &&
@@ -236,6 +380,8 @@ export default function OccupantsIndex({
     }
 
     function closeSheets() {
+        setCreateValid(true);
+        setEditValid(true);
         setOverlayParam('mode', null, {
             replace: true,
             only: ['occupants'],
@@ -250,6 +396,135 @@ export default function OccupantsIndex({
             keep: { occupant: '' },
         });
     }
+
+    const columns = useMemo<ColumnDef<Occupant, unknown>[]>(
+        () => [
+            {
+                id: 'name',
+                header: 'Occupant',
+                cell: ({ row }) => (
+                    <div className="min-w-0 truncate font-medium">
+                        {row.original.first_name} {row.original.last_name ?? ''}
+                    </div>
+                ),
+            },
+            {
+                id: 'contact',
+                header: 'Contact',
+                enableSorting: false,
+                cell: ({ row }) => (
+                    <div className="min-w-0">
+                        <div className="truncate text-xs">
+                            {row.original.email}
+                        </div>
+                        {row.original.phone && (
+                            <div className="truncate text-xs text-muted-foreground">
+                                {row.original.phone}
+                            </div>
+                        )}
+                    </div>
+                ),
+            },
+            {
+                id: 'units',
+                header: 'Units',
+                enableSorting: false,
+                cell: ({ row }) =>
+                    row.original.units.length === 0 ? (
+                        <span className="text-xs text-muted-foreground">
+                            No units assigned
+                        </span>
+                    ) : (
+                        <div className="flex flex-wrap gap-1">
+                            {row.original.units.map((unit) => (
+                                <Badge
+                                    key={unit.id}
+                                    variant="outline"
+                                    className="border-transparent bg-brand-accent text-on-accent hover:bg-brand-accent"
+                                >
+                                    {unit.name}
+                                </Badge>
+                            ))}
+                        </div>
+                    ),
+            },
+            {
+                id: 'status',
+                accessorKey: 'status',
+                header: 'Status',
+                cell: ({ row }) => (
+                    <Badge
+                        variant={
+                            row.original.status === 'active'
+                                ? 'success'
+                                : row.original.status === 'moved_out'
+                                  ? 'danger'
+                                  : 'warning'
+                        }
+                        className="text-xs capitalize"
+                    >
+                        {row.original.status?.replace('_', ' ') ?? '—'}
+                    </Badge>
+                ),
+            },
+            {
+                id: 'actions',
+                header: 'Actions',
+                enableSorting: false,
+                meta: { align: 'right' },
+                cell: ({ row }) => {
+                    const occupant = row.original;
+                    const name =
+                        `${occupant.first_name} ${occupant.last_name ?? ''}`.trim();
+
+                    return (
+                        <div
+                            className="flex justify-end gap-1"
+                            onClick={(event) => event.stopPropagation()}
+                        >
+                            {canEdit && occupant.status !== 'moved_out' && (
+                                <ActionIconButton
+                                    icon={<LogOut />}
+                                    label={`Move out ${name}`}
+                                    color="teal"
+                                    onClick={() => openMoveOut(occupant)}
+                                />
+                            )}
+                            {canEdit && (
+                                <ActionIconButton
+                                    icon={<SquarePen />}
+                                    label={`Edit ${name}`}
+                                    color="edit"
+                                    onClick={() => openEdit(occupant)}
+                                />
+                            )}
+                            {canDelete && (
+                                <ActionIconButton
+                                    icon={<Trash2 />}
+                                    label={`Delete ${name}`}
+                                    color="danger"
+                                    disabledReason={
+                                        !occupant.deletable
+                                            ? 'Only its creator or the owner can delete this occupant.'
+                                            : null
+                                    }
+                                    onClick={() =>
+                                        setOverlayParam('mode', 'delete', {
+                                            only: ['occupants'],
+                                            keep: {
+                                                occupant: String(occupant.id),
+                                            },
+                                        })
+                                    }
+                                />
+                            )}
+                        </div>
+                    );
+                },
+            },
+        ],
+        [canEdit, canDelete],
+    );
 
     const money = (
         currency: string | null | undefined,
@@ -281,217 +556,184 @@ export default function OccupantsIndex({
                     )}
                 </div>
 
-                <BulkDeleteBar
-                    pageIds={occupants.map((occupant) => occupant.id)}
-                    selectedIds={selectedIds}
-                    onSelectionChange={setSelectedIds}
-                    onDelete={() => setBulkOpen(true)}
-                    onClear={() => setSelectedIds([])}
-                    canDelete={canDelete}
-                    showSelectAll
-                    noun="occupants"
+                <Card className="gap-0 py-0">
+                    <div className="flex flex-wrap items-center gap-2 border-b border-border-strong p-4">
+                        <div className="relative min-w-56 flex-1">
+                            <Search className="pointer-events-none absolute top-2.5 left-2.5 size-4 text-muted-foreground" />
+                            <Input
+                                value={searchDraft}
+                                onChange={(event) =>
+                                    setSearchDraft(event.target.value)
+                                }
+                                placeholder="Search name, email or unit..."
+                                aria-label="Search occupants"
+                                className="border-border-strong bg-background pr-3 pl-9"
+                            />
+                        </div>
+                        {/* A lone utility button stays visible at every width —
+                         * the overflow drawer only earns its place once a row
+                         * of icons would wrap. */}
+                        <ActionIconButton
+                            icon={<ListFilter />}
+                            label="Filters"
+                            color="teal"
+                            className="ml-auto coarse:min-h-9 coarse:min-w-9"
+                            onClick={() =>
+                                isFiltersOpen
+                                    ? setOverlayParam('filters', '')
+                                    : setOverlayParam('filters', '1')
+                            }
+                        />
+                    </div>
+
+                    <BulkDeleteBar
+                        pageIds={occupants.data.map((occupant) => occupant.id)}
+                        selectedIds={selectedIds}
+                        onSelectionChange={setSelectedIds}
+                        onDelete={() => setBulkOpen(true)}
+                        onClear={() => setSelectedIds([])}
+                        canDelete={canDelete}
+                        noun="occupants"
+                    />
+
+                    <DataTable
+                        columns={columns}
+                        data={occupants.data}
+                        getRowId={(row) => String(row.id)}
+                        sorting={sorting}
+                        onSortingChange={applySorting}
+                        loading={isTableLoading}
+                        selectable={canDelete}
+                        selectedIds={selectedIds.map(String)}
+                        onSelectionChange={(ids) =>
+                            setSelectedIds(ids.map(Number))
+                        }
+                        selectionLabel={(occupant) =>
+                            `Select occupant ${occupant.first_name} ${occupant.last_name ?? ''}`.trim()
+                        }
+                        onRowClick={(occupant) =>
+                            router.get(
+                                showOccupant({
+                                    property: property.slug,
+                                    occupant: occupant.id,
+                                }).url,
+                            )
+                        }
+                        empty={
+                            isFiltered ? (
+                                'No occupants match your filters.'
+                            ) : (
+                                <Empty
+                                    icon={
+                                        <Users className="mx-auto size-10 text-muted-foreground" />
+                                    }
+                                    title="No occupants yet"
+                                    description="Add your first occupant to assign them to a unit."
+                                    action={
+                                        canCreate ? (
+                                            <Button
+                                                type="button"
+                                                className="mt-6"
+                                                onClick={openCreate}
+                                            >
+                                                Add your first occupant
+                                            </Button>
+                                        ) : undefined
+                                    }
+                                />
+                            )
+                        }
+                    />
+                </Card>
+
+                <Pagination
+                    currentPage={occupants.current_page}
+                    lastPage={occupants.last_page}
+                    total={occupants.total}
+                    label="occupants"
+                    onChange={changePage}
                 />
 
-                {occupants.length === 0 ? (
-                    <Card>
-                        <CardContent className="py-16 text-center">
-                            <Users className="mx-auto size-10 text-muted-foreground" />
-                            <p className="mt-4 font-medium">No occupants yet</p>
-                            <p className="mt-1 text-sm text-muted-foreground">
-                                Add your first occupant to assign them to a
-                                unit.
-                            </p>
-                            {canCreate && (
-                                <Button
-                                    type="button"
-                                    className="mt-6"
-                                    onClick={openCreate}
-                                >
-                                    Add your first occupant
-                                </Button>
-                            )}
-                        </CardContent>
-                    </Card>
-                ) : (
-                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                        {occupants.map((occupant) => (
-                            <Card
-                                key={occupant.id}
-                                className={
-                                    selectedIds.includes(occupant.id)
-                                        ? 'bg-muted/60'
-                                        : undefined
+                <ResponsiveOverlay
+                    open={isFiltersOpen}
+                    onOpenChange={(open) => {
+                        if (!open) {
+                            setOverlayParam('filters', '');
+                        }
+                    }}
+                    title="Filters"
+                    description="Narrow the list of occupants."
+                    footer={
+                        <OverlayFooter
+                            onCancel={() => setOverlayParam('filters', '')}
+                            cancelLabel="Close"
+                            actions={[
+                                {
+                                    label: 'Clear all',
+                                    onClick: () => {
+                                        setSearchDraft('');
+                                        refetchTable(
+                                            {
+                                                search: '',
+                                                status: '',
+                                                sort: sort.column ?? '',
+                                                direction: sort.direction,
+                                            },
+                                            { replace: true },
+                                        );
+                                        setOverlayParam('filters', '');
+                                    },
+                                },
+                            ]}
+                        />
+                    }
+                >
+                    <div className="grid gap-4 py-2">
+                        <fieldset className="space-y-3">
+                            <legend className="text-sm font-medium">
+                                Status
+                            </legend>
+                            <RadioGroup
+                                value={filters.status || 'all'}
+                                onValueChange={(value) =>
+                                    refetchTable(
+                                        {
+                                            search: filters.search,
+                                            status:
+                                                value === 'all' ? '' : value,
+                                            sort: sort.column ?? '',
+                                            direction: sort.direction,
+                                            filters: '1',
+                                        },
+                                        { replace: true },
+                                    )
                                 }
+                                className="space-y-3"
                             >
-                                <CardHeader>
-                                    <div className="flex items-start justify-between gap-4">
-                                        {canDelete && (
-                                            <Checkbox
-                                                checked={selectedIds.includes(
-                                                    occupant.id,
-                                                )}
-                                                onCheckedChange={() =>
-                                                    setSelectedIds((current) =>
-                                                        current.includes(
-                                                            occupant.id,
-                                                        )
-                                                            ? current.filter(
-                                                                  (id) =>
-                                                                      id !==
-                                                                      occupant.id,
-                                                              )
-                                                            : [
-                                                                  ...current,
-                                                                  occupant.id,
-                                                              ],
-                                                    )
-                                                }
-                                                aria-label={`Select occupant ${occupant.first_name} ${occupant.last_name ?? ''}`}
-                                            />
-                                        )}
-                                        <div className="min-w-0">
-                                            <CardTitle className="truncate">
-                                                <Link
-                                                    href={showOccupant({
-                                                        property: property.slug,
-                                                        occupant: occupant.id,
-                                                    })}
-                                                    className="hover:underline"
-                                                >
-                                                    {occupant.first_name}{' '}
-                                                    {occupant.last_name}
-                                                </Link>
-                                            </CardTitle>
-                                            <CardDescription className="mt-1 flex flex-col gap-1">
-                                                <span className="flex items-center gap-1.5 truncate">
-                                                    <Mail className="size-3.5 shrink-0" />
-                                                    {occupant.email}
-                                                </span>
-                                                {occupant.phone && (
-                                                    <span className="flex items-center gap-1.5">
-                                                        <Phone className="size-3.5 shrink-0" />
-                                                        {occupant.phone}
-                                                    </span>
-                                                )}
-                                            </CardDescription>
-                                        </div>
-                                        <Badge
-                                            variant={
-                                                occupant.status === 'active'
-                                                    ? 'default'
-                                                    : 'secondary'
-                                            }
+                                {[
+                                    { value: 'all', label: 'Any status' },
+                                    ...STATUSES,
+                                ].map((option) => (
+                                    <div
+                                        key={option.value}
+                                        className="flex items-center gap-2"
+                                    >
+                                        <RadioGroupItem
+                                            id={`occupant-status-${option.value}`}
+                                            value={option.value}
+                                        />
+                                        <Label
+                                            htmlFor={`occupant-status-${option.value}`}
+                                            className="cursor-pointer"
                                         >
-                                            {occupant.status}
-                                        </Badge>
+                                            {option.label}
+                                        </Label>
                                     </div>
-                                </CardHeader>
-                                <CardContent className="space-y-3">
-                                    {occupant.national_id && (
-                                        <div>
-                                            <p className="text-xs tracking-wide text-muted-foreground uppercase">
-                                                National ID
-                                            </p>
-                                            <p className="text-sm font-medium">
-                                                {occupant.national_id}
-                                            </p>
-                                        </div>
-                                    )}
-                                    <div>
-                                        <p className="text-xs tracking-wide text-muted-foreground uppercase">
-                                            Units
-                                        </p>
-                                        {occupant.units.length === 0 ? (
-                                            <p className="text-sm text-muted-foreground">
-                                                No units assigned
-                                            </p>
-                                        ) : (
-                                            <div className="mt-1 flex flex-wrap gap-1.5">
-                                                {occupant.units.map((unit) => (
-                                                    <Badge
-                                                        key={unit.id}
-                                                        variant="outline"
-                                                    >
-                                                        {unit.name}
-                                                    </Badge>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-                                    {(canEdit || canDelete) && (
-                                        <div className="flex gap-2 pt-1">
-                                            {canEdit && (
-                                                <Button
-                                                    type="button"
-                                                    variant="outline"
-                                                    size="sm"
-                                                    onClick={() =>
-                                                        openEdit(occupant)
-                                                    }
-                                                >
-                                                    Edit
-                                                </Button>
-                                            )}
-                                            {canEdit &&
-                                                occupant.status !==
-                                                    'moved_out' && (
-                                                    <Button
-                                                        type="button"
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        onClick={() =>
-                                                            openMoveOut(
-                                                                occupant,
-                                                            )
-                                                        }
-                                                    >
-                                                        <LogOut className="size-4" />
-                                                        Move out
-                                                    </Button>
-                                                )}
-                                            {canDelete && (
-                                                <Button
-                                                    type="button"
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    className="text-status-danger"
-                                                    disabled={
-                                                        !occupant.deletable
-                                                    }
-                                                    title={
-                                                        !occupant.deletable
-                                                            ? 'Only its creator or the owner can delete this occupant.'
-                                                            : undefined
-                                                    }
-                                                    onClick={() =>
-                                                        setOverlayParam(
-                                                            'mode',
-                                                            'delete',
-                                                            {
-                                                                only: [
-                                                                    'occupants',
-                                                                ],
-                                                                keep: {
-                                                                    occupant:
-                                                                        String(
-                                                                            occupant.id,
-                                                                        ),
-                                                                },
-                                                            },
-                                                        )
-                                                    }
-                                                >
-                                                    <Trash2 className="size-4" />
-                                                    Delete
-                                                </Button>
-                                            )}
-                                        </div>
-                                    )}
-                                </CardContent>
-                            </Card>
-                        ))}
+                                ))}
+                            </RadioGroup>
+                        </fieldset>
                     </div>
-                )}
+                </ResponsiveOverlay>
             </div>
 
             {viewedOccupant && (
@@ -504,61 +746,52 @@ export default function OccupantsIndex({
                     }}
                     title={`${viewedOccupant.first_name} ${viewedOccupant.last_name ?? ''}`.trim()}
                     description={`Occupant of ${property.name}.`}
-                    footer={
-                        <OverlayFooter
-                            onCancel={closeView}
-                            actions={[
-                                ...(viewedOccupant.lease
-                                    ? [
-                                          {
-                                              label: 'Agreement',
-                                              tone: 'secondary' as const,
-                                              icon: (
-                                                  <FileText className="size-4" />
-                                              ),
-                                              onClick: () =>
-                                                  router.visit(
-                                                      occupantAgreement({
-                                                          property:
-                                                              property.slug,
-                                                          occupant:
-                                                              viewedOccupant.id,
-                                                      }).url,
-                                                  ),
-                                          },
-                                      ]
-                                    : []),
-                                ...(canEdit
-                                    ? [
-                                          {
-                                              label: 'Edit',
-                                              icon: (
-                                                  <SquarePen className="size-4" />
-                                              ),
-                                              onClick: () => {
-                                                  ensureFormOptions();
-                                                  setOverlayParam(
-                                                      'mode',
-                                                      'edit',
-                                                      {
-                                                          only: [
-                                                              'occupants',
-                                                              'focusedOccupant',
-                                                          ],
-                                                          keep: {
-                                                              occupant: String(
-                                                                  viewedOccupant.id,
-                                                              ),
-                                                          },
-                                                      },
-                                                  );
-                                              },
-                                          },
-                                      ]
-                                    : []),
-                            ]}
-                        />
+                    actions={
+                        <>
+                            {viewedOccupant.lease && (
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    onClick={() =>
+                                        router.visit(
+                                            occupantAgreement({
+                                                property: property.slug,
+                                                occupant: viewedOccupant.id,
+                                            }).url,
+                                        )
+                                    }
+                                >
+                                    <FileText className="size-4" />
+                                    Agreement
+                                </Button>
+                            )}
+                            {canEdit && (
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    className="bg-action-edit-fill text-white hover:bg-action-edit-fill hover:brightness-95"
+                                    onClick={() => {
+                                        ensureFormOptions();
+                                        setOverlayParam('mode', 'edit', {
+                                            only: [
+                                                'occupants',
+                                                'focusedOccupant',
+                                            ],
+                                            keep: {
+                                                occupant: String(
+                                                    viewedOccupant.id,
+                                                ),
+                                            },
+                                        });
+                                    }}
+                                >
+                                    <SquarePen className="size-4" />
+                                    Edit
+                                </Button>
+                            )}
+                        </>
                     }
+                    footer={<OverlayFooter onCancel={closeView} />}
                 >
                     <dl className="grid gap-x-6 gap-y-3 py-2 text-sm sm:grid-cols-2">
                         {(
@@ -594,7 +827,7 @@ export default function OccupantsIndex({
                                 No units assigned.
                             </p>
                         ) : (
-                            <ul className="divide-y divide-border rounded-lg border border-input">
+                            <ul className="divide-y divide-white/20 rounded-lg bg-brand-accent text-on-accent">
                                 {viewedOccupant.units.map((unit) => (
                                     <li
                                         key={unit.id}
@@ -603,14 +836,15 @@ export default function OccupantsIndex({
                                         <span className="font-medium">
                                             {unit.name}
                                         </span>
-                                        <span className="text-muted-foreground">
+                                        <span className="text-on-accent/70">
                                             {unit.type ?? '—'}
                                         </span>
                                         <Badge
-                                            variant={
+                                            variant="outline"
+                                            className={
                                                 unit.status === 'occupied'
-                                                    ? 'default'
-                                                    : 'secondary'
+                                                    ? 'border-transparent bg-white text-brand-accent hover:bg-white'
+                                                    : 'border-white/30 text-on-accent hover:bg-transparent'
                                             }
                                         >
                                             {unit.status}
@@ -771,6 +1005,7 @@ export default function OccupantsIndex({
                                     label: 'Add occupant',
                                     form: 'occupant-create-form',
                                     type: 'submit',
+                                    disabled: !createValid,
                                 },
                             ]}
                         />
@@ -798,6 +1033,7 @@ export default function OccupantsIndex({
                                     errors={errors}
                                     idPrefix="create"
                                     propertyName={property.name}
+                                    onValidityChange={setCreateValid}
                                     defaults={
                                         preselectedUnit !== null
                                             ? { unit_ids: [preselectedUnit] }
@@ -828,6 +1064,7 @@ export default function OccupantsIndex({
                                     label: 'Save changes',
                                     form: 'occupant-edit-form',
                                     type: 'submit',
+                                    disabled: !editValid,
                                 },
                             ]}
                         />
@@ -859,6 +1096,7 @@ export default function OccupantsIndex({
                                     errors={errors}
                                     idPrefix="edit"
                                     propertyName={property.name}
+                                    onValidityChange={setEditValid}
                                     defaults={{
                                         first_name: focusedOccupant.first_name,
                                         last_name: focusedOccupant.last_name,
@@ -866,6 +1104,7 @@ export default function OccupantsIndex({
                                         phone: focusedOccupant.phone,
                                         national_id:
                                             focusedOccupant.national_id,
+                                        gender: focusedOccupant.gender ?? null,
                                         status: focusedOccupant.status,
                                         unit_ids: focusedOccupant.units.map(
                                             (unit) => unit.id,

@@ -23,6 +23,7 @@ class UpdateOccupant extends Service
                 'email' => $data['email'],
                 'phone' => $data['phone'] ?? null,
                 'national_id' => $data['national_id'] ?? null,
+                'gender' => $data['gender'] ?? null,
             ])->save();
 
             $this->findOrCreateUser($data);
