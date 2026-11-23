@@ -6,6 +6,7 @@ import {
     Download,
     ListFilter,
     LogIn,
+    MoreHorizontal,
     SquarePen,
     Plus,
     Search,
@@ -27,6 +28,7 @@ import { OverlayFooter } from '@/components/overlay-footer';
 import { ResponsiveOverlay } from '@/components/responsive-overlay';
 import { StatusIcon, StatusPowerToggle } from '@/components/status-cell';
 import type { StatusTone } from '@/components/status-cell';
+import { TableOverflowMenu } from '@/components/table-overflow-menu';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -106,6 +108,7 @@ export default function OrganizationsIndex({
     const [statusTarget, setStatusTarget] = useState<OrganizationRow | null>(
         null,
     );
+    const [isMoreOpen, setIsMoreOpen] = useState(false);
     const page = usePage();
     const permissions = (page.props.auth?.permissions ?? []) as string[];
     const canCreate = permissions.includes('organization.create');
@@ -598,6 +601,7 @@ export default function OrganizationsIndex({
                  */}
                 <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0 flex-1">
+                        className="min-w-0 flex-1"
                         <Heading level="h1" title="Organization management" />
                         <p className="mt-1 text-sm text-muted-foreground">
                             Create and manage organizations, their plans and
@@ -611,7 +615,7 @@ export default function OrganizationsIndex({
                             tooltip="Create organisation"
                             color="primary"
                             onClick={() => openCreateSheet()}
-                            className="max-w-20 sm:max-w-24"
+                            className="ml-auto max-w-20 sm:max-w-24"
                         />
                     )}
                 </div>
@@ -641,34 +645,50 @@ export default function OrganizationsIndex({
                                 className="border-border-strong bg-background pr-3 pl-9"
                             />
                         </div>
+                        <div className="ml-auto hidden items-center gap-2 sm:flex">
+                            <ActionIconButton
+                                icon={<ListFilter />}
+                                label="Filters"
+                                color="teal"
+                                className="coarse:min-h-9 coarse:min-w-9"
+                                onClick={() =>
+                                    isFiltersOpen
+                                        ? setOverlayParam('filters', null, {
+                                              replace: true,
+                                          })
+                                        : setOverlayParam('filters', '1')
+                                }
+                            />
+                            {canImport && (
+                                <ActionIconButton
+                                    icon={<Upload />}
+                                    label="Import from CSV"
+                                    color="teal"
+                                    className="coarse:min-h-9 coarse:min-w-9"
+                                    onClick={() =>
+                                        setOverlayParam('import', '1')
+                                    }
+                                />
+                            )}
+                            {canExport && (
+                                <ActionIconButton
+                                    icon={<Download />}
+                                    label="Export"
+                                    color="teal"
+                                    className="coarse:min-h-9 coarse:min-w-9"
+                                    onClick={() =>
+                                        setOverlayParam('export', '1')
+                                    }
+                                />
+                            )}
+                        </div>
                         <ActionIconButton
-                            icon={<ListFilter />}
-                            label="Filters"
+                            icon={<MoreHorizontal />}
+                            label="More actions"
                             color="teal"
-                            onClick={() =>
-                                isFiltersOpen
-                                    ? setOverlayParam('filters', null, {
-                                          replace: true,
-                                      })
-                                    : setOverlayParam('filters', '1')
-                            }
+                            className="ml-auto sm:hidden coarse:min-h-9 coarse:min-w-9"
+                            onClick={() => setIsMoreOpen(true)}
                         />
-                        {canImport && (
-                            <ActionIconButton
-                                icon={<Upload />}
-                                label="Import from CSV"
-                                color="teal"
-                                onClick={() => setOverlayParam('import', '1')}
-                            />
-                        )}
-                        {canExport && (
-                            <ActionIconButton
-                                icon={<Download />}
-                                label="Export"
-                                color="teal"
-                                onClick={() => setOverlayParam('export', '1')}
-                            />
-                        )}
                     </div>
                     <BulkDeleteBar
                         pageIds={organizations.data.map(
@@ -1042,6 +1062,38 @@ export default function OrganizationsIndex({
                     )}
                 </Form>
             </ResponsiveOverlay>
+
+            <TableOverflowMenu
+                open={isMoreOpen}
+                onOpenChange={setIsMoreOpen}
+                actions={[
+                    {
+                        icon: <ListFilter />,
+                        label: 'Filters',
+                        onSelect: () => setOverlayParam('filters', '1'),
+                    },
+                    ...(canImport
+                        ? [
+                              {
+                                  icon: <Upload />,
+                                  label: 'Import from CSV',
+                                  onSelect: () =>
+                                      setOverlayParam('import', '1'),
+                              },
+                          ]
+                        : []),
+                    ...(canExport
+                        ? [
+                              {
+                                  icon: <Download />,
+                                  label: 'Export',
+                                  onSelect: () =>
+                                      setOverlayParam('export', '1'),
+                              },
+                          ]
+                        : []),
+                ]}
+            />
 
             <CsvExportSheet
                 open={isExportOpen}

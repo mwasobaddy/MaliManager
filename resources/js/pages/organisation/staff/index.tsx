@@ -175,6 +175,7 @@ export default function StaffIndex({
             <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-4">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                     <Heading
+                        className="min-w-0 flex-1"
                         level="h1"
                         variant="small"
                         title={`${organization.name} staff`}
@@ -187,7 +188,7 @@ export default function StaffIndex({
                             tooltip="Invite a staff member to this organization"
                             color="primary"
                             onClick={openCreate}
-                            className="max-w-20 sm:max-w-24"
+                            className="ml-auto max-w-20 sm:max-w-24"
                         />
                     )}
                 </div>

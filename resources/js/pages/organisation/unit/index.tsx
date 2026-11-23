@@ -6,6 +6,7 @@ import {
     Download,
     ImageOff,
     ListFilter,
+    MoreHorizontal,
     SquarePen,
     Plus,
     Search,
@@ -24,6 +25,7 @@ import type { PhotoLibraryUnit } from '@/components/photo-picker';
 import { SearchableSelect } from '@/components/searchable-select';
 import { DataTable } from '@/components/data-table';
 import Heading from '@/components/heading';
+import { TableOverflowMenu } from '@/components/table-overflow-menu';
 import { OverlayFooter } from '@/components/overlay-footer';
 import { ResponsiveOverlay } from '@/components/responsive-overlay';
 import { Badge } from '@/components/ui/badge';
@@ -131,6 +133,7 @@ export default function UnitsIndex({
     const [editTarget, setEditTarget] = useState<UnitRow | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<UnitRow | null>(null);
     const [bulkOpen, setBulkOpen] = useState(false);
+    const [isMoreOpen, setIsMoreOpen] = useState(false);
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [editPropertyId, setEditPropertyId] = useState<string | null>(null);
     const [createNameError, setCreateNameError] = useState<string | null>(null);
@@ -516,6 +519,7 @@ export default function UnitsIndex({
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                     <Heading
+                        className="min-w-0 flex-1"
                         level="h1"
                         title="Units"
                         description="Every rentable unit across your properties, with the photos attached to each."
@@ -527,7 +531,7 @@ export default function UnitsIndex({
                             tooltip="Add a unit to one of your properties"
                             color="primary"
                             onClick={openCreate}
-                            className="max-w-20 sm:max-w-24"
+                            className="ml-auto max-w-20 sm:max-w-24"
                         />
                     )}
                 </div>
@@ -546,32 +550,48 @@ export default function UnitsIndex({
                                 className="border-border-strong bg-background pr-3 pl-9"
                             />
                         </div>
+                        <div className="ml-auto hidden items-center gap-2 sm:flex">
+                            <ActionIconButton
+                                icon={<ListFilter />}
+                                label="Filters"
+                                color="teal"
+                                className="coarse:min-h-9 coarse:min-w-9"
+                                onClick={() =>
+                                    isFiltersOpen
+                                        ? setOverlayParam('filters', '')
+                                        : setOverlayParam('filters', '1')
+                                }
+                            />
+                            {canImport && (
+                                <ActionIconButton
+                                    icon={<Upload />}
+                                    label="Import from CSV"
+                                    color="teal"
+                                    className="coarse:min-h-9 coarse:min-w-9"
+                                    onClick={() =>
+                                        setOverlayParam('import', '1')
+                                    }
+                                />
+                            )}
+                            {canExport && (
+                                <ActionIconButton
+                                    icon={<Download />}
+                                    label="Export"
+                                    color="teal"
+                                    className="coarse:min-h-9 coarse:min-w-9"
+                                    onClick={() =>
+                                        setOverlayParam('export', '1')
+                                    }
+                                />
+                            )}
+                        </div>
                         <ActionIconButton
-                            icon={<ListFilter />}
-                            label="Filters"
+                            icon={<MoreHorizontal />}
+                            label="More actions"
                             color="teal"
-                            onClick={() =>
-                                isFiltersOpen
-                                    ? setOverlayParam('filters', '')
-                                    : setOverlayParam('filters', '1')
-                            }
+                            className="ml-auto sm:hidden coarse:min-h-9 coarse:min-w-9"
+                            onClick={() => setIsMoreOpen(true)}
                         />
-                        {canImport && (
-                            <ActionIconButton
-                                icon={<Upload />}
-                                label="Import from CSV"
-                                color="teal"
-                                onClick={() => setOverlayParam('import', '1')}
-                            />
-                        )}
-                        {canExport && (
-                            <ActionIconButton
-                                icon={<Download />}
-                                label="Export"
-                                color="teal"
-                                onClick={() => setOverlayParam('export', '1')}
-                            />
-                        )}
                     </div>
 
                     <BulkDeleteBar
@@ -1241,6 +1261,38 @@ export default function UnitsIndex({
                     }}
                 />
             )}
+
+            <TableOverflowMenu
+                open={isMoreOpen}
+                onOpenChange={setIsMoreOpen}
+                actions={[
+                    {
+                        icon: <ListFilter />,
+                        label: 'Filters',
+                        onSelect: () => setOverlayParam('filters', '1'),
+                    },
+                    ...(canImport
+                        ? [
+                              {
+                                  icon: <Upload />,
+                                  label: 'Import from CSV',
+                                  onSelect: () =>
+                                      setOverlayParam('import', '1'),
+                              },
+                          ]
+                        : []),
+                    ...(canExport
+                        ? [
+                              {
+                                  icon: <Download />,
+                                  label: 'Export',
+                                  onSelect: () =>
+                                      setOverlayParam('export', '1'),
+                              },
+                          ]
+                        : []),
+                ]}
+            />
 
             <CsvExportSheet
                 open={isExportOpen}

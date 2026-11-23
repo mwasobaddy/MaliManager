@@ -116,7 +116,7 @@ export function LabelledIconButton({
             </span>
             <span
                 className={cn(
-                    'line-clamp-2 text-center',
+                    'text-center max-sm:hidden sm:line-clamp-2',
                     labelToneVariants({ color }),
                 )}
             >
@@ -126,13 +126,18 @@ export function LabelledIconButton({
     );
 
     const classes = cn(
-        'group inline-flex w-full max-w-24 flex-col items-center justify-center gap-1.5 rounded-lg px-1 py-1.5 transition-colors focus-visible:ring-[3px] focus-visible:ring-ring focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50',
+        'group inline-flex w-full max-w-24 flex-col items-center justify-center gap-1.5 rounded-lg px-1 py-1.5 transition-colors focus-visible:ring-[3px] focus-visible:ring-ring focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 max-sm:w-auto',
         className,
     );
 
     const trigger =
         href && !isDisabled ? (
-            <Link href={href} className={classes} data-test={dataTest}>
+            <Link
+                href={href}
+                className={classes}
+                aria-label={tooltip ?? label}
+                data-test={dataTest}
+            >
                 {content}
             </Link>
         ) : (
@@ -141,6 +146,7 @@ export function LabelledIconButton({
                 onClick={onClick}
                 disabled={isDisabled}
                 className={classes}
+                aria-label={tooltip ?? label}
                 data-test={dataTest}
             >
                 {content}

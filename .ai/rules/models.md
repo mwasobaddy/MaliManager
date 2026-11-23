@@ -16,3 +16,9 @@ The organization_user table has an id column, so App\Models\OrganizationUser set
 ## Never use wherePivot inside whereHas
 
 `wherePivot()` inside a `whereHas('organizations', ...)` callback silently matches nothing in this codebase (verified against organization_user with is_owner = 1). Constrain the joined pivot table directly instead: `->where('organization_user.is_owner', true)`.
+
+## Roles trash with pivots kept; leases stay out of trash
+
+Custom roles soft-delete (`App\Models\Role` uses SoftDeletes, `roles.deleted_at` lives in the permission-tables migration): `DeleteRole::handle` trashes with users and permissions attached so restore is whole, and only `DeleteRole::force` (trash permanent-delete/empty) detaches, reassigns holders to `searcher`, and hard-deletes. Flush spatie's permission cache on every transition or effective access lags the trash state. Built-ins are protected from all of it.
+
+Leases are deliberately NOT trashable: `payments.lease_id` and `deposit_refunds.lease_id` are `cascadeOnDelete`, so a permanent delete would wipe financial history, and soft-deleted leases would need excluding from every arrears and reporting query. Ended status (`status=ended`) is the lease archive — it keeps balances and never goes overdue.

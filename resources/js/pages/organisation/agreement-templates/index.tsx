@@ -51,6 +51,7 @@ export default function AgreementTemplatesIndex({
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                     <Heading
+                        className="min-w-0 flex-1"
                         level="h1"
                         title="Agreement templates"
                         description="Reusable lease agreements with {{placeholders}} that auto-fill from lease data."
@@ -61,7 +62,7 @@ export default function AgreementTemplatesIndex({
                         tooltip="Create a reusable lease agreement"
                         color="primary"
                         href={createHref}
-                        className="max-w-20 sm:max-w-24"
+                        className="ml-auto max-w-20 sm:max-w-24"
                     />
                 </div>
 

@@ -108,6 +108,7 @@ export default function ExpensesIndex({
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                     <Heading
+                        className="min-w-0 flex-1"
                         level="h1"
                         title="Expenses"
                         description="Maintenance, renovation and other costs across your assets."
@@ -142,7 +143,7 @@ export default function ExpensesIndex({
                             color="primary"
                             href={create().url}
                             data-test="new-expense-button"
-                            className="max-w-20 sm:max-w-24"
+                            className="ml-auto max-w-20 sm:max-w-24"
                         />
                     </div>
                 </div>

@@ -4,6 +4,7 @@ import type { ColumnDef, SortingState } from '@tanstack/react-table';
 import {
     Download,
     ListFilter,
+    MoreHorizontal,
     SquarePen,
     Plus,
     Receipt,
@@ -19,6 +20,7 @@ import { CsvImportSheet, downloadCsv } from '@/components/csv-actions';
 import { CsvExportSheet } from '@/components/csv-export-sheet';
 import { DataTable } from '@/components/data-table';
 import Heading from '@/components/heading';
+import { TableOverflowMenu } from '@/components/table-overflow-menu';
 import { LabelledIconButton } from '@/components/labelled-icon-button';
 import { OverlayFooter } from '@/components/overlay-footer';
 import { ResponsiveOverlay } from '@/components/responsive-overlay';
@@ -95,6 +97,7 @@ export default function PlatformExpensesIndex({
 
     const [isTableLoading, setIsTableLoading] = useState(false);
     const [bulkOpen, setBulkOpen] = useState(false);
+    const [isMoreOpen, setIsMoreOpen] = useState(false);
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
 
     // Read query params off Inertia's page.url, NOT window.location. Inertia
@@ -485,6 +488,7 @@ export default function PlatformExpensesIndex({
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
                 <div className="flex items-center justify-between gap-3">
                     <Heading
+                        className="min-w-0 flex-1"
                         level="h1"
                         title="Platform expenses"
                         description="Operating costs tracked separately from tenant asset expenses."
@@ -496,7 +500,7 @@ export default function PlatformExpensesIndex({
                             tooltip="Record a platform expense"
                             color="primary"
                             onClick={() => setOverlayParam('create', '1')}
-                            className="max-w-20 sm:max-w-24"
+                            className="ml-auto max-w-20 sm:max-w-24"
                         />
                     )}
                 </div>
@@ -529,34 +533,50 @@ export default function PlatformExpensesIndex({
                                 className="border-border-strong bg-background pr-3 pl-9"
                             />
                         </div>
+                        <div className="ml-auto hidden items-center gap-2 sm:flex">
+                            <ActionIconButton
+                                icon={<ListFilter />}
+                                label="Filters"
+                                color="teal"
+                                className="coarse:min-h-9 coarse:min-w-9"
+                                onClick={() =>
+                                    isFiltersOpen
+                                        ? setOverlayParam('filters', null, {
+                                              replace: true,
+                                          })
+                                        : setOverlayParam('filters', '1')
+                                }
+                            />
+                            {canImport && (
+                                <ActionIconButton
+                                    icon={<Upload />}
+                                    label="Import from CSV"
+                                    color="teal"
+                                    className="coarse:min-h-9 coarse:min-w-9"
+                                    onClick={() =>
+                                        setOverlayParam('import', '1')
+                                    }
+                                />
+                            )}
+                            {canExport && (
+                                <ActionIconButton
+                                    icon={<Download />}
+                                    label="Export"
+                                    color="teal"
+                                    className="coarse:min-h-9 coarse:min-w-9"
+                                    onClick={() =>
+                                        setOverlayParam('export', '1')
+                                    }
+                                />
+                            )}
+                        </div>
                         <ActionIconButton
-                            icon={<ListFilter />}
-                            label="Filters"
+                            icon={<MoreHorizontal />}
+                            label="More actions"
                             color="teal"
-                            onClick={() =>
-                                isFiltersOpen
-                                    ? setOverlayParam('filters', null, {
-                                          replace: true,
-                                      })
-                                    : setOverlayParam('filters', '1')
-                            }
+                            className="ml-auto sm:hidden coarse:min-h-9 coarse:min-w-9"
+                            onClick={() => setIsMoreOpen(true)}
                         />
-                        {canImport && (
-                            <ActionIconButton
-                                icon={<Upload />}
-                                label="Import from CSV"
-                                color="teal"
-                                onClick={() => setOverlayParam('import', '1')}
-                            />
-                        )}
-                        {canExport && (
-                            <ActionIconButton
-                                icon={<Download />}
-                                label="Export"
-                                color="teal"
-                                onClick={() => setOverlayParam('export', '1')}
-                            />
-                        )}
                     </div>
                     <BulkDeleteBar
                         pageIds={expenses.data.map((expense) => expense.id)}
@@ -958,6 +978,38 @@ export default function PlatformExpensesIndex({
                     </div>
                 </div>
             </ResponsiveOverlay>
+
+            <TableOverflowMenu
+                open={isMoreOpen}
+                onOpenChange={setIsMoreOpen}
+                actions={[
+                    {
+                        icon: <ListFilter />,
+                        label: 'Filters',
+                        onSelect: () => setOverlayParam('filters', '1'),
+                    },
+                    ...(canImport
+                        ? [
+                              {
+                                  icon: <Upload />,
+                                  label: 'Import from CSV',
+                                  onSelect: () =>
+                                      setOverlayParam('import', '1'),
+                              },
+                          ]
+                        : []),
+                    ...(canExport
+                        ? [
+                              {
+                                  icon: <Download />,
+                                  label: 'Export',
+                                  onSelect: () =>
+                                      setOverlayParam('export', '1'),
+                              },
+                          ]
+                        : []),
+                ]}
+            />
 
             <CsvExportSheet
                 open={isExportOpen}

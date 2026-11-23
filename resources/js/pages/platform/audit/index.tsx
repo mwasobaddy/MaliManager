@@ -484,6 +484,7 @@ export default function AdminAuditIndex({
                             icon={<ListFilter />}
                             label="Filters"
                             color="teal"
+                            className="ml-auto coarse:min-h-9 coarse:min-w-9"
                             onClick={() =>
                                 isFiltersOpen
                                     ? setOverlayParam('filters', null, {
@@ -497,6 +498,7 @@ export default function AdminAuditIndex({
                                 icon={<Download />}
                                 label="Export CSV"
                                 color="teal"
+                                className="coarse:min-h-9 coarse:min-w-9"
                                 onClick={() => setOverlayParam('export', '1')}
                             />
                         )}

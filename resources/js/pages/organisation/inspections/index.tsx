@@ -55,6 +55,7 @@ export default function InspectionsIndex({ propertySlug, inspections }: Props) {
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                     <Heading
+                        className="min-w-0 flex-1"
                         level="h1"
                         title="Inspections"
                         description="Unit walkthroughs with photo-based AI condition reports."
@@ -70,7 +71,7 @@ export default function InspectionsIndex({ propertySlug, inspections }: Props) {
                             }).url
                         }
                         data-test="new-inspection-button"
-                        className="max-w-20 sm:max-w-24"
+                        className="ml-auto max-w-20 sm:max-w-24"
                     />
                 </div>
 

@@ -66,7 +66,7 @@ export function UnitGridCard({
                             onClick={onAdd}
                             disabled={addDisabledReason != null}
                             disabledReason={addDisabledReason}
-                            className="max-w-20 sm:max-w-24"
+                            className="ml-auto max-w-20 sm:max-w-24"
                         />
                     )}
                 </div>

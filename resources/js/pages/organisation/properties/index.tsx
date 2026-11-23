@@ -45,6 +45,7 @@ export default function PropertiesIndex({
             <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-4">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                     <Heading
+                        className="min-w-0 flex-1"
                         level="h1"
                         variant="small"
                         title={`${organization.name} properties`}
@@ -57,7 +58,7 @@ export default function PropertiesIndex({
                             tooltip="Add a property to this organization"
                             color="primary"
                             href={create().url}
-                            className="max-w-20 sm:max-w-24"
+                            className="ml-auto max-w-20 sm:max-w-24"
                         />
                     )}
                 </div>
