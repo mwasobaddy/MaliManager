@@ -47,7 +47,7 @@ Row actions read left to right in escalating consequence: status-changing action
 
 ## Forms must cover every writable field, with live validation
 
-Audit new inputs against the model `$fillable` plus the FormRequest rules before calling a form done — the missing gender input survived because the view showed the field but no sheet wrote it. Mirror server rules on blur for required and format fields (`required` text, `email` shape), show server errors first and local errors second through the same `InputError`, and disable the sheet's submit via `onValidityChange` while anything local fails. The server remains the authority; live validation only removes the round trip.
+Audit new inputs against the model `$fillable` plus the FormRequest rules before calling a form done — the missing gender input survived because the view showed the field but no sheet wrote it. Mirror server rules on blur for required, format and range fields (`required` text, `email` shape, due day 1–31), show server errors first and local errors second through the same `InputError`, and disable the sheet's submit via `onValidityChange` while anything local fails. The server remains the authority; live validation only removes the round trip.
 
 ## Multi-select needs a searchable chip picker, not SearchableSelect
 

@@ -165,7 +165,9 @@ export default function OccupantFormFields({
     // Live validation mirrors the server rules so the obvious mistakes
     // surface on blur instead of after a round trip. Submit stays disabled
     // while anything here fails; the server remains the authority.
-    type FieldErrors = Partial<Record<'first_name' | 'email', string>>;
+    type FieldErrors = Partial<
+        Record<'first_name' | 'email' | 'lease.rent_due_day', string>
+    >;
 
     const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
@@ -176,24 +178,37 @@ export default function OccupantFormFields({
     }, [fieldErrors, unitIds, onValidityChange]);
 
     function validateField(
-        name: 'first_name' | 'email',
+        name: 'first_name' | 'email' | 'lease.rent_due_day',
         value: string,
     ): string | null {
         if (name === 'first_name') {
             return value.trim() === '' ? 'First name is required.' : null;
         }
 
-        if (value.trim() === '') {
-            return 'Email address is required.';
+        if (name === 'email') {
+            if (value.trim() === '') {
+                return 'Email address is required.';
+            }
+
+            return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())
+                ? null
+                : 'Enter a valid email address.';
         }
 
-        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())
+        // Optional, but when given it must be a calendar day.
+        if (value.trim() === '') {
+            return null;
+        }
+
+        const day = Number(value);
+
+        return Number.isInteger(day) && day >= 1 && day <= 31
             ? null
-            : 'Enter a valid email address.';
+            : 'Enter a day between 1 and 31.';
     }
 
     function setFieldError(
-        name: 'first_name' | 'email',
+        name: 'first_name' | 'email' | 'lease.rent_due_day',
         message: string | null,
     ) {
         setFieldErrors((current) => {
@@ -607,15 +622,31 @@ export default function OccupantFormFields({
                                     max="31"
                                     placeholder="5"
                                     value={rentDueDay}
-                                    onChange={(event) =>
-                                        setRentDueDay(event.target.value)
+                                    onChange={(event) => {
+                                        setRentDueDay(event.target.value);
+                                        setFieldError(
+                                            'lease.rent_due_day',
+                                            null,
+                                        );
+                                    }}
+                                    onBlur={(event) =>
+                                        setFieldError(
+                                            'lease.rent_due_day',
+                                            validateField(
+                                                'lease.rent_due_day',
+                                                event.target.value,
+                                            ),
+                                        )
                                     }
                                 />
                                 <p className="text-xs text-muted-foreground">
                                     Day of the due month rent falls due.
                                 </p>
                                 <InputError
-                                    message={errors['lease.rent_due_day']}
+                                    message={
+                                        errors['lease.rent_due_day'] ??
+                                        fieldErrors['lease.rent_due_day']
+                                    }
                                 />
                             </div>
                         </>
@@ -632,8 +663,18 @@ export default function OccupantFormFields({
                                 max="31"
                                 placeholder="5"
                                 value={rentDueDay}
-                                onChange={(event) =>
-                                    setRentDueDay(event.target.value)
+                                onChange={(event) => {
+                                    setRentDueDay(event.target.value);
+                                    setFieldError('lease.rent_due_day', null);
+                                }}
+                                onBlur={(event) =>
+                                    setFieldError(
+                                        'lease.rent_due_day',
+                                        validateField(
+                                            'lease.rent_due_day',
+                                            event.target.value,
+                                        ),
+                                    )
                                 }
                             />
                             <p className="text-xs text-muted-foreground">
@@ -641,7 +682,10 @@ export default function OccupantFormFields({
                                 lease start anniversary.
                             </p>
                             <InputError
-                                message={errors['lease.rent_due_day']}
+                                message={
+                                    errors['lease.rent_due_day'] ??
+                                    fieldErrors['lease.rent_due_day']
+                                }
                             />
                         </div>
                     )}
