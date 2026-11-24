@@ -217,3 +217,164 @@ test('the readings list renders with the recorded rows', function () {
             ->has('utilities', 3)
         );
 });
+
+test('readings search by unit name across words', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = meterOrganization($owner);
+    $property = meterProperty($organization, $owner);
+    $unitA = $property->units()->create(['name' => 'Unit A1', 'status' => 'occupied', 'created_by' => $owner->id]);
+    $unitB = $property->units()->create(['name' => 'Unit B2', 'status' => 'occupied', 'created_by' => $owner->id]);
+
+    foreach ([$unitA, $unitB] as $unit) {
+        UtilityReading::create([
+            'organization_id' => $organization->id,
+            'unit_id' => $unit->id,
+            'utility' => UtilityType::Water,
+            'reading' => '10.000',
+            'consumption' => null,
+            'read_on' => '2026-01-01',
+            'recorded_by' => $owner->id,
+        ]);
+    }
+
+    $this->actingAs($owner)
+        ->get(utilityUrl($organization, '/utilities?search=Unit+B2'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('readings.data', fn ($rows) => count($rows) === 1 && $rows[0]['unit_name'] === 'Unit B2'));
+
+    $this->actingAs($owner)
+        ->get(utilityUrl($organization, '/utilities?search=Unit+Z9'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('readings.data', []));
+});
+
+test('readings sort by read date and unit', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = meterOrganization($owner);
+    $property = meterProperty($organization, $owner);
+    $unitA = $property->units()->create(['name' => 'Unit A1', 'status' => 'occupied', 'created_by' => $owner->id]);
+    $unitB = $property->units()->create(['name' => 'Unit B2', 'status' => 'occupied', 'created_by' => $owner->id]);
+
+    UtilityReading::create([
+        'organization_id' => $organization->id,
+        'unit_id' => $unitB->id,
+        'utility' => UtilityType::Water,
+        'reading' => '20.000',
+        'consumption' => null,
+        'read_on' => '2026-03-01',
+        'recorded_by' => $owner->id,
+    ]);
+    UtilityReading::create([
+        'organization_id' => $organization->id,
+        'unit_id' => $unitA->id,
+        'utility' => UtilityType::Water,
+        'reading' => '10.000',
+        'consumption' => null,
+        'read_on' => '2026-01-01',
+        'recorded_by' => $owner->id,
+    ]);
+
+    $this->actingAs($owner)
+        ->get(utilityUrl($organization, '/utilities?sort=read_on&direction=asc'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('readings.data.0.read_on', '2026-01-01')
+            ->where('readings.data.1.read_on', '2026-03-01'));
+
+    $this->actingAs($owner)
+        ->get(utilityUrl($organization, '/utilities?sort=unit&direction=asc'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('readings.data.0.unit_name', 'Unit A1')
+            ->where('readings.data.1.unit_name', 'Unit B2'));
+});
+
+test('the view sheet resolves the focused reading', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = meterOrganization($owner);
+    $unit = meterUnit(meterProperty($organization, $owner));
+
+    $reading = UtilityReading::create([
+        'organization_id' => $organization->id,
+        'unit_id' => $unit->id,
+        'utility' => UtilityType::Gas,
+        'reading' => '48.500',
+        'consumption' => '12.500',
+        'read_on' => '2026-02-01',
+        'recorded_by' => $owner->id,
+    ]);
+
+    $this->actingAs($owner)
+        ->get(utilityUrl($organization, "/utilities?mode=view&reading={$reading->id}"))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('focusedReading.id', $reading->id)
+            ->where('focusedReading.utility', 'gas')
+            ->where('focusedReading.consumption', 12.5));
+
+    $this->actingAs($owner)
+        ->get(utilityUrl($organization, '/utilities?mode=view&reading=999999'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('focusedReading', null));
+});
+
+test('export downloads the filtered readings as csv', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = meterOrganization($owner);
+    $property = meterProperty($organization, $owner);
+    $unit = $property->units()->create(['name' => 'Unit A1', 'status' => 'occupied', 'created_by' => $owner->id]);
+
+    UtilityReading::create([
+        'organization_id' => $organization->id,
+        'unit_id' => $unit->id,
+        'utility' => UtilityType::Water,
+        'reading' => '10.000',
+        'consumption' => null,
+        'read_on' => '2026-01-01',
+        'recorded_by' => $owner->id,
+    ]);
+    UtilityReading::create([
+        'organization_id' => $organization->id,
+        'unit_id' => $unit->id,
+        'utility' => UtilityType::Electricity,
+        'reading' => '99.000',
+        'consumption' => null,
+        'read_on' => '2026-01-02',
+        'recorded_by' => $owner->id,
+    ]);
+
+    $response = $this->actingAs($owner)
+        ->get(utilityUrl($organization, '/utilities/export?utility=water'));
+
+    $response->assertOk();
+    expect($response->headers->get('Content-Type'))->toContain('text/csv');
+
+    $lines = array_values(array_filter(explode("\n", trim($response->streamedContent()))));
+    expect($lines[0])->toContain('Unit')
+        ->and(count($lines))->toBe(2)
+        ->and($lines[1])->toContain('Unit A1');
+});
+
+test('export honors a column subset', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = meterOrganization($owner);
+    $unit = meterUnit(meterProperty($organization, $owner));
+
+    UtilityReading::create([
+        'organization_id' => $organization->id,
+        'unit_id' => $unit->id,
+        'utility' => UtilityType::Water,
+        'reading' => '10.000',
+        'consumption' => null,
+        'read_on' => '2026-01-01',
+        'recorded_by' => $owner->id,
+    ]);
+
+    $response = $this->actingAs($owner)
+        ->get(utilityUrl($organization, '/utilities/export?columns[]=Unit&columns[]=Reading'));
+
+    $response->assertOk();
+    $lines = array_values(array_filter(explode("\n", trim($response->streamedContent()))));
+    expect($lines[0])->toBe('Unit,Reading');
+});
