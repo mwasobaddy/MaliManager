@@ -9,11 +9,12 @@ use App\Actions\Metering\RecordUtilityReading;
 use App\Enums\UtilityType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Tenant\ExportUtilityReadingsRequest;
-use App\Http\Requests\Tenant\UtilityReadingIndexRequest;
 use App\Http\Requests\Tenant\StoreUtilityReadingRequest;
+use App\Http\Requests\Tenant\UtilityReadingIndexRequest;
 use App\Http\Resources\Metering\UtilityReadingResource;
 use App\Models\Property;
 use App\Models\Unit;
+use App\Models\UtilityCharge;
 use App\Models\UtilityReading;
 use App\Support\InertiaRedirect;
 use App\Support\TenancyContext;
@@ -51,6 +52,8 @@ class UtilityReadingController extends Controller
                 ? $this->focusedReading($organizationId, $request->integer('reading'))
                 : null,
             'units' => $this->units($organizationId),
+            'properties' => $this->properties($organizationId),
+            'charges' => $this->charges($organizationId),
             'utilities' => $this->utilities(),
             'filters' => [
                 'unit_id' => $unitId,
@@ -173,6 +176,67 @@ class UtilityReadingController extends Controller
             ->map(fn (Unit $unit): array => [
                 'value' => $unit->id,
                 'label' => $unit->name,
+            ])
+            ->all();
+    }
+
+    /**
+     * Properties with their units, for the charge setup sheet's pickers.
+     *
+     * @return list<array{id: int, name: string, slug: string, units: list<array{id: int, name: string}>}>
+     */
+    private function properties(int $organizationId): array
+    {
+        return Property::query()
+            ->where('organization_id', $organizationId)
+            ->orderBy('name')
+            ->with(['units' => fn ($query) => $query->select('id', 'property_id', 'name')->orderBy('name')])
+            ->get(['id', 'name', 'slug'])
+            ->map(fn (Property $property): array => [
+                'id' => $property->id,
+                'name' => $property->name,
+                'slug' => $property->slug,
+                'units' => $property->units
+                    ->map(fn (Unit $unit): array => ['id' => $unit->id, 'name' => $unit->name])
+                    ->all(),
+            ])
+            ->all();
+    }
+
+    /**
+     * Active and inactive charges with their assigned units, for the charges
+     * table. Amounts and watermarks included: the setup sheet edits per-unit
+     * amounts in place.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function charges(int $organizationId): array
+    {
+        return UtilityCharge::query()
+            ->forOrganization($organizationId)
+            ->with(['property:id,name', 'units:id,name'])
+            ->orderBy('name')
+            ->get()
+            ->map(fn (UtilityCharge $charge): array => [
+                'id' => $charge->id,
+                'property_id' => $charge->property_id,
+                'property_name' => $charge->property?->name,
+                'name' => $charge->name,
+                'kind' => $charge->kind->value,
+                'kind_label' => $charge->kind->label(),
+                'utility' => $charge->utility?->value,
+                'utility_label' => $charge->utility?->label(),
+                'unit_of_measure' => $charge->utility?->unitOfMeasure(),
+                'rate' => $charge->rate,
+                'currency' => $charge->currency,
+                'is_active' => $charge->is_active,
+                'units' => $charge->units
+                    ->map(fn (Unit $unit): array => [
+                        'id' => $unit->id,
+                        'name' => $unit->name,
+                        'amount' => $unit->pivot->amount,
+                    ])
+                    ->all(),
             ])
             ->all();
     }

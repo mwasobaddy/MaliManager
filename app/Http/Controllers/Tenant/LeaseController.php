@@ -18,6 +18,7 @@ use App\Services\AiRenewalService;
 use App\Services\OccupantService;
 use App\Services\RentArrearsService;
 use App\Services\StaffService;
+use App\Support\UtilityBilling;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -59,8 +60,9 @@ class LeaseController extends Controller
             ->withQueryString();
 
         $balances = $arrears->balancesFor($leases->getCollection());
+        $utilityTotals = UtilityBilling::totalsForLeases($leases->getCollection());
 
-        $leases = $leases->through(fn (Lease $lease): array => $this->presentLease($lease, $balances));
+        $leases = $leases->through(fn (Lease $lease): array => $this->presentLease($lease, $balances, $utilityTotals[$lease->id] ?? null));
 
         return Inertia::render('organisation/leases/index', [
             'leases' => $leases,
@@ -155,14 +157,17 @@ class LeaseController extends Controller
      * @param  array<int, array{outstanding?: string, overdue?: bool, days_overdue?: int}>  $balances
      * @return array<string, mixed>
      */
-    private function presentLease(Lease $lease, array $balances): array
+    private function presentLease(Lease $lease, array $balances, ?array $utilityTotals = null): array
     {
+        $utility = $utilityTotals ?? ['metered' => '0.00', 'fixed' => '0.00', 'one_time' => '0.00', 'total' => (string) ($lease->rent_amount ?? 0)];
+
         return [
             'id' => $lease->id,
             'occupant_id' => $lease->occupant_id,
             'occupant_name' => trim(($lease->person?->first_name ?? '').' '.($lease->person?->last_name ?? '')),
             'unit_name' => $lease->unit?->name,
             'rent_amount' => $lease->rent_amount,
+            'rent_frequency' => $lease->rent_frequency,
             'currency' => $lease->currency,
             'starts_at' => $lease->starts_at?->toDateString(),
             'ends_at' => $lease->ends_at?->toDateString(),
@@ -177,6 +182,10 @@ class LeaseController extends Controller
             'is_overdue' => $balances[$lease->id]['overdue'] ?? false,
             'days_overdue' => $balances[$lease->id]['days_overdue'] ?? 0,
             'last_reminded_ago' => $lease->last_reminded_at?->diffForHumans(),
+            // Payable total: rent plus the utility lines below. The view
+            // sheet breaks this down; the row only needs the headline.
+            'utilities_total' => $utility['total'],
+            'utility_breakdown' => null,
         ];
     }
 
@@ -204,7 +213,21 @@ class LeaseController extends Controller
             return null;
         }
 
-        return $this->presentLease($lease, $arrears->balancesFor($lease->newCollection([$lease])));
+        $breakdown = UtilityBilling::breakdownForLease($lease);
+
+        return [
+            ...$this->presentLease(
+                $lease,
+                $arrears->balancesFor($lease->newCollection([$lease])),
+                [
+                    'metered' => $breakdown['metered'],
+                    'fixed' => $breakdown['fixed'],
+                    'one_time' => $breakdown['one_time'],
+                    'total' => $breakdown['total'],
+                ]
+            ),
+            'utility_breakdown' => $breakdown,
+        ];
     }
 
     private function authorizePropertyAccess(Request $request, Property $property): void

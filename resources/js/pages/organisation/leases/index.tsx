@@ -52,12 +52,31 @@ import {
 import { agreement as agreementPrintRoute } from '@/routes/tenant/occupants';
 import { index as propertiesIndex } from '@/routes/tenant/properties';
 
+type UtilityBreakdownLine = {
+    charge_id: number;
+    name: string;
+    kind: string;
+    detail: string;
+    amount: string;
+    last_reading: string | null;
+    last_read_on: string | null;
+};
+
+type UtilityBreakdown = {
+    lines: UtilityBreakdownLine[];
+    metered: string;
+    fixed: string;
+    one_time: string;
+    total: string;
+};
+
 type LeaseRow = {
     id: number;
     occupant_id: number;
     occupant_name: string;
     unit_name: string | null;
     rent_amount: string | null;
+    rent_frequency: string | null;
     currency: string | null;
     starts_at: string | null;
     ends_at: string | null;
@@ -71,6 +90,10 @@ type LeaseRow = {
     last_reminded_ago: string | null;
     has_agreement_text: boolean;
     has_agreement_document: boolean;
+    /** Payable total: rent plus utility lines. Rows carry the headline. */
+    utilities_total: string;
+    /** Line-by-line breakdown; present only on the server-resolved record. */
+    utility_breakdown: UtilityBreakdown | null;
 };
 
 type Props = {
@@ -549,6 +572,19 @@ export default function LeasesIndex({ leases, focusedLease }: Props) {
                               row.original.currency,
                           )
                         : '—'}
+                </span>
+            ),
+        },
+        {
+            id: 'total',
+            header: 'Total',
+            enableSorting: false,
+            cell: ({ row }) => (
+                <span className="font-medium tabular-nums">
+                    {formatMoney(
+                        row.original.utilities_total,
+                        row.original.currency,
+                    )}
                 </span>
             ),
         },
@@ -1076,6 +1112,91 @@ export default function LeasesIndex({ leases, focusedLease }: Props) {
                             </dd>
                         </div>
                     </dl>
+
+                    {viewedLease.utility_breakdown && (
+                        <div className="mt-2">
+                            <h2 className="font-medium">Total payable</h2>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                                Rent plus utilities for this unit.
+                            </p>
+                            {viewedLease.utility_breakdown.lines.length === 0 &&
+                            viewedLease.rent_amount === null ? (
+                                <p className="mt-3 text-sm text-muted-foreground">
+                                    No rent or utility charges recorded yet.
+                                </p>
+                            ) : (
+                                <dl className="mt-3 grid gap-x-6 gap-y-3 text-sm">
+                                    <div className="grid grid-cols-[8rem_1fr_auto] items-baseline gap-2">
+                                        <dt className="text-muted-foreground">
+                                            Rent
+                                        </dt>
+                                        <dd className="min-w-0 text-xs text-muted-foreground">
+                                            {(
+                                                {
+                                                    daily: 'per day',
+                                                    weekly: 'per week',
+                                                    monthly: 'per month',
+                                                    yearly: 'per year',
+                                                } as Record<string, string>
+                                            )[
+                                                viewedLease.rent_frequency ?? ''
+                                            ] ?? ''}
+                                        </dd>
+                                        <dd className="text-right font-medium tabular-nums">
+                                            {formatMoney(
+                                                viewedLease.rent_amount,
+                                                viewedLease.currency,
+                                            )}
+                                        </dd>
+                                    </div>
+                                    {viewedLease.utility_breakdown.lines.map(
+                                        (line) => (
+                                            <div
+                                                key={line.charge_id}
+                                                className="grid grid-cols-[8rem_1fr_auto] items-baseline gap-2"
+                                            >
+                                                <dt className="text-muted-foreground">
+                                                    {line.name}
+                                                </dt>
+                                                <dd className="min-w-0 text-xs break-words">
+                                                    {line.detail}
+                                                    {line.last_reading && (
+                                                        <span className="text-muted-foreground">
+                                                            {' '}
+                                                            · last{' '}
+                                                            {line.last_reading}
+                                                            {line.last_read_on
+                                                                ? ` on ${line.last_read_on}`
+                                                                : ''}
+                                                        </span>
+                                                    )}
+                                                </dd>
+                                                <dd className="text-right font-medium tabular-nums">
+                                                    {formatMoney(
+                                                        line.amount,
+                                                        viewedLease.currency,
+                                                    )}
+                                                </dd>
+                                            </div>
+                                        ),
+                                    )}
+                                    <div className="grid grid-cols-[8rem_1fr_auto] items-baseline gap-2 border-t border-border-strong pt-2">
+                                        <dt className="text-muted-foreground">
+                                            Total
+                                        </dt>
+                                        <dd />
+                                        <dd className="text-right font-semibold tabular-nums">
+                                            {formatMoney(
+                                                viewedLease.utility_breakdown
+                                                    .total,
+                                                viewedLease.currency,
+                                            )}
+                                        </dd>
+                                    </div>
+                                </dl>
+                            )}
+                        </div>
+                    )}
                 </ResponsiveOverlay>
             )}
 
