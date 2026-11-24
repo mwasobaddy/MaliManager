@@ -13,7 +13,7 @@ use App\Enums\UtilityType;
  * binary float cannot represent 1234.567 exactly, so casting on the way in
  * would introduce drift in a number that gets subtracted from another reading.
  */
-final readonly class RecordMeterReadingData
+final readonly class RecordUtilityReadingData
 {
     public function __construct(
         public int $organizationId,

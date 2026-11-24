@@ -4,15 +4,15 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Tenant;
 
-use App\Data\Metering\RecordMeterReadingData;
+use App\Data\Metering\RecordUtilityReadingData;
 use App\Enums\UtilityType;
 use App\Models\Property;
-use App\Models\UnitMeterReading;
+use App\Models\UtilityReading;
 use App\Support\TenancyContext;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-class StoreMeterReadingRequest extends FormRequest
+class StoreUtilityReadingRequest extends FormRequest
 {
     /**
      * Authorization lives here, not in the controller and not only on the
@@ -22,7 +22,7 @@ class StoreMeterReadingRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return $this->user()->can('create', UnitMeterReading::class);
+        return $this->user()->can('create', UtilityReading::class);
     }
 
     /**
@@ -66,9 +66,9 @@ class StoreMeterReadingRequest extends FormRequest
         ];
     }
 
-    public function toData(): RecordMeterReadingData
+    public function toData(): RecordUtilityReadingData
     {
-        return new RecordMeterReadingData(
+        return new RecordUtilityReadingData(
             organizationId: (int) TenancyContext::organization()?->id,
             unitId: (int) $this->integer('unit_id'),
             utility: UtilityType::from((string) $this->input('utility')),

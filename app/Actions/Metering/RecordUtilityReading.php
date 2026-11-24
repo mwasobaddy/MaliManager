@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Actions\Metering;
 
-use App\Data\Metering\RecordMeterReadingData;
-use App\Models\UnitMeterReading;
+use App\Data\Metering\RecordUtilityReadingData;
+use App\Models\UtilityReading;
 use App\Models\User;
 
 /**
@@ -15,11 +15,11 @@ use App\Models\User;
  * know how consumption is calculated, and a test can exercise this without a
  * request in sight.
  */
-class RecordMeterReading
+class RecordUtilityReading
 {
-    public function handle(User $user, RecordMeterReadingData $data): UnitMeterReading
+    public function handle(User $user, RecordUtilityReadingData $data): UtilityReading
     {
-        $previous = UnitMeterReading::query()
+        $previous = UtilityReading::query()
             ->where('unit_id', $data->unitId)
             ->where('utility', $data->utility->value)
             ->whereDate('read_on', '<', $data->readOn)
@@ -27,7 +27,7 @@ class RecordMeterReading
             ->orderByDesc('id')
             ->first();
 
-        return UnitMeterReading::create([
+        return UtilityReading::create([
             'organization_id' => $data->organizationId,
             'unit_id' => $data->unitId,
             'utility' => $data->utility,
@@ -47,7 +47,7 @@ class RecordMeterReading
      * (the meter was replaced or rolled over). Both mean "this figure is not a
      * consumption", and neither should be reported as zero.
      */
-    private function consumption(float $reading, ?UnitMeterReading $previous): ?string
+    private function consumption(float $reading, ?UtilityReading $previous): ?string
     {
         if ($previous === null) {
             return null;

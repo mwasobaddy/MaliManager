@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources\Metering;
 
-use App\Models\UnitMeterReading;
+use App\Models\UtilityReading;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -16,9 +16,9 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * instance — three shapes the frontend would have to know about. This fixes
  * all three in one place.
  *
- * @mixin UnitMeterReading
+ * @mixin UtilityReading
  */
-class UnitMeterReadingResource extends JsonResource
+class UtilityReadingResource extends JsonResource
 {
     /**
      * @return array<string, mixed>

@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('unit_meter_readings', function (Blueprint $table) {
+        Schema::create('utility_readings', function (Blueprint $table) {
             $table->id();
 
             // Denormalized from the unit's property: every list and every
@@ -45,6 +45,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('unit_meter_readings');
+        Schema::dropIfExists('utility_readings');
     }
 };

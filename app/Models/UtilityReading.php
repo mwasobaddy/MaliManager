@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\UtilityType;
+use App\Support\SearchTerms;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -27,7 +28,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $notes
  * @property int|null $recorded_by
  */
-class UnitMeterReading extends Model
+class UtilityReading extends Model
 {
     use HasFactory;
 
@@ -76,18 +77,56 @@ class UnitMeterReading extends Model
     }
 
     /**
-     * The list query: organization scope plus the two optional filters.
+     * Sort keys the index accepts. `unit` orders through a subselect so the
+     * listing never needs a join that would collide on `id` under
+     * pagination. Anything else falls back to newest-first.
+     */
+    public const SORTABLE = [
+        'unit' => 'unit',
+        'utility' => 'utility_readings.utility',
+        'reading' => 'utility_readings.reading',
+        'read_on' => 'utility_readings.read_on',
+    ];
+
+    /**
+     * The list query: organization scope plus the index's search, unit,
+     * utility and sort filters.
      *
      * Lives here rather than in the controller so the same predicate can be
-     * reused by any future export or report without a second copy drifting.
+     * reused by the export without a second copy drifting.
      *
-     * @param  array{organization_id: int, unit_id: int|null, utility: string|null}  $filters
+     * @param  array{organization_id: int, unit_id: int|null, utility: string|null, search?: string, sort?: string, direction?: string}  $filters
      */
     public function scopeFiltered(Builder $query, array $filters): Builder
     {
+        $sortKey = self::SORTABLE[$filters['sort'] ?? ''] ?? null;
+        $direction = ($filters['direction'] ?? '') === 'asc' ? 'asc' : 'desc';
+
         return $query
             ->forOrganization($filters['organization_id'])
             ->when($filters['unit_id'], fn (Builder $q) => $q->where('unit_id', $filters['unit_id']))
-            ->when($filters['utility'], fn (Builder $q) => $q->where('utility', $filters['utility']));
+            ->when($filters['utility'], fn (Builder $q) => $q->where('utility', $filters['utility']))
+            ->when(
+                ($terms = SearchTerms::split($filters['search'] ?? '')) !== [],
+                fn (Builder $builder) => $builder->where(
+                    function (Builder $nested) use ($terms): void {
+                        foreach ($terms as $term) {
+                            $nested->whereHas('unit', fn (Builder $unit) => $unit
+                                ->where('units.name', 'like', "%{$term}%"));
+                        }
+                    }
+                )
+            )
+            ->when(
+                $sortKey === 'unit',
+                fn (Builder $builder) => $builder
+                    ->orderBy(Unit::select('name')->whereColumn('units.id', 'utility_readings.unit_id'), $direction),
+            )
+            ->when(
+                $sortKey !== null && $sortKey !== 'unit',
+                fn (Builder $builder) => $builder->orderBy($sortKey, $direction),
+            )
+            ->when($sortKey === null, fn (Builder $builder) => $builder->orderByDesc('utility_readings.read_on'))
+            ->orderByDesc('utility_readings.id');
     }
 }

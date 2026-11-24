@@ -18,7 +18,6 @@ use App\Http\Controllers\Tenant\LandParcelSectionController;
 use App\Http\Controllers\Tenant\LeaseController;
 use App\Http\Controllers\Tenant\MaintenanceController;
 use App\Http\Controllers\Tenant\MaintenanceNoteController;
-use App\Http\Controllers\Tenant\MeterReadingController;
 use App\Http\Controllers\Tenant\MpesaCallbackController;
 use App\Http\Controllers\Tenant\OccupantController;
 use App\Http\Controllers\Tenant\OrganizationDashboardController;
@@ -29,6 +28,8 @@ use App\Http\Controllers\Tenant\SetupController;
 use App\Http\Controllers\Tenant\StaffController;
 use App\Http\Controllers\Tenant\TrashController;
 use App\Http\Controllers\Tenant\UnitController;
+use App\Http\Controllers\Tenant\UtilityChargeController;
+use App\Http\Controllers\Tenant\UtilityReadingController;
 use App\Support\TenancyContext;
 use Illuminate\Support\Facades\Route;
 use Stancl\Tenancy\Middleware\InitializeTenancyByDomain;
@@ -155,10 +156,27 @@ Route::middleware([
 
             // Utility meters on a unit. Reads are org-wide because a
             // caretaker walks a route across properties, not one unit at a time.
-            Route::get('/meter-readings', [MeterReadingController::class, 'index'])
-                ->name('tenant.meter-readings.index');
-            Route::post('/meter-readings', [MeterReadingController::class, 'store'])
-                ->name('tenant.meter-readings.store');
+            Route::get('/utilities', [UtilityReadingController::class, 'index'])
+                ->name('tenant.utilities.index');
+            // Before the /{reading} routes: there are none today, but a
+            // bare segment would swallow `export` if one is ever added.
+            Route::get('/utilities/export', [UtilityReadingController::class, 'export'])
+                ->name('tenant.utilities.export');
+            Route::post('/utilities', [UtilityReadingController::class, 'store'])
+                ->name('tenant.utilities.store');
+
+            // Landlord-configured charges: metered rates, fixed per-unit
+            // fees and one-time fees, assigned to the units that pay them.
+            Route::post('/utilities/charges', [UtilityChargeController::class, 'store'])
+                ->name('tenant.utilities.charges.store');
+            Route::put('/utilities/charges/{charge}', [UtilityChargeController::class, 'update'])
+                ->whereNumber('charge')
+                ->name('tenant.utilities.charges.update');
+            Route::delete('/utilities/charges/{charge}', [UtilityChargeController::class, 'destroy'])
+                ->whereNumber('charge')
+                ->name('tenant.utilities.charges.destroy');
+            // Retired `/meter-readings` URLs keep working for bookmarks.
+            Route::redirect('/meter-readings', '/utilities', 301);
         });
 
         Route::put('/units/{unit}', [UnitController::class, 'update'])

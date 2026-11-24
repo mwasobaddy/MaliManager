@@ -68,7 +68,7 @@ import { index as inspectionsIndex } from '@/routes/tenant/inspections';
 import { index as landParcelsIndex } from '@/routes/tenant/land-parcels';
 import { index as leasesIndex } from '@/routes/tenant/leases';
 import { index as maintenanceIndex } from '@/routes/tenant/maintenance';
-import { index as meterReadingsIndex } from '@/routes/tenant/meter-readings';
+import { index as utilityReadingsIndex } from '@/routes/tenant/utilities';
 import { index as occupantsIndex } from '@/routes/tenant/occupants';
 import { index as paymentsIndex } from '@/routes/tenant/payments';
 import {
@@ -281,7 +281,7 @@ export function AppSidebar() {
                           ]
                         : []),
                     ...(canManageUnits
-                        ? [item('Meter readings', meterReadingsIndex(), Gauge)]
+                        ? [item('Utilities', utilityReadingsIndex(), Gauge)]
                         : []),
                     ...(canManageMaintenance
                         ? [
@@ -420,8 +420,8 @@ export function AppSidebar() {
                                   '/units',
                               ),
                               item(
-                                  'Meter readings',
-                                  meterReadingsIndex(),
+                                  'Utilities',
+                                  utilityReadingsIndex(),
                                   Gauge,
                               ),
                           ]

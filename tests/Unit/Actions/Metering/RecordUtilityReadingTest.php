@@ -1,7 +1,7 @@
 <?php
 
-use App\Actions\Metering\RecordMeterReading;
-use App\Data\Metering\RecordMeterReadingData;
+use App\Actions\Metering\RecordUtilityReading;
+use App\Data\Metering\RecordUtilityReadingData;
 use App\Enums\UtilityType;
 use App\Models\Organization;
 use App\Models\Plan;
@@ -47,8 +47,8 @@ function actionMeterData(
     string $reading,
     string $readOn,
     UtilityType $utility = UtilityType::Electricity,
-): RecordMeterReadingData {
-    return new RecordMeterReadingData(
+): RecordUtilityReadingData {
+    return new RecordUtilityReadingData(
         organizationId: $organization->id,
         unitId: $unit->id,
         utility: $utility,
@@ -60,7 +60,7 @@ function actionMeterData(
 test('the action returns null consumption when there is no earlier reading', function () {
     [$owner, $organization, $unit] = actionMeterGraph();
 
-    $reading = app(RecordMeterReading::class)
+    $reading = app(RecordUtilityReading::class)
         ->handle($owner, actionMeterData($organization, $unit, '500.000', '2026-01-01'));
 
     expect($reading->consumption)->toBeNull();
@@ -69,7 +69,7 @@ test('the action returns null consumption when there is no earlier reading', fun
 test('the action subtracts the previous reading of the same meter', function () {
     [$owner, $organization, $unit] = actionMeterGraph();
 
-    $action = app(RecordMeterReading::class);
+    $action = app(RecordUtilityReading::class);
 
     $action->handle($owner, actionMeterData($organization, $unit, '500.000', '2026-01-01'));
     $second = $action->handle($owner, actionMeterData($organization, $unit, '642.250', '2026-02-01'));
@@ -80,7 +80,7 @@ test('the action subtracts the previous reading of the same meter', function () 
 test('the action ignores a previous reading for a different utility', function () {
     [$owner, $organization, $unit] = actionMeterGraph();
 
-    $action = app(RecordMeterReading::class);
+    $action = app(RecordUtilityReading::class);
 
     $action->handle($owner, actionMeterData($organization, $unit, '500.000', '2026-01-01', UtilityType::Electricity));
     $water = $action->handle($owner, actionMeterData($organization, $unit, '80.000', '2026-02-01', UtilityType::Water));
@@ -91,7 +91,7 @@ test('the action ignores a previous reading for a different utility', function (
 test('the action refuses to report a negative consumption when the meter runs backwards', function () {
     [$owner, $organization, $unit] = actionMeterGraph();
 
-    $action = app(RecordMeterReading::class);
+    $action = app(RecordUtilityReading::class);
 
     $action->handle($owner, actionMeterData($organization, $unit, '900.000', '2026-01-01'));
     $afterReset = $action->handle($owner, actionMeterData($organization, $unit, '10.000', '2026-02-01'));

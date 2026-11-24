@@ -1,11 +1,11 @@
 export type UtilityType = 'electricity' | 'water' | 'gas';
 
 /**
- * Mirrors `UnitMeterReadingResource`, not the database row: `reading` and
+ * Mirrors `UtilityReadingResource`, not the database row: `reading` and
  * `consumption` arrive as numbers (the resource casts the decimal strings) and
  * `utility` as the enum's backing value.
  */
-export type MeterReading = {
+export type UtilityReading = {
     id: number;
     unit_id: number;
     unit_name: string | null;
@@ -32,16 +32,47 @@ export type UnitOption = {
     label: string;
 };
 
-export type MeterReadingFilters = {
+export type UtilityReadingFilters = {
     unit_id: number | null;
     utility: string;
+    search: string;
 };
 
 export type PaginatedReadings = {
-    data: MeterReading[];
+    data: UtilityReading[];
     current_page: number;
     last_page: number;
     total: number;
+};
+
+export type ChargeUnit = {
+    id: number;
+    name: string;
+    /** Per-unit amount for fixed and one-time charges; null for metered. */
+    amount: string | null;
+};
+
+export type UtilityChargeRow = {
+    id: number;
+    property_id: number;
+    property_name: string | null;
+    name: string;
+    kind: 'metered' | 'fixed' | 'one_time';
+    kind_label: string;
+    utility: string | null;
+    utility_label: string | null;
+    unit_of_measure: string | null;
+    rate: string | null;
+    currency: string;
+    is_active: boolean;
+    units: ChargeUnit[];
+};
+
+export type ChargeProperty = {
+    id: number;
+    name: string;
+    slug: string;
+    units: { id: number; name: string }[];
 };
 
 /**
@@ -49,7 +80,7 @@ export type PaginatedReadings = {
  * what an `<input>`/`<option>` produces — converting at the boundary keeps the
  * component from making numeric decisions the server already makes.
  */
-export type MeterReadingFormData = {
+export type UtilityReadingFormData = {
     unit_id: string;
     utility: UtilityType | '';
     reading: string;

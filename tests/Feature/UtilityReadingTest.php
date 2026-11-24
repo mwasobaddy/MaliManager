@@ -5,7 +5,7 @@ use App\Models\Organization;
 use App\Models\Plan;
 use App\Models\Property;
 use App\Models\Unit;
-use App\Models\UnitMeterReading;
+use App\Models\UtilityReading;
 use App\Models\User;
 use App\Services\TenantService;
 use Database\Seeders\PlansSeeder;
@@ -43,7 +43,7 @@ function meterUnit(Property $property): Unit
     return Unit::factory()->create(['property_id' => $property->id]);
 }
 
-function meterUrl(Organization $organization, string $path): string
+function utilityUrl(Organization $organization, string $path): string
 {
     $domain = $organization->tenant->domains()->firstOrCreate(
         ['domain' => $organization->slug.'.meter.test'],
@@ -58,7 +58,7 @@ test('an owner records a reading and consumption is calculated from the previous
     $organization = meterOrganization($owner);
     $unit = meterUnit(meterProperty($organization, $owner));
 
-    UnitMeterReading::create([
+    UtilityReading::create([
         'organization_id' => $organization->id,
         'unit_id' => $unit->id,
         'utility' => UtilityType::Electricity,
@@ -69,7 +69,7 @@ test('an owner records a reading and consumption is calculated from the previous
     ]);
 
     $this->actingAs($owner)
-        ->post(meterUrl($organization, '/meter-readings'), [
+        ->post(utilityUrl($organization, '/utilities'), [
             'unit_id' => $unit->id,
             'utility' => 'electricity',
             'reading' => '1250.500',
@@ -78,7 +78,7 @@ test('an owner records a reading and consumption is calculated from the previous
         ])
         ->assertRedirect();
 
-    $reading = UnitMeterReading::query()
+    $reading = UtilityReading::query()
         ->where('unit_id', $unit->id)
         ->whereDate('read_on', '2026-02-01')
         ->firstOrFail();
@@ -96,7 +96,7 @@ test('the first reading for a meter has no consumption', function () {
     $unit = meterUnit(meterProperty($organization, $owner));
 
     $this->actingAs($owner)
-        ->post(meterUrl($organization, '/meter-readings'), [
+        ->post(utilityUrl($organization, '/utilities'), [
             'unit_id' => $unit->id,
             'utility' => 'water',
             'reading' => '32.000',
@@ -104,7 +104,7 @@ test('the first reading for a meter has no consumption', function () {
         ])
         ->assertRedirect();
 
-    expect(UnitMeterReading::firstOrFail()->consumption)->toBeNull();
+    expect(UtilityReading::firstOrFail()->consumption)->toBeNull();
 });
 
 test('a reading earlier than the previous one is rejected by the unique index, not silently stored', function () {
@@ -112,7 +112,7 @@ test('a reading earlier than the previous one is rejected by the unique index, n
     $organization = meterOrganization($owner);
     $unit = meterUnit(meterProperty($organization, $owner));
 
-    UnitMeterReading::create([
+    UtilityReading::create([
         'organization_id' => $organization->id,
         'unit_id' => $unit->id,
         'utility' => UtilityType::Electricity,
@@ -122,7 +122,7 @@ test('a reading earlier than the previous one is rejected by the unique index, n
     ]);
 
     $this->actingAs($owner)
-        ->post(meterUrl($organization, '/meter-readings'), [
+        ->post(utilityUrl($organization, '/utilities'), [
             'unit_id' => $unit->id,
             'utility' => 'electricity',
             'reading' => '850.000',
@@ -133,7 +133,7 @@ test('a reading earlier than the previous one is rejected by the unique index, n
     // A meter that runs backwards is a replacement or a rollover: the reading
     // is kept because it is what the meter says, but there is no consumption
     // to report rather than a negative one.
-    expect(UnitMeterReading::query()->latest('id')->firstOrFail()->consumption)->toBeNull();
+    expect(UtilityReading::query()->latest('id')->firstOrFail()->consumption)->toBeNull();
 });
 
 test('a future reading date is rejected', function () {
@@ -142,7 +142,7 @@ test('a future reading date is rejected', function () {
     $unit = meterUnit(meterProperty($organization, $owner));
 
     $this->actingAs($owner)
-        ->post(meterUrl($organization, '/meter-readings'), [
+        ->post(utilityUrl($organization, '/utilities'), [
             'unit_id' => $unit->id,
             'utility' => 'electricity',
             'reading' => '10',
@@ -150,7 +150,7 @@ test('a future reading date is rejected', function () {
         ])
         ->assertSessionHasErrors('read_on');
 
-    expect(UnitMeterReading::count())->toBe(0);
+    expect(UtilityReading::count())->toBe(0);
 });
 
 test('an unknown utility is rejected', function () {
@@ -159,7 +159,7 @@ test('an unknown utility is rejected', function () {
     $unit = meterUnit(meterProperty($organization, $owner));
 
     $this->actingAs($owner)
-        ->post(meterUrl($organization, '/meter-readings'), [
+        ->post(utilityUrl($organization, '/utilities'), [
             'unit_id' => $unit->id,
             'utility' => 'steam',
             'reading' => '10',
@@ -179,7 +179,7 @@ test('a unit belonging to another organization is rejected', function () {
     $foreignUnit = meterUnit(meterProperty($otherOrganization, $otherOwner));
 
     $this->actingAs($owner)
-        ->post(meterUrl($organization, '/meter-readings'), [
+        ->post(utilityUrl($organization, '/utilities'), [
             'unit_id' => $foreignUnit->id,
             'utility' => 'electricity',
             'reading' => '10',
@@ -187,7 +187,7 @@ test('a unit belonging to another organization is rejected', function () {
         ])
         ->assertSessionHasErrors('unit_id');
 
-    expect(UnitMeterReading::count())->toBe(0);
+    expect(UtilityReading::count())->toBe(0);
 });
 
 test('the readings list renders with the recorded rows', function () {
@@ -195,7 +195,7 @@ test('the readings list renders with the recorded rows', function () {
     $organization = meterOrganization($owner);
     $unit = meterUnit(meterProperty($organization, $owner));
 
-    UnitMeterReading::create([
+    UtilityReading::create([
         'organization_id' => $organization->id,
         'unit_id' => $unit->id,
         'utility' => UtilityType::Gas,
@@ -206,10 +206,10 @@ test('the readings list renders with the recorded rows', function () {
     ]);
 
     $this->actingAs($owner)
-        ->get(meterUrl($organization, '/meter-readings'))
+        ->get(utilityUrl($organization, '/utilities'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('organisation/units/meter-readings')
+            ->component('organisation/utilities/index')
             ->has('readings.data', 1)
             ->where('readings.data.0.utility', 'gas')
             ->where('readings.data.0.utility_label', 'Gas')
