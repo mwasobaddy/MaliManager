@@ -36,6 +36,21 @@ class Payment extends Model
         'refunded',
     ];
 
+    /**
+     * What the money is for. Only `rent` (plus future utility/fee types)
+     * reduces arrears; `deposit` is held money and never counts toward
+     * what is owed.
+     *
+     * @var list<string>
+     */
+    public const TYPES = [
+        'rent',
+        'deposit',
+        'utility',
+        'fee',
+        'other',
+    ];
+
     protected $fillable = [
         'tenant_id',
         'organization_id',
@@ -49,6 +64,7 @@ class Payment extends Model
         'method',
         'reference',
         'status',
+        'type',
         'notes',
         'created_by',
     ];

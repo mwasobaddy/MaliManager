@@ -24,6 +24,8 @@ class MoveOutOccupant extends Service
                 $this->endLease($occupant, $unitId);
             }
 
+            $this->cancelPendingLeases($occupant, $property);
+
             $occupant->units()
                 ->where('units.property_id', $property->id)
                 ->detach();

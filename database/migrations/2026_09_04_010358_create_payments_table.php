@@ -29,6 +29,11 @@ return new class extends Migration
             $table->string('method')->default('cash');
             $table->string('reference')->nullable();
             $table->string('status')->default('received');
+
+            // What the money is for. Deposits are held, not earned: they are
+            // excluded from arrears math until a refund decision moves them.
+            // Phase B allocates rent/utility/fee payments against invoices.
+            $table->string('type')->default('rent');
             $table->text('notes')->nullable();
 
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();

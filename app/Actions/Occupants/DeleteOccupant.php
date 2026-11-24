@@ -19,6 +19,8 @@ class DeleteOccupant extends Service
                 $this->endLease($occupant, $unitId);
             }
 
+            $this->cancelPendingLeases($occupant);
+
             $occupant->units()->detach();
 
             $this->stripOccupantRoleIfNoActiveLeases($occupant->person);

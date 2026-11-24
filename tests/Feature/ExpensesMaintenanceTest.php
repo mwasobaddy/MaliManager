@@ -156,6 +156,7 @@ test('occupants with an active lease raise maintenance requests with photos', fu
         'email' => 'jane@acme.test',
         'status' => 'active',
         'unit_ids' => [$unit->id],
+        'lease' => ['rent_amount' => 25000, 'rent_frequency' => 'monthly', 'currency' => 'KES'],
     ]);
 
     $occupantUser = User::where('email', 'jane@acme.test')->first();

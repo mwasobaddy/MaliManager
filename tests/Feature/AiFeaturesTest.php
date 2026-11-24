@@ -85,6 +85,7 @@ function occupantWithUnit(Organization $organization, Property $property, User $
         'email' => 'jane@acme.test',
         'status' => 'active',
         'unit_ids' => [$unit->id],
+        'lease' => ['rent_amount' => 25000, 'rent_frequency' => 'monthly', 'currency' => 'KES'],
     ]);
 
     return [User::where('email', 'jane@acme.test')->first(), $unit];

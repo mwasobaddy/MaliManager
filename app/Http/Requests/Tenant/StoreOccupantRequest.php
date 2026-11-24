@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Tenant;
 
+use App\Models\Payment;
 use App\Models\Property;
 use App\Support\LeaseAgreementTemplate;
 use Illuminate\Foundation\Http\FormRequest;
@@ -28,6 +29,13 @@ class StoreOccupantRequest extends FormRequest
             'status' => ['required', 'string', Rule::in(['active', 'inactive', 'moved_out'])],
             'unit_ids' => ['required', 'array', 'min:1'],
             'unit_ids.*' => ['integer', Rule::exists('units', 'id')->where(fn ($query) => $query->where('property_id', $this->propertyId($property)))],
+            // Move-in now (the default) activates immediately and records the
+            // deposit plus first-period rent in the same transaction; off
+            // means a booking — inactive occupant, pending leases.
+            'move_in_now' => ['nullable', 'boolean'],
+            'move_in_date' => ['nullable', 'date'],
+            'payment_method' => ['nullable', 'string', Rule::in(Payment::METHODS)],
+            'payment_reference' => ['nullable', 'string', 'max:255'],
             'lease' => ['nullable', 'array'],
             'lease.starts_at' => ['nullable', 'date'],
             'lease.rent_amount' => ['nullable', 'numeric', 'min:0'],

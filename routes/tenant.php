@@ -362,6 +362,8 @@ Route::middleware([
 
             Route::post('/{property:slug}/occupants/{occupant}/move-out', [OccupantController::class, 'moveOut'])
                 ->name('tenant.occupants.move-out');
+            Route::post('/{property:slug}/occupants/{occupant}/move-in', [OccupantController::class, 'moveIn'])
+                ->name('tenant.occupants.move-in');
         });
 
         Route::middleware('sub-permission:occupant.delete')->group(function () {

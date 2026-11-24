@@ -464,7 +464,13 @@ export default function LeasesIndex({ leases, focusedLease }: Props) {
     const statusBadges = (lease: LeaseRow) => (
         <>
             <Badge
-                variant={lease.status === 'active' ? 'success' : 'neutral'}
+                variant={
+                    lease.status === 'active'
+                        ? 'success'
+                        : lease.status === 'pending'
+                          ? 'warning'
+                          : 'neutral'
+                }
                 className="capitalize"
             >
                 {lease.status}
@@ -824,6 +830,7 @@ export default function LeasesIndex({ leases, focusedLease }: Props) {
                             {[
                                 { value: 'all', label: 'Any status' },
                                 { value: 'active', label: 'Active' },
+                                { value: 'pending', label: 'Pending' },
                                 { value: 'ended', label: 'Ended' },
                             ].map((option) => (
                                 <div

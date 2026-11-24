@@ -30,6 +30,7 @@ class CreatePayment extends Service
                 'method' => $data['method'],
                 'reference' => $data['reference'] ?? null,
                 'status' => $data['status'] ?? 'received',
+                'type' => $data['type'] ?? 'rent',
                 'notes' => $data['notes'] ?? null,
                 'created_by' => $actor->id,
             ]);

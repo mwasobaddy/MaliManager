@@ -39,7 +39,7 @@ return new class extends Migration
             $table->string('currency', 3)->nullable();
             $table->decimal('deposit', 14, 2)->nullable();
             $table->text('agreement_text')->nullable()->comment('In-system composed lease agreement');
-            $table->string('status')->default('active')->comment('active|ended');
+            $table->string('status')->default('active')->comment('pending|active|ended');
 
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();

@@ -65,6 +65,7 @@ test('uploaded lease agreements are stored inside the organization and property 
         'email' => 'jane@acme.test',
         'status' => 'active',
         'unit_ids' => [$unit->id],
+        'lease' => ['rent_amount' => 25000, 'rent_frequency' => 'monthly', 'currency' => 'KES'],
     ]);
 
     $lease = Lease::where('unit_id', $unit->id)->first();

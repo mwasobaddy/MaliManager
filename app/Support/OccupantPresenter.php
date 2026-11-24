@@ -170,7 +170,37 @@ final class OccupantPresenter
             // it into the editor, and the view sheet simply ignores the extra
             // fields.
             'lease' => self::activeLease($occupant, $property),
+            // Bookings waiting on move-in: the view sheet offers the move-in
+            // step from these, so they ride along only on the focused record.
+            'pending_leases' => self::pendingLeases($occupant, $property),
         ];
+    }
+
+    /**
+     * Leases booked but not yet started in this property, with the figures
+     * the move-in step collects: rent terms and the deposit due.
+     *
+     * @return list<array{lease_id: int, unit_id: int|null, unit_name: string|null, rent_amount: string|null, currency: string|null, deposit: string|null}>
+     */
+    public static function pendingLeases(Occupant $occupant, Property $property): array
+    {
+        return Lease::query()
+            ->where('person_id', $occupant->person_id)
+            ->where('property_id', $property->id)
+            ->where('status', 'pending')
+            ->whereNull('ends_at')
+            ->with('unit:id,name')
+            ->orderBy('unit_id')
+            ->get()
+            ->map(fn (Lease $lease): array => [
+                'lease_id' => $lease->id,
+                'unit_id' => $lease->unit_id,
+                'unit_name' => $lease->unit?->name,
+                'rent_amount' => $lease->rent_amount,
+                'currency' => $lease->currency,
+                'deposit' => $lease->deposit,
+            ])
+            ->all();
     }
 
     /**

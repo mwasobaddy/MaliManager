@@ -6,6 +6,7 @@ use App\Models\Lease;
 use App\Models\Occupant;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
+use App\Models\Payment;
 use App\Models\Person;
 use App\Models\Plan;
 use App\Models\Property;
@@ -74,6 +75,7 @@ function addOccupant(Organization $organization, User $actor, Property $property
         'last_name' => 'Wanjiru',
         'email' => 'jane@acme.test',
         'status' => 'active',
+        'lease' => ['rent_amount' => 25000, 'rent_frequency' => 'monthly', 'currency' => 'KES'],
     ], $attributes, [
         'unit_ids' => $unitIds,
     ]));
@@ -562,6 +564,10 @@ test('owner can add an occupant assigned to a unit', function () {
             'national_id' => '12345678',
             'status' => 'active',
             'unit_ids' => [$unit->id],
+            'lease' => [
+                'rent_amount' => 25000, 'rent_frequency' => 'monthly',
+                'currency' => 'KES',
+            ],
         ])->assertRedirect(occupantTenantUrl($organization, '/sunset-heights/occupants'));
 
     $occupant = Occupant::where('organization_id', $organization->id)->first();
@@ -599,6 +605,10 @@ test('occupant gender is optional on create and update but constrained when give
             'status' => 'active',
             'gender' => 'female',
             'unit_ids' => [$unit->id],
+            'lease' => [
+                'rent_amount' => 25000, 'rent_frequency' => 'monthly',
+                'currency' => 'KES',
+            ],
         ])->assertRedirect();
 
     $occupant = Occupant::where('organization_id', $organization->id)
@@ -657,6 +667,10 @@ test('adding an occupant who already has an account reuses the user', function (
             'email' => 'exists@acme.test',
             'status' => 'active',
             'unit_ids' => [$unit->id],
+            'lease' => [
+                'rent_amount' => 25000, 'rent_frequency' => 'monthly',
+                'currency' => 'KES',
+            ],
         ])->assertRedirect(occupantTenantUrl($organization, '/sunset-heights/occupants'));
 
     expect(User::where('email', 'exists@acme.test')->count())->toBe(1)
@@ -1135,4 +1149,220 @@ test('occupant create and edit are overlays addressed by url', function () {
         ->assertInertia(fn ($page) => $page
             ->component('organisation/occupants/index')
             ->where('focusedOccupant.id', $occupant->id));
+});
+
+test('a booking creates an inactive occupant with a pending lease and no payments', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createOccupantOrganization($owner);
+    $property = createProperty($organization, $owner, 'sunset-heights');
+
+    $unit = $property->units()->create([
+        'name' => 'Unit A1',
+        'status' => 'vacant',
+        'created_by' => $owner->id,
+    ]);
+
+    $this->actingAs($owner)
+        ->post(occupantTenantUrl($organization, '/sunset-heights/occupants'), [
+            'first_name' => 'Zawadi',
+            'email' => 'zawadi.booking@acme.test',
+            'status' => 'active',
+            'unit_ids' => [$unit->id],
+            'move_in_now' => false,
+            'lease' => [
+                'rent_amount' => 25000, 'rent_frequency' => 'monthly',
+                'currency' => 'KES', 'deposit' => 25000,
+            ],
+        ])->assertRedirect(occupantTenantUrl($organization, '/sunset-heights/occupants'));
+
+    $occupant = Occupant::where('organization_id', $organization->id)->firstOrFail();
+
+    // The requested status is overridden: a booking is always inactive.
+    expect($occupant->status)->toBe('inactive');
+
+    $lease = Lease::where('person_id', $occupant->person_id)->firstOrFail();
+    expect($lease->status)->toBe('pending');
+
+    // Nothing collected yet, and the unit stays vacant.
+    expect(Payment::where('organization_id', $organization->id)->count())->toBe(0)
+        ->and($unit->fresh()->status)->toBe('vacant');
+
+    // The view sheet carries the pending leases the move-in step collects.
+    $this->actingAs($owner)
+        ->get(occupantTenantUrl($organization, "/sunset-heights/occupants?mode=view&occupant={$occupant->id}"))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('focusedOccupant.status', 'inactive')
+            ->has('focusedOccupant.pending_leases', 1)
+            ->where('focusedOccupant.pending_leases.0.unit_name', 'Unit A1')
+            ->where('focusedOccupant.pending_leases.0.deposit', 25000));
+});
+
+test('move-in activates the booking and records deposit plus first rent', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createOccupantOrganization($owner);
+    $property = createProperty($organization, $owner, 'sunset-heights');
+
+    $unit = $property->units()->create([
+        'name' => 'Unit A1',
+        'status' => 'vacant',
+        'created_by' => $owner->id,
+    ]);
+
+    $occupant = app(OccupantService::class)->create($organization, $property, $owner, [
+        'first_name' => 'Zawadi',
+        'email' => 'zawadi.movein@acme.test',
+        'status' => 'inactive',
+        'unit_ids' => [$unit->id],
+        'move_in_now' => false,
+        'lease' => [
+            'rent_amount' => 25000, 'rent_frequency' => 'monthly',
+            'currency' => 'KES', 'deposit' => 25000,
+        ],
+    ]);
+
+    $this->actingAs($owner)
+        ->post(occupantTenantUrl($organization, "/sunset-heights/occupants/{$occupant->id}/move-in"), [
+            'move_in_date' => '2026-02-01',
+            'payment_method' => 'mpesa',
+            'payment_reference' => 'MP123',
+        ])->assertRedirect(occupantTenantUrl($organization, '/sunset-heights/occupants'));
+
+    expect($occupant->refresh()->status)->toBe('active');
+
+    $lease = Lease::where('person_id', $occupant->person_id)->firstOrFail();
+    expect($lease->status)->toBe('active')
+        ->and($lease->starts_at->toDateString())->toBe('2026-02-01')
+        ->and($unit->fresh()->status)->toBe('occupied');
+
+    $payments = Payment::where('lease_id', $lease->id)->orderBy('id')->get();
+    expect($payments)->toHaveCount(2)
+        ->and($payments[0]->type)->toBe('deposit')
+        ->and($payments[0]->amount)->toBe('25000.00')
+        ->and($payments[1]->type)->toBe('rent')
+        ->and($payments[1]->amount)->toBe('25000.00')
+        ->and($payments[1]->method)->toBe('mpesa')
+        ->and($payments[1]->reference)->toBe('MP123')
+        ->and($payments[1]->paid_on->toDateString())->toBe('2026-02-01');
+});
+
+test('move-in with nothing booked is rejected', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createOccupantOrganization($owner);
+    $property = createProperty($organization, $owner, 'sunset-heights');
+
+    $unit = $property->units()->create([
+        'name' => 'Unit A1',
+        'status' => 'vacant',
+        'created_by' => $owner->id,
+    ]);
+
+    // Already moved in through the default path: active lease, nothing pending.
+    $occupant = addOccupant($organization, $owner, $property, [], [$unit->id]);
+    expect($occupant->refresh()->status)->toBe('active');
+
+    $this->actingAs($owner)
+        ->from(occupantTenantUrl($organization, '/sunset-heights/occupants'))
+        ->post(occupantTenantUrl($organization, "/sunset-heights/occupants/{$occupant->id}/move-in"), [])
+        ->assertRedirect(occupantTenantUrl($organization, '/sunset-heights/occupants'))
+        ->assertSessionHas('inertia.flash_data', fn (array $flash) => str_contains(
+            $flash['toast']['message'] ?? '',
+            'nothing booked',
+        ));
+
+    expect($occupant->refresh()->status)->toBe('active');
+});
+
+test('manually moving out with live leases is rejected', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createOccupantOrganization($owner);
+    $property = createProperty($organization, $owner, 'sunset-heights');
+
+    $unit = $property->units()->create([
+        'name' => 'Unit A1',
+        'status' => 'vacant',
+        'created_by' => $owner->id,
+    ]);
+
+    $occupant = addOccupant($organization, $owner, $property, [], [$unit->id]);
+
+    $this->actingAs($owner)
+        ->from(occupantTenantUrl($organization, '/sunset-heights/occupants'))
+        ->put(occupantTenantUrl($organization, "/sunset-heights/occupants/{$occupant->id}"), [
+            'first_name' => 'Jane',
+            'email' => 'jane@acme.test',
+            'status' => 'moved_out',
+            'unit_ids' => [$unit->id],
+        ])
+        ->assertRedirect(occupantTenantUrl($organization, '/sunset-heights/occupants'))
+        ->assertSessionHas('inertia.flash_data', fn (array $flash) => str_contains(
+            $flash['toast']['message'] ?? '',
+            'still holds active leases',
+        ));
+
+    expect($occupant->refresh()->status)->toBe('active');
+    expect(Lease::where('person_id', $occupant->person_id)->where('status', 'active')->exists())->toBeTrue();
+});
+
+test('manual activation of a booking is rejected — move-in only', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createOccupantOrganization($owner);
+    $property = createProperty($organization, $owner, 'sunset-heights');
+
+    $unit = $property->units()->create([
+        'name' => 'Unit A1',
+        'status' => 'vacant',
+        'created_by' => $owner->id,
+    ]);
+
+    $occupant = app(OccupantService::class)->create($organization, $property, $owner, [
+        'first_name' => 'Jane',
+        'email' => 'jane@acme.test',
+        'status' => 'inactive',
+        'unit_ids' => [$unit->id],
+        'move_in_now' => false,
+        'lease' => ['rent_amount' => 25000, 'rent_frequency' => 'monthly', 'currency' => 'KES'],
+    ]);
+    expect($occupant->status)->toBe('inactive');
+
+    $this->actingAs($owner)
+        ->from(occupantTenantUrl($organization, '/sunset-heights/occupants'))
+        ->put(occupantTenantUrl($organization, "/sunset-heights/occupants/{$occupant->id}"), [
+            'first_name' => 'Jane',
+            'email' => 'jane@acme.test',
+            'status' => 'active',
+            'unit_ids' => [$unit->id],
+        ])
+        ->assertRedirect(occupantTenantUrl($organization, '/sunset-heights/occupants'))
+        ->assertSessionHas('inertia.flash_data', fn (array $flash) => str_contains(
+            $flash['toast']['message'] ?? '',
+            'move the occupant in first',
+        ));
+
+    expect($occupant->refresh()->status)->toBe('inactive');
+    expect(Lease::where('person_id', $occupant->person_id)->where('status', 'active')->exists())->toBeFalse();
+});
+
+test('ending the last lease falls the occupant back to inactive', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createOccupantOrganization($owner);
+    $property = createProperty($organization, $owner, 'sunset-heights');
+
+    $unit = $property->units()->create([
+        'name' => 'Unit A1',
+        'status' => 'vacant',
+        'created_by' => $owner->id,
+    ]);
+
+    $occupant = addOccupant($organization, $owner, $property, [], [$unit->id]);
+    $lease = Lease::where('person_id', $occupant->person_id)->firstOrFail();
+
+    $this->actingAs($owner)
+        ->post(occupantTenantUrl($organization, "/sunset-heights/leases/{$lease->id}/end"), [
+            'password' => 'password',
+        ])->assertRedirect();
+
+    expect($lease->refresh()->status)->toBe('ended')
+        ->and($occupant->refresh()->status)->toBe('inactive')
+        ->and($unit->fresh()->status)->toBe('vacant');
 });

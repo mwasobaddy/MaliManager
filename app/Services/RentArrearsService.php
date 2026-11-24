@@ -35,6 +35,8 @@ class RentArrearsService extends Service
         $paidByLease = Payment::query()
             ->whereIn('lease_id', $leases->modelKeys())
             ->where('status', 'received')
+            // Deposits are held, not earned: they never reduce what is owed.
+            ->where('type', '!=', 'deposit')
             ->groupBy('lease_id')
             ->selectRaw('lease_id, SUM(amount) as total')
             ->pluck('total', 'lease_id');
@@ -56,7 +58,7 @@ class RentArrearsService extends Service
      */
     public function balanceFor(Lease $lease, ?string $paid = null): array
     {
-        $paid ??= (string) $lease->payments()->where('status', 'received')->sum('amount');
+        $paid ??= (string) $lease->payments()->where('status', 'received')->where('type', '!=', 'deposit')->sum('amount');
 
         $rent = number_format((float) ($lease->rent_amount ?? 0), 2, '.', '');
         $dueDates = $this->dueDates($lease);
@@ -95,7 +97,7 @@ class RentArrearsService extends Service
         }
 
         $rent = number_format((float) ($lease->rent_amount ?? 0), 2, '.', '');
-        $paid = number_format((float) $lease->payments()->where('status', 'received')->sum('amount'), 2, '.', '');
+        $paid = number_format((float) $lease->payments()->where('status', 'received')->where('type', '!=', 'deposit')->sum('amount'), 2, '.', '');
         $expected = '0.00';
 
         foreach ($dueDates as $due) {

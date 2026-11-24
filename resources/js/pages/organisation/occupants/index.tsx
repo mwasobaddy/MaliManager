@@ -3,6 +3,7 @@ import { Form } from '@inertiajs/react';
 import type { ColumnDef, SortingState } from '@tanstack/react-table';
 import {
     FileText,
+    KeyRound,
     ListFilter,
     LogOut,
     Search,
@@ -18,6 +19,7 @@ import ConfirmDeleteOverlay from '@/components/confirm-delete-overlay';
 import { DataTable } from '@/components/data-table';
 import { LabelledIconButton } from '@/components/labelled-icon-button';
 import Heading from '@/components/heading';
+import InputError from '@/components/input-error';
 import OccupantFormFields from '@/components/occupant-form-fields';
 import { OverlayFooter } from '@/components/overlay-footer';
 import { ResponsiveOverlay } from '@/components/responsive-overlay';
@@ -29,6 +31,13 @@ import { Empty } from '@/components/ui/empty';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import {
     Dialog,
     DialogContent,
     DialogDescription,
@@ -39,10 +48,12 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Pagination } from '@/components/ui/pagination';
 import { Spinner } from '@/components/ui/spinner';
 import { useOverlayParam } from '@/hooks/use-overlay-param';
+import { formatMoney } from '@/lib/format-money';
 import {
     agreement as occupantAgreement,
     destroy as destroyOccupant,
     index as indexRoute,
+    moveIn as moveInOccupant,
     moveOut as moveOutOccupant,
     show as showOccupant,
     store as storeOccupant,
@@ -78,6 +89,15 @@ type Lease = {
     agreement_document_url: string | null;
 };
 
+type PendingLease = {
+    lease_id: number;
+    unit_id: number | null;
+    unit_name: string | null;
+    rent_amount: string | null;
+    currency: string | null;
+    deposit: string | null;
+};
+
 type Occupant = {
     id: number;
     first_name: string;
@@ -93,6 +113,7 @@ type Occupant = {
     gender?: string | null;
     added_at?: string | null;
     lease?: Lease | null;
+    pending_leases?: PendingLease[] | null;
 };
 
 type AgreementTemplateOption = {
@@ -110,6 +131,7 @@ type Paginator = {
 
 const STATUSES = [
     { value: 'active', label: 'Active' },
+    { value: 'inactive', label: 'Inactive' },
     { value: 'moved_out', label: 'Moved out' },
 ];
 
@@ -144,6 +166,7 @@ export default function OccupantsIndex({
 
     const [bulkOpen, setBulkOpen] = useState(false);
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
+    const [moveInMethod, setMoveInMethod] = useState('cash');
     // Live-validated by the form sheets below; the footer submit stays
     // disabled until the visible fields pass. Reset on close so opening a
     // different row never inherits the previous sheet's verdict.
@@ -332,6 +355,15 @@ export default function OccupantsIndex({
                   (occupant) => occupant.id === viewedOccupantId,
               ) ?? null));
 
+    // Move-in needs the pending leases, which only the server-fetched
+    // record carries — a row fallback would open a sheet with nothing to
+    // collect.
+    const isMoveInOpen =
+        query.get('mode') === 'move-in' &&
+        viewedOccupantId > 0 &&
+        focusedOccupant?.id === viewedOccupantId;
+    const moveInTarget = isMoveInOpen ? focusedOccupant : null;
+
     const formOptionsLoaded =
         units !== undefined &&
         templates !== undefined &&
@@ -376,6 +408,22 @@ export default function OccupantsIndex({
         setOverlayParam('mode', 'move-out', {
             only: ['occupants', 'focusedOccupant'],
             keep: { occupant: String(occupant.id) },
+        });
+    }
+
+    function openMoveIn(occupant: Occupant) {
+        setMoveInMethod('cash');
+        setOverlayParam('mode', 'move-in', {
+            only: ['occupants', 'focusedOccupant'],
+            keep: { occupant: String(occupant.id) },
+        });
+    }
+
+    function closeMoveIn() {
+        setOverlayParam('mode', 'view', {
+            replace: true,
+            only: ['occupants', 'focusedOccupant'],
+            keep: { occupant: String(viewedOccupantId) },
         });
     }
 
@@ -765,6 +813,21 @@ export default function OccupantsIndex({
                                     Agreement
                                 </Button>
                             )}
+                            {canEdit &&
+                                viewedOccupant.status === 'inactive' &&
+                                (viewedOccupant.pending_leases?.length ?? 0) >
+                                    0 && (
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        onClick={() =>
+                                            openMoveIn(viewedOccupant)
+                                        }
+                                    >
+                                        <KeyRound className="size-4" />
+                                        Move in
+                                    </Button>
+                                )}
                             {canEdit && (
                                 <Button
                                     type="button"
@@ -1034,6 +1097,7 @@ export default function OccupantsIndex({
                                     idPrefix="create"
                                     propertyName={property.name}
                                     onValidityChange={setCreateValid}
+                                    showMoveIn
                                     defaults={
                                         preselectedUnit !== null
                                             ? { unit_ids: [preselectedUnit] }
@@ -1159,6 +1223,150 @@ export default function OccupantsIndex({
                     )}
                 </ResponsiveOverlay>
             )}
+
+            {canEdit &&
+                moveInTarget &&
+                (moveInTarget.pending_leases?.length ?? 0) > 0 && (
+                    <ResponsiveOverlay
+                        open={isMoveInOpen}
+                        onOpenChange={(open) => {
+                            if (!open) {
+                                closeMoveIn();
+                            }
+                        }}
+                        title={`Move in ${moveInTarget.first_name} ${moveInTarget.last_name ?? ''}`.trim()}
+                        description="Record the deposit and first-period rent to start the booked lease."
+                        footer={
+                            <OverlayFooter
+                                onCancel={closeMoveIn}
+                                actions={[
+                                    {
+                                        label: 'Confirm move-in',
+                                        form: 'occupant-move-in-form',
+                                        type: 'submit',
+                                    },
+                                ]}
+                            />
+                        }
+                    >
+                        <Form
+                            key={moveInTarget.id}
+                            id="occupant-move-in-form"
+                            {...moveInOccupant.form({
+                                property: property.slug,
+                                occupant: moveInTarget.id,
+                            })}
+                            options={{ preserveScroll: true }}
+                            onSuccess={() => closeSheets()}
+                            className="grid gap-4 py-2"
+                        >
+                            {({ errors }) => (
+                                <>
+                                    <dl className="grid gap-x-6 gap-y-3 text-sm">
+                                        {(
+                                            moveInTarget.pending_leases ?? []
+                                        ).map((lease) => (
+                                            <div
+                                                key={lease.lease_id}
+                                                className="grid grid-cols-[8rem_1fr] gap-2"
+                                            >
+                                                <dt className="text-muted-foreground">
+                                                    {lease.unit_name ?? 'Unit'}
+                                                </dt>
+                                                <dd className="min-w-0 break-words">
+                                                    {formatMoney(
+                                                        lease.rent_amount,
+                                                        lease.currency,
+                                                    )}
+                                                    {lease.deposit != null &&
+                                                        ` + ${formatMoney(lease.deposit, lease.currency)} deposit`}
+                                                </dd>
+                                            </div>
+                                        ))}
+                                    </dl>
+
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="move-in-date">
+                                            Move-in date
+                                        </Label>
+                                        <Input
+                                            id="move-in-date"
+                                            name="move_in_date"
+                                            type="date"
+                                            defaultValue={new Date()
+                                                .toISOString()
+                                                .slice(0, 10)}
+                                        />
+                                        <InputError
+                                            message={errors.move_in_date}
+                                        />
+                                    </div>
+
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="move-in-method">
+                                            Payment method
+                                        </Label>
+                                        <input
+                                            type="hidden"
+                                            name="payment_method"
+                                            value={moveInMethod}
+                                        />
+                                        <Select
+                                            value={moveInMethod}
+                                            onValueChange={setMoveInMethod}
+                                        >
+                                            <SelectTrigger
+                                                id="move-in-method"
+                                                className="w-full"
+                                            >
+                                                <SelectValue placeholder="Select method" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {[
+                                                    'cash',
+                                                    'mpesa',
+                                                    'bank',
+                                                    'cheque',
+                                                    'card',
+                                                    'other',
+                                                ].map((value) => (
+                                                    <SelectItem
+                                                        key={value}
+                                                        value={value}
+                                                    >
+                                                        {value === 'mpesa'
+                                                            ? 'M-Pesa'
+                                                            : value
+                                                                  .charAt(0)
+                                                                  .toUpperCase() +
+                                                              value.slice(1)}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <InputError
+                                            message={errors.payment_method}
+                                        />
+                                    </div>
+
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="move-in-reference">
+                                            Reference (optional)
+                                        </Label>
+                                        <Input
+                                            id="move-in-reference"
+                                            name="payment_reference"
+                                            placeholder="Receipt no."
+                                        />
+                                        <InputError
+                                            message={errors.payment_reference}
+                                        />
+                                    </div>
+                                </>
+                            )}
+                        </Form>
+                    </ResponsiveOverlay>
+                )}
 
             {canEdit &&
                 moveOutTarget &&

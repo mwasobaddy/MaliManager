@@ -25,15 +25,32 @@ class CreateOccupant extends Service
                 'person_id' => $person->id,
             ]);
 
+            // Move-in now (the default) activates immediately and records
+            // the deposit plus first-period rent; otherwise this is a
+            // booking — inactive occupant with pending leases, activated
+            // later through the move-in step.
+            $moveIn = (bool) ($data['move_in_now'] ?? true);
+
             $occupant->fill([
-                'status' => $data['status'] ?? 'active',
+                'status' => $moveIn ? 'active' : 'inactive',
                 'created_by' => $actor->id,
             ]);
 
             $occupant->deleted_at = null;
             $occupant->save();
 
-            $this->syncUnitAssignments($occupant, $property, $data['unit_ids'] ?? [], $actor, $data['lease'] ?? []);
+            $created = $this->syncUnitAssignments(
+                $occupant,
+                $property,
+                $data['unit_ids'] ?? [],
+                $actor,
+                $data['lease'] ?? [],
+                $moveIn ? 'active' : 'pending',
+            );
+
+            if ($moveIn) {
+                $this->recordMoveInPayments($occupant, $property, $actor, $created, $data);
+            }
 
             return $occupant;
         });

@@ -5,6 +5,7 @@ import { FrequencySelect } from '@/components/frequency-select';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import type { TemplateToken } from '@/components/rich-text-editor';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -73,6 +74,12 @@ type Props = {
     leaseSectionHint?: string;
     defaults?: Defaults;
     /**
+     * Create mode: the move-in payment section replaces the status picker
+     * (the server derives the status from it). Edit mode keeps the status
+     * picker and omits the section.
+     */
+    showMoveIn?: boolean;
+    /**
      * Reports whether the sheet may submit: no local field errors and at
      * least one unit selected. The page disables the footer submit while
      * false; the server still validates everything on submit.
@@ -122,11 +129,14 @@ export default function OccupantFormFields({
     propertyName,
     leaseSectionHint = "Capture the rental terms. These power the renter's rental history.",
     defaults = {},
+    showMoveIn = false,
     onValidityChange,
 }: Props) {
     const templateList = [...templates.property, ...templates.organization];
     const [selectedTemplateId, setSelectedTemplateId] = useState('');
     const [status, setStatus] = useState(defaults.status ?? 'active');
+    const [moveInNow, setMoveInNow] = useState(true);
+    const [paymentMethod, setPaymentMethod] = useState('cash');
     const [unitIds, setUnitIds] = useState<number[]>(defaults.unit_ids ?? []);
     const [gender, setGender] = useState(defaults.gender ?? 'unspecified');
     const [unitQuery, setUnitQuery] = useState('');
@@ -400,29 +410,37 @@ export default function OccupantFormFields({
                     <InputError message={errors.gender} />
                 </div>
 
-                <div className="grid gap-2">
-                    <Label htmlFor={`${idPrefix}-status`}>Status</Label>
-                    <input type="hidden" name="status" value={status} />
-                    <Select value={status} onValueChange={setStatus}>
-                        <SelectTrigger
-                            id={`${idPrefix}-status`}
-                            className="w-full"
-                        >
-                            <SelectValue placeholder="Select a status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {STATUSES.map((value) => (
-                                <SelectItem key={value} value={value}>
-                                    {value === 'moved_out'
-                                        ? 'Moved out'
-                                        : value.charAt(0).toUpperCase() +
-                                          value.slice(1)}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    <InputError message={errors.status} />
-                </div>
+                {showMoveIn ? (
+                    <input
+                        type="hidden"
+                        name="status"
+                        value={moveInNow ? 'active' : 'inactive'}
+                    />
+                ) : (
+                    <div className="grid gap-2">
+                        <Label htmlFor={`${idPrefix}-status`}>Status</Label>
+                        <input type="hidden" name="status" value={status} />
+                        <Select value={status} onValueChange={setStatus}>
+                            <SelectTrigger
+                                id={`${idPrefix}-status`}
+                                className="w-full"
+                            >
+                                <SelectValue placeholder="Select a status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {STATUSES.map((value) => (
+                                    <SelectItem key={value} value={value}>
+                                        {value === 'moved_out'
+                                            ? 'Moved out'
+                                            : value.charAt(0).toUpperCase() +
+                                              value.slice(1)}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <InputError message={errors.status} />
+                    </div>
+                )}
             </div>
 
             <div className="space-y-4">
@@ -670,6 +688,126 @@ export default function OccupantFormFields({
                         </Select>
                         <InputError message={errors['lease.currency']} />
                     </div>
+
+                    {showMoveIn && (
+                        <div className="grid gap-4 rounded-lg border border-border-strong bg-muted/40 p-4 md:col-span-2">
+                            <div className="flex items-start gap-2">
+                                <Checkbox
+                                    id={`${idPrefix}-move-in-now`}
+                                    checked={moveInNow}
+                                    onCheckedChange={(checked) =>
+                                        setMoveInNow(checked === true)
+                                    }
+                                />
+                                <div className="grid gap-1">
+                                    <Label
+                                        htmlFor={`${idPrefix}-move-in-now`}
+                                        className="cursor-pointer"
+                                    >
+                                        Collecting the move-in payment now
+                                    </Label>
+                                    <p className="text-xs text-muted-foreground">
+                                        Records the deposit plus first-period
+                                        rent and starts the lease today. Off
+                                        means a booking — the occupant stays
+                                        inactive until moved in from their
+                                        record.
+                                    </p>
+                                </div>
+                            </div>
+                            <input
+                                type="hidden"
+                                name="move_in_now"
+                                value={moveInNow ? '1' : ''}
+                            />
+
+                            {moveInNow && (
+                                <div className="grid gap-4 sm:grid-cols-3">
+                                    <div className="grid gap-2">
+                                        <Label
+                                            htmlFor={`${idPrefix}-move-in-date`}
+                                        >
+                                            Move-in date
+                                        </Label>
+                                        <Input
+                                            id={`${idPrefix}-move-in-date`}
+                                            name="move_in_date"
+                                            type="date"
+                                            defaultValue={new Date()
+                                                .toISOString()
+                                                .slice(0, 10)}
+                                        />
+                                        <InputError
+                                            message={errors.move_in_date}
+                                        />
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label
+                                            htmlFor={`${idPrefix}-payment-method`}
+                                        >
+                                            Payment method
+                                        </Label>
+                                        <input
+                                            type="hidden"
+                                            name="payment_method"
+                                            value={paymentMethod}
+                                        />
+                                        <Select
+                                            value={paymentMethod}
+                                            onValueChange={setPaymentMethod}
+                                        >
+                                            <SelectTrigger
+                                                id={`${idPrefix}-payment-method`}
+                                                className="w-full"
+                                            >
+                                                <SelectValue placeholder="Select method" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {[
+                                                    'cash',
+                                                    'mpesa',
+                                                    'bank',
+                                                    'cheque',
+                                                    'card',
+                                                    'other',
+                                                ].map((value) => (
+                                                    <SelectItem
+                                                        key={value}
+                                                        value={value}
+                                                    >
+                                                        {value === 'mpesa'
+                                                            ? 'M-Pesa'
+                                                            : value
+                                                                  .charAt(0)
+                                                                  .toUpperCase() +
+                                                              value.slice(1)}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <InputError
+                                            message={errors.payment_method}
+                                        />
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label
+                                            htmlFor={`${idPrefix}-payment-reference`}
+                                        >
+                                            Reference (optional)
+                                        </Label>
+                                        <Input
+                                            id={`${idPrefix}-payment-reference`}
+                                            name="payment_reference"
+                                            placeholder="Receipt no."
+                                        />
+                                        <InputError
+                                            message={errors.payment_reference}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
 
                     <div className="grid gap-2 md:col-span-2">
                         <Label htmlFor={`${idPrefix}-lease-agreement_text`}>

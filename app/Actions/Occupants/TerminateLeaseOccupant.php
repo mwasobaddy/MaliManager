@@ -23,6 +23,12 @@ class TerminateLeaseOccupant extends Service
             }
 
             $this->stripOccupantRoleIfNoActiveLeases($lease->person);
+
+            $occupant = $lease->occupant;
+
+            if ($occupant !== null) {
+                $this->refreshOccupantStatus($occupant);
+            }
         });
     }
 }

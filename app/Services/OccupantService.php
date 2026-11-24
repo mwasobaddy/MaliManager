@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Actions\Occupants\Concerns\OccupantHelpers;
 use App\Actions\Occupants\CreateOccupant;
 use App\Actions\Occupants\DeleteOccupant;
+use App\Actions\Occupants\MoveInOccupant;
 use App\Actions\Occupants\MoveOutOccupant;
 use App\Actions\Occupants\TerminateLeaseOccupant;
 use App\Actions\Occupants\UpdateOccupant;
@@ -60,6 +61,17 @@ class OccupantService extends Service
     public function moveOut(Occupant $occupant, Property $property, User $actor): void
     {
         app(MoveOutOccupant::class)->handle($occupant, $property, $actor);
+    }
+
+    /**
+     * Move a booked occupant in: pending leases in the property activate on
+     * the move-in date once the deposit and first-period rent are recorded.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public function moveIn(Occupant $occupant, Property $property, User $actor, array $data): Occupant
+    {
+        return app(MoveInOccupant::class)->handle($occupant, $property, $actor, $data);
     }
 
     /**

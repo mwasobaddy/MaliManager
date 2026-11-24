@@ -9,6 +9,7 @@ use App\Models\Person;
 use App\Models\Property;
 use App\Models\Unit;
 use App\Models\User;
+use App\Services\PaymentService;
 use App\Support\TenancyContext;
 
 trait OccupantHelpers
@@ -28,6 +29,54 @@ trait OccupantHelpers
             ]);
 
         $this->refreshUnitStatus($unitId);
+    }
+
+    /**
+     * Drop bookings that never started: pending leases for this person on
+     * the given unit, in the given property, or — without a property —
+     * everywhere in the occupant's organization. Never touches other
+     * organizations: the person identity is global.
+     */
+    private function cancelPendingLeases(Occupant $occupant, ?Property $property = null, ?int $unitId = null): void
+    {
+        $query = Lease::where('person_id', $occupant->person_id)
+            ->where('status', 'pending');
+
+        if ($property !== null) {
+            $query->where('property_id', $property->id);
+        } else {
+            $query->where('organization_id', $occupant->organization_id);
+        }
+
+        if ($unitId !== null) {
+            $query->where('unit_id', $unitId);
+        }
+
+        $unitIds = $query->pluck('unit_id')->all();
+        $query->delete();
+
+        foreach (array_unique(array_filter($unitIds)) as $id) {
+            $this->refreshUnitStatus((int) $id);
+        }
+    }
+
+    /**
+     * Keep the occupant flag truthful: active while the person holds any
+     * active lease, inactive otherwise. `moved_out` is terminal and is
+     * never recomputed — only an explicit move-out sets it.
+     */
+    private function refreshOccupantStatus(Occupant $occupant): void
+    {
+        if ($occupant->status === 'moved_out') {
+            return;
+        }
+
+        $hasActive = Lease::where('person_id', $occupant->person_id)
+            ->where('status', 'active')
+            ->whereNull('ends_at')
+            ->exists();
+
+        $occupant->fill(['status' => $hasActive ? 'active' : 'inactive'])->save();
     }
 
     /**
@@ -53,19 +102,21 @@ trait OccupantHelpers
 
     /**
      * Create a lease for a newly assigned unit, unless one is already active.
+     * Bookings arrive as `pending` (no accrual, no occupancy) and flip to
+     * `active` at move-in; an active occupant's new units start active.
      *
      * @param  array<string, mixed>  $leaseData
      */
-    private function ensureLease(Occupant $occupant, Property $property, int $unitId, User $actor, array $leaseData): void
+    private function ensureLease(Occupant $occupant, Property $property, int $unitId, User $actor, array $leaseData, string $status = 'active'): ?Lease
     {
-        $active = Lease::where('person_id', $occupant->person_id)
+        $exists = Lease::where('person_id', $occupant->person_id)
             ->where('unit_id', $unitId)
-            ->where('status', 'active')
+            ->whereIn('status', ['active', 'pending'])
             ->whereNull('ends_at')
             ->exists();
 
-        if ($active) {
-            return;
+        if ($exists) {
+            return null;
         }
 
         $lease = new Lease([
@@ -84,13 +135,15 @@ trait OccupantHelpers
             'currency' => $leaseData['currency'] ?? null,
             'deposit' => $leaseData['deposit'] ?? null,
             'agreement_text' => $leaseData['agreement_text'] ?? null,
-            'status' => 'active',
+            'status' => $status,
             'created_by' => $actor->id,
         ]);
 
         $lease->save();
 
         $this->refreshUnitStatus($unitId);
+
+        return $lease;
     }
 
     /**
@@ -164,6 +217,47 @@ trait OccupantHelpers
     }
 
     /**
+     * The move-in consideration for freshly activated leases: the deposit
+     * plus the first period's rent on each lease. The payment method
+     * defaults to cash so unattended callers keep the previous one-step
+     * behaviour; the sheet always sends an explicit method.
+     *
+     * @param  list<Lease>  $leases
+     * @param  array<string, mixed>  $data
+     */
+    private function recordMoveInPayments(Occupant $occupant, Property $property, User $actor, array $leases, array $data): void
+    {
+        $moveInDate = $data['move_in_date'] ?? now()->toDateString();
+
+        foreach ($leases as $lease) {
+            abort_unless($lease->rent_amount !== null, 422, "Unit {$lease->unit?->name} has no rent set — move-in needs a first period amount.");
+
+            if ((float) ($lease->deposit ?? 0) > 0) {
+                $this->createMoveInPayment($occupant, $property, $actor, $lease, (string) $lease->deposit, 'deposit', $moveInDate, $data);
+            }
+
+            $this->createMoveInPayment($occupant, $property, $actor, $lease, (string) $lease->rent_amount, 'rent', $moveInDate, $data);
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function createMoveInPayment(Occupant $occupant, Property $property, User $actor, Lease $lease, string $amount, string $type, string $moveInDate, array $data): void
+    {
+        app(PaymentService::class)->create($actor, (int) $property->organization_id, [
+            'lease_id' => $lease->id,
+            'amount' => $amount,
+            'currency' => $lease->currency ?? 'KES',
+            'paid_on' => $moveInDate,
+            'period_start' => $moveInDate,
+            'method' => $data['payment_method'] ?? 'cash',
+            'reference' => $data['payment_reference'] ?? null,
+            'type' => $type,
+        ]);
+    }
+
+    /**
      * If the person has no active lease anywhere, remove the `occupant`
      * platform role from any linked user accounts.
      */
@@ -188,12 +282,18 @@ trait OccupantHelpers
      * Sync an occupant's unit assignments to the units selected,
      * constrained to the given property. Creates a Lease for each newly
      * assigned unit and ends the Lease for any unit the occupant leaves.
-     * When the person no longer holds any active lease, their `occupant`
-     * platform role is stripped (they revert to a `searcher`).
+     * Leases that never started are cancelled instead of ended. When the
+     * person no longer holds any active lease, their `occupant` platform
+     * role is stripped (they revert to a `searcher`) and a non-terminal
+     * occupant status falls back to inactive.
+     *
+     * New leases arrive with the given status: `pending` for bookings,
+     * `active` for an occupant who is already moved in.
      *
      * @param  array<string, mixed>  $leaseData
+     * @return list<Lease> the leases created by this sync
      */
-    private function syncUnitAssignments(Occupant $occupant, Property $property, array $unitIds, User $actor, array $leaseData = []): void
+    private function syncUnitAssignments(Occupant $occupant, Property $property, array $unitIds, User $actor, array $leaseData = [], string $leaseStatus = 'active'): array
     {
         $unitIds = array_map('intval', array_unique($unitIds));
 
@@ -209,17 +309,27 @@ trait OccupantHelpers
 
         foreach (array_diff($currentIds, $validIds) as $detachedId) {
             $this->endLease($occupant, $detachedId);
+            $this->cancelPendingLeases($occupant, $property, $detachedId);
         }
 
         $occupant->units()
             ->where('units.property_id', $property->id)
             ->detach();
 
+        $created = [];
+
         foreach ($validIds as $unitId) {
             $occupant->units()->attach($unitId, ['created_by' => $actor->id]);
-            $this->ensureLease($occupant, $property, $unitId, $actor, $leaseData);
+            $lease = $this->ensureLease($occupant, $property, $unitId, $actor, $leaseData, $leaseStatus);
+
+            if ($lease !== null) {
+                $created[] = $lease;
+            }
         }
 
         $this->stripOccupantRoleIfNoActiveLeases($occupant->person);
+        $this->refreshOccupantStatus($occupant->refresh());
+
+        return $created;
     }
 }

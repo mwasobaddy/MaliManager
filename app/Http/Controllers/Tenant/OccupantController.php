@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Tenant;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Tenant\DestroyOccupantRequest;
+use App\Http\Requests\Tenant\MoveInOccupantRequest;
 use App\Http\Requests\Tenant\MoveOutOccupantRequest;
 use App\Http\Requests\Tenant\OccupantAccessRequest;
 use App\Http\Requests\Tenant\OccupantIndexRequest;
@@ -171,6 +172,19 @@ class OccupantController extends Controller
         return redirect()->route('tenant.occupants.index', $property);
     }
 
+    public function moveIn(MoveInOccupantRequest $request, Property $property, Occupant $occupant, OccupantService $occupantService): RedirectResponse
+    {
+        $this->authorizePropertyAccess($request, $property);
+
+        abort_if($occupant->organization_id !== $property->organization_id, 403);
+
+        $occupantService->moveIn($occupant, $property, $request->user(), $request->validated());
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Occupant moved in. Deposit and first rent recorded.']);
+
+        return redirect()->route('tenant.occupants.index', $property);
+    }
+
     public function agreement(OccupantAccessRequest $request, Property $property, Occupant $occupant): Response
     {
         $this->authorizePropertyAccess($request, $property);
@@ -180,7 +194,8 @@ class OccupantController extends Controller
         $lease = Lease::query()
             ->where('occupant_id', $occupant->id)
             ->where('property_id', $property->id)
-            ->where('status', 'active')
+            ->whereIn('status', ['active', 'pending'])
+            ->with(['unit:id,name', 'property:id,name,organization_id', 'property.organization:id,name'])
             ->first();
 
         abort_if(! $lease, 404);

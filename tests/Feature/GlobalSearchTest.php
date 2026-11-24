@@ -159,6 +159,7 @@ test('occupant results show the person name and email', function () {
         'email' => 'quirina.renter@example.test',
         'status' => 'active',
         'unit_ids' => [$unit->id],
+        'lease' => ['rent_amount' => 25000, 'rent_frequency' => 'monthly', 'currency' => 'KES'],
     ]);
 
     $response = $this

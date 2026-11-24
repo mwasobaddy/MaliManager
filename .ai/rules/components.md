@@ -52,3 +52,7 @@ Audit new inputs against the model `$fillable` plus the FormRequest rules before
 ## Multi-select needs a searchable chip picker, not SearchableSelect
 
 `SearchableSelect` is single-value only. For `unit_ids`-style multi-selects, build the searchable chip dropdown instead: a search input filtering the option list, removable chips carrying hidden `name[]` inputs, full keyboard flow (Escape closes, arrows optional). Prune to selected ids on every data change like the bulk bar does, and prefill dependent fields (rent from the single selected unit) off the same selection state.
+
+## Occupant status is derived; lease start is move-in
+
+Occupant `status` records leasing truth, never intent: `active` ⟺ holds an active lease, `inactive` = booked or between leases, `moved_out` terminal via the move-out action only. The update path 422s anything else (activating a booking, deactivating/moving out with live leases) instead of saving a lie. New leases arrive `pending` for bookings and flip `active` at move-in, when the deposit + first-period rent are recorded as `deposit`/`rent` payments (deposit never counts toward arrears). Ending the last lease falls the occupant back to `inactive`; only past-end-date flips happen on their own (`leases:close-expired`), never a status change the staff didn't order.

@@ -182,7 +182,7 @@ class Lease extends Model implements HasMedia
                 ),
             )
             ->when(
-                in_array($filters['status'] ?? '', ['active', 'ended'], true),
+                in_array($filters['status'] ?? '', ['active', 'ended', 'pending'], true),
                 fn (Builder $builder) => $builder->where('leases.status', (string) $filters['status']),
             )
             // Expiring = active with an end date inside the next 60 days.

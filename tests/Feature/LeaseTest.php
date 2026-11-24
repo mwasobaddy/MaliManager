@@ -13,6 +13,8 @@ use App\Models\SubPermission;
 use App\Models\SubRole;
 use App\Models\User;
 use App\Services\OccupantService;
+use App\Services\PaymentService;
+use App\Services\RentArrearsService;
 use App\Services\TenantService;
 use Database\Seeders\PlansSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
@@ -89,16 +91,18 @@ test('moving an occupant out of a unit ends that lease but keeps active ones, an
     // Still has an active lease (B), so the occupant role stays.
     expect(User::where('email', 'jane@acme.test')->first()->hasRole(PlatformRole::Occupant->value))->toBeTrue();
 
-    // Move out of B as well.
+    // Move out of B as well. Vacating the last unit while claiming to be
+    // active is rejected, so this goes through as a deactivation.
     app(OccupantService::class)->update($occupant, $property, $owner, [
         'first_name' => 'Jane',
         'email' => 'jane@acme.test',
-        'status' => 'active',
+        'status' => 'inactive',
         'unit_ids' => [],
     ]);
 
     expect(Lease::where('person_id', $occupant->person_id)->where('status', 'active')->exists())->toBeFalse();
-    expect(User::where('email', 'jane@acme.test')->first()->hasRole(PlatformRole::Occupant->value))->toBeFalse();
+    expect(User::where('email', 'jane@acme.test')->first()->hasRole(PlatformRole::Occupant->value))->toBeFalse()
+        ->and($occupant->refresh()->status)->toBe('inactive');
 });
 
 test('lease visibility: own / org staff / admin, but not other users', function () {
@@ -182,4 +186,100 @@ test('the moveOut action ends leases, strips the occupant role, and keeps the re
         ->and(User::where('email', 'jane@acme.test')->first()->hasRole(PlatformRole::Occupant->value))->toBeFalse()
         ->and($occupant->fresh()->status)->toBe('moved_out')
         ->and(Occupant::withTrashed()->where('id', $occupant->id)->exists())->toBeTrue();
+});
+
+test('close-expired ends past leases and settles unit and occupant flags', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $org = leaseOrg($owner);
+    $property = $org->properties()->create(['name' => 'Sunset', 'slug' => 'sunset', 'status' => 'active', 'created_by' => $owner->id]);
+    $unit = $property->units()->create(['name' => 'A1', 'status' => 'occupied', 'type' => '1BR', 'created_by' => $owner->id]);
+
+    $occupant = app(OccupantService::class)->create($org, $property, $owner, [
+        'first_name' => 'Jane',
+        'email' => 'jane@acme.test',
+        'status' => 'active',
+        'unit_ids' => [$unit->id],
+        'lease' => ['starts_at' => '2026-01-01', 'rent_amount' => 25000, 'rent_frequency' => 'monthly', 'currency' => 'KES'],
+    ]);
+
+    $lease = Lease::where('person_id', $occupant->person_id)->firstOrFail();
+    $lease->update(['ends_at' => now()->subDay()->toDateString()]);
+
+    $this->artisan('leases:close-expired')->assertSuccessful();
+
+    expect($lease->refresh()->status)->toBe('ended')
+        ->and($unit->fresh()->status)->toBe('vacant')
+        ->and($occupant->fresh()->status)->toBe('inactive');
+});
+
+test('a booking shows under the pending filter and its agreement renders', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $org = leaseOrg($owner);
+    $property = $org->properties()->create(['name' => 'Sunset', 'slug' => 'sunset', 'status' => 'active', 'created_by' => $owner->id]);
+    $unit = $property->units()->create(['name' => 'A1', 'status' => 'vacant', 'type' => '1BR', 'created_by' => $owner->id]);
+
+    $occupant = app(OccupantService::class)->create($org, $property, $owner, [
+        'first_name' => 'Jane',
+        'email' => 'jane@acme.test',
+        'status' => 'inactive',
+        'unit_ids' => [$unit->id],
+        'move_in_now' => false,
+        'lease' => ['rent_amount' => 25000, 'rent_frequency' => 'monthly', 'currency' => 'KES', 'agreement_text' => '<p>Pay up</p>'],
+    ]);
+
+    $domain = "http://{$org->tenant->domains()->value('domain')}";
+
+    $this->actingAs($owner)
+        ->get("{$domain}/sunset/leases?status=pending")
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('leases.data', fn ($rows) => count($rows) === 1 && $rows[0]['status'] === 'pending'));
+
+    $this->actingAs($owner)
+        ->get("{$domain}/sunset/occupants/{$occupant->id}/agreement")
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->component('organisation/occupants/agreement'));
+});
+
+test('deposit payments do not reduce the rent balance', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $org = leaseOrg($owner);
+    $property = $org->properties()->create(['name' => 'Sunset', 'slug' => 'sunset', 'status' => 'active', 'created_by' => $owner->id]);
+    $unit = $property->units()->create(['name' => 'A1', 'status' => 'occupied', 'type' => '1BR', 'created_by' => $owner->id]);
+
+    $occupant = app(OccupantService::class)->create($org, $property, $owner, [
+        'first_name' => 'Jane',
+        'email' => 'jane@acme.test',
+        'status' => 'active',
+        'unit_ids' => [$unit->id],
+        'lease' => ['starts_at' => now()->toDateString(), 'rent_amount' => 25000, 'rent_frequency' => 'monthly', 'currency' => 'KES', 'deposit' => 25000],
+    ]);
+
+    $lease = Lease::where('person_id', $occupant->person_id)->firstOrFail();
+
+    // Move-in recorded deposit + first rent. Whatever the balance is, a
+    // further deposit top-up must leave it exactly untouched.
+    $before = app(RentArrearsService::class)->balanceFor($lease)['outstanding'];
+
+    app(PaymentService::class)->create($owner, (int) $org->id, [
+        'lease_id' => $lease->id,
+        'amount' => '5000',
+        'paid_on' => now()->toDateString(),
+        'method' => 'cash',
+        'type' => 'deposit',
+    ]);
+
+    expect(app(RentArrearsService::class)->balanceFor($lease)['outstanding'])->toBe($before);
+
+    // Sanity: a rent payment does move it.
+    app(PaymentService::class)->create($owner, (int) $org->id, [
+        'lease_id' => $lease->id,
+        'amount' => '1000',
+        'paid_on' => now()->toDateString(),
+        'method' => 'cash',
+        'type' => 'rent',
+    ]);
+
+    expect((float) app(RentArrearsService::class)->balanceFor($lease)['outstanding'])
+        ->toBe((float) $before - 1000.0);
 });

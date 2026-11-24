@@ -23,5 +23,9 @@ Schedule::command('metrics:snapshot')->dailyAt('01:00');
 Schedule::command('rent:flag-overdue')->dailyAt('01:00')->timezone('Africa/Nairobi');
 Schedule::command('rent:remind-overdue')->dailyAt('03:00')->timezone('Africa/Nairobi');
 
+// Expired leases are history even if nobody clicked: close them after the
+// flag job so the morning reads are already truthful.
+Schedule::command('leases:close-expired')->dailyAt('01:05')->timezone('Africa/Nairobi');
+
 // Weekly portfolio digest (numbers + AI narrative) to owners and managers.
 Schedule::command('ai:send-digest')->weeklyOn(1, '08:00');
