@@ -1020,6 +1020,11 @@ test('agreement placeholders are merged from lease data on the print page', func
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('organisation/occupants/agreement')
+            ->where('terms.unit', 'Unit A1')
+            ->where('terms.property', 'Sunset Heights')
+            ->where('terms.landlord', 'Acme Estates')
+            ->where('terms.rent_amount', 25000)
+            ->where('terms.starts_at', '2026-01-01')
             ->where('agreementHtml', fn (string $html) => str_contains($html, 'Jane Wanjiru')
                 && str_contains($html, 'Unit A1')
                 && str_contains($html, 'Sunset Heights')

@@ -204,6 +204,20 @@ class OccupantController extends Controller
             'agreementHtml' => LeaseAgreementTemplate::render((string) $lease->agreement_text, $lease),
             'documentUrl' => $lease->getFirstMedia('agreement')?->getUrl(),
             'occupantName' => trim(($occupant->person->first_name ?? '').' '.($occupant->person->last_name ?? '')),
+            'propertySlug' => $property->slug,
+            'occupantId' => $occupant->id,
+            'terms' => [
+                'landlord' => $lease->property?->organization?->name,
+                'property' => $lease->property?->name,
+                'unit' => $lease->unit?->name,
+                'rent_amount' => $lease->rent_amount,
+                'rent_frequency' => $lease->rent_frequency,
+                'currency' => $lease->currency,
+                'deposit' => $lease->deposit,
+                'starts_at' => $lease->starts_at?->toDateString(),
+                'ends_at' => $lease->ends_at?->toDateString(),
+                'printed_at' => now()->toDateString(),
+            ],
         ]);
     }
 
