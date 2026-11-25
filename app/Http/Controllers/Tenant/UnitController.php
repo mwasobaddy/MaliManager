@@ -20,6 +20,7 @@ use App\Models\Property;
 use App\Models\PropertyType;
 use App\Models\Unit;
 use App\Models\User;
+use App\Models\UtilityCharge;
 use App\Services\PropertyService;
 use App\Services\StaffService;
 use App\Support\AuthLanding;
@@ -60,26 +61,43 @@ class UnitController extends Controller
             ->withQueryString()
             ->through(fn (Unit $unit): array => $this->presentUnit($unit, $actor, $organization));
 
+        $properties = TenancyContext::organization()?->properties()
+            ->orderBy('name')
+            ->withCount('units')
+            ->with('units:id,property_id,name')
+            ->get(['id', 'name', 'slug'])
+            ->map(fn (Property $property): array => [
+                'id' => $property->id,
+                'name' => $property->name,
+                'slug' => $property->slug,
+                'units_count' => $property->units_count ?? 0,
+                // Names for the duplicate check on blur; ids alone
+                // cannot tell "A1" from "a1" without another trip.
+                'unit_names' => $property->units->pluck('name')->all(),
+            ])
+            ->all() ?? [];
+
         return Inertia::render('organisation/unit/index', [
             'units' => $units,
             'focusedUnit' => $request->string('mode')->toString() === 'view'
                 ? $this->focusedUnit($request->integer('unit'), $actor, $organization)
                 : null,
-            'properties' => TenancyContext::organization()?->properties()
+            'properties' => $properties,
+            // Active charges per property for the create sheet's optional
+            // assignment section: one query, only what the sheet renders.
+            'propertyCharges' => UtilityCharge::query()
+                ->where('organization_id', TenancyContext::organization()?->id)
+                ->whereIn('property_id', array_column($properties, 'id'))
+                ->where('is_active', true)
                 ->orderBy('name')
-                ->withCount('units')
-                ->with('units:id,property_id,name')
-                ->get(['id', 'name', 'slug'])
-                ->map(fn (Property $property): array => [
-                    'id' => $property->id,
-                    'name' => $property->name,
-                    'slug' => $property->slug,
-                    'units_count' => $property->units_count ?? 0,
-                    // Names for the duplicate check on blur; ids alone
-                    // cannot tell "A1" from "a1" without another trip.
-                    'unit_names' => $property->units->pluck('name')->all(),
+                ->get(['id', 'property_id', 'name', 'kind'])
+                ->map(fn (UtilityCharge $charge): array => [
+                    'id' => $charge->id,
+                    'property_id' => $charge->property_id,
+                    'name' => $charge->name,
+                    'kind' => $charge->kind->value,
                 ])
-                ->all() ?? [],
+                ->all(),
             'plan' => [
                 'units_limit' => TenancyContext::organization()?->effectivePlan()?->units_limit,
             ],

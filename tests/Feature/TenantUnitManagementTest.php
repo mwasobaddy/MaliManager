@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Metering\CreateUtilityCharge;
 use App\Models\Lease;
 use App\Models\Occupant;
 use App\Models\Organization;
@@ -9,6 +10,7 @@ use App\Models\SubPermission;
 use App\Models\SubRole;
 use App\Models\Unit;
 use App\Models\User;
+use App\Models\UtilityCharge;
 use App\Services\TenantService;
 use Database\Seeders\PlansSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
@@ -711,4 +713,107 @@ test('units export honors a column subset', function () {
 
     expect($lines[0])->toBe('Name,"Rent amount"')
         ->and($lines[1])->toContain('A1');
+});
+
+function unitTestUrl(Organization $organization, string $path = ''): string
+{
+    $domain = $organization->tenant->domains()->value('domain');
+
+    return "http://{$domain}{$path}";
+}
+
+function makeUnitCharge(Property $property, User $owner, Unit $unit, array $overrides = []): UtilityCharge
+{
+    return app(CreateUtilityCharge::class)->handle(
+        $owner,
+        $property->organization,
+        $property,
+        array_merge([
+            'name' => 'Water',
+            'kind' => 'metered',
+            'utility' => 'water',
+            'rate' => '50',
+            'unit_ids' => [$unit->id],
+        ], $overrides),
+    );
+}
+
+test('creating a unit can assign existing property charges', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $property = makeUnitProperty($owner);
+    $existing = makeUnit($property, $owner, ['name' => 'A1']);
+
+    $water = makeUnitCharge($property, $owner, $existing);
+    $garbage = makeUnitCharge($property, $owner, $existing, [
+        'name' => 'Garbage',
+        'kind' => 'fixed',
+        'utility' => null,
+        'rate' => null,
+        'amounts' => [$existing->id => '500'],
+    ]);
+
+    $this->actingAs($owner)
+        ->post(unitTestUrl($property->organization, "/{$property->slug}/units"), [
+            'name' => 'A2',
+            'rent_frequency' => 'monthly',
+            'charges' => [
+                ['charge_id' => $water->id],
+                ['charge_id' => $garbage->id, 'amount' => '500'],
+            ],
+        ])
+        ->assertRedirect();
+
+    $created = Unit::where('property_id', $property->id)->where('name', 'A2')->firstOrFail();
+
+    expect($water->units()->where('units.id', $created->id)->exists())->toBeTrue()
+        ->and($garbage->units()->where('units.id', $created->id)->exists())->toBeTrue()
+        ->and((float) $garbage->units()->where('units.id', $created->id)->firstOrFail()->pivot->amount)->toBe(500.0);
+});
+
+test('creating a unit rejects a fixed charge without an amount', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $property = makeUnitProperty($owner);
+    $existing = makeUnit($property, $owner, ['name' => 'A1']);
+
+    $garbage = makeUnitCharge($property, $owner, $existing, [
+        'name' => 'Garbage',
+        'kind' => 'fixed',
+        'utility' => null,
+        'rate' => null,
+        'amounts' => [$existing->id => '500'],
+    ]);
+
+    $this->actingAs($owner)
+        ->post(unitTestUrl($property->organization, "/{$property->slug}/units"), [
+            'name' => 'A2',
+            'rent_frequency' => 'monthly',
+            'charges' => [['charge_id' => $garbage->id]],
+        ])
+        ->assertRedirect()
+        ->assertSessionHas('inertia.flash_data', fn (array $flash) => str_contains(
+            $flash['toast']['message'] ?? '',
+            'needs an amount',
+        ));
+
+    expect(Unit::where('property_id', $property->id)->where('name', 'A2')->exists())->toBeFalse();
+});
+
+test('creating a unit rejects charges from another property', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $property = makeUnitProperty($owner);
+    $other = makeUnitProperty($owner, 'other-towers');
+    $otherUnit = makeUnit($other, $owner, ['name' => 'B1']);
+    $otherCharge = makeUnitCharge($other, $owner, $otherUnit);
+
+    $this->actingAs($owner)
+        ->from(unitTestUrl($property->organization, '/units'))
+        ->post(unitTestUrl($property->organization, "/{$property->slug}/units"), [
+            'name' => 'A2',
+            'rent_frequency' => 'monthly',
+            'charges' => [['charge_id' => $otherCharge->id]],
+        ])
+        ->assertRedirect()
+        ->assertSessionHasErrors('charges.0.charge_id');
+
+    expect(Unit::where('property_id', $property->id)->where('name', 'A2')->exists())->toBeFalse();
 });

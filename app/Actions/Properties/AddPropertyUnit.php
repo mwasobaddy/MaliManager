@@ -2,6 +2,7 @@
 
 namespace App\Actions\Properties;
 
+use App\Actions\Metering\AttachChargesToUnit;
 use App\Actions\Properties\Concerns\PropertyHelpers;
 use App\Models\Property;
 use App\Models\Unit;
@@ -32,6 +33,13 @@ class AddPropertyUnit extends Service
             ]));
 
             $this->attachAdditionalUnitPhotos($unit, $data);
+
+            // Charges picked on the create sheet land in the same
+            // transaction, so a bad assignment never leaves a bare unit
+            // behind: validation rejects it before anything is saved.
+            if (! empty($data['charges'])) {
+                app(AttachChargesToUnit::class)->handle($user, $property->organization, $property, $unit, $data['charges']);
+            }
 
             return $unit;
         });

@@ -31,6 +31,7 @@ import { ResponsiveOverlay } from '@/components/responsive-overlay';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Empty } from '@/components/ui/empty';
 import InputError from '@/components/input-error';
 import { Input } from '@/components/ui/input';
@@ -83,6 +84,17 @@ type Props = {
         unit_names: string[];
     }[];
     plan: { units_limit: number | null };
+    /**
+     * Active property charges for the assignment section of the create
+     * sheet. Grouped client-side by property; the section hides itself
+     * when the picked building has none.
+     */
+    propertyCharges: {
+        id: number;
+        property_id: number;
+        name: string;
+        kind: 'metered' | 'fixed' | 'shared';
+    }[];
     /** Admin-curated catalogue backing the type dropdown. */
     unitTypes: string[];
     /** Other units' photos, offered for reuse. */
@@ -133,6 +145,7 @@ export default function UnitsIndex({
     unitTypes,
     photoLibrary,
     focusedUnit,
+    propertyCharges,
 }: Props) {
     const query = useQuery();
 
@@ -209,7 +222,7 @@ export default function UnitsIndex({
 
     const [isTableLoading, setIsTableLoading] = useState(false);
 
-    const only = ['units', 'properties'];
+    const only = ['units', 'properties', 'propertyCharges'];
 
     function navigate(
         params: Record<string, string | number>,
@@ -406,11 +419,41 @@ export default function UnitsIndex({
         plan.units_limit !== null &&
         (createProperty?.units_count ?? 0) >= plan.units_limit;
 
+    // Charge assignments picked for the new unit: presence means ticked,
+    // the value is the per-unit amount (fixed charges only). Keyed by
+    // charge id and cleared when the building changes, so a tick can
+    // never leak onto another property's charges.
+    const [createCharges, setCreateCharges] = useState<Record<number, string>>(
+        {},
+    );
+
+    const createPropertyCharges = (propertyCharges ?? []).filter(
+        (charge) => charge.property_id === createProperty?.id,
+    );
+
+    function setCreateProperty(id: string) {
+        setCreatePropertyId(id);
+        setCreateCharges({});
+    }
+
+    function toggleCreateCharge(chargeId: number, checked: boolean) {
+        setCreateCharges((current) => {
+            if (!checked) {
+                const { [chargeId]: _removed, ...rest } = current;
+
+                return rest;
+            }
+
+            return { ...current, [chargeId]: current[chargeId] ?? '' };
+        });
+    }
+
     function openCreate() {
         setOverlayParam('create', '1');
     }
 
     function closeCreate() {
+        setCreateCharges({});
         refetchTable({
             search: filters.search,
             status: filters.status,
@@ -885,7 +928,7 @@ export default function UnitsIndex({
                                     </Label>
                                     <Select
                                         value={String(createProperty.id)}
-                                        onValueChange={setCreatePropertyId}
+                                        onValueChange={setCreateProperty}
                                     >
                                         <SelectTrigger id="create-unit-property">
                                             <SelectValue placeholder="Choose a property" />
@@ -986,13 +1029,136 @@ export default function UnitsIndex({
                                     </p>
                                     <InputError message={errors.rent_amount} />
                                 </div>
+                                {createPropertyCharges.length > 0 && (
+                                    <div className="grid gap-2">
+                                        <span className="text-sm leading-none font-medium">
+                                            Utility charges{' '}
+                                            <span className="font-normal text-muted-foreground">
+                                                (optional)
+                                            </span>
+                                        </span>
+                                        <p className="text-xs text-muted-foreground">
+                                            Tick what this unit pays for —
+                                            water, garbage and the rest start
+                                            billing it without another trip to
+                                            each charge sheet. Amounts are per
+                                            unit, every period.
+                                        </p>
+                                        <div className="grid gap-2">
+                                            {createPropertyCharges.map(
+                                                (charge, index) => {
+                                                    const checked =
+                                                        charge.id in
+                                                        createCharges;
+
+                                                    return (
+                                                        <div
+                                                            key={charge.id}
+                                                            className="grid gap-2 rounded-lg border border-border-strong p-3"
+                                                        >
+                                                            <div className="flex items-start gap-2">
+                                                                <Checkbox
+                                                                    id={`create-unit-charge-${charge.id}`}
+                                                                    checked={
+                                                                        checked
+                                                                    }
+                                                                    onCheckedChange={(
+                                                                        ticked,
+                                                                    ) =>
+                                                                        toggleCreateCharge(
+                                                                            charge.id,
+                                                                            ticked ===
+                                                                                true,
+                                                                        )
+                                                                    }
+                                                                />
+                                                                <div className="grid gap-0.5">
+                                                                    <Label
+                                                                        htmlFor={`create-unit-charge-${charge.id}`}
+                                                                        className="cursor-pointer"
+                                                                    >
+                                                                        {
+                                                                            charge.name
+                                                                        }
+                                                                    </Label>
+                                                                    <p className="text-xs text-muted-foreground">
+                                                                        {charge.kind ===
+                                                                        'metered'
+                                                                            ? 'Metered'
+                                                                            : charge.kind ===
+                                                                                'shared'
+                                                                              ? 'Shared bill'
+                                                                              : 'Every period'}
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                            {checked && (
+                                                                <input
+                                                                    type="hidden"
+                                                                    name={`charges[${index}][charge_id]`}
+                                                                    value={
+                                                                        charge.id
+                                                                    }
+                                                                />
+                                                            )}
+                                                            {checked &&
+                                                                charge.kind ===
+                                                                    'fixed' && (
+                                                                    <>
+                                                                        <Input
+                                                                            id={`create-unit-charge-amount-${charge.id}`}
+                                                                            name={`charges[${index}][amount]`}
+                                                                            type="number"
+                                                                            min="0"
+                                                                            step="0.01"
+                                                                            placeholder="500"
+                                                                            defaultValue={
+                                                                                createCharges[
+                                                                                    charge
+                                                                                        .id
+                                                                                ] ??
+                                                                                ''
+                                                                            }
+                                                                            onChange={(
+                                                                                event,
+                                                                            ) =>
+                                                                                setCreateCharges(
+                                                                                    (
+                                                                                        current,
+                                                                                    ) => ({
+                                                                                        ...current,
+                                                                                        [charge.id]:
+                                                                                            event
+                                                                                                .target
+                                                                                                .value,
+                                                                                    }),
+                                                                                )
+                                                                            }
+                                                                        />
+                                                                        <InputError
+                                                                            message={
+                                                                                errors[
+                                                                                    `charges.${index}.amount`
+                                                                                ]
+                                                                            }
+                                                                        />
+                                                                    </>
+                                                                )}
+                                                        </div>
+                                                    );
+                                                },
+                                            )}
+                                        </div>
+                                        <InputError message={errors.charges} />
+                                    </div>
+                                )}
                                 <div className="grid gap-2">
                                     <span className="text-sm leading-none font-medium">
                                         Photos{' '}
                                         <span className="font-normal text-muted-foreground">
                                             (optional)
                                         </span>
-                                    </span>
+                                    </span>{' '}
                                     <PhotoPicker
                                         id="create-unit-photos"
                                         library={photoLibrary}

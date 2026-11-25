@@ -38,6 +38,13 @@ class StoreUnitRequest extends FormRequest
             'photos.*' => ['file', 'mimes:jpg,jpeg,png,webp', 'max:8192'],
             'reuse_photo_ids' => ['nullable', 'array', 'max:'.Unit::MAX_PHOTOS],
             'reuse_photo_ids.*' => ['integer', 'min:1'],
+            // Optional charge assignments picked on the create sheet. Fixed
+            // charges need a per-unit amount; metered and shared carry
+            // nothing on the pivot. Ownership is scoped to this property so
+            // a crafted id from another building is rejected up front.
+            'charges' => ['nullable', 'array'],
+            'charges.*.charge_id' => ['required', 'integer', Rule::exists('utility_charges', 'id')->where(fn ($query) => $query->where('property_id', $this->route('property')?->id))],
+            'charges.*.amount' => ['nullable', 'numeric', 'min:0'],
         ];
     }
 }
