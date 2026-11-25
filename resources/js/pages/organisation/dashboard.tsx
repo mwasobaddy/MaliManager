@@ -1,5 +1,5 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { CalendarClock, TriangleAlert, Wrench } from 'lucide-react';
+import { CalendarClock, HandCoins, TriangleAlert, Wrench } from 'lucide-react';
 import { useState } from 'react';
 import type { ComboPoint } from '@/components/dashboard/combo-chart';
 import { ComboChart } from '@/components/dashboard/combo-chart';
@@ -73,6 +73,16 @@ type Flag = {
     message: string;
 };
 
+type OverdueLease = {
+    id: number;
+    occupant: string;
+    unit: string | null;
+    property: string;
+    outstanding: string;
+    days_overdue: number;
+    currency: string | null;
+};
+
 type Props = {
     organization: Organization;
     available_years: number[];
@@ -89,6 +99,9 @@ type Props = {
     occupancy_rate: number;
     operations_monthly: ComboPoint[];
     expiring_leases: ExpiringLease[];
+    overdue_leases: OverdueLease[];
+    overdue_total: string;
+    overdue_count: number;
     flags: Flag[];
     year: number | null;
     month: number | null;
@@ -105,6 +118,9 @@ export default function OrganizationDashboard({
     occupancy_rate,
     operations_monthly,
     expiring_leases,
+    overdue_leases,
+    overdue_total,
+    overdue_count,
     flags,
     year,
     month,
@@ -356,7 +372,69 @@ export default function OrganizationDashboard({
                     </CardContent>
                 </Card>
 
-                <div className="grid gap-4 lg:grid-cols-2">
+                <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2 text-base font-medium">
+                                <HandCoins className="size-4 text-muted-foreground" />
+                                Overdue rent
+                            </CardTitle>
+                            <CardDescription>
+                                {overdue_count === 0
+                                    ? 'Every active lease is paid up.'
+                                    : `${formatMoney(overdue_total, organization.currency)} across ${overdue_count} ${overdue_count === 1 ? 'lease' : 'leases'}.`}
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            {overdue_leases.length === 0 ? (
+                                <p className="py-6 text-center text-sm text-muted-foreground">
+                                    No overdue rent right now.
+                                </p>
+                            ) : (
+                                <ul className="space-y-3">
+                                    {overdue_leases.map((lease) => (
+                                        <li
+                                            key={lease.id}
+                                            className="flex items-center justify-between gap-4 text-sm"
+                                        >
+                                            <div className="min-w-0">
+                                                <p className="truncate font-medium">
+                                                    {lease.occupant ||
+                                                        'No occupant'}
+                                                </p>
+                                                <p className="truncate text-muted-foreground">
+                                                    {lease.unit
+                                                        ? `${lease.unit} · `
+                                                        : ''}
+                                                    {lease.property}
+                                                </p>
+                                            </div>
+                                            <div className="flex shrink-0 items-center gap-2">
+                                                <span className="font-medium tabular-nums">
+                                                    {formatMoney(
+                                                        lease.outstanding,
+                                                        lease.currency ??
+                                                            organization.currency,
+                                                    )}
+                                                </span>
+                                                <Badge
+                                                    variant={
+                                                        lease.days_overdue > 30
+                                                            ? 'destructive'
+                                                            : 'secondary'
+                                                    }
+                                                >
+                                                    {lease.days_overdue}d
+                                                    overdue
+                                                </Badge>
+                                            </div>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </CardContent>
+                    </Card>
+
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2 text-base font-medium">

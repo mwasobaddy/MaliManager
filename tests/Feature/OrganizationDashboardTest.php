@@ -1,10 +1,13 @@
 <?php
 
 use App\Models\Delegation;
+use App\Models\Lease;
 use App\Models\Organization;
+use App\Models\Person;
 use App\Models\Plan;
 use App\Models\Property;
 use App\Models\SubRole;
+use App\Models\Unit;
 use App\Models\User;
 use App\Services\TenantService;
 use Database\Seeders\PlansSeeder;
@@ -166,4 +169,126 @@ test('the organization overview exposes the organization currency from settings'
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('organization.currency', 'UGX'));
+});
+
+function overviewLease(Organization $organization, User $owner, Property $property, Unit $unit, Person $person, array $overrides = []): Lease
+{
+    return Lease::create(array_merge([
+        'person_id' => $person->id,
+        'organization_id' => $organization->id,
+        'property_id' => $property->id,
+        'unit_id' => $unit->id,
+        'starts_at' => '2026-08-01',
+        'rent_amount' => 10000,
+        'rent_frequency' => 'monthly',
+        'rent_due_day' => 5,
+        'currency' => 'KES',
+        'status' => 'active',
+    ], $overrides));
+}
+
+function overviewPerson(string $firstName): Person
+{
+    return Person::factory()->create(['first_name' => $firstName, 'last_name' => 'Tenant']);
+}
+
+test('the organization overview lists overdue leases with amounts and totals', function () {
+    $this->travelTo('2026-11-10');
+
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createOverviewOrganization($owner);
+    $property = createOverviewProperty($organization, $owner, 'Sunset Heights', 'sunset-heights');
+
+    $unitA = $property->units()->create(['name' => 'A1', 'status' => 'occupied', 'rent_amount' => 10000, 'rent_frequency' => 'monthly', 'created_by' => $owner->id]);
+    $unitB = $property->units()->create(['name' => 'B2', 'status' => 'occupied', 'rent_amount' => 20000, 'rent_frequency' => 'monthly', 'created_by' => $owner->id]);
+
+    // Due on the 5th: Aug, Sep, Oct, Nov = 4 dues each.
+    overviewLease($organization, $owner, $property, $unitA, overviewPerson('Jane'));
+    overviewLease($organization, $owner, $property, $unitB, overviewPerson('John'), ['rent_amount' => 20000]);
+
+    $this->actingAs($owner)
+        ->get(tenantOverviewUrl($organization, '/overview'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('organisation/dashboard')
+            ->where('overdue_count', 2)
+            ->where('overdue_total', '120000.00')
+            ->has('overdue_leases', 2)
+            // Worst first: John's 80000 ahead of Jane's 40000.
+            ->where('overdue_leases.0.occupant', 'John Tenant')
+            ->where('overdue_leases.0.outstanding', '80000.00')
+            ->where('overdue_leases.0.unit', 'B2')
+            ->where('overdue_leases.1.occupant', 'Jane Tenant')
+            ->where('overdue_leases.1.outstanding', '40000.00'));
+});
+
+test('the organization overview excludes paid-up and ended leases from overdue', function () {
+    $this->travelTo('2026-11-10');
+
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createOverviewOrganization($owner);
+    $property = createOverviewProperty($organization, $owner, 'Sunset Heights', 'sunset-heights');
+
+    $unitA = $property->units()->create(['name' => 'A1', 'status' => 'occupied', 'rent_amount' => 10000, 'rent_frequency' => 'monthly', 'created_by' => $owner->id]);
+    $paidUp = overviewLease($organization, $owner, $property, $unitA, overviewPerson('Paid'));
+    $paidUp->payments()->create([
+        'organization_id' => $organization->id,
+        'amount' => 40000, 'currency' => 'KES', 'status' => 'received', 'paid_on' => '2026-09-01',
+    ]);
+
+    $unitB = $property->units()->create(['name' => 'B2', 'status' => 'vacant', 'rent_amount' => 10000, 'rent_frequency' => 'monthly', 'created_by' => $owner->id]);
+    overviewLease($organization, $owner, $property, $unitB, overviewPerson('Ended'), [
+        'status' => 'ended', 'ends_at' => '2026-10-01',
+    ]);
+
+    $this->actingAs($owner)
+        ->get(tenantOverviewUrl($organization, '/overview'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('organisation/dashboard')
+            ->where('overdue_count', 0)
+            ->where('overdue_total', '0.00')
+            ->has('overdue_leases', 0));
+});
+
+test('the organization overview only shows delegated properties overdue leases to staff', function () {
+    $this->travelTo('2026-11-10');
+
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createOverviewOrganization($owner);
+
+    $delegated = createOverviewProperty($organization, $owner, 'Delegated Estate', 'delegated-estate');
+    $other = createOverviewProperty($organization, $owner, 'Other Estate', 'other-estate');
+
+    $unitA = $delegated->units()->create(['name' => 'A1', 'status' => 'occupied', 'rent_amount' => 10000, 'rent_frequency' => 'monthly', 'created_by' => $owner->id]);
+    $unitB = $other->units()->create(['name' => 'B1', 'status' => 'occupied', 'rent_amount' => 20000, 'rent_frequency' => 'monthly', 'created_by' => $owner->id]);
+    overviewLease($organization, $owner, $delegated, $unitA, overviewPerson('Jane'));
+    overviewLease($organization, $owner, $other, $unitB, overviewPerson('John'));
+
+    $staff = User::factory()->create(['onboarded_at' => now()]);
+    $subRole = SubRole::factory()->create();
+
+    $staff->organizations()->attach($organization->id, [
+        'is_owner' => false,
+        'sub_role_id' => $subRole->id,
+        'status' => 'active',
+    ]);
+
+    $membership = $staff->membershipFor($organization);
+    Delegation::create([
+        'organization_user_id' => $membership->id,
+        'organization_id' => $organization->id,
+        'delegatable_type' => Property::class,
+        'delegatable_id' => $delegated->id,
+    ]);
+
+    $this->actingAs($staff)
+        ->get(tenantOverviewUrl($organization, '/overview'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('organisation/dashboard')
+            ->where('overdue_count', 1)
+            ->where('overdue_total', '40000.00')
+            ->has('overdue_leases', 1)
+            ->where('overdue_leases.0.occupant', 'Jane Tenant'));
 });

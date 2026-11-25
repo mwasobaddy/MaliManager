@@ -79,6 +79,21 @@ export type ChargeProperty = {
 };
 
 /**
+ * Billing setup state per property: rent coverage, an active charge, and
+ * at least one reading. The hub card turns these into a finish-the-setup
+ * checklist instead of leaving a blank table to interpret.
+ */
+export type SetupProperty = {
+    id: number;
+    name: string;
+    slug: string;
+    units_count: number;
+    units_without_rent: number;
+    active_charges: number;
+    latest_reading_on: string | null;
+};
+
+/**
  * The form's own shape. `unit_id` and `reading` are strings because that is
  * what an `<input>`/`<option>` produces — converting at the boundary keeps the
  * component from making numeric decisions the server already makes.

@@ -3,6 +3,9 @@ import { usePage } from '@inertiajs/react';
 import { Form } from '@inertiajs/react';
 import type { ColumnDef, SortingState } from '@tanstack/react-table';
 import {
+    Check,
+    ChevronRight,
+    Circle,
     Download,
     Gauge,
     ListFilter,
@@ -53,6 +56,7 @@ import {
     store as storeUtilityCharge,
     update as updateUtilityCharge,
 } from '@/routes/tenant/utilities/charges';
+import { index as unitsIndex } from '@/routes/tenant/units';
 import {
     exportMethod as exportUtilities,
     index as utilitiesIndex,
@@ -61,6 +65,7 @@ import {
 import type {
     ChargeProperty,
     PaginatedReadings,
+    SetupProperty,
     UnitOption,
     UtilityChargeRow,
     UtilityOption,
@@ -75,6 +80,7 @@ type Props = {
     properties: ChargeProperty[];
     charges: UtilityChargeRow[];
     utilities: UtilityOption[];
+    setup: SetupProperty[];
     filters: UtilityReadingFilters;
 };
 
@@ -88,6 +94,7 @@ export default function UtilitiesIndex({
     properties = [],
     charges = [],
     utilities,
+    setup = [],
 }: Props) {
     const { query, setOverlayParam } = useOverlayParam();
     const [isTableLoading, setIsTableLoading] = useState(false);
@@ -152,8 +159,8 @@ export default function UtilitiesIndex({
         null,
     );
 
-    function openChargeCreate() {
-        resetChargeForm();
+    function openChargeCreate(propertyId?: number) {
+        resetChargeForm(propertyId);
         setOverlayParam('charge', 'new');
     }
 
@@ -186,9 +193,13 @@ export default function UtilitiesIndex({
         {},
     );
 
-    function resetChargeForm() {
+    function resetChargeForm(defaultPropertyId?: number) {
+        const fallback = properties.length > 0 ? String(properties[0].id) : '';
         setChargePropertyId(
-            properties.length > 0 ? String(properties[0].id) : '',
+            defaultPropertyId !== undefined &&
+                properties.some((p) => p.id === defaultPropertyId)
+                ? String(defaultPropertyId)
+                : fallback,
         );
         setChargeKind('metered');
         setChargeUtility('');
@@ -988,6 +999,180 @@ export default function UtilitiesIndex({
                         className="ml-auto max-w-20 sm:max-w-24"
                     />
                 </div>
+
+                {setup.some(
+                    (property) =>
+                        property.units_without_rent > 0 ||
+                        property.active_charges === 0 ||
+                        property.latest_reading_on === null,
+                ) && (
+                    <Card className="gap-4 p-4 sm:p-5">
+                        <div>
+                            <h2 className="font-medium">
+                                Finish setting up billing
+                            </h2>
+                            <p className="mt-1 text-sm text-muted-foreground">
+                                Three steps per property. Once everything ticks,
+                                this card goes away.
+                            </p>
+                        </div>
+                        <div className="grid gap-4">
+                            {setup
+                                .filter(
+                                    (property) =>
+                                        property.units_without_rent > 0 ||
+                                        property.active_charges === 0 ||
+                                        property.latest_reading_on === null,
+                                )
+                                .map((property) => (
+                                    <div
+                                        key={property.id}
+                                        className="grid gap-2"
+                                    >
+                                        <p className="text-sm font-medium">
+                                            {property.name}
+                                        </p>
+                                        <ul className="grid gap-2">
+                                            <li className="flex items-center gap-2 text-sm">
+                                                {property.units_without_rent ===
+                                                0 ? (
+                                                    <Check className="size-4 shrink-0 text-status-success-fg" />
+                                                ) : (
+                                                    <Circle className="size-4 shrink-0 text-muted-foreground" />
+                                                )}
+                                                <span className="min-w-0 flex-1 text-muted-foreground">
+                                                    {property.units_without_rent ===
+                                                    0 ? (
+                                                        <>
+                                                            Rent set on all{' '}
+                                                            {
+                                                                property.units_count
+                                                            }{' '}
+                                                            unit
+                                                            {property.units_count ===
+                                                            1
+                                                                ? ''
+                                                                : 's'}
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            Set rent on{' '}
+                                                            {
+                                                                property.units_without_rent
+                                                            }{' '}
+                                                            of{' '}
+                                                            {
+                                                                property.units_count
+                                                            }{' '}
+                                                            units
+                                                        </>
+                                                    )}
+                                                </span>
+                                                {property.units_without_rent >
+                                                    0 && (
+                                                    <Button
+                                                        type="button"
+                                                        size="sm"
+                                                        variant="outline"
+                                                        onClick={() =>
+                                                            router.visit(
+                                                                unitsIndex.url({
+                                                                    query: {
+                                                                        property:
+                                                                            String(
+                                                                                property.id,
+                                                                            ),
+                                                                    },
+                                                                }),
+                                                            )
+                                                        }
+                                                    >
+                                                        Set rents
+                                                    </Button>
+                                                )}
+                                            </li>
+                                            <li className="flex items-center gap-2 text-sm">
+                                                {property.active_charges > 0 ? (
+                                                    <Check className="size-4 shrink-0 text-status-success-fg" />
+                                                ) : (
+                                                    <Circle className="size-4 shrink-0 text-muted-foreground" />
+                                                )}
+                                                <span className="min-w-0 flex-1 text-muted-foreground">
+                                                    {property.active_charges >
+                                                    0 ? (
+                                                        <>
+                                                            {
+                                                                property.active_charges
+                                                            }{' '}
+                                                            active charge
+                                                            {property.active_charges ===
+                                                            1
+                                                                ? ''
+                                                                : 's'}
+                                                        </>
+                                                    ) : (
+                                                        'No utility charges yet'
+                                                    )}
+                                                </span>
+                                                {property.active_charges ===
+                                                    0 && (
+                                                    <Button
+                                                        type="button"
+                                                        size="sm"
+                                                        variant="outline"
+                                                        onClick={() =>
+                                                            openChargeCreate(
+                                                                property.id,
+                                                            )
+                                                        }
+                                                    >
+                                                        Add charge
+                                                    </Button>
+                                                )}
+                                            </li>
+                                            <li className="flex items-center gap-2 text-sm">
+                                                {property.latest_reading_on !==
+                                                null ? (
+                                                    <Check className="size-4 shrink-0 text-status-success-fg" />
+                                                ) : (
+                                                    <Circle className="size-4 shrink-0 text-muted-foreground" />
+                                                )}
+                                                <span className="min-w-0 flex-1 text-muted-foreground">
+                                                    {property.latest_reading_on !==
+                                                    null ? (
+                                                        <>
+                                                            Last reading on{' '}
+                                                            {
+                                                                property.latest_reading_on
+                                                            }
+                                                        </>
+                                                    ) : (
+                                                        'No readings recorded yet'
+                                                    )}
+                                                </span>
+                                                {property.latest_reading_on ===
+                                                    null && (
+                                                    <Button
+                                                        type="button"
+                                                        size="sm"
+                                                        variant="outline"
+                                                        onClick={() =>
+                                                            setOverlayParam(
+                                                                'create',
+                                                                '1',
+                                                            )
+                                                        }
+                                                    >
+                                                        Record reading
+                                                    </Button>
+                                                )}
+                                            </li>
+                                        </ul>
+                                    </div>
+                                ))}
+                        </div>
+                    </Card>
+                )}
 
                 <Card className="gap-0 py-0">
                     <div className="flex flex-wrap items-center gap-2 border-b border-border-strong p-4">

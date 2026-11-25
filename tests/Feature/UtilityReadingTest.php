@@ -5,8 +5,9 @@ use App\Models\Organization;
 use App\Models\Plan;
 use App\Models\Property;
 use App\Models\Unit;
-use App\Models\UtilityReading;
 use App\Models\User;
+use App\Models\UtilityCharge;
+use App\Models\UtilityReading;
 use App\Services\TenantService;
 use Database\Seeders\PlansSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
@@ -377,4 +378,72 @@ test('export honors a column subset', function () {
     $response->assertOk();
     $lines = array_values(array_filter(explode("\n", trim($response->streamedContent()))));
     expect($lines[0])->toBe('Unit,Reading');
+});
+
+test('the utilities page reports per-property billing setup', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = meterOrganization($owner);
+
+    $alpha = $organization->properties()->create([
+        'name' => 'Alpha Court', 'slug' => 'alpha-court', 'status' => 'active', 'created_by' => $owner->id,
+    ]);
+    $alpha->units()->create(['name' => 'A1', 'status' => 'occupied', 'rent_amount' => 25000, 'created_by' => $owner->id]);
+    $alpha->units()->create(['name' => 'A2', 'status' => 'vacant', 'rent_amount' => null, 'created_by' => $owner->id]);
+
+    $beta = $organization->properties()->create([
+        'name' => 'Beta Court', 'slug' => 'beta-court', 'status' => 'active', 'created_by' => $owner->id,
+    ]);
+    $unitB = $beta->units()->create(['name' => 'B1', 'status' => 'occupied', 'rent_amount' => 30000, 'created_by' => $owner->id]);
+    UtilityCharge::create([
+        'organization_id' => $organization->id,
+        'property_id' => $beta->id,
+        'name' => 'Garbage',
+        'kind' => 'fixed',
+        'currency' => 'KES',
+        'is_active' => true,
+        'created_by' => $owner->id,
+    ])->units()->attach($unitB->id, ['amount' => 500]);
+    UtilityReading::create([
+        'organization_id' => $organization->id,
+        'unit_id' => $unitB->id,
+        'utility' => UtilityType::Water,
+        'reading' => '10.000',
+        'consumption' => null,
+        'read_on' => '2026-02-01',
+        'recorded_by' => $owner->id,
+    ]);
+
+    $this->actingAs($owner)
+        ->get(utilityUrl($organization, '/utilities'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('organisation/utilities/index')
+            ->has('setup', 2)
+            ->where('setup.0.name', 'Alpha Court')
+            ->where('setup.0.units_count', 2)
+            ->where('setup.0.units_without_rent', 1)
+            ->where('setup.0.active_charges', 0)
+            ->where('setup.0.latest_reading_on', null)
+            ->where('setup.1.name', 'Beta Court')
+            ->where('setup.1.units_count', 1)
+            ->where('setup.1.units_without_rent', 0)
+            ->where('setup.1.active_charges', 1)
+            ->where('setup.1.latest_reading_on', '2026-02-01')
+        );
+});
+
+test('properties without units are skipped by the setup checklist', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = meterOrganization($owner);
+    $organization->properties()->create([
+        'name' => 'Empty Court', 'slug' => 'empty-court', 'status' => 'active', 'created_by' => $owner->id,
+    ]);
+
+    $this->actingAs($owner)
+        ->get(utilityUrl($organization, '/utilities'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('organisation/utilities/index')
+            ->has('setup', 0)
+        );
 });

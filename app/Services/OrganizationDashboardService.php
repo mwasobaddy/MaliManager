@@ -54,6 +54,8 @@ class OrganizationDashboardService extends Service
             ->values()
             ->all();
 
+        $overdue = $this->overdueLeases($propertyIds);
+
         return [
             'organization' => [
                 ...$organization->only('id', 'name', 'slug'),
@@ -81,6 +83,9 @@ class OrganizationDashboardService extends Service
             'occupancy_rate' => $this->occupancyRate($perProperty),
             'operations_monthly' => $this->operationsMonthly($organization, $propertyIds, $year, $month),
             'expiring_leases' => $this->expiringLeases($propertyIds),
+            'overdue_leases' => $overdue['leases'],
+            'overdue_total' => $overdue['total'],
+            'overdue_count' => $overdue['count'],
             'flags' => $this->predictiveFlags($organization, $propertyIds),
         ];
     }
@@ -288,6 +293,60 @@ class OrganizationDashboardService extends Service
                 'days_left' => now()->startOfDay()->diffInDays($lease->ends_at->startOfDay()),
             ])
             ->all();
+    }
+
+    /**
+     * Who owes what, worst first: overdue active leases with the amount
+     * still outstanding and how long it has waited, capped for the card.
+     * One payments aggregate covers the whole batch (see
+     * RentArrearsService::balancesFor); names ride along eagerly so the
+     * listing never queries per row. Totals sum as-reported — matching the
+     * rent-potential convention, which likewise assumes one currency.
+     *
+     * @param  list<int>  $propertyIds
+     * @return array{total: string, count: int, leases: list<array{id: int, occupant: string, unit: string|null, property: string, outstanding: string, days_overdue: int, currency: string|null}>}
+     */
+    private function overdueLeases(array $propertyIds, int $limit = 8): array
+    {
+        if ($propertyIds === []) {
+            return ['total' => '0.00', 'count' => 0, 'leases' => []];
+        }
+
+        $leases = Lease::query()
+            ->whereIn('property_id', $propertyIds)
+            ->where('status', 'active')
+            ->where(function ($query): void {
+                $query->whereNull('ends_at')->orWhereDate('ends_at', '>=', now()->toDateString());
+            })
+            ->with(['property:id,name', 'person:id,first_name,last_name', 'unit:id,name'])
+            ->get();
+
+        $balances = app(RentArrearsService::class)->balancesFor($leases);
+
+        $overdue = collect($balances)
+            ->filter(fn (array $balance): bool => $balance['overdue'])
+            ->sort(fn (array $a, array $b): int => bccomp((string) $b['outstanding'], (string) $a['outstanding'], 2))
+            ->values();
+
+        $total = '0.00';
+
+        foreach ($overdue as $balance) {
+            $total = bcadd($total, (string) $balance['outstanding'], 2);
+        }
+
+        return [
+            'total' => $total,
+            'count' => $overdue->count(),
+            'leases' => $overdue->take($limit)->map(fn (array $balance): array => [
+                'id' => $balance['lease']->id,
+                'occupant' => trim(($balance['lease']->person?->first_name ?? '').' '.($balance['lease']->person?->last_name ?? '')),
+                'unit' => $balance['lease']->unit?->name,
+                'property' => $balance['lease']->property?->name ?? 'Unknown property',
+                'outstanding' => $balance['outstanding'],
+                'days_overdue' => $balance['days_overdue'],
+                'currency' => $balance['lease']->currency,
+            ])->values()->all(),
+        ];
     }
 
     /**

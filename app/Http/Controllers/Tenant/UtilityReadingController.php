@@ -18,6 +18,7 @@ use App\Models\UtilityCharge;
 use App\Models\UtilityReading;
 use App\Support\InertiaRedirect;
 use App\Support\TenancyContext;
+use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -54,6 +55,7 @@ class UtilityReadingController extends Controller
             'units' => $this->units($organizationId),
             'properties' => $this->properties($organizationId),
             'charges' => $this->charges($organizationId),
+            'setup' => $this->setup($organizationId),
             'utilities' => $this->utilities(),
             'filters' => [
                 'unit_id' => $unitId,
@@ -131,6 +133,68 @@ class UtilityReadingController extends Controller
             $csv->filename,
             ['Content-Type' => 'text/csv'],
         );
+    }
+
+    /**
+     * Billing setup per property that already has units: rent coverage, an
+     * active charge, and at least one reading. Three bounded queries
+     * regardless of property count — the card answers "what's left?" at a
+     * glance instead of the landlord discovering gaps from a blank table.
+     * Properties without units are skipped: adding units is the property
+     * page's job, not this hub's.
+     *
+     * @return list<array{id: int, name: string, slug: string, units_count: int, units_without_rent: int, active_charges: int, latest_reading_on: string|null}>
+     */
+    private function setup(int $organizationId): array
+    {
+        $properties = Property::query()
+            ->where('organization_id', $organizationId)
+            ->has('units')
+            ->orderBy('name')
+            ->withCount([
+                'units',
+                // Grouped: a bare orWhere would escape the units scope and
+                // count every cheap unit in the organization.
+                'units as units_without_rent_count' => fn ($query) => $query->where(
+                    fn ($query) => $query->whereNull('units.rent_amount')->orWhere('units.rent_amount', '<=', 0)
+                ),
+            ])
+            ->get(['id', 'name', 'slug']);
+
+        if ($properties->isEmpty()) {
+            return [];
+        }
+
+        $chargeCounts = UtilityCharge::query()
+            ->where('organization_id', $organizationId)
+            ->where('is_active', true)
+            ->groupBy('property_id')
+            ->selectRaw('property_id, COUNT(*) as c')
+            ->pluck('c', 'property_id');
+
+        $latestReadings = UtilityReading::query()
+            ->join('units', 'units.id', '=', 'utility_readings.unit_id')
+            ->join('properties', 'properties.id', '=', 'units.property_id')
+            ->where('properties.organization_id', $organizationId)
+            ->groupBy('units.property_id')
+            ->selectRaw('units.property_id as property_id, MAX(utility_readings.read_on) as read_on')
+            ->pluck('read_on', 'property_id');
+
+        return $properties
+            ->map(fn (Property $property): array => [
+                'id' => $property->id,
+                'name' => $property->name,
+                'slug' => $property->slug,
+                'units_count' => $property->units_count,
+                'units_without_rent' => $property->units_without_rent_count,
+                'active_charges' => (int) ($chargeCounts[$property->id] ?? 0),
+                // MAX() returns the driver's raw shape (a datetime string
+                // on SQLite); normalize so the UI never prints a timestamp.
+                'latest_reading_on' => isset($latestReadings[$property->id])
+                    ? CarbonImmutable::parse($latestReadings[$property->id])->toDateString()
+                    : null,
+            ])
+            ->all();
     }
 
     /**
