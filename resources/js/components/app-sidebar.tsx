@@ -239,6 +239,9 @@ export function AppSidebar() {
             {
                 label: 'Operations',
                 items: [
+                    ...(canManageUnits
+                        ? [item('Utilities', utilityReadingsIndex(), Gauge)]
+                        : []),
                     item(
                         'Units',
                         unitsIndex({ query: { property: property.id } }),
@@ -283,9 +286,6 @@ export function AppSidebar() {
                                   `/${slug}/inspections`,
                               ),
                           ]
-                        : []),
-                    ...(canManageUnits
-                        ? [item('Utilities', utilityReadingsIndex(), Gauge)]
                         : []),
                     ...(canManageMaintenance
                         ? [
@@ -416,6 +416,7 @@ export function AppSidebar() {
                         : []),
                     ...(canManageUnits
                         ? [
+                              item('Utilities', utilityReadingsIndex(), Gauge),
                               item(
                                   'Units',
                                   unitsIndex(),
@@ -423,7 +424,6 @@ export function AppSidebar() {
                                   undefined,
                                   '/units',
                               ),
-                              item('Utilities', utilityReadingsIndex(), Gauge),
                           ]
                         : []),
                     ...(canManageLandParcels
