@@ -25,8 +25,14 @@ import { OverlayFooter } from '@/components/overlay-footer';
 import { ResponsiveOverlay } from '@/components/responsive-overlay';
 import { SearchableSelect } from '@/components/searchable-select';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+    Collapsible,
+    CollapsibleContent,
+    CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Pagination } from '@/components/ui/pagination';
@@ -316,18 +322,16 @@ export default function UtilitiesIndex({
                                     ],
                                     [
                                         'fixed',
-                                        'Fixed recurring',
+                                        'Every period',
                                         'A flat amount per unit, every period.',
                                     ],
-                                    [
                                         'one_time',
                                         'One-time',
                                         'Billed once against the next invoice, then done.',
-                                    ],
                                     [
                                         'shared',
-                                        'Shared (RUBS)',
-                                        'One master bill split across the units below.',
+                                        'Shared bill',
+                                        "One master bill (e.g. the block's water bill) split across the units below.",
                                     ],
                                 ] as [string, string, string][]
                             ).map(([value, label, hint]) => (
@@ -445,11 +449,12 @@ export default function UtilitiesIndex({
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="equal">
-                                        Equal — every unit pays the same share
+                                        Split evenly — every unit pays the same
+                                        share
                                     </SelectItem>
                                     <SelectItem value="occupants">
-                                        Occupants — split by active leases per
-                                        unit
+                                        Split by occupants — units with more
+                                        tenants pay more
                                     </SelectItem>
                                 </SelectContent>
                             </Select>
@@ -506,24 +511,36 @@ export default function UtilitiesIndex({
                     <InputError message={errors.currency} />
                 </div>
 
-                <div className="grid gap-2">
-                    <Label htmlFor={`${idPrefix}-gl-code`}>
-                        GL code{' '}
-                        <span className="font-normal text-muted-foreground">
-                            (optional)
-                        </span>
-                    </Label>
-                    <Input
-                        id={`${idPrefix}-gl-code`}
-                        name="gl_code"
-                        placeholder="4100-utilities"
-                        maxLength={32}
-                        defaultValue={
-                            mode === 'edit' ? (editCharge?.gl_code ?? '') : ''
-                        }
-                    />
-                    <InputError message={errors.gl_code} />
-                </div>
+                <Collapsible className="group/collapsible">
+                    <CollapsibleTrigger asChild>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="justify-start gap-1 px-0 text-muted-foreground"
+                        >
+                            <ChevronRight className="size-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                            Accounting (optional)
+                        </Button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="grid gap-2 pt-2">
+                        <Label htmlFor={`${idPrefix}-gl-code`}>
+                            Accounting code
+                        </Label>
+                        <Input
+                            id={`${idPrefix}-gl-code`}
+                            name="gl_code"
+                            placeholder="4100-utilities"
+                            maxLength={32}
+                            defaultValue={
+                                mode === 'edit'
+                                    ? (editCharge?.gl_code ?? '')
+                                    : ''
+                            }
+                        />
+                        <InputError message={errors.gl_code} />
+                    </CollapsibleContent>
+                </Collapsible>
 
                 {mode === 'edit' && (
                     <div className="flex items-center gap-2">

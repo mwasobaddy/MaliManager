@@ -125,6 +125,9 @@ class LeaseAgreementTemplate
 
             if ($charge->kind === UtilityChargeKind::Shared) {
                 $suffix = "shared master bill ({$charge->allocation} split)";
+                $split = $charge->allocation === 'occupants' ? 'split by occupants' : 'even split';
+
+                $suffix = "shared master bill ({$split})";
             }
 
             return "{$charge->name} — {$amount} {$charge->currency} {$suffix}";

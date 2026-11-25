@@ -65,7 +65,7 @@ class LeaseAdditionalCharge extends Model
     {
         return match ($this->kind) {
             'one_time' => 'One-time',
-            default => 'Fixed recurring',
+            default => 'Every period',
         };
     }
 }

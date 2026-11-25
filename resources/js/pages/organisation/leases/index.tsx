@@ -2,6 +2,7 @@ import { Form, Head, router } from '@inertiajs/react';
 import { usePage } from '@inertiajs/react';
 import type { ColumnDef, SortingState } from '@tanstack/react-table';
 import {
+    ChevronRight,
     Download,
     FileText,
     ListFilter,
@@ -29,6 +30,11 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+    Collapsible,
+    CollapsibleContent,
+    CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import {
     Dialog,
     DialogContent,
@@ -365,7 +371,7 @@ export default function LeasesIndex({ leases, focusedLease }: Props) {
                                 [
                                     [
                                         'fixed',
-                                        'Fixed recurring',
+                                        'Every period',
                                         'A flat amount every period.',
                                     ],
                                     [
@@ -455,24 +461,36 @@ export default function LeasesIndex({ leases, focusedLease }: Props) {
                     </div>
                 </div>
 
-                <div className="grid gap-2">
-                    <Label htmlFor={`${idPrefix}-gl-code`}>
-                        GL code{' '}
-                        <span className="font-normal text-muted-foreground">
-                            (optional)
-                        </span>
-                    </Label>
-                    <Input
-                        id={`${idPrefix}-gl-code`}
-                        name="gl_code"
-                        placeholder="4100-parking"
-                        maxLength={32}
-                        defaultValue={
-                            mode === 'edit' ? (editExtra?.gl_code ?? '') : ''
-                        }
-                    />
-                    <InputError message={errors.gl_code} />
-                </div>
+                <Collapsible className="group/collapsible">
+                    <CollapsibleTrigger asChild>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="justify-start gap-1 px-0 text-muted-foreground"
+                        >
+                            <ChevronRight className="size-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                            Accounting (optional)
+                        </Button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="grid gap-2 pt-2">
+                        <Label htmlFor={`${idPrefix}-gl-code`}>
+                            Accounting code
+                        </Label>
+                        <Input
+                            id={`${idPrefix}-gl-code`}
+                            name="gl_code"
+                            placeholder="4100-parking"
+                            maxLength={32}
+                            defaultValue={
+                                mode === 'edit'
+                                    ? (editExtra?.gl_code ?? '')
+                                    : ''
+                            }
+                        />
+                        <InputError message={errors.gl_code} />
+                    </CollapsibleContent>
+                </Collapsible>
 
                 {mode === 'edit' && (
                     <div className="flex items-center gap-2">

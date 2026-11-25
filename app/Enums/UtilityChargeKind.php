@@ -23,9 +23,9 @@ enum UtilityChargeKind: string
     {
         return match ($this) {
             self::Metered => 'Metered',
-            self::Fixed => 'Fixed recurring',
             self::OneTime => 'One-time',
-            self::Shared => 'Shared (RUBS)',
+            self::Fixed => 'Every period',
+            self::Shared => 'Shared bill',
         };
     }
 }
