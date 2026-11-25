@@ -32,10 +32,10 @@ const actionColorVariants = cva('', {
             danger: 'bg-action-danger-fill text-white hover:brightness-90 focus-visible:ring-action-danger-fill/40 dark:hover:brightness-125',
             /**
              * Solid gray for row actions that must read in both modes
-             * without a semantic color: stone-600 on light backgrounds,
-             * stone-300 on dark ones, each with a contrasting icon color.
+             * without a semantic color: stone-700 on light backgrounds,
+             * stone-200 on dark ones, each with a contrasting icon color.
              */
-            gray: 'bg-stone-600 text-white hover:brightness-90 focus-visible:ring-stone-500/40 dark:bg-stone-300 dark:text-stone-900 dark:hover:brightness-105',
+            gray: 'bg-stone-700 text-white hover:brightness-90 focus-visible:ring-stone-500/40 dark:bg-stone-200 dark:text-stone-900 dark:hover:brightness-105',
             brand: 'bg-muted text-muted-foreground hover:bg-brand-primary-100 hover:text-primary-text focus-visible:ring-primary-text/30',
             accent: 'bg-brand-accent/12 text-brand-accent hover:bg-brand-accent/20 focus-visible:ring-brand-accent/30',
             /**
@@ -68,7 +68,7 @@ const ghostHoverLocks = {
     view: 'hover:bg-action-view-fill hover:text-white',
     edit: 'hover:bg-action-edit-fill hover:text-white',
     danger: 'hover:bg-action-danger-fill hover:text-white',
-    gray: 'hover:bg-stone-600 hover:text-white dark:hover:bg-stone-300 dark:hover:text-stone-900',
+    gray: 'hover:bg-stone-700 hover:text-white dark:hover:bg-stone-200 dark:hover:text-stone-900',
     primary: 'hover:text-primary-foreground',
     accent: 'hover:text-brand-accent',
     teal: 'hover:text-on-accent',
