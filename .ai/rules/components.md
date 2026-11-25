@@ -56,3 +56,11 @@ Audit new inputs against the model `$fillable` plus the FormRequest rules before
 ## Occupant status is derived; lease start is move-in
 
 Occupant `status` records leasing truth, never intent: `active` ⟺ holds an active lease, `inactive` = booked or between leases, `moved_out` terminal via the move-out action only. The update path 422s anything else (activating a booking, deactivating/moving out with live leases) instead of saving a lie. New leases arrive `pending` for bookings and flip `active` at move-in, when the deposit + first-period rent are recorded as `deposit`/`rent` payments (deposit never counts toward arrears). Ending the last lease falls the occupant back to `inactive`; only past-end-date flips happen on their own (`leases:close-expired`), never a status change the staff didn't order.
+
+## Booked lease terms are read-only; rent moves by dated amendment
+
+The occupant edit sheet locks the lease-terms fields whenever an active lease exists (`hasLeaseDefaults`) — the update path only creates leases for newly assigned units, so edited money would be silently discarded there. Assigning a fresh unit unlocks the section, and those terms draft the new unit's booking only. Rent itself changes through the lease's Amend rent action, which writes a dated `lease_rent_changes` row and mirrors the latest rate onto the lease; arrears price each due date at the rate then in effect, so history is never rewritten.
+
+## Landlord words in the UI; system words stay in code
+
+The product serves both DIY owners and (later, mode-switched) professional managers — but the default surface speaks landlord: charge kinds read Metered / Every period / One-time / Shared bill (never "fixed recurring" or "RUBS"), splits read "Split evenly" / "Split by occupants", and the accounting code field lives collapsed under Accounting (optional) instead of a bare "GL code" input. Property templates are recurring-only (metered, fixed, shared) — once-off fees live on the lease as additional charges, including bulk-posted ones. Enum values, column names and API fields keep their stable system names (`fixed`, `shared`, `gl_code`, `allocation: equal|occupants`); only labels, hints and help copy translate. Pro-mode work later flips these defaults (e.g. accounting expanded, advanced kinds first) behind an organization flag — it must never rename the underlying values.
