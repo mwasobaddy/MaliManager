@@ -1,5 +1,6 @@
-import { Check, Search, X } from 'lucide-react';
+import { Check, Plus, Search, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Button } from '@/components/ui/button';
 import DocumentBuilder from '@/components/document-builder';
 import { FrequencySelect } from '@/components/frequency-select';
 import Heading from '@/components/heading';
@@ -253,6 +254,35 @@ export default function OccupantFormFields({
             ? String(defaults.lease.rent_due_month)
             : '',
     );
+
+    // Move-in extras drafted with the lease: parking, pets and one-time
+    // fees the tenant sees before signing. Plain inputs post directly;
+    // only the kind picker needs state.
+    type DraftExtra = {
+        name: string;
+        kind: 'fixed' | 'one_time';
+        amount: string;
+    };
+    const [extras, setExtras] = useState<DraftExtra[]>([]);
+
+    function addExtra() {
+        setExtras((current) => [
+            ...current,
+            { name: '', kind: 'fixed', amount: '' },
+        ]);
+    }
+
+    function updateExtra(index: number, patch: Partial<DraftExtra>) {
+        setExtras((current) =>
+            current.map((extra, i) =>
+                i === index ? { ...extra, ...patch } : extra,
+            ),
+        );
+    }
+
+    function removeExtra(index: number) {
+        setExtras((current) => current.filter((_, i) => i !== index));
+    }
 
     // Prefill billing from the allocated unit when a fresh lease is being
     // drafted (no lease defaults yet): one unit, no ambiguity. Anything the
@@ -761,6 +791,144 @@ export default function OccupantFormFields({
                         </Select>
                         <InputError message={errors['lease.currency']} />
                     </div>
+
+                    {showMoveIn && (
+                        <div className="grid gap-2 md:col-span-2">
+                            <div className="flex items-center justify-between gap-2">
+                                <span className="text-sm leading-none font-medium">
+                                    Move-in extras{' '}
+                                    <span className="font-normal text-muted-foreground">
+                                        (optional)
+                                    </span>
+                                </span>
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={addExtra}
+                                    disabled={termsLocked}
+                                >
+                                    <Plus className="size-4" />
+                                    Add extra
+                                </Button>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                                Parking, pets and one-time fees on every lease
+                                this move-in creates — the tenant sees them in
+                                the agreement before signing.
+                            </p>
+                            {extras.map((extra, index) => (
+                                <div
+                                    key={index}
+                                    className="grid gap-2 rounded-lg border border-border-strong p-3 sm:grid-cols-[1fr_8rem_8rem_auto]"
+                                >
+                                    <div className="grid gap-2">
+                                        <Label
+                                            htmlFor={`${idPrefix}-extra-name-${index}`}
+                                        >
+                                            Name
+                                        </Label>
+                                        <Input
+                                            id={`${idPrefix}-extra-name-${index}`}
+                                            name={`lease[extras][${index}][name]`}
+                                            placeholder="Parking"
+                                            defaultValue={extra.name}
+                                            disabled={termsLocked}
+                                        />
+                                        <InputError
+                                            message={
+                                                errors[
+                                                    `lease.extras.${index}.name`
+                                                ]
+                                            }
+                                        />
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label
+                                            htmlFor={`${idPrefix}-extra-kind-${index}`}
+                                        >
+                                            Billing
+                                        </Label>
+                                        <input
+                                            type="hidden"
+                                            name={`lease[extras][${index}][kind]`}
+                                            value={extra.kind}
+                                        />
+                                        <Select
+                                            value={extra.kind}
+                                            onValueChange={(value) =>
+                                                updateExtra(index, {
+                                                    kind:
+                                                        value === 'one_time'
+                                                            ? 'one_time'
+                                                            : 'fixed',
+                                                })
+                                            }
+                                            disabled={termsLocked}
+                                        >
+                                            <SelectTrigger
+                                                id={`${idPrefix}-extra-kind-${index}`}
+                                                className="w-full"
+                                            >
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="fixed">
+                                                    Every period
+                                                </SelectItem>
+                                                <SelectItem value="one_time">
+                                                    One-time
+                                                </SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <InputError
+                                            message={
+                                                errors[
+                                                    `lease.extras.${index}.kind`
+                                                ]
+                                            }
+                                        />
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label
+                                            htmlFor={`${idPrefix}-extra-amount-${index}`}
+                                        >
+                                            Amount
+                                        </Label>
+                                        <Input
+                                            id={`${idPrefix}-extra-amount-${index}`}
+                                            name={`lease[extras][${index}][amount]`}
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            placeholder="2000"
+                                            defaultValue={extra.amount}
+                                            disabled={termsLocked}
+                                        />
+                                        <InputError
+                                            message={
+                                                errors[
+                                                    `lease.extras.${index}.amount`
+                                                ]
+                                            }
+                                        />
+                                    </div>
+                                    <div className="flex items-end">
+                                        <Button
+                                            type="button"
+                                            size="sm"
+                                            variant="ghost"
+                                            onClick={() => removeExtra(index)}
+                                            disabled={termsLocked}
+                                            aria-label={`Remove extra ${index + 1}`}
+                                        >
+                                            <X className="size-4" />
+                                        </Button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
 
                     {showMoveIn && (
                         <div className="grid gap-4 rounded-lg border border-border-strong bg-muted/40 p-4 md:col-span-2">

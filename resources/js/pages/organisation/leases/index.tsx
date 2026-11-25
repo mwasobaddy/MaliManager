@@ -302,6 +302,17 @@ export default function LeasesIndex({ leases, focusedLease }: Props) {
         setOverlayParam('extra', 'new');
     }
 
+    // Row-level shortcut into the same sheet: one navigation sets the view
+    // lease and the extra overlay together, so opening from the list costs
+    // a single request and Back still closes both.
+    function openExtraCreateFor(lease: LeaseRow) {
+        resetExtraForm();
+        setOverlayParam('mode', 'view', {
+            only: ['leases', 'focusedLease'],
+            keep: { lease: String(lease.id), extra: 'new' },
+        });
+    }
+
     function openExtraEdit(extra: LeaseExtra) {
         seedExtraForm(extra);
         setOverlayParam('extra', String(extra.id), {
@@ -965,6 +976,14 @@ export default function LeasesIndex({ leases, focusedLease }: Props) {
                                     </span>
                                 )}
                             </div>
+                        )}
+                        {canManageExtras && (
+                            <ActionIconButton
+                                icon={<Plus />}
+                                label={`Add charge to ${lease.occupant_name ?? 'occupant'}'s lease`}
+                                color="default"
+                                onClick={() => openExtraCreateFor(lease)}
+                            />
                         )}
                         {lease.expiring_soon && (
                             <ActionIconButton

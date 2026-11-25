@@ -3,6 +3,7 @@
 use App\Enums\PlatformRole;
 use App\Models\Delegation;
 use App\Models\Lease;
+use App\Models\LeaseAdditionalCharge;
 use App\Models\Occupant;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
@@ -1370,4 +1371,146 @@ test('ending the last lease falls the occupant back to inactive', function () {
     expect($lease->refresh()->status)->toBe('ended')
         ->and($occupant->refresh()->status)->toBe('inactive')
         ->and($unit->fresh()->status)->toBe('vacant');
+});
+
+test('creating an occupant can attach move-in extras to the lease', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createOccupantOrganization($owner);
+    $property = createProperty($organization, $owner, 'sunset-heights');
+    $unit = $property->units()->create([
+        'name' => 'Unit A1',
+        'status' => 'vacant',
+        'type' => '1 Bedroom',
+        'rent_amount' => 25000,
+        'rent_frequency' => 'monthly',
+        'deposit' => 25000,
+        'created_by' => $owner->id,
+    ]);
+
+    $this->actingAs($owner)
+        ->post(occupantTenantUrl($organization, '/sunset-heights/occupants'), [
+            'first_name' => 'Jane',
+            'last_name' => 'Wanjiru',
+            'email' => 'jane@acme.test',
+            'status' => 'active',
+            'unit_ids' => [$unit->id],
+            'lease' => [
+                'rent_amount' => 25000,
+                'rent_frequency' => 'monthly',
+                'currency' => 'KES',
+                'extras' => [
+                    ['name' => 'Parking', 'kind' => 'fixed', 'amount' => '2000'],
+                    ['name' => 'Move-in cleaning', 'kind' => 'one_time', 'amount' => '1500'],
+                ],
+            ],
+        ])->assertRedirect();
+
+    $lease = Lease::where('property_id', $property->id)->where('unit_id', $unit->id)->firstOrFail();
+    $extras = $lease->additionalCharges()->orderBy('name')->get();
+
+    expect($extras)->toHaveCount(2)
+        ->and($extras[0]->name)->toBe('Move-in cleaning')
+        ->and($extras[0]->kind)->toBe('one_time')
+        ->and((float) $extras[0]->amount)->toBe(1500.0)
+        ->and($extras[1]->name)->toBe('Parking')
+        ->and($extras[1]->kind)->toBe('fixed')
+        ->and((float) $extras[1]->amount)->toBe(2000.0)
+        ->and($extras[1]->currency)->toBe('KES');
+});
+
+test('move-in extras reject unknown kinds', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createOccupantOrganization($owner);
+    $property = createProperty($organization, $owner, 'sunset-heights');
+    $unit = $property->units()->create([
+        'name' => 'Unit A1',
+        'status' => 'vacant',
+        'created_by' => $owner->id,
+    ]);
+
+    $this->actingAs($owner)
+        ->from(occupantTenantUrl($organization, '/sunset-heights/occupants'))
+        ->post(occupantTenantUrl($organization, '/sunset-heights/occupants'), [
+            'first_name' => 'Jane',
+            'email' => 'jane@acme.test',
+            'status' => 'active',
+            'unit_ids' => [$unit->id],
+            'lease' => [
+                'rent_amount' => 25000,
+                'rent_frequency' => 'monthly',
+                'extras' => [
+                    ['name' => 'Bogus', 'kind' => 'bogus', 'amount' => '100'],
+                ],
+            ],
+        ])
+        ->assertRedirect()
+        ->assertSessionHasErrors('lease.extras.0.kind');
+
+    expect(LeaseAdditionalCharge::count())->toBe(0);
+});
+
+test('move-in extras reject zero amounts', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createOccupantOrganization($owner);
+    $property = createProperty($organization, $owner, 'sunset-heights');
+    $unit = $property->units()->create([
+        'name' => 'Unit A1',
+        'status' => 'vacant',
+        'created_by' => $owner->id,
+    ]);
+
+    $this->actingAs($owner)
+        ->post(occupantTenantUrl($organization, '/sunset-heights/occupants'), [
+            'first_name' => 'Jane',
+            'email' => 'jane@acme.test',
+            'status' => 'active',
+            'unit_ids' => [$unit->id],
+            'lease' => [
+                'rent_amount' => 25000,
+                'rent_frequency' => 'monthly',
+                'extras' => [
+                    ['name' => 'Freebie', 'kind' => 'fixed', 'amount' => '0'],
+                ],
+            ],
+        ])
+        ->assertRedirect()
+        ->assertSessionHas('inertia.flash_data', fn (array $flash) => str_contains(
+            $flash['toast']['message'] ?? '',
+            'above zero',
+        ));
+
+    expect(LeaseAdditionalCharge::count())->toBe(0);
+});
+
+test('move-in extras land on every lease of a multi-unit move-in', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createOccupantOrganization($owner);
+    $property = createProperty($organization, $owner, 'sunset-heights');
+
+    $units = collect(['A1', 'A2'])->map(fn (string $name) => $property->units()->create([
+        'name' => "Unit {$name}",
+        'status' => 'vacant',
+        'created_by' => $owner->id,
+    ]));
+
+    $this->actingAs($owner)
+        ->post(occupantTenantUrl($organization, '/sunset-heights/occupants'), [
+            'first_name' => 'Jane',
+            'email' => 'jane@acme.test',
+            'status' => 'active',
+            'unit_ids' => $units->pluck('id')->all(),
+            'lease' => [
+                'rent_amount' => 25000,
+                'rent_frequency' => 'monthly',
+                'extras' => [
+                    ['name' => 'Parking', 'kind' => 'fixed', 'amount' => '2000'],
+                ],
+            ],
+        ])->assertRedirect();
+
+    foreach ($units as $unit) {
+        $lease = Lease::where('property_id', $property->id)->where('unit_id', $unit->id)->firstOrFail();
+
+        expect($lease->additionalCharges()->where('name', 'Parking')->count())->toBe(1);
+    }
 });

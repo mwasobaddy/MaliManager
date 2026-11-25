@@ -48,6 +48,13 @@ class StoreOccupantRequest extends FormRequest
             'lease.agreement_text' => ['nullable', 'string'],
             'lease.agreement_document' => ['nullable', 'file', 'mimes:pdf,doc,docx', 'max:10240'],
             'lease.remove_agreement_document' => ['nullable', 'boolean'],
+            // Move-in extras live on every lease this request creates, so
+            // the tenant sees parking, pets and one-time fees before
+            // signing: they print in the agreement via additional_charges.
+            'lease.extras' => ['nullable', 'array'],
+            'lease.extras.*.name' => ['required', 'string', 'max:255'],
+            'lease.extras.*.kind' => ['required', 'string', Rule::in(['fixed', 'one_time'])],
+            'lease.extras.*.amount' => ['required', 'numeric', 'min:0'],
         ];
     }
 

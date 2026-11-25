@@ -2,6 +2,7 @@
 
 namespace App\Actions\Occupants;
 
+use App\Actions\Leases\CreateLeaseAdditionalCharge;
 use App\Actions\Occupants\Concerns\OccupantHelpers;
 use App\Models\Occupant;
 use App\Models\Organization;
@@ -47,6 +48,20 @@ class CreateOccupant extends Service
                 $data['lease'] ?? [],
                 $moveIn ? 'active' : 'pending',
             );
+
+            // Move-in extras land on every lease created above (multi-unit
+            // move-ins bill each tenancy the same fees). Currency falls
+            // back to the lease currency inside the action, so the tenant
+            // sees these in the agreement before signing.
+            foreach ($created as $lease) {
+                foreach ($data['lease']['extras'] ?? [] as $extra) {
+                    app(CreateLeaseAdditionalCharge::class)->handle($actor, $organization, $lease, [
+                        'name' => $extra['name'],
+                        'kind' => $extra['kind'],
+                        'amount' => $extra['amount'],
+                    ]);
+                }
+            }
 
             if ($moveIn) {
                 $this->recordMoveInPayments($occupant, $property, $actor, $created, $data);
