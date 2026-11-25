@@ -1,7 +1,8 @@
-import { Form, Head, router } from '@inertiajs/react';
+import { Form, Head, Link, router } from '@inertiajs/react';
 import { usePage } from '@inertiajs/react';
 import type { ColumnDef, SortingState } from '@tanstack/react-table';
 import {
+    Check,
     ChevronRight,
     Download,
     FileText,
@@ -75,6 +76,8 @@ import {
 } from '@/routes/tenant/leases/additional-charges';
 import { agreement as agreementPrintRoute } from '@/routes/tenant/occupants';
 import { index as propertiesIndex } from '@/routes/tenant/properties';
+import { acknowledge as acknowledgeMoveOut } from '@/routes/tenant/move-out-notices';
+import { index as depositRefundsIndex } from '@/routes/tenant/deposit-refunds';
 
 type UtilityBreakdownLine = {
     charge_id: number;
@@ -129,6 +132,7 @@ type LeaseRow = {
     rent_amount: string | null;
     rent_frequency: string | null;
     currency: string | null;
+    deposit: string | null;
     starts_at: string | null;
     ends_at: string | null;
     status: string;
@@ -149,6 +153,15 @@ type LeaseRow = {
     additional_charges: LeaseExtra[];
     /** Dated rent history; present only on the server record. */
     rent_history: RentHistoryLine[];
+    /** Deposit-refund state; present only on the server record. */
+    refund_state?: 'none' | 'open' | 'missing';
+    /** Pending move-out notice, if any; present only on the server record. */
+    move_out_notice?: {
+        id: number;
+        move_out_date: string;
+        note: string | null;
+        created_at: string | null;
+    } | null;
 };
 
 type Props = {
@@ -269,6 +282,7 @@ export default function LeasesIndex({ leases, focusedLease }: Props) {
     // these sheets add, edit and delete — the same URL-addressed pattern as
     // the dialog above, so Back closes them and reloads keep them.
     const canManageExtras = permissions.includes('lease.manage');
+    const canAcknowledgeMoveOut = permissions.includes('lease.manage');
     const extraParam = query.get('extra');
     const isExtraCreateOpen = extraParam === 'new';
     const extraId = Number(extraParam);
@@ -1484,6 +1498,65 @@ export default function LeasesIndex({ leases, focusedLease }: Props) {
                             </dd>
                         </div>
                     </dl>
+
+                    {viewedLease.move_out_notice && (
+                        <div className="mt-2 rounded-lg border border-border-strong p-3">
+                            <div className="flex items-center justify-between gap-2">
+                                <h2 className="font-medium">Move-out notice</h2>
+                                <Badge variant="warning">
+                                    Moving out{' '}
+                                    {viewedLease.move_out_notice.move_out_date}
+                                </Badge>
+                            </div>
+                            {viewedLease.move_out_notice.note && (
+                                <p className="mt-1 text-sm text-muted-foreground">
+                                    {viewedLease.move_out_notice.note}
+                                </p>
+                            )}
+                            {canAcknowledgeMoveOut && (
+                                <Form
+                                    {...acknowledgeMoveOut.form(
+                                        viewedLease.move_out_notice.id,
+                                    )}
+                                    options={{ preserveScroll: true }}
+                                    className="mt-2"
+                                >
+                                    {({ processing }) => (
+                                        <Button
+                                            type="submit"
+                                            size="sm"
+                                            variant="outline"
+                                            disabled={processing}
+                                        >
+                                            <Check className="size-4" />
+                                            Acknowledge
+                                        </Button>
+                                    )}
+                                </Form>
+                            )}
+                        </div>
+                    )}
+
+                    {viewedLease.refund_state === 'missing' && (
+                        <div className="mt-2 rounded-lg border border-border-strong p-3">
+                            <p className="text-sm">
+                                This lease ended holding{' '}
+                                <span className="font-medium tabular-nums">
+                                    {formatMoney(
+                                        viewedLease.deposit,
+                                        viewedLease.currency,
+                                    )}
+                                </span>{' '}
+                                in deposit with no refund requested.
+                            </p>
+                            <Link
+                                href={depositRefundsIndex().url}
+                                className="mt-2 inline-flex items-center gap-1 text-sm text-muted-foreground underline underline-offset-4"
+                            >
+                                Request a refund
+                            </Link>
+                        </div>
+                    )}
 
                     {viewedLease.utility_breakdown && (
                         <div className="mt-2">

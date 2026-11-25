@@ -1,6 +1,7 @@
 import { Head } from '@inertiajs/react';
 import { Building2, CalendarRange, History, Home } from 'lucide-react';
 import { useState } from 'react';
+import { Form } from '@inertiajs/react';
 import Heading from '@/components/heading';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -11,8 +12,16 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import InputError from '@/components/input-error';
+import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { Textarea } from '@/components/ui/textarea';
 import { formatMoney } from '@/lib/format-money';
+import {
+    destroy as destroyMoveOutNotice,
+    store as storeMoveOutNotice,
+} from '@/routes/searcher/move-out-notices';
 
 type Lease = {
     id: number;
@@ -32,6 +41,11 @@ type Lease = {
     is_active: boolean;
     outstanding: string;
     is_overdue: boolean;
+    move_out_notice: {
+        id: number;
+        move_out_date: string;
+        note: string | null;
+    } | null;
     payment_details: {
         paybill_number: string | null;
         account_reference: string | null;
@@ -217,6 +231,10 @@ export default function SearcherRentals({ leases }: Props) {
                                         )}
                                     </div>
 
+                                    {lease.is_active && (
+                                        <MoveOutSection lease={lease} />
+                                    )}
+
                                     {lease.payment_details &&
                                     (lease.payment_details.paybill_number ||
                                         lease.payment_details.till_number ||
@@ -305,6 +323,133 @@ export default function SearcherRentals({ leases }: Props) {
                             </Card>
                         ))}
                     </div>
+                )}
+            </div>
+        </>
+    );
+}
+
+/**
+ * Thirty days notice, given from the couch: the tenant picks a move-out
+ * day (never sooner than 30 days out — the field enforces it and so does
+ * the server) and the landlord sees it on their dashboard.
+ */
+function MoveOutSection({ lease }: { lease: Lease }) {
+    const [isOpen, setIsOpen] = useState(false);
+    const minDate = new Date(Date.now() + 30 * 86400000)
+        .toISOString()
+        .slice(0, 10);
+
+    if (lease.move_out_notice) {
+        return (
+            <>
+                <Separator />
+                <div className="rounded-lg border border-border-strong p-3">
+                    <p className="text-sm font-medium">
+                        Notice given — moving out{' '}
+                        {lease.move_out_notice.move_out_date}
+                    </p>
+                    {lease.move_out_notice.note && (
+                        <p className="mt-1 text-sm text-muted-foreground">
+                            {lease.move_out_notice.note}
+                        </p>
+                    )}
+                    <Form
+                        {...destroyMoveOutNotice.form(lease.move_out_notice.id)}
+                        options={{ preserveScroll: true }}
+                        className="mt-2"
+                    >
+                        {({ processing }) => (
+                            <Button
+                                type="submit"
+                                size="sm"
+                                variant="outline"
+                                disabled={processing}
+                            >
+                                Withdraw notice
+                            </Button>
+                        )}
+                    </Form>
+                </div>
+            </>
+        );
+    }
+
+    return (
+        <>
+            <Separator />
+            <div>
+                {!isOpen ? (
+                    <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setIsOpen(true)}
+                    >
+                        Give 30-day notice
+                    </Button>
+                ) : (
+                    <Form
+                        {...storeMoveOutNotice.form()}
+                        options={{ preserveScroll: true }}
+                        onSuccess={() => setIsOpen(false)}
+                        className="grid gap-2 rounded-lg border border-border-strong p-3"
+                    >
+                        {({ errors, processing }) => (
+                            <>
+                                <input
+                                    type="hidden"
+                                    name="lease_id"
+                                    value={lease.id}
+                                />
+                                <Label htmlFor={`move-out-${lease.id}`}>
+                                    Move-out date
+                                </Label>
+                                <Input
+                                    id={`move-out-${lease.id}`}
+                                    name="move_out_date"
+                                    type="date"
+                                    min={minDate}
+                                    defaultValue=""
+                                    required
+                                />
+                                <InputError message={errors.move_out_date} />
+                                <Label htmlFor={`move-out-note-${lease.id}`}>
+                                    Note (optional)
+                                </Label>
+                                <Textarea
+                                    id={`move-out-note-${lease.id}`}
+                                    name="note"
+                                    rows={2}
+                                    maxLength={1000}
+                                    placeholder="Forwarding address, handover notes…"
+                                />
+                                <InputError message={errors.note} />
+                                <InputError message={errors.lease_id} />
+                                <div className="flex gap-2">
+                                    <Button
+                                        type="submit"
+                                        size="sm"
+                                        disabled={processing}
+                                    >
+                                        Send notice
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() => setIsOpen(false)}
+                                    >
+                                        Cancel
+                                    </Button>
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                    Your landlord is notified and the move-out
+                                    day must be at least 30 days away.
+                                </p>
+                            </>
+                        )}
+                    </Form>
                 )}
             </div>
         </>

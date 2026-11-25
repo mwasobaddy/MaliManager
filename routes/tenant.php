@@ -19,6 +19,7 @@ use App\Http\Controllers\Tenant\LeaseAdditionalChargeController;
 use App\Http\Controllers\Tenant\LeaseController;
 use App\Http\Controllers\Tenant\MaintenanceController;
 use App\Http\Controllers\Tenant\MaintenanceNoteController;
+use App\Http\Controllers\Tenant\MoveOutNoticeController;
 use App\Http\Controllers\Tenant\MpesaCallbackController;
 use App\Http\Controllers\Tenant\OccupantController;
 use App\Http\Controllers\Tenant\OrganizationDashboardController;
@@ -268,6 +269,12 @@ Route::middleware([
             Route::delete('/{property:slug}/leases/{lease}/additional-charges/{extra}', [LeaseAdditionalChargeController::class, 'destroy'])
                 ->whereNumber('extra')
                 ->name('tenant.leases.additional-charges.destroy');
+
+            // Landlord-side acknowledgement of tenant move-out notices.
+            // Org-level like refunds: the notice already carries its lease.
+            Route::post('/move-out-notices/{notice}/acknowledge', [MoveOutNoticeController::class, 'acknowledge'])
+                ->whereNumber('notice')
+                ->name('tenant.move-out-notices.acknowledge');
         });
 
         Route::middleware('sub-permission:lease.delete')->group(function () {

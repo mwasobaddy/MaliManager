@@ -2,9 +2,11 @@
 
 namespace App\Services;
 
+use App\Enums\MoveOutNoticeStatus;
 use App\Models\Expense;
 use App\Models\Lease;
 use App\Models\MaintenanceRequest;
+use App\Models\MoveOutNotice;
 use App\Models\Organization;
 use App\Models\Property;
 use App\Models\User;
@@ -375,6 +377,46 @@ class OrganizationDashboardService extends Service
             $flags[] = [
                 'severity' => 'high',
                 'message' => "{$staleUrgent} urgent maintenance request".($staleUrgent > 1 ? 's have' : ' has').' been open for over a week.',
+            ];
+        }
+
+        // Ended tenancies still holding a deposit with no refund in flight:
+        // the money sits idle until someone requests or returns it.
+        $heldDeposits = Lease::query()
+            ->whereIn('property_id', $propertyIds)
+            ->where('status', 'ended')
+            ->where('deposit', '>', 0)
+            ->whereNotExists(function ($query) {
+                $query->selectRaw('1')
+                    ->from('deposit_refunds')
+                    ->whereColumn('deposit_refunds.lease_id', 'leases.id')
+                    ->whereIn('deposit_refunds.status', ['pending', 'approved', 'paid']);
+            })
+            ->count();
+
+        if ($heldDeposits > 0) {
+            $flags[] = [
+                'severity' => 'medium',
+                'message' => "{$heldDeposits} ended ".($heldDeposits > 1 ? 'leases hold' : 'lease holds').' a deposit with no refund requested.',
+            ];
+        }
+
+        // Tenant move-out notices waiting for acknowledgement, earliest first.
+        $pendingNotices = MoveOutNotice::query()
+            ->where('move_out_notices.organization_id', $organization->id)
+            ->where('move_out_notices.status', MoveOutNoticeStatus::Pending->value)
+            ->whereHas('lease', fn ($lease) => $lease
+                ->whereIn('property_id', $propertyIds)
+                ->where('status', 'active'))
+            ->orderBy('move_out_notices.move_out_date')
+            ->get(['move_out_notices.move_out_date']);
+
+        if ($pendingNotices->isNotEmpty()) {
+            $earliest = Carbon::parse($pendingNotices->first()->move_out_date)->toDateString();
+            $count = $pendingNotices->count();
+            $flags[] = [
+                'severity' => 'high',
+                'message' => "{$count} move-out notice".($count > 1 ? 's need' : ' needs')." acknowledgement (earliest move-out: {$earliest}).",
             ];
         }
 

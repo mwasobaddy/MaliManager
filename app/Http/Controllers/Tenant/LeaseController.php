@@ -7,6 +7,7 @@ use App\Actions\Leases\BulkCreateLeaseAdditionalCharges;
 use App\Actions\Leases\ExportLeases;
 use App\Actions\Leases\SendBulkRentReminders;
 use App\Actions\Leases\SendRentReminder;
+use App\Enums\MoveOutNoticeStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Tenant\AmendLeaseRentRequest;
 use App\Http\Requests\Tenant\BulkStoreLeaseAdditionalChargeRequest;
@@ -16,9 +17,11 @@ use App\Http\Requests\Tenant\LeaseIndexRequest;
 use App\Http\Requests\Tenant\RemindBulkLeasesRequest;
 use App\Http\Requests\Tenant\RemindLeaseRequest;
 use App\Http\Requests\Tenant\RenewalSuggestionRequest;
+use App\Models\DepositRefund;
 use App\Models\Lease;
 use App\Models\LeaseAdditionalCharge;
 use App\Models\LeaseRentChange;
+use App\Models\MoveOutNotice;
 use App\Models\Property;
 use App\Services\AiRenewalService;
 use App\Services\OccupantService;
@@ -230,6 +233,7 @@ class LeaseController extends Controller
             'outstanding' => $balances[$lease->id]['outstanding'] ?? '0.00',
             'is_overdue' => $balances[$lease->id]['overdue'] ?? false,
             'days_overdue' => $balances[$lease->id]['days_overdue'] ?? 0,
+            'deposit' => $lease->deposit,
             'last_reminded_ago' => $lease->last_reminded_at?->diffForHumans(),
             // Payable total: rent plus utilities and lease extras. The view
             // sheet breaks this down; the row only needs the headline.
@@ -292,6 +296,22 @@ class LeaseController extends Controller
             ])
             ->all();
 
+        // Ended leases holding a deposit with no refund in flight get a
+        // nudge in the sheet: the money sits idle until someone acts.
+        $refundState = 'none';
+        if ($lease->status === 'ended' && (float) ($lease->deposit ?? 0) > 0) {
+            $refundState = DepositRefund::query()
+                ->where('lease_id', $lease->id)
+                ->whereIn('status', ['pending', 'approved', 'paid'])
+                ->exists() ? 'open' : 'missing';
+        }
+
+        $moveOutNotice = MoveOutNotice::query()
+            ->where('lease_id', $lease->id)
+            ->where('status', MoveOutNoticeStatus::Pending->value)
+            ->orderBy('move_out_date')
+            ->first(['id', 'move_out_date', 'note', 'created_at']);
+
         return [
             ...$this->presentLease(
                 $lease,
@@ -307,6 +327,13 @@ class LeaseController extends Controller
             'utility_breakdown' => $breakdown,
             'additional_charges' => $extras,
             'rent_history' => $rentHistory,
+            'refund_state' => $refundState,
+            'move_out_notice' => $moveOutNotice === null ? null : [
+                'id' => $moveOutNotice->id,
+                'move_out_date' => $moveOutNotice->move_out_date->toDateString(),
+                'note' => $moveOutNotice->note,
+                'created_at' => $moveOutNotice->created_at?->toDateString(),
+            ],
         ];
     }
 

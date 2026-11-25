@@ -25,7 +25,7 @@ class LeaseController extends Controller
 
         $leases = $person
             ? Lease::forPerson($person)
-                ->with(['property', 'unit', 'organization'])
+                ->with(['property', 'unit', 'organization', 'pendingMoveOutNotice'])
                 ->orderByDesc('starts_at')
                 ->get()
             : collect();
@@ -35,6 +35,9 @@ class LeaseController extends Controller
         $leases = $leases
             ->map(function (Lease $lease) use ($balances): array {
                 $balance = $balances[$lease->id] ?? null;
+                $notice = $lease->relationLoaded('pendingMoveOutNotice')
+                    ? $lease->pendingMoveOutNotice
+                    : null;
 
                 return [
                     'id' => $lease->id,
@@ -55,6 +58,11 @@ class LeaseController extends Controller
                     'outstanding' => $balance['outstanding'] ?? '0.00',
                     'is_overdue' => $balance['overdue'] ?? false,
                     'payment_details' => $lease->organization?->paymentDetails(),
+                    'move_out_notice' => $notice === null ? null : [
+                        'id' => $notice->id,
+                        'move_out_date' => $notice->move_out_date->toDateString(),
+                        'note' => $notice->note,
+                    ],
                 ];
             });
 

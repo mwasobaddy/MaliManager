@@ -10,6 +10,7 @@ use App\Http\Controllers\Platform\PlanController;
 use App\Http\Controllers\Platform\PlatformController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\Searcher\LeaseController;
+use App\Http\Controllers\Searcher\MoveOutNoticeController as SearcherMoveOutNoticeController;
 use App\Http\Controllers\Searcher\MyMaintenanceController;
 use App\Http\Controllers\Searcher\SearcherAssistantController;
 use Illuminate\Support\Facades\Route;
@@ -97,6 +98,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('guest.become-landlord.show');
     Route::post('become-landlord', [LandlordController::class, 'store'])
         ->name('guest.become-landlord');
+
+    // Occupant-side move-out notices: active-lease holders file 30-day
+    // notice here; withdrawing is their own DELETE below.
+    Route::post('searcher/move-out-notices', [SearcherMoveOutNoticeController::class, 'store'])
+        ->name('searcher.move-out-notices.store');
+    Route::delete('searcher/move-out-notices/{notice}', [SearcherMoveOutNoticeController::class, 'destroy'])
+        ->whereNumber('notice')
+        ->name('searcher.move-out-notices.destroy');
 
     // Occupant-side maintenance requests (active-lease holders only; the
     // service enforces the lease requirement).

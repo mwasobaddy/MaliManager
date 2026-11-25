@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\MoveOutNoticeStatus;
 use App\Models\Concerns\LogsTenantActivity;
 use App\Support\SearchTerms;
 use Illuminate\Database\Eloquent\Builder;
@@ -11,6 +12,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
@@ -128,6 +130,15 @@ class Lease extends Model implements HasMedia
     public function occupant(): BelongsTo
     {
         return $this->belongsTo(Occupant::class);
+    }
+
+    /**
+     * The tenant's outstanding 30-day notice, if any. One pending notice
+     * per lease at most — the writer enforces that, this is just the read.
+     */
+    public function pendingMoveOutNotice(): HasOne
+    {
+        return $this->hasOne(MoveOutNotice::class)->where('status', MoveOutNoticeStatus::Pending->value)->latestOfMany();
     }
 
     /**
