@@ -221,6 +221,15 @@ class Lease extends Model implements HasMedia
         return $this->hasMany(Payment::class);
     }
 
+    /**
+     * Free-form extras on this lease (parking, pets). Property-template
+     * charges live on `UtilityCharge`; these live and die with the lease.
+     */
+    public function additionalCharges(): HasMany
+    {
+        return $this->hasMany(LeaseAdditionalCharge::class);
+    }
+
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');

@@ -13,6 +13,7 @@ use App\Http\Requests\Tenant\RemindBulkLeasesRequest;
 use App\Http\Requests\Tenant\RemindLeaseRequest;
 use App\Http\Requests\Tenant\RenewalSuggestionRequest;
 use App\Models\Lease;
+use App\Models\LeaseAdditionalCharge;
 use App\Models\Property;
 use App\Services\AiRenewalService;
 use App\Services\OccupantService;
@@ -159,7 +160,7 @@ class LeaseController extends Controller
      */
     private function presentLease(Lease $lease, array $balances, ?array $utilityTotals = null): array
     {
-        $utility = $utilityTotals ?? ['metered' => '0.00', 'fixed' => '0.00', 'one_time' => '0.00', 'shared' => '0.00', 'total' => (string) ($lease->rent_amount ?? 0)];
+        $utility = $utilityTotals ?? ['metered' => '0.00', 'fixed' => '0.00', 'one_time' => '0.00', 'shared' => '0.00', 'extras' => '0.00', 'total' => (string) ($lease->rent_amount ?? 0)];
 
         return [
             'id' => $lease->id,
@@ -182,10 +183,11 @@ class LeaseController extends Controller
             'is_overdue' => $balances[$lease->id]['overdue'] ?? false,
             'days_overdue' => $balances[$lease->id]['days_overdue'] ?? 0,
             'last_reminded_ago' => $lease->last_reminded_at?->diffForHumans(),
-            // Payable total: rent plus the utility lines below. The view
+            // Payable total: rent plus utilities and lease extras. The view
             // sheet breaks this down; the row only needs the headline.
             'utilities_total' => $utility['total'],
             'utility_breakdown' => null,
+            'additional_charges' => [],
         ];
     }
 
@@ -215,6 +217,21 @@ class LeaseController extends Controller
 
         $breakdown = UtilityBilling::breakdownForLease($lease);
 
+        $extras = LeaseAdditionalCharge::query()
+            ->where('lease_id', $lease->id)
+            ->orderBy('name')
+            ->get()
+            ->map(fn (LeaseAdditionalCharge $extra): array => [
+                'id' => $extra->id,
+                'name' => $extra->name,
+                'kind' => $extra->kind,
+                'kind_label' => $extra->label(),
+                'amount' => $extra->amount,
+                'currency' => $extra->currency,
+                'gl_code' => $extra->gl_code,
+                'is_active' => $extra->is_active,
+            ])
+            ->all();
 
         return [
             ...$this->presentLease(
@@ -225,10 +242,12 @@ class LeaseController extends Controller
                     'fixed' => $breakdown['fixed'],
                     'one_time' => $breakdown['one_time'],
                     'shared' => $breakdown['shared'],
+                    'extras' => $breakdown['extras'],
                     'total' => $breakdown['total'],
                 ]
             ),
             'utility_breakdown' => $breakdown,
+            'additional_charges' => $extras,
         ];
     }
 

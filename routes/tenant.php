@@ -15,6 +15,7 @@ use App\Http\Controllers\Tenant\ImpersonationController;
 use App\Http\Controllers\Tenant\InspectionController;
 use App\Http\Controllers\Tenant\LandParcelController;
 use App\Http\Controllers\Tenant\LandParcelSectionController;
+use App\Http\Controllers\Tenant\LeaseAdditionalChargeController;
 use App\Http\Controllers\Tenant\LeaseController;
 use App\Http\Controllers\Tenant\MaintenanceController;
 use App\Http\Controllers\Tenant\MaintenanceNoteController;
@@ -238,6 +239,16 @@ Route::middleware([
                 ->name('tenant.leases.remind-bulk');
             Route::post('/{property:slug}/leases/{lease}/remind', [LeaseController::class, 'remind'])
                 ->name('tenant.leases.remind');
+            // Free-form extras on one lease: parking, pets and other
+            // tenant-specific fees the property template cannot express.
+            Route::post('/{property:slug}/leases/{lease}/additional-charges', [LeaseAdditionalChargeController::class, 'store'])
+                ->name('tenant.leases.additional-charges.store');
+            Route::put('/{property:slug}/leases/{lease}/additional-charges/{extra}', [LeaseAdditionalChargeController::class, 'update'])
+                ->whereNumber('extra')
+                ->name('tenant.leases.additional-charges.update');
+            Route::delete('/{property:slug}/leases/{lease}/additional-charges/{extra}', [LeaseAdditionalChargeController::class, 'destroy'])
+                ->whereNumber('extra')
+                ->name('tenant.leases.additional-charges.destroy');
         });
 
         Route::middleware('sub-permission:lease.delete')->group(function () {

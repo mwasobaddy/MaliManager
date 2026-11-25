@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Enums\UtilityChargeKind;
 use App\Models\Lease;
+use App\Models\LeaseAdditionalCharge;
 use App\Models\Unit;
 use App\Models\UtilityCharge;
 use App\Models\UtilityReading;
@@ -26,7 +27,7 @@ use Illuminate\Support\Facades\DB;
 final class UtilityBilling
 {
     /**
-     * @return array{lines: list<array{charge_id: int, name: string, kind: string, detail: string, amount: string, last_reading: string|null, last_read_on: string|null}>, metered: string, fixed: string, one_time: string, shared: string, total: string}
+     * @return array{lines: list<array{charge_id: int, name: string, kind: string, detail: string, amount: string, last_reading: string|null, last_read_on: string|null}>, extra_lines: list<array{extra_id: int, name: string, kind: string, detail: string, amount: string}>, metered: string, fixed: string, one_time: string, shared: string, extras: string, total: string}
      */
     public static function breakdownForLease(Lease $lease): array
     {
@@ -43,14 +44,27 @@ final class UtilityBilling
             ->get();
 
         $lines = [];
+        $extraLines = [];
         $metered = '0.00';
         $fixed = '0.00';
         $oneTime = '0.00';
         $shared = '0.00';
+        $extras = '0.00';
 
         $sharedCharges = $charges->where('kind', UtilityChargeKind::Shared);
         $sharedShares = self::sharesForCharges($sharedCharges, $lease->property_id);
 
+        foreach (self::extrasForLease($lease) as $extra) {
+            $amount = number_format((float) $extra->amount, 2, '.', '');
+            $extraLines[] = [
+                'extra_id' => $extra->id,
+                'name' => $extra->name,
+                'kind' => $extra->kind,
+                'detail' => $extra->kind === 'one_time' ? 'one-time' : 'per period',
+                'amount' => $amount,
+            ];
+            $extras = bcadd($extras, $amount, 2);
+        }
 
         foreach ($charges as $charge) {
             $pivot = $charge->units->first()?->pivot;
@@ -132,11 +146,13 @@ final class UtilityBilling
 
         return [
             'lines' => $lines,
+            'extra_lines' => $extraLines,
             'metered' => $metered,
             'fixed' => $fixed,
             'one_time' => $oneTime,
             'shared' => $shared,
-            'total' => bcadd(bcadd(bcadd((string) ($lease->rent_amount ?? 0), $metered, 2), bcadd($fixed, $oneTime, 2), 2), $shared, 2),
+            'extras' => $extras,
+            'total' => bcadd(bcadd(bcadd(bcadd((string) ($lease->rent_amount ?? 0), $metered, 2), bcadd($fixed, $oneTime, 2), 2), $shared, 2), $extras, 2),
         ];
     }
 
@@ -146,7 +162,7 @@ final class UtilityBilling
      * pays per-row.
      *
      * @param  Collection<int, Lease>  $leases
-     * @return array<int, array{metered: string, fixed: string, one_time: string, shared: string, total: string}>
+     * @return array<int, array{metered: string, fixed: string, one_time: string, shared: string, extras: string, total: string}>
      */
     public static function totalsForLeases(Collection $leases): array
     {
@@ -176,6 +192,7 @@ final class UtilityBilling
             $sharedCharges = $charges->where('kind', UtilityChargeKind::Shared);
             $sharedShares = self::sharesForCharges($sharedCharges, $propertyId);
 
+            $extrasByLease = self::extrasTotals($leasesInProperty);
 
             $readings = self::latestReadings(
                 $leasesInProperty->map(fn (Lease $lease) => $lease->unit_id)->filter()->all(),
@@ -187,6 +204,7 @@ final class UtilityBilling
                 $fixed = '0.00';
                 $oneTime = '0.00';
                 $shared = '0.00';
+                $extras = $extrasByLease[$lease->id] ?? '0.00';
 
                 foreach ($byUnit[$lease->unit_id] ?? [] as ['charge' => $charge, 'pivot' => $pivot]) {
                     if ($charge->kind === UtilityChargeKind::Metered && $charge->utility !== null) {
@@ -212,7 +230,8 @@ final class UtilityBilling
                     'fixed' => $fixed,
                     'one_time' => $oneTime,
                     'shared' => $shared,
-                    'total' => bcadd(bcadd(bcadd((string) ($lease->rent_amount ?? 0), $metered, 2), bcadd($fixed, $oneTime, 2), 2), $shared, 2),
+                    'extras' => $extras,
+                    'total' => bcadd(bcadd(bcadd(bcadd((string) ($lease->rent_amount ?? 0), $metered, 2), bcadd($fixed, $oneTime, 2), 2), $shared, 2), $extras, 2),
                 ];
             }
         }
@@ -463,14 +482,62 @@ final class UtilityBilling
     }
 
     /**
-     * @return array{lines: list<array{charge_id: int, name: string, kind: string, detail: string, amount: string, last_reading: string|null, last_read_on: string|null}>, metered: string, fixed: string, one_time: string, total: string}
+     * Active extras billable on one lease, in the lease currency.
+     * One-time extras drop out once consumed (Phase B stamps that); fixed
+     * extras bill every period. Inactive or foreign-currency extras wait.
+     *
+     * @return Collection<int, LeaseAdditionalCharge>
+     */
+    private static function extrasForLease(Lease $lease): Collection
+    {
+        if ($lease->id === null) {
+            return collect();
+        }
 
+        return LeaseAdditionalCharge::query()
+            ->where('lease_id', $lease->id)
+            ->where('is_active', true)
+            ->where('currency', $lease->currency ?? 'KES')
+            ->orderBy('name')
+            ->get()
+            ->filter(fn (LeaseAdditionalCharge $extra): bool => $extra->kind !== 'one_time' || $extra->consumed_at === null)
+            ->values();
+    }
 
     /**
-     * @return array{lines: list<array{charge_id: int, name: string, kind: string, detail: string, amount: string, last_reading: string|null, last_read_on: string|null}>, metered: string, fixed: string, one_time: string, shared: string, total: string}
+     * Billable extras per lease for a batch already grouped to one property:
+     * one query regardless of row count.
+     *
+     * @param  Collection<int, Lease>  $leases
+     * @return array<int, string> lease id => subtotal
+     */
+    private static function extrasTotals(Collection $leases): array
+    {
+        $byLease = [];
+        $currency = (string) ($leases->first()?->currency ?? 'KES');
+        $ids = $leases->map(fn (Lease $lease) => $lease->id)->all();
+
+        $extras = LeaseAdditionalCharge::query()
+            ->whereIn('lease_id', $ids)
+            ->where('is_active', true)
+            ->where('currency', $currency)
+            ->get();
+
+        foreach ($extras as $extra) {
+            if ($extra->kind === 'one_time' && $extra->consumed_at !== null) {
+                continue;
+            }
+            $byLease[$extra->lease_id] = bcadd($byLease[$extra->lease_id] ?? '0.00', number_format((float) $extra->amount, 2, '.', ''), 2);
+        }
+
+        return $byLease;
+    }
+
+    /**
+     * @return array{lines: list<array{charge_id: int, name: string, kind: string, detail: string, amount: string, last_reading: string|null, last_read_on: string|null}>, extra_lines: list<array{extra_id: int, name: string, kind: string, detail: string, amount: string}>, metered: string, fixed: string, one_time: string, shared: string, extras: string, total: string}
      */
     private static function empty(): array
     {
-        return ['lines' => [], 'metered' => '0.00', 'fixed' => '0.00', 'one_time' => '0.00', 'shared' => '0.00', 'total' => '0.00'];
+        return ['lines' => [], 'extra_lines' => [], 'metered' => '0.00', 'fixed' => '0.00', 'one_time' => '0.00', 'shared' => '0.00', 'extras' => '0.00', 'total' => '0.00'];
     }
 }

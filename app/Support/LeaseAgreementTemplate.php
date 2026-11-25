@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Enums\UtilityChargeKind;
 use App\Models\Lease;
+use App\Models\LeaseAdditionalCharge;
 use App\Models\UtilityCharge;
 
 /**
@@ -46,6 +47,7 @@ class LeaseAgreementTemplate
             ['token' => 'deposit_amount', 'description' => 'Deposit amount'],
             ['token' => 'currency', 'description' => 'Currency code'],
             ['token' => 'utility_charges', 'description' => 'Utility charges for this unit (billing clause)'],
+            ['token' => 'additional_charges', 'description' => 'Additional lease charges (parking, pets)'],
         ];
     }
 
@@ -71,6 +73,7 @@ class LeaseAgreementTemplate
             'deposit_amount' => $lease->deposit !== null ? number_format((float) $lease->deposit, 2) : null,
             'currency' => $lease->currency,
             'utility_charges' => self::utilityChargesSummary($lease),
+            'additional_charges' => self::additionalChargesSummary($lease),
         ];
 
         foreach ($values as $token => $value) {
@@ -125,6 +128,35 @@ class LeaseAgreementTemplate
             }
 
             return "{$charge->name} — {$amount} {$charge->currency} {$suffix}";
+        })->implode('; ');
+    }
+
+    /**
+     * Plain-text summary of the lease's own extras. Same always-a-value
+     * contract as the utility clause above.
+     */
+    private static function additionalChargesSummary(Lease $lease): string
+    {
+        if ($lease->id === null) {
+            return 'None';
+        }
+
+        $extras = LeaseAdditionalCharge::query()
+            ->where('lease_id', $lease->id)
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get()
+            ->filter(fn (LeaseAdditionalCharge $extra): bool => $extra->kind !== 'one_time' || $extra->consumed_at === null);
+
+        if ($extras->isEmpty()) {
+            return 'None';
+        }
+
+        return $extras->map(function (LeaseAdditionalCharge $extra): string {
+            $amount = number_format((float) $extra->amount, 2);
+            $suffix = $extra->kind === 'one_time' ? 'one-time' : 'per period';
+
+            return "{$extra->name} — {$amount} {$extra->currency} {$suffix}";
         })->implode('; ');
     }
 }

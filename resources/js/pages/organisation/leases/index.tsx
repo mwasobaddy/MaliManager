@@ -1,4 +1,4 @@
-import { Head, router } from '@inertiajs/react';
+import { Form, Head, router } from '@inertiajs/react';
 import { usePage } from '@inertiajs/react';
 import type { ColumnDef, SortingState } from '@tanstack/react-table';
 import {
@@ -6,14 +6,18 @@ import {
     FileText,
     ListFilter,
     MoreHorizontal,
+    Plus,
     Power,
     Printer,
     Search,
     Send,
     Sparkles,
+    SquarePen,
+    Trash2,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActionIconButton } from '@/components/action-icon-button';
+import ConfirmDeleteOverlay from '@/components/confirm-delete-overlay';
 import { downloadCsv } from '@/components/csv-actions';
 import { CsvExportSheet } from '@/components/csv-export-sheet';
 import Heading from '@/components/heading';
@@ -36,6 +40,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Pagination } from '@/components/ui/pagination';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { TableOverflowMenu } from '@/components/table-overflow-menu';
 import { DataTable } from '@/components/data-table';
 import { useOverlayParam } from '@/hooks/use-overlay-param';
@@ -49,6 +60,11 @@ import {
     remindBulk as remindBulkLeases,
     renewalSuggestion,
 } from '@/routes/tenant/leases';
+import {
+    destroy as destroyExtra,
+    store as storeExtra,
+    update as updateExtra,
+} from '@/routes/tenant/leases/additional-charges';
 import { agreement as agreementPrintRoute } from '@/routes/tenant/occupants';
 import { index as propertiesIndex } from '@/routes/tenant/properties';
 
@@ -112,10 +128,12 @@ type LeaseRow = {
     last_reminded_ago: string | null;
     has_agreement_text: boolean;
     has_agreement_document: boolean;
-    /** Payable total: rent plus utility lines. Rows carry the headline. */
+    /** Payable total: rent, utilities and lease extras. Rows carry the headline. */
     utilities_total: string;
     /** Line-by-line breakdown; present only on the server-resolved record. */
     utility_breakdown: UtilityBreakdown | null;
+    /** Free-form extras on this lease; present only on the server record. */
+    additional_charges: LeaseExtra[];
 };
 
 type Props = {
@@ -229,6 +247,231 @@ export default function LeasesIndex({ leases, focusedLease }: Props) {
             only: ['leases'],
             keep: { lease: '' },
         });
+    }
+
+    // Free-form extras on the viewed lease: the view sheet lists them and
+    // these sheets add, edit and delete — the same URL-addressed pattern as
+    // the dialog above, so Back closes them and reloads keep them.
+    const canManageExtras = permissions.includes('lease.manage');
+    const extraParam = query.get('extra');
+    const isExtraCreateOpen = extraParam === 'new';
+    const extraId = Number(extraParam);
+    const editExtra =
+        Number.isFinite(extraId) && extraId > 0
+            ? (viewedLease?.additional_charges.find(
+                  (extra) => extra.id === extraId,
+              ) ?? null)
+            : null;
+    const isExtraEditOpen = editExtra !== null;
+    const [deleteExtra, setDeleteExtra] = useState<LeaseExtra | null>(null);
+
+    const [extraKind, setExtraKind] = useState<'fixed' | 'one_time'>('fixed');
+    const [extraCurrency, setExtraCurrency] = useState('KES');
+    const [extraIsActive, setExtraIsActive] = useState(true);
+
+    function resetExtraForm() {
+        setExtraKind('fixed');
+        setExtraCurrency(viewedLease?.currency ?? 'KES');
+        setExtraIsActive(true);
+    }
+
+    function seedExtraForm(extra: LeaseExtra) {
+        setExtraKind(extra.kind === 'one_time' ? 'one_time' : 'fixed');
+        setExtraCurrency(extra.currency);
+        setExtraIsActive(extra.is_active);
+    }
+
+    function openExtraCreate() {
+        resetExtraForm();
+        setOverlayParam('extra', 'new');
+    }
+
+    function openExtraEdit(extra: LeaseExtra) {
+        seedExtraForm(extra);
+        setOverlayParam('extra', String(extra.id), {
+            only: ['leases', 'focusedLease'],
+        });
+    }
+
+    function closeExtraSheets() {
+        setDeleteExtra(null);
+        setOverlayParam('extra', null, {
+            replace: true,
+            only: ['leases', 'focusedLease'],
+        });
+    }
+
+    function extraFields(
+        errors: Record<string, string>,
+        idPrefix: string,
+        mode: 'create' | 'edit',
+    ) {
+        return (
+            <>
+                <div className="grid gap-2">
+                    <Label htmlFor={`${idPrefix}-name`}>Charge name</Label>
+                    <Input
+                        id={`${idPrefix}-name`}
+                        name="name"
+                        placeholder="Parking"
+                        defaultValue={
+                            mode === 'edit' ? (editExtra?.name ?? '') : ''
+                        }
+                    />
+                    <InputError message={errors.name} />
+                </div>
+
+                {mode === 'create' ? (
+                    <fieldset className="space-y-3">
+                        <legend className="text-sm font-medium">
+                            Billing type
+                        </legend>
+                        <input type="hidden" name="kind" value={extraKind} />
+                        <RadioGroup
+                            value={extraKind}
+                            onValueChange={(value) =>
+                                setExtraKind(value as 'fixed' | 'one_time')
+                            }
+                            className="space-y-3"
+                        >
+                            {(
+                                [
+                                    [
+                                        'fixed',
+                                        'Fixed recurring',
+                                        'A flat amount every period.',
+                                    ],
+                                    [
+                                        'one_time',
+                                        'One-time',
+                                        'Billed once against the next invoice, then done.',
+                                    ],
+                                ] as [string, string, string][]
+                            ).map(([value, label, hint]) => (
+                                <div
+                                    key={value}
+                                    className="flex items-start gap-2"
+                                >
+                                    <RadioGroupItem
+                                        id={`${idPrefix}-kind-${value}`}
+                                        value={value}
+                                        className="mt-0.5"
+                                    />
+                                    <div className="grid gap-0.5">
+                                        <Label
+                                            htmlFor={`${idPrefix}-kind-${value}`}
+                                            className="cursor-pointer"
+                                        >
+                                            {label}
+                                        </Label>
+                                        <p className="text-xs text-muted-foreground">
+                                            {hint}
+                                        </p>
+                                    </div>
+                                </div>
+                            ))}
+                        </RadioGroup>
+                        <InputError message={errors.kind} />
+                    </fieldset>
+                ) : (
+                    <p className="text-sm text-muted-foreground">
+                        {editExtra?.kind_label} — the billing type cannot change
+                        after creation.
+                    </p>
+                )}
+
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="grid gap-2">
+                        <Label htmlFor={`${idPrefix}-amount`}>
+                            Amount ({extraCurrency})
+                        </Label>
+                        <Input
+                            id={`${idPrefix}-amount`}
+                            name="amount"
+                            type="number"
+                            inputMode="decimal"
+                            step="0.01"
+                            min="0"
+                            placeholder="2000.00"
+                            defaultValue={
+                                mode === 'edit' ? (editExtra?.amount ?? '') : ''
+                            }
+                        />
+                        <InputError message={errors.amount} />
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor={`${idPrefix}-currency`}>Currency</Label>
+                        <input
+                            type="hidden"
+                            name="currency"
+                            value={extraCurrency}
+                        />
+                        <Select
+                            value={extraCurrency}
+                            onValueChange={setExtraCurrency}
+                        >
+                            <SelectTrigger
+                                id={`${idPrefix}-currency`}
+                                className="w-full"
+                            >
+                                <SelectValue placeholder="Select currency" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {['KES', 'USD', 'EUR', 'GBP'].map((value) => (
+                                    <SelectItem key={value} value={value}>
+                                        {value}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <InputError message={errors.currency} />
+                    </div>
+                </div>
+
+                <div className="grid gap-2">
+                    <Label htmlFor={`${idPrefix}-gl-code`}>
+                        GL code{' '}
+                        <span className="font-normal text-muted-foreground">
+                            (optional)
+                        </span>
+                    </Label>
+                    <Input
+                        id={`${idPrefix}-gl-code`}
+                        name="gl_code"
+                        placeholder="4100-parking"
+                        maxLength={32}
+                        defaultValue={
+                            mode === 'edit' ? (editExtra?.gl_code ?? '') : ''
+                        }
+                    />
+                    <InputError message={errors.gl_code} />
+                </div>
+
+                {mode === 'edit' && (
+                    <div className="flex items-center gap-2">
+                        <Checkbox
+                            id={`${idPrefix}-is-active`}
+                            checked={extraIsActive}
+                            onCheckedChange={(checked) =>
+                                setExtraIsActive(checked === true)
+                            }
+                        />
+                        <input
+                            type="hidden"
+                            name="is_active"
+                            value={extraIsActive ? '1' : ''}
+                        />
+                        <Label
+                            htmlFor={`${idPrefix}-is-active`}
+                            className="cursor-pointer text-sm"
+                        >
+                            Active — inactive extras stop billing but keep their
+                            history
+                        </Label>
+                    </div>
+                )}
+            </>
+        );
     }
 
     const passwordInput = useRef<HTMLInputElement>(null);
@@ -1139,12 +1382,16 @@ export default function LeasesIndex({ leases, focusedLease }: Props) {
                         <div className="mt-2">
                             <h2 className="font-medium">Total payable</h2>
                             <p className="mt-1 text-xs text-muted-foreground">
-                                Rent plus utilities for this unit.
+                                Rent, utilities and additional charges for this
+                                unit.
                             </p>
                             {viewedLease.utility_breakdown.lines.length === 0 &&
+                            viewedLease.utility_breakdown.extra_lines.length ===
+                                0 &&
                             viewedLease.rent_amount === null ? (
                                 <p className="mt-3 text-sm text-muted-foreground">
-                                    No rent or utility charges recorded yet.
+                                    No rent, utility or additional charges
+                                    recorded yet.
                                 </p>
                             ) : (
                                 <dl className="mt-3 grid gap-x-6 gap-y-3 text-sm">
@@ -1202,6 +1449,35 @@ export default function LeasesIndex({ leases, focusedLease }: Props) {
                                             </div>
                                         ),
                                     )}
+                                    {viewedLease.utility_breakdown.extras !==
+                                        '0.00' && (
+                                        <div className="grid grid-cols-[8rem_1fr_auto] items-baseline gap-2">
+                                            <dt className="text-muted-foreground">
+                                                Additional charges
+                                            </dt>
+                                            <dd className="min-w-0 text-xs text-muted-foreground">
+                                                {
+                                                    viewedLease
+                                                        .utility_breakdown
+                                                        .extra_lines.length
+                                                }{' '}
+                                                charge
+                                                {viewedLease.utility_breakdown
+                                                    .extra_lines.length === 1
+                                                    ? ''
+                                                    : 's'}{' '}
+                                                on this lease
+                                            </dd>
+                                            <dd className="text-right font-medium tabular-nums">
+                                                {formatMoney(
+                                                    viewedLease
+                                                        .utility_breakdown
+                                                        .extras,
+                                                    viewedLease.currency,
+                                                )}
+                                            </dd>
+                                        </div>
+                                    )}
                                     <div className="grid grid-cols-[8rem_1fr_auto] items-baseline gap-2 border-t border-border-strong pt-2">
                                         <dt className="text-muted-foreground">
                                             Total
@@ -1219,7 +1495,192 @@ export default function LeasesIndex({ leases, focusedLease }: Props) {
                             )}
                         </div>
                     )}
+
+                    {viewedLease.utility_breakdown && (
+                        <div className="mt-2">
+                            <div className="flex items-center justify-between gap-2">
+                                <h2 className="font-medium">
+                                    Additional charges
+                                </h2>
+                                {canManageExtras && (
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={openExtraCreate}
+                                    >
+                                        <Plus className="size-4" />
+                                        Add charge
+                                    </Button>
+                                )}
+                            </div>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                                Parking, pets and other fees on this lease —
+                                billed with the total above.
+                            </p>
+                            {viewedLease.additional_charges.length === 0 ? (
+                                <p className="mt-3 text-sm text-muted-foreground">
+                                    No additional charges on this lease yet.
+                                </p>
+                            ) : (
+                                <ul className="mt-3 grid gap-2 text-sm">
+                                    {viewedLease.additional_charges.map(
+                                        (extra) => (
+                                            <li
+                                                key={extra.id}
+                                                className="flex items-center justify-between gap-2"
+                                            >
+                                                <div className="min-w-0">
+                                                    <span className="font-medium">
+                                                        {extra.name}
+                                                    </span>{' '}
+                                                    <span className="text-xs text-muted-foreground">
+                                                        {extra.kind_label} ·{' '}
+                                                        {formatMoney(
+                                                            extra.amount,
+                                                            extra.currency,
+                                                        )}
+                                                        {!extra.is_active && (
+                                                            <> · inactive</>
+                                                        )}
+                                                    </span>
+                                                </div>
+                                                {canManageExtras && (
+                                                    <div className="flex shrink-0 gap-1">
+                                                        <ActionIconButton
+                                                            icon={<SquarePen />}
+                                                            label={`Edit ${extra.name}`}
+                                                            color="edit"
+                                                            onClick={() =>
+                                                                openExtraEdit(
+                                                                    extra,
+                                                                )
+                                                            }
+                                                        />
+                                                        <ActionIconButton
+                                                            icon={<Trash2 />}
+                                                            label={`Delete ${extra.name}`}
+                                                            color="danger"
+                                                            onClick={() =>
+                                                                setDeleteExtra(
+                                                                    extra,
+                                                                )
+                                                            }
+                                                        />
+                                                    </div>
+                                                )}
+                                            </li>
+                                        ),
+                                    )}
+                                </ul>
+                            )}
+                        </div>
+                    )}
                 </ResponsiveOverlay>
+            )}
+
+            {viewedLease && (
+                <ResponsiveOverlay
+                    open={isExtraCreateOpen}
+                    onOpenChange={(open) => {
+                        if (!open) {
+                            closeExtraSheets();
+                        }
+                    }}
+                    title="Add an additional charge"
+                    description={`Fixed or one-time fees on ${viewedLease.occupant_name}'s lease.`}
+                    footer={
+                        <OverlayFooter
+                            onCancel={closeExtraSheets}
+                            actions={[
+                                {
+                                    label: 'Add charge',
+                                    form: 'lease-extra-form',
+                                    type: 'submit',
+                                },
+                            ]}
+                        />
+                    }
+                >
+                    <Form
+                        key="extra-new"
+                        id="lease-extra-form"
+                        {...storeExtra.form({
+                            property: propertySlug,
+                            lease: viewedLease.id,
+                        })}
+                        options={{ preserveScroll: true }}
+                        onSuccess={() => closeExtraSheets()}
+                        className="grid gap-4 py-2"
+                    >
+                        {({ errors }) =>
+                            extraFields(errors, 'extra-new', 'create')
+                        }
+                    </Form>
+                </ResponsiveOverlay>
+            )}
+
+            {viewedLease && editExtra && (
+                <ResponsiveOverlay
+                    open={isExtraEditOpen}
+                    onOpenChange={(open) => {
+                        if (!open) {
+                            closeExtraSheets();
+                        }
+                    }}
+                    title={`Edit ${editExtra.name}`}
+                    description="Reprice, re-ledger, or pause billing."
+                    footer={
+                        <OverlayFooter
+                            onCancel={closeExtraSheets}
+                            actions={[
+                                {
+                                    label: 'Save changes',
+                                    form: 'lease-extra-edit-form',
+                                    type: 'submit',
+                                },
+                            ]}
+                        />
+                    }
+                >
+                    <Form
+                        key={editExtra.id}
+                        id="lease-extra-edit-form"
+                        {...updateExtra.form({
+                            property: propertySlug,
+                            lease: viewedLease.id,
+                            extra: editExtra.id,
+                        })}
+                        options={{ preserveScroll: true }}
+                        onSuccess={() => closeExtraSheets()}
+                        className="grid gap-4 py-2"
+                    >
+                        {({ errors }) =>
+                            extraFields(errors, 'extra-edit', 'edit')
+                        }
+                    </Form>
+                </ResponsiveOverlay>
+            )}
+
+            {viewedLease && deleteExtra !== null && (
+                <ConfirmDeleteOverlay
+                    open
+                    onOpenChange={(open) => {
+                        if (!open) {
+                            setDeleteExtra(null);
+                        }
+                    }}
+                    action={
+                        destroyExtra({
+                            property: propertySlug,
+                            lease: viewedLease.id,
+                            extra: deleteExtra.id,
+                        }).url
+                    }
+                    title={`Delete ${deleteExtra.name}?`}
+                    description="This removes the charge from the lease. Future totals stop listing it."
+                    onSuccess={() => setDeleteExtra(null)}
+                />
             )}
 
             <Dialog
