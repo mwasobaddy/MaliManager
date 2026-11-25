@@ -117,8 +117,11 @@ Route::middleware([
         });
 
         Route::patch('/deposit-refunds/{refund}', [DepositRefundController::class, 'update'])
-            ->middleware('sub-permission:lease.edit')
+            ->middleware('sub-permission:deposit.manage')
             ->name('tenant.deposit-refunds.update');
+        Route::post('/deposit-refunds/{refund}/pay', [DepositRefundController::class, 'pay'])
+            ->middleware('sub-permission:deposit.manage')
+            ->name('tenant.deposit-refunds.pay');
         Route::get('/properties', [PropertyController::class, 'index'])
             ->middleware('sub-permission:property.manage')
             ->name('tenant.properties.index');

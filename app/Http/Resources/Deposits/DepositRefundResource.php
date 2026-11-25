@@ -35,6 +35,12 @@ class DepositRefundResource extends JsonResource
             'decided_at' => $this->decided_at?->toIso8601String(),
             'decision_note' => $this->decision_note,
             'tenant_name' => $this->whenLoaded('lease', fn () => $this->lease?->occupant?->person?->full_name ?: null),
+            'unit_name' => $this->whenLoaded('lease', fn () => $this->lease?->unit?->name),
+            'property_name' => $this->whenLoaded('lease', fn () => $this->lease?->property?->name),
+            'paid_by' => $this->paid_by,
+            'payer_name' => $this->whenLoaded('payer', fn () => $this->payer?->name),
+            'paid_at' => $this->paid_at?->toIso8601String(),
+            'paid_reference' => $this->paid_reference,
             'created_at' => $this->created_at?->toIso8601String(),
         ];
     }

@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Tenant;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 /**
  * Deposit refund list filter.
@@ -25,6 +26,9 @@ class DepositRefundIndexRequest extends FormRequest
     {
         return [
             'status' => ['nullable', 'string', 'max:64'],
+            'search' => ['nullable', 'string', 'max:255'],
+            'sort' => ['nullable', 'string', 'max:64'],
+            'direction' => ['nullable', Rule::in(['asc', 'desc'])],
         ];
     }
 }

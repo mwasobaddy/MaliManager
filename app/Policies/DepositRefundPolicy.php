@@ -14,9 +14,10 @@ use App\Support\TenancyContext;
 use Illuminate\Auth\Access\HandlesAuthorization;
 
 /**
- * Refunds are money leaving the organization, so requesting and deciding are
- * separate permissions: any staff member with `lease.manage` can raise one, but
- * only an owner or a `lease.edit` holder can approve it.
+ * Refunds are money leaving the organization, so requesting, deciding and
+ * marking paid are separate permissions: any staff member with
+ * `lease.manage` can raise one, but only an owner or a `deposit.manage`
+ * holder can approve it or record the payout.
  */
 class DepositRefundPolicy
 {
@@ -43,8 +44,23 @@ class DepositRefundPolicy
         return $organization !== null && $this->canRequestIn($user, $organization);
     }
 
-    /** Approve or reject. */
+    /** Approve or reject. Money out needs the deposits key: anyone with
+     * `lease.manage` can raise a refund, but only the landlord's priced
+     * roles decide it — a caretaker who reads meters must not approve
+     * their own payouts. */
     public function decide(User $user, DepositRefund $refund): bool
+    {
+        return $this->canMoveMoney($user, $refund);
+    }
+
+    /** Mark an approved refund paid. Same gate as deciding: the payer is
+     * accountable for the money leaving. */
+    public function pay(User $user, DepositRefund $refund): bool
+    {
+        return $this->canMoveMoney($user, $refund);
+    }
+
+    private function canMoveMoney(User $user, DepositRefund $refund): bool
     {
         $organization = $this->findOrganization($refund);
 
@@ -54,7 +70,7 @@ class DepositRefundPolicy
 
         return $user->hasRole(PlatformRole::Admin->value)
             || $user->isOwnerOf($organization)
-            || ($user->hasSubPermission($organization, SubPermissionKey::LeaseEdit)
+            || ($user->hasSubPermission($organization, SubPermissionKey::DepositManage)
                 && $this->delegatedToRefund($user, $refund));
     }
 

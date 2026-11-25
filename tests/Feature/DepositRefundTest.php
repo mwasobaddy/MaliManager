@@ -314,7 +314,7 @@ test('staff cannot request or decide refunds outside their delegation', function
     $leaseA = Lease::where('organization_id', $organization->id)->whereHas('property', fn ($q) => $q->where('slug', 'court-a'))->firstOrFail();
     $leaseB = Lease::where('organization_id', $organization->id)->whereHas('property', fn ($q) => $q->where('slug', 'court-b'))->firstOrFail();
 
-    $staff = refundStaff($organization, ['lease.manage', 'lease.edit']);
+    $staff = refundStaff($organization, ['lease.manage', 'deposit.manage']);
     delegateToProperty($organization, $owner, $staff, $leaseA->property_id);
 
     $refund = DepositRefund::create([
@@ -371,5 +371,178 @@ test('the refunds page lists refunds with their status', function () {
             ->where('refunds.data.0.status', 'pending')
             ->where('refunds.data.0.amount_cents', 1250000)
             ->has('leases', 1)
+        );
+});
+
+test('an approved refund can be marked paid with a reference', function () {
+    [$owner, $organization, $lease] = refundGraph();
+
+    $refund = DepositRefund::create([
+        'organization_id' => $organization->id,
+        'lease_id' => $lease->id,
+        'amount_cents' => 1250000,
+        'currency' => 'KES',
+        'reason' => 'Vacated.',
+        'status' => 'approved',
+        'requested_by' => $owner->id,
+        'decided_by' => $owner->id,
+        'decided_at' => now(),
+    ]);
+
+    $this->actingAs($owner)
+        ->post(refundUrl($organization, "/deposit-refunds/{$refund->id}/pay"), [
+            'reference' => 'M-Pesa CODE123',
+        ])
+        ->assertRedirect();
+
+    expect($refund->fresh()->status->value)->toBe('paid')
+        ->and($refund->fresh()->paid_by)->toBe($owner->id)
+        ->and($refund->fresh()->paid_reference)->toBe('M-Pesa CODE123')
+        ->and($refund->fresh()->paid_at)->not->toBeNull();
+});
+
+test('only an approved refund can be marked paid', function () {
+    [$owner, $organization, $lease] = refundGraph();
+
+    $refund = DepositRefund::create([
+        'organization_id' => $organization->id,
+        'lease_id' => $lease->id,
+        'amount_cents' => 1250000,
+        'currency' => 'KES',
+        'reason' => 'Vacated.',
+        'status' => 'pending',
+        'requested_by' => $owner->id,
+    ]);
+
+    $this->actingAs($owner)
+        ->from(refundUrl($organization, '/deposit-refunds'))
+        ->post(refundUrl($organization, "/deposit-refunds/{$refund->id}/pay"), [
+            'reference' => 'M-Pesa CODE123',
+        ])
+        ->assertRedirect()
+        ->assertSessionHasErrors('reference');
+
+    expect($refund->fresh()->status->value)->toBe('pending');
+});
+
+test('a paid refund cannot be marked paid twice', function () {
+    [$owner, $organization, $lease] = refundGraph();
+
+    $refund = DepositRefund::create([
+        'organization_id' => $organization->id,
+        'lease_id' => $lease->id,
+        'amount_cents' => 1250000,
+        'currency' => 'KES',
+        'reason' => 'Vacated.',
+        'status' => 'paid',
+        'requested_by' => $owner->id,
+        'decided_by' => $owner->id,
+        'decided_at' => now(),
+        'paid_by' => $owner->id,
+        'paid_at' => now(),
+        'paid_reference' => 'M-Pesa FIRST',
+    ]);
+
+    $this->actingAs($owner)
+        ->from(refundUrl($organization, '/deposit-refunds'))
+        ->post(refundUrl($organization, "/deposit-refunds/{$refund->id}/pay"), [
+            'reference' => 'M-Pesa SECOND',
+        ])
+        ->assertRedirect()
+        ->assertSessionHasErrors('reference');
+
+    expect($refund->fresh()->paid_reference)->toBe('M-Pesa FIRST');
+});
+
+test('a caretaker can request but cannot decide or pay', function () {
+    [$owner, $organization] = refundTwoPropertyGraph();
+
+    $lease = Lease::where('organization_id', $organization->id)->whereHas('property', fn ($q) => $q->where('slug', 'court-a'))->firstOrFail();
+    $staff = refundStaff($organization, ['lease.manage']);
+    delegateToProperty($organization, $owner, $staff, $lease->property_id);
+
+    // Requesting works with the caretaker key.
+    $this->actingAs($staff)
+        ->post(refundUrl($organization, '/deposit-refunds'), [
+            'lease_id' => $lease->id,
+            'amount' => 12500,
+            'reason' => 'Vacated, unit clean.',
+        ])
+        ->assertRedirect();
+
+    $refund = DepositRefund::where('organization_id', $organization->id)->firstOrFail();
+
+    // Deciding needs the deposits key.
+    $this->actingAs($staff)
+        ->patch(refundUrl($organization, "/deposit-refunds/{$refund->id}"), [
+            'decision' => 'approve',
+            'note' => 'Looks good.',
+        ])
+        ->assertRedirect();
+    assertErrorToast();
+    expect($refund->fresh()->status->value)->toBe('pending');
+
+    // The landlord grants deposit rights; the same staffer can now decide.
+    $role = $staff->organizations()->where('organization_id', $organization->id)->first()->pivot->sub_role_id;
+    SubRole::find($role)->subPermissions()->attach(
+        SubPermission::where('key', 'deposit.manage')->pluck('id')->all()
+    );
+
+    $this->actingAs($staff)
+        ->patch(refundUrl($organization, "/deposit-refunds/{$refund->id}"), [
+            'decision' => 'approve',
+            'note' => 'Looks good.',
+        ])
+        ->assertRedirect();
+
+    expect($refund->fresh()->status->value)->toBe('approved');
+
+    // ...and record the payout.
+    $this->actingAs($staff)
+        ->post(refundUrl($organization, "/deposit-refunds/{$refund->id}/pay"), [
+            'reference' => 'M-Pesa CARETAKER1',
+        ])
+        ->assertRedirect();
+
+    expect($refund->fresh()->status->value)->toBe('paid')
+        ->and($refund->fresh()->paid_by)->toBe($staff->id);
+});
+
+test('the refunds index ships tenant, unit and property names', function () {
+    [$owner, $organization, $lease] = refundGraph();
+
+    $person = Person::factory()->create(['first_name' => 'Tenant', 'last_name' => 'Person']);
+    $occupant = Occupant::factory()->create([
+        'organization_id' => $organization->id,
+        'person_id' => $person->id,
+    ]);
+    $lease->update(['occupant_id' => $occupant->id]);
+
+    DepositRefund::create([
+        'organization_id' => $organization->id,
+        'lease_id' => $lease->id,
+        'amount_cents' => 1250000,
+        'currency' => 'KES',
+        'reason' => 'Vacated.',
+        'status' => 'pending',
+        'requested_by' => $owner->id,
+    ]);
+
+    $this->actingAs($owner)
+        ->get(refundUrl($organization, '/deposit-refunds?search=Tenant'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('organisation/deposit-refunds/index')
+            ->where('refunds.total', 1)
+            ->where('refunds.data.0.tenant_name', 'Tenant Person')
+            ->where('refunds.data.0.unit_name', $lease->unit->name)
+            ->where('refunds.data.0.property_name', $lease->property->name)
+        );
+
+    $this->actingAs($owner)
+        ->get(refundUrl($organization, '/deposit-refunds?search=Nobody'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('refunds.total', 0)
         );
 });

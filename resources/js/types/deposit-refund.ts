@@ -17,6 +17,12 @@ export type DepositRefund = {
     decided_at: string | null;
     decision_note: string | null;
     tenant_name: string | null;
+    unit_name: string | null;
+    property_name: string | null;
+    paid_by: number | null;
+    payer_name: string | null;
+    paid_at: string | null;
+    paid_reference: string | null;
     created_at: string | null;
 };
 

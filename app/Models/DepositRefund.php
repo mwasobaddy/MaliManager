@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\DepositRefundStatus;
+use App\Models\Concerns\LogsTenantActivity;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -22,7 +23,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  */
 class DepositRefund extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, LogsTenantActivity, SoftDeletes;
 
     protected $fillable = [
         'organization_id',
@@ -35,6 +36,9 @@ class DepositRefund extends Model
         'decided_by',
         'decided_at',
         'decision_note',
+        'paid_by',
+        'paid_at',
+        'paid_reference',
     ];
 
     /**
@@ -46,7 +50,13 @@ class DepositRefund extends Model
             'status' => DepositRefundStatus::class,
             'amount_cents' => 'integer',
             'decided_at' => 'datetime',
+            'paid_at' => 'datetime',
         ];
+    }
+
+    public function payer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'paid_by');
     }
 
     public function lease(): BelongsTo
