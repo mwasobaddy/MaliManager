@@ -2,7 +2,9 @@
 
 namespace App\Support;
 
+use App\Enums\UtilityChargeKind;
 use App\Models\Lease;
+use App\Models\UtilityCharge;
 
 /**
  * Merges {{placeholder}} tokens into an agreement's rich-text HTML using
@@ -43,6 +45,7 @@ class LeaseAgreementTemplate
             ['token' => 'rent_frequency', 'description' => 'Rent frequency'],
             ['token' => 'deposit_amount', 'description' => 'Deposit amount'],
             ['token' => 'currency', 'description' => 'Currency code'],
+            ['token' => 'utility_charges', 'description' => 'Utility charges for this unit (billing clause)'],
         ];
     }
 
@@ -67,6 +70,7 @@ class LeaseAgreementTemplate
             'rent_frequency' => $lease->rent_frequency,
             'deposit_amount' => $lease->deposit !== null ? number_format((float) $lease->deposit, 2) : null,
             'currency' => $lease->currency,
+            'utility_charges' => self::utilityChargesSummary($lease),
         ];
 
         foreach ($values as $token => $value) {
@@ -78,5 +82,49 @@ class LeaseAgreementTemplate
         }
 
         return $html;
+    }
+
+    /**
+     * Plain-text billing clause for the agreement: every active charge
+     * assigned to the lease's unit, currency shown per charge because the
+     * clause authorizes billing generally, not one currency's subset.
+     * Always returns a value so the token never survives into print.
+     */
+    private static function utilityChargesSummary(Lease $lease): string
+    {
+        if ($lease->unit_id === null) {
+            return 'None';
+        }
+
+        $charges = UtilityCharge::query()
+            ->where('property_id', $lease->property_id)
+            ->where('is_active', true)
+            ->whereHas('units', fn ($query) => $query->where('units.id', $lease->unit_id))
+            ->with(['units' => fn ($query) => $query->where('units.id', $lease->unit_id)])
+            ->orderBy('name')
+            ->get();
+
+        if ($charges->isEmpty()) {
+            return 'None';
+        }
+
+        return $charges->map(function (UtilityCharge $charge): string {
+            $pivot = $charge->units->first()?->pivot;
+
+            if ($charge->kind === UtilityChargeKind::Metered) {
+                $unit = $charge->utility?->unitOfMeasure() ?? 'unit';
+
+                return "{$charge->name} — metered at ".number_format((float) ($charge->rate ?? 0), 2)." {$charge->currency} per {$unit}";
+            }
+
+            $amount = number_format((float) ($pivot->amount ?? 0), 2);
+            $suffix = $charge->kind === UtilityChargeKind::OneTime ? 'one-time' : 'per period';
+
+            if ($charge->kind === UtilityChargeKind::Shared) {
+                $suffix = "shared master bill ({$charge->allocation} split)";
+            }
+
+            return "{$charge->name} — {$amount} {$charge->currency} {$suffix}";
+        })->implode('; ');
     }
 }

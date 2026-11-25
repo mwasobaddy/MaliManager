@@ -57,13 +57,16 @@ export type UtilityChargeRow = {
     property_id: number;
     property_name: string | null;
     name: string;
-    kind: 'metered' | 'fixed' | 'one_time';
+    kind: 'metered' | 'fixed' | 'one_time' | 'shared';
     kind_label: string;
     utility: string | null;
     utility_label: string | null;
     unit_of_measure: string | null;
     rate: string | null;
+    allocation: string | null;
+    master_amount: string | null;
     currency: string;
+    gl_code: string | null;
     is_active: boolean;
     units: ChargeUnit[];
 };

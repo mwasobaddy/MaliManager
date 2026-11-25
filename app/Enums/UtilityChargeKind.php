@@ -10,12 +10,14 @@ namespace App\Enums;
  * - metered: consumption since the last billed reading × rate.
  * - fixed: a flat amount per unit every period (garbage, security).
  * - one_time: a single amount against the next invoice, then done.
+ * - shared: a master-meter bill split across the assigned units (RUBS).
  */
 enum UtilityChargeKind: string
 {
     case Metered = 'metered';
     case Fixed = 'fixed';
     case OneTime = 'one_time';
+    case Shared = 'shared';
 
     public function label(): string
     {
@@ -23,6 +25,7 @@ enum UtilityChargeKind: string
             self::Metered => 'Metered',
             self::Fixed => 'Fixed recurring',
             self::OneTime => 'One-time',
+            self::Shared => 'Shared (RUBS)',
         };
     }
 }

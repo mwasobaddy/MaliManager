@@ -228,7 +228,10 @@ class UtilityReadingController extends Controller
                 'utility_label' => $charge->utility?->label(),
                 'unit_of_measure' => $charge->utility?->unitOfMeasure(),
                 'rate' => $charge->rate,
+                'allocation' => $charge->allocation,
+                'master_amount' => $charge->master_amount,
                 'currency' => $charge->currency,
+                'gl_code' => $charge->gl_code,
                 'is_active' => $charge->is_active,
                 'units' => $charge->units
                     ->map(fn (Unit $unit): array => [

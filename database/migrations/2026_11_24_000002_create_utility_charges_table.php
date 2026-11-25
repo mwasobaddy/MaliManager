@@ -17,14 +17,29 @@ return new class extends Migration
             // metered: billed per unit of consumption at `rate`.
             // fixed: flat amount per unit per period, stored per unit.
             // one_time: billed once against the next invoice, then done.
+            // shared: a master-meter bill (`master_amount`) split across the
+            // assigned units by `allocation` (RUBS for buildings with one
+            // water meter and no submeters).
             $table->string('kind')->default('fixed');
             // Metered utility being billed (power, water, gas). Fixed and
             // one-time charges (garbage, security, move-in fees) leave it null.
             $table->string('utility')->nullable();
             // Per-unit price for metered charges (KES per kWh/m³).
             $table->decimal('rate', 14, 4)->nullable();
+            // Shared-bill split basis: `equal` or `occupants`. Only read for
+            // the shared kind; other kinds leave it null.
+            $table->string('allocation', 16)->nullable();
+            // The current master bill total for a shared charge, refreshed
+            // by the landlord when each new master bill arrives. Per-period
+            // invoicing (Phase B) will snapshot it per invoice instead.
+            $table->decimal('master_amount', 14, 2)->nullable();
             $table->string('currency', 3)->default('KES');
             $table->boolean('is_active')->default(true);
+
+            // Income ledger code (e.g. 4100-utilities). Pure bookkeeping:
+            // Phase B posts invoice lines against it, and Buildium-style
+            // separation keeps rent, fees and utilities apart from day one.
+            $table->string('gl_code', 32)->nullable();
 
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();

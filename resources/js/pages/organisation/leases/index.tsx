@@ -62,12 +62,34 @@ type UtilityBreakdownLine = {
     last_read_on: string | null;
 };
 
+type AdditionalChargeLine = {
+    extra_id: number;
+    name: string;
+    kind: string;
+    detail: string;
+    amount: string;
+};
+
 type UtilityBreakdown = {
     lines: UtilityBreakdownLine[];
+    extra_lines: AdditionalChargeLine[];
     metered: string;
     fixed: string;
     one_time: string;
+    shared: string;
+    extras: string;
     total: string;
+};
+
+type LeaseExtra = {
+    id: number;
+    name: string;
+    kind: string;
+    kind_label: string;
+    amount: string;
+    currency: string;
+    gl_code: string | null;
+    is_active: boolean;
 };
 
 type LeaseRow = {

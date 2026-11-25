@@ -33,6 +33,11 @@ class UpdateUtilityCharge extends Service
             abort_unless(isset($data['rate']) && (float) $data['rate'] > 0, 422, 'A metered charge needs a rate per unit.');
         }
 
+        if ($charge->kind === UtilityChargeKind::Shared) {
+            abort_unless(in_array($data['allocation'] ?? $charge->allocation, ['equal', 'occupants'], true), 422, 'A shared charge needs a split basis.');
+            abort_unless(isset($data['master_amount']) && (float) $data['master_amount'] > 0, 422, 'A shared charge needs the master bill total.');
+        }
+
         $unitIds = $this->resolveUnitIds($property, (array) ($data['unit_ids'] ?? []));
 
         if (in_array($charge->kind, [UtilityChargeKind::Fixed, UtilityChargeKind::OneTime], true)) {
@@ -50,7 +55,10 @@ class UpdateUtilityCharge extends Service
                 'name' => $data['name'],
                 'utility' => $charge->kind === UtilityChargeKind::Metered ? UtilityType::tryFrom((string) ($data['utility'] ?? ''))?->value : $charge->utility,
                 'rate' => $charge->kind === UtilityChargeKind::Metered ? $data['rate'] : null,
+                'allocation' => $charge->kind === UtilityChargeKind::Shared ? ($data['allocation'] ?? $charge->allocation) : null,
+                'master_amount' => $charge->kind === UtilityChargeKind::Shared ? $data['master_amount'] : null,
                 'currency' => $data['currency'] ?? $charge->currency,
+                'gl_code' => $data['gl_code'] ?? $charge->gl_code,
                 'is_active' => array_key_exists('is_active', $data) ? (bool) $data['is_active'] : $charge->is_active,
             ])->save();
 

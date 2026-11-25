@@ -7,7 +7,9 @@ use App\Models\Lease;
 use App\Models\Unit;
 use App\Models\UtilityCharge;
 use App\Models\UtilityReading;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Turns utility charges into payable figures.
@@ -24,7 +26,7 @@ use Illuminate\Support\Collection;
 final class UtilityBilling
 {
     /**
-     * @return array{lines: list<array{charge_id: int, name: string, kind: string, detail: string, amount: string, last_reading: string|null, last_read_on: string|null}>, metered: string, fixed: string, one_time: string, total: string}
+     * @return array{lines: list<array{charge_id: int, name: string, kind: string, detail: string, amount: string, last_reading: string|null, last_read_on: string|null}>, metered: string, fixed: string, one_time: string, shared: string, total: string}
      */
     public static function breakdownForLease(Lease $lease): array
     {
@@ -44,6 +46,11 @@ final class UtilityBilling
         $metered = '0.00';
         $fixed = '0.00';
         $oneTime = '0.00';
+        $shared = '0.00';
+
+        $sharedCharges = $charges->where('kind', UtilityChargeKind::Shared);
+        $sharedShares = self::sharesForCharges($sharedCharges, $lease->property_id);
+
 
         foreach ($charges as $charge) {
             $pivot = $charge->units->first()?->pivot;
@@ -98,6 +105,28 @@ final class UtilityBilling
                     'last_read_on' => null,
                 ];
                 $oneTime = bcadd($oneTime, $amount, 2);
+
+                continue;
+            }
+
+            if ($charge->kind === UtilityChargeKind::Shared) {
+                $share = $sharedShares[$charge->id] ?? null;
+                $amount = $share['units'][(int) $lease->unit_id] ?? null;
+
+                if ($share === null || $amount === null) {
+                    continue;
+                }
+
+                $lines[] = [
+                    'charge_id' => $charge->id,
+                    'name' => $charge->name,
+                    'kind' => $charge->kind->value,
+                    'detail' => $share['detail'],
+                    'amount' => $amount,
+                    'last_reading' => null,
+                    'last_read_on' => null,
+                ];
+                $shared = bcadd($shared, $amount, 2);
             }
         }
 
@@ -106,7 +135,8 @@ final class UtilityBilling
             'metered' => $metered,
             'fixed' => $fixed,
             'one_time' => $oneTime,
-            'total' => bcadd(bcadd((string) ($lease->rent_amount ?? 0), $metered, 2), bcadd($fixed, $oneTime, 2), 2),
+            'shared' => $shared,
+            'total' => bcadd(bcadd(bcadd((string) ($lease->rent_amount ?? 0), $metered, 2), bcadd($fixed, $oneTime, 2), 2), $shared, 2),
         ];
     }
 
@@ -116,7 +146,7 @@ final class UtilityBilling
      * pays per-row.
      *
      * @param  Collection<int, Lease>  $leases
-     * @return array<int, array{metered: string, fixed: string, one_time: string, total: string}>
+     * @return array<int, array{metered: string, fixed: string, one_time: string, shared: string, total: string}>
      */
     public static function totalsForLeases(Collection $leases): array
     {
@@ -143,6 +173,10 @@ final class UtilityBilling
                 }
             }
 
+            $sharedCharges = $charges->where('kind', UtilityChargeKind::Shared);
+            $sharedShares = self::sharesForCharges($sharedCharges, $propertyId);
+
+
             $readings = self::latestReadings(
                 $leasesInProperty->map(fn (Lease $lease) => $lease->unit_id)->filter()->all(),
                 $charges->where('kind', UtilityChargeKind::Metered)->map(fn ($charge) => $charge->utility->value)->filter()->unique()->all()
@@ -152,6 +186,7 @@ final class UtilityBilling
                 $metered = '0.00';
                 $fixed = '0.00';
                 $oneTime = '0.00';
+                $shared = '0.00';
 
                 foreach ($byUnit[$lease->unit_id] ?? [] as ['charge' => $charge, 'pivot' => $pivot]) {
                     if ($charge->kind === UtilityChargeKind::Metered && $charge->utility !== null) {
@@ -165,6 +200,10 @@ final class UtilityBilling
                         $fixed = bcadd($fixed, number_format((float) $pivot->amount, 2, '.', ''), 2);
                     } elseif ($charge->kind === UtilityChargeKind::OneTime && $pivot->amount !== null && $pivot->consumed_at === null) {
                         $oneTime = bcadd($oneTime, number_format((float) $pivot->amount, 2, '.', ''), 2);
+                    } elseif ($charge->kind === UtilityChargeKind::Shared) {
+                        $share = $sharedShares[$charge->id] ?? null;
+                        $amount = $share['units'][(int) $lease->unit_id] ?? '0.00';
+                        $shared = bcadd($shared, $amount, 2);
                     }
                 }
 
@@ -172,12 +211,179 @@ final class UtilityBilling
                     'metered' => $metered,
                     'fixed' => $fixed,
                     'one_time' => $oneTime,
-                    'total' => bcadd(bcadd((string) ($lease->rent_amount ?? 0), $metered, 2), bcadd($fixed, $oneTime, 2), 2),
+                    'shared' => $shared,
+                    'total' => bcadd(bcadd(bcadd((string) ($lease->rent_amount ?? 0), $metered, 2), bcadd($fixed, $oneTime, 2), 2), $shared, 2),
                 ];
             }
         }
 
         return $result;
+    }
+
+    /**
+     * Per-charge shares for a batch of shared (RUBS) charges: one pivot
+     * query and one active-lease count regardless of charge count.
+     *
+     * @param  Collection<int, UtilityCharge>  $sharedCharges
+     * @return array<int, array{units: array<int, string>, detail: string}>
+     */
+    private static function sharesForCharges(Collection $sharedCharges, int $propertyId): array
+    {
+        if ($sharedCharges->isEmpty()) {
+            return [];
+        }
+
+        $chargeIds = $sharedCharges->map(fn (UtilityCharge $charge) => $charge->id)->all();
+
+        $unitIdsByCharge = [];
+        foreach (DB::table('utility_charge_unit')->whereIn('utility_charge_id', $chargeIds)->get(['utility_charge_id', 'unit_id']) as $row) {
+            $unitIdsByCharge[(int) $row->utility_charge_id][] = (int) $row->unit_id;
+        }
+
+        $allUnitIds = array_values(array_unique(array_merge(...array_values($unitIdsByCharge ?: [[]]))));
+
+        $counts = $allUnitIds === []
+            ? []
+            : Lease::query()->active()
+                ->where('property_id', $propertyId)
+                ->whereIn('unit_id', $allUnitIds)
+                ->groupBy('unit_id')
+                ->selectRaw('unit_id, COUNT(*) as c')
+                ->pluck('c', 'unit_id')
+                ->map(fn ($c) => (int) $c)
+                ->all();
+
+        $result = [];
+        foreach ($sharedCharges as $charge) {
+            $unitIds = $unitIdsByCharge[$charge->id] ?? [];
+
+            if ($unitIds === []) {
+                continue;
+            }
+
+            $weights = [];
+            foreach ($unitIds as $unitId) {
+                $weights[$unitId] = $charge->allocation === 'occupants'
+                    ? (int) ($counts[$unitId] ?? 0)
+                    : 1;
+            }
+
+            $basis = 'units';
+            if ($charge->allocation === 'occupants' && array_sum($weights) > 0) {
+                $basis = 'occupants';
+            } elseif ($charge->allocation === 'occupants') {
+                // All vacant: split equally so the master bill still ties.
+                $weights = array_fill_keys($unitIds, 1);
+            }
+
+            $divisor = $basis === 'occupants' ? array_sum($weights) : count($unitIds);
+            $master = number_format((float) ($charge->master_amount ?? 0), 2, '.', '');
+
+            $result[$charge->id] = [
+                'units' => self::sharedShares($master, $weights),
+                'detail' => "shared master {$master} {$charge->currency} ÷ {$divisor} {$basis}",
+            ];
+        }
+
+        return $result;
+    }
+
+    /**
+     * Splits a master bill across weighted units with largest-remainder,
+     * so the lines tie to the master total to the cent instead of leaking
+     * a cent to rounding on every period.
+     *
+     * @param  array<int, int>  $weights  unit id => weight
+     * @return array<int, string> unit id => amount
+     */
+    public static function sharedShares(string $masterAmount, array $weights): array
+    {
+        $total = array_sum($weights);
+
+        if ($total <= 0 || bccomp($masterAmount, '0', 2) <= 0) {
+            return array_map(fn () => '0.00', $weights);
+        }
+
+        $totalCents = (int) round((float) $masterAmount * 100);
+        $floors = [];
+        $fractions = [];
+        foreach ($weights as $unitId => $weight) {
+            $exact = $totalCents * $weight / $total;
+            $floors[$unitId] = (int) floor($exact);
+            $fractions[$unitId] = $exact - $floors[$unitId];
+        }
+
+        $remainder = $totalCents - array_sum($floors);
+        arsort($fractions);
+        foreach (array_keys($fractions) as $unitId) {
+            if ($remainder <= 0) {
+                break;
+            }
+            $floors[$unitId]++;
+            $remainder--;
+        }
+
+        return array_map(fn (int $cents) => number_format($cents / 100, 2, '.', ''), $floors);
+    }
+
+    /**
+     * Days in a billing period for a frequency, from a reference date
+     * inside it. Daily is one day, weekly seven, yearly the year's length;
+     * monthly (and anything unknown) the calendar month's length.
+     */
+    public static function periodDays(string $frequency, ?CarbonImmutable $reference = null): int
+    {
+        $ref = $reference ?? now()->toImmutable();
+
+        return match ($frequency) {
+            'daily' => 1,
+            'weekly' => 7,
+            'yearly' => $ref->isLeapYear() ? 366 : 365,
+            default => $ref->daysInMonth,
+        };
+    }
+
+    /**
+     * Pro-rates a fixed full-period amount by days occupied. Period length
+     * comes from the frequency; occupancy is the overlap of the occupied
+     * window with the period, clamped to the period. A full-period stay
+     * returns the face amount with a `per period` label.
+     *
+     * Display math only for now: Phase B invoices will call this per line.
+     *
+     * @return array{amount: string, days_occupied: int, days_in_period: int, full: bool, label: string}
+     */
+    public static function prorate(string $amount, string $frequency, CarbonImmutable $periodStart, CarbonImmutable $periodEnd, CarbonImmutable $occupiedFrom, ?CarbonImmutable $occupiedTo = null): array
+    {
+        $period = self::periodDays($frequency, $periodStart);
+        $occupiedTo ??= $periodEnd;
+
+        $from = $occupiedFrom->greaterThan($periodStart) ? $occupiedFrom : $periodStart;
+        $to = $occupiedTo->lessThan($periodEnd) ? $occupiedTo : $periodEnd;
+
+        // Inclusive day counts: a same-day move-in/move-out still bills a day.
+        $occupied = $to->lessThan($from) ? 0 : (int) ($from->diffInDays($to) + 1);
+        $occupied = min(max($occupied, 0), $period);
+
+        if ($occupied >= $period) {
+            return [
+                'amount' => number_format((float) $amount, 2, '.', ''),
+                'days_occupied' => $occupied,
+                'days_in_period' => $period,
+                'full' => true,
+                'label' => 'per period',
+            ];
+        }
+
+        $prorated = number_format(round((float) $amount * $occupied / $period, 2), 2, '.', '');
+
+        return [
+            'amount' => $prorated,
+            'days_occupied' => $occupied,
+            'days_in_period' => $period,
+            'full' => false,
+            'label' => "prorated {$occupied} of {$period} days",
+        ];
     }
 
     /**
@@ -258,9 +464,13 @@ final class UtilityBilling
 
     /**
      * @return array{lines: list<array{charge_id: int, name: string, kind: string, detail: string, amount: string, last_reading: string|null, last_read_on: string|null}>, metered: string, fixed: string, one_time: string, total: string}
+
+
+    /**
+     * @return array{lines: list<array{charge_id: int, name: string, kind: string, detail: string, amount: string, last_reading: string|null, last_read_on: string|null}>, metered: string, fixed: string, one_time: string, shared: string, total: string}
      */
     private static function empty(): array
     {
-        return ['lines' => [], 'metered' => '0.00', 'fixed' => '0.00', 'one_time' => '0.00', 'total' => '0.00'];
+        return ['lines' => [], 'metered' => '0.00', 'fixed' => '0.00', 'one_time' => '0.00', 'shared' => '0.00', 'total' => '0.00'];
     }
 }

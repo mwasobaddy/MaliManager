@@ -166,13 +166,15 @@ export default function UtilitiesIndex({
 
     const [chargePropertyId, setChargePropertyId] = useState('');
     const [chargeKind, setChargeKind] = useState<
-        'metered' | 'fixed' | 'one_time'
+        'metered' | 'fixed' | 'one_time' | 'shared'
     >('metered');
     const [chargeUtility, setChargeUtility] = useState('');
     const [chargeRate, setChargeRate] = useState('');
     const [chargeCurrency, setChargeCurrency] = useState('KES');
     const [chargeIsActive, setChargeIsActive] = useState(true);
     const [chargeUnitIds, setChargeUnitIds] = useState<number[]>([]);
+    const [chargeAllocation, setChargeAllocation] = useState('equal');
+    const [chargeMasterAmount, setChargeMasterAmount] = useState('');
     const [chargeAmounts, setChargeAmounts] = useState<Record<number, string>>(
         {},
     );
@@ -187,6 +189,8 @@ export default function UtilitiesIndex({
         setChargeCurrency('KES');
         setChargeIsActive(true);
         setChargeUnitIds([]);
+        setChargeAllocation('equal');
+        setChargeMasterAmount('');
         setChargeAmounts({});
     }
 
@@ -198,6 +202,8 @@ export default function UtilitiesIndex({
         setChargeCurrency(charge.currency);
         setChargeIsActive(charge.is_active);
         setChargeUnitIds(charge.units.map((unit) => unit.id));
+        setChargeAllocation(charge.allocation ?? 'equal');
+        setChargeMasterAmount(charge.master_amount ?? '');
         setChargeAmounts(
             Object.fromEntries(
                 charge.units
@@ -292,7 +298,11 @@ export default function UtilitiesIndex({
                             value={chargeKind}
                             onValueChange={(value) =>
                                 setChargeKind(
-                                    value as 'metered' | 'fixed' | 'one_time',
+                                    value as
+                                        | 'metered'
+                                        | 'fixed'
+                                        | 'one_time'
+                                        | 'shared',
                                 )
                             }
                             className="space-y-3"
@@ -313,6 +323,11 @@ export default function UtilitiesIndex({
                                         'one_time',
                                         'One-time',
                                         'Billed once against the next invoice, then done.',
+                                    ],
+                                    [
+                                        'shared',
+                                        'Shared (RUBS)',
+                                        'One master bill split across the units below.',
                                     ],
                                 ] as [string, string, string][]
                             ).map(([value, label, hint]) => (
@@ -407,6 +422,62 @@ export default function UtilitiesIndex({
                     </>
                 )}
 
+                {chargeKind === 'shared' && (
+                    <>
+                        <div className="grid gap-2">
+                            <Label htmlFor={`${idPrefix}-allocation`}>
+                                Split basis
+                            </Label>
+                            <input
+                                type="hidden"
+                                name="allocation"
+                                value={chargeAllocation}
+                            />
+                            <Select
+                                value={chargeAllocation}
+                                onValueChange={setChargeAllocation}
+                            >
+                                <SelectTrigger
+                                    id={`${idPrefix}-allocation`}
+                                    className="w-full"
+                                >
+                                    <SelectValue placeholder="Choose a split" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="equal">
+                                        Equal — every unit pays the same share
+                                    </SelectItem>
+                                    <SelectItem value="occupants">
+                                        Occupants — split by active leases per
+                                        unit
+                                    </SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <InputError message={errors.allocation} />
+                        </div>
+
+                        <div className="grid gap-2">
+                            <Label htmlFor={`${idPrefix}-master-amount`}>
+                                Master bill total ({chargeCurrency})
+                            </Label>
+                            <Input
+                                id={`${idPrefix}-master-amount`}
+                                name="master_amount"
+                                type="number"
+                                inputMode="decimal"
+                                step="0.01"
+                                min="0"
+                                placeholder="15000.00"
+                                value={chargeMasterAmount}
+                                onChange={(event) =>
+                                    setChargeMasterAmount(event.target.value)
+                                }
+                            />
+                            <InputError message={errors.master_amount} />
+                        </div>
+                    </>
+                )}
+
                 <div className="grid gap-2">
                     <Label htmlFor={`${idPrefix}-currency`}>Currency</Label>
                     <input
@@ -433,6 +504,25 @@ export default function UtilitiesIndex({
                         </SelectContent>
                     </Select>
                     <InputError message={errors.currency} />
+                </div>
+
+                <div className="grid gap-2">
+                    <Label htmlFor={`${idPrefix}-gl-code`}>
+                        GL code{' '}
+                        <span className="font-normal text-muted-foreground">
+                            (optional)
+                        </span>
+                    </Label>
+                    <Input
+                        id={`${idPrefix}-gl-code`}
+                        name="gl_code"
+                        placeholder="4100-utilities"
+                        maxLength={32}
+                        defaultValue={
+                            mode === 'edit' ? (editCharge?.gl_code ?? '') : ''
+                        }
+                    />
+                    <InputError message={errors.gl_code} />
                 </div>
 
                 {mode === 'edit' && (
@@ -746,6 +836,15 @@ export default function UtilitiesIndex({
     const chargeDetail = (charge: UtilityChargeRow) => {
         if (charge.kind === 'metered') {
             return `${formatMoney(charge.rate, charge.currency)} per ${charge.unit_of_measure ?? 'unit'}`;
+        }
+
+        if (charge.kind === 'shared') {
+            const divisor =
+                charge.allocation === 'occupants'
+                    ? 'occupants'
+                    : `${charge.units.length} unit${charge.units.length === 1 ? '' : 's'}`;
+
+            return `${formatMoney(charge.master_amount, charge.currency)} ÷ ${divisor}`;
         }
 
         const amounts = charge.units

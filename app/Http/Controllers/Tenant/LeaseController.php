@@ -159,7 +159,7 @@ class LeaseController extends Controller
      */
     private function presentLease(Lease $lease, array $balances, ?array $utilityTotals = null): array
     {
-        $utility = $utilityTotals ?? ['metered' => '0.00', 'fixed' => '0.00', 'one_time' => '0.00', 'total' => (string) ($lease->rent_amount ?? 0)];
+        $utility = $utilityTotals ?? ['metered' => '0.00', 'fixed' => '0.00', 'one_time' => '0.00', 'shared' => '0.00', 'total' => (string) ($lease->rent_amount ?? 0)];
 
         return [
             'id' => $lease->id,
@@ -215,6 +215,7 @@ class LeaseController extends Controller
 
         $breakdown = UtilityBilling::breakdownForLease($lease);
 
+
         return [
             ...$this->presentLease(
                 $lease,
@@ -223,6 +224,7 @@ class LeaseController extends Controller
                     'metered' => $breakdown['metered'],
                     'fixed' => $breakdown['fixed'],
                     'one_time' => $breakdown['one_time'],
+                    'shared' => $breakdown['shared'],
                     'total' => $breakdown['total'],
                 ]
             ),

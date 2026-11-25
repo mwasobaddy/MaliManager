@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Models\UtilityCharge;
 use App\Models\UtilityReading;
 use App\Services\TenantService;
+use App\Support\LeaseAgreementTemplate;
 use App\Support\UtilityBilling;
 use Database\Seeders\PlansSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
@@ -345,4 +346,147 @@ test('deleting a charge needs the current password', function () {
         ->assertRedirect();
 
     expect(UtilityCharge::count())->toBe(0);
+});
+
+test('a charge stores its GL code on create and update', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = utilityOrganization($owner);
+    $property = utilityProperty($organization, $owner);
+    [$unit] = [makeUnitWithLease($organization, $owner, $property, 'A1')[0]];
+
+    $this->actingAs($owner)
+        ->post(utilityChargeUrl($organization, '/utilities/charges'), chargePayload($property, [$unit->id], [
+            'name' => 'Garbage',
+            'kind' => 'fixed',
+            'utility' => null,
+            'rate' => null,
+            'amounts' => [$unit->id => '500'],
+            'gl_code' => '4100-utilities',
+        ]))
+        ->assertRedirect();
+
+    $charge = UtilityCharge::firstOrFail();
+    expect($charge->gl_code)->toBe('4100-utilities');
+
+    $this->actingAs($owner)
+        ->put(utilityChargeUrl($organization, "/utilities/charges/{$charge->id}"), [
+            'name' => 'Garbage',
+            'currency' => 'KES',
+            'gl_code' => '4200-garbage',
+            'is_active' => true,
+            'unit_ids' => [$unit->id],
+            'amounts' => [$unit->id => '500'],
+        ])
+        ->assertRedirect();
+
+    expect($charge->refresh()->gl_code)->toBe('4200-garbage');
+});
+
+test('a shared charge splits the master bill equally and ties to the cent', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = utilityOrganization($owner);
+    $property = utilityProperty($organization, $owner);
+    [$unitA] = [makeUnitWithLease($organization, $owner, $property, 'A1')[0]];
+    [$unitB, $leaseB] = makeUnitWithLease($organization, $owner, $property, 'B2');
+
+    $this->actingAs($owner)
+        ->post(utilityChargeUrl($organization, '/utilities/charges'), chargePayload($property, [$unitA->id, $unitB->id], [
+            'name' => 'Water master',
+            'kind' => 'shared',
+            'utility' => null,
+            'rate' => null,
+            'allocation' => 'equal',
+            'master_amount' => '100.00',
+        ]))
+        ->assertRedirect();
+
+    $breakdown = UtilityBilling::breakdownForLease($leaseB->fresh());
+
+    expect($breakdown['shared'])->toBe('50.00')
+        ->and($breakdown['total'])->toBe('25050.00')
+        ->and($breakdown['lines'])->toHaveCount(1)
+        ->and($breakdown['lines'][0]['detail'])->toContain('100.00 KES')
+        ->and($breakdown['lines'][0]['detail'])->toContain('2 units');
+});
+
+test('a shared charge splits by active leases per unit', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = utilityOrganization($owner);
+    $property = utilityProperty($organization, $owner);
+    [$unitA, $leaseA] = makeUnitWithLease($organization, $owner, $property, 'A1');
+    [$unitB] = [makeUnitWithLease($organization, $owner, $property, 'B2')[0]];
+
+    // A second active lease on B2: two billed parties against one on A1.
+    $person = Person::create(['first_name' => 'John', 'email' => 'john-b2@x.test', 'status' => 'active']);
+    Lease::create([
+        'person_id' => $person->id,
+        'organization_id' => $organization->id,
+        'property_id' => $property->id,
+        'unit_id' => $unitB->id,
+        'starts_at' => '2026-01-01',
+        'rent_amount' => 20000,
+        'rent_frequency' => 'monthly',
+        'currency' => 'KES',
+        'status' => 'active',
+    ]);
+
+    $this->actingAs($owner)
+        ->post(utilityChargeUrl($organization, '/utilities/charges'), chargePayload($property, [$unitA->id, $unitB->id], [
+            'name' => 'Water master',
+            'kind' => 'shared',
+            'utility' => null,
+            'rate' => null,
+            'allocation' => 'occupants',
+            'master_amount' => '300.00',
+        ]))
+        ->assertRedirect();
+
+    expect(UtilityBilling::breakdownForLease($leaseA->fresh())['shared'])->toBe('100.00')
+        ->and(UtilityBilling::totalsForLeases(collect([$leaseA->fresh()]))[$leaseA->id]['shared'])->toBe('100.00');
+});
+
+test('a shared charge needs a split basis and a master total', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = utilityOrganization($owner);
+    $property = utilityProperty($organization, $owner);
+    [$unit] = [makeUnitWithLease($organization, $owner, $property, 'A1')[0]];
+
+    $this->actingAs($owner)
+        ->from(utilityChargeUrl($organization, '/utilities'))
+        ->post(utilityChargeUrl($organization, '/utilities/charges'), chargePayload($property, [$unit->id], [
+            'kind' => 'shared',
+            'utility' => null,
+            'rate' => null,
+            'allocation' => 'equal',
+        ]))
+        ->assertRedirect(utilityChargeUrl($organization, '/utilities'))
+        ->assertSessionHas('inertia.flash_data', fn (array $flash) => str_contains(
+            $flash['toast']['message'] ?? '',
+            'master bill total'
+        ));
+
+    expect(UtilityCharge::count())->toBe(0);
+});
+
+test('the agreement utility_charges token lists active charges', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = utilityOrganization($owner);
+    $property = utilityProperty($organization, $owner);
+    [$unit, $lease] = makeUnitWithLease($organization, $owner, $property, 'A1');
+
+    $this->actingAs($owner)
+        ->post(utilityChargeUrl($organization, '/utilities/charges'), chargePayload($property, [$unit->id], [
+            'name' => 'Garbage',
+            'kind' => 'fixed',
+            'utility' => null,
+            'rate' => null,
+            'amounts' => [$unit->id => '500'],
+        ]))
+        ->assertRedirect();
+
+    $html = LeaseAgreementTemplate::render('<p>{{utility_charges}}</p>', $lease->fresh());
+
+    expect($html)->toContain('Garbage')
+        ->and($html)->toContain('500.00 KES per period')
+        ->and($html)->not->toContain('{{utility_charges}}');
 });

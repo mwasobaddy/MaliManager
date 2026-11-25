@@ -41,6 +41,11 @@ class CreateUtilityCharge extends Service
             abort_unless(isset($data['rate']) && (float) $data['rate'] > 0, 422, 'A metered charge needs a rate per unit.');
         }
 
+        if ($kind === UtilityChargeKind::Shared) {
+            abort_unless(in_array($data['allocation'] ?? '', ['equal', 'occupants'], true), 422, 'A shared charge needs a split basis.');
+            abort_unless(isset($data['master_amount']) && (float) $data['master_amount'] > 0, 422, 'A shared charge needs the master bill total.');
+        }
+
         $unitIds = $this->resolveUnitIds($property, (array) ($data['unit_ids'] ?? []));
 
         if (in_array($kind, [UtilityChargeKind::Fixed, UtilityChargeKind::OneTime], true)) {
@@ -61,7 +66,10 @@ class CreateUtilityCharge extends Service
                 'kind' => $kind->value,
                 'utility' => $utility?->value,
                 'rate' => $kind === UtilityChargeKind::Metered ? $data['rate'] : null,
+                'allocation' => $kind === UtilityChargeKind::Shared ? $data['allocation'] : null,
+                'master_amount' => $kind === UtilityChargeKind::Shared ? $data['master_amount'] : null,
                 'currency' => $data['currency'] ?? 'KES',
+                'gl_code' => $data['gl_code'] ?? null,
                 'is_active' => true,
                 'created_by' => $actor->id,
             ]);

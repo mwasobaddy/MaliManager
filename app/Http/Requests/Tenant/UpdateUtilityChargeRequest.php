@@ -26,7 +26,10 @@ class UpdateUtilityChargeRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'utility' => ['nullable', Rule::enum(UtilityType::class)],
             'rate' => ['nullable', 'numeric', 'min:0'],
+            'allocation' => ['nullable', 'string', Rule::in(['equal', 'occupants'])],
+            'master_amount' => ['nullable', 'numeric', 'min:0'],
             'currency' => ['nullable', 'string', 'size:3'],
+            'gl_code' => ['nullable', 'string', 'max:32'],
             'is_active' => ['nullable', 'boolean'],
             'unit_ids' => ['required', 'array', 'min:1'],
             'unit_ids.*' => [

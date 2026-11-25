@@ -26,7 +26,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
  * @property UtilityChargeKind $kind
  * @property UtilityType|null $utility
  * @property string|null $rate
+ * @property string|null $allocation
+ * @property string|null $master_amount
  * @property string $currency
+ * @property string|null $gl_code
  * @property bool $is_active
  */
 class UtilityCharge extends Model
@@ -40,7 +43,10 @@ class UtilityCharge extends Model
         'kind',
         'utility',
         'rate',
+        'allocation',
+        'master_amount',
         'currency',
+        'gl_code',
         'is_active',
         'created_by',
     ];
@@ -51,6 +57,7 @@ class UtilityCharge extends Model
             'kind' => UtilityChargeKind::class,
             'utility' => UtilityType::class,
             'rate' => 'decimal:4',
+            'master_amount' => 'decimal:2',
             'is_active' => 'boolean',
         ];
     }
