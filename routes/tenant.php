@@ -27,6 +27,7 @@ use App\Http\Controllers\Tenant\PropertyController;
 use App\Http\Controllers\Tenant\ReportController;
 use App\Http\Controllers\Tenant\SetupController;
 use App\Http\Controllers\Tenant\StaffController;
+use App\Http\Controllers\Tenant\SubRoleController;
 use App\Http\Controllers\Tenant\TrashController;
 use App\Http\Controllers\Tenant\UnitController;
 use App\Http\Controllers\Tenant\UtilityChargeController;
@@ -479,6 +480,22 @@ Route::middleware([
         Route::middleware('sub-permission:staff.manage')->group(function () {
             Route::get('/staff', [StaffController::class, 'index'])
                 ->name('tenant.staff.index');
+        });
+
+        // Standalone roles: sub-roles are their own concept with their own
+        // gate, not a staff subsection. Single-segment literal, so no
+        // property slug can swallow it.
+        Route::middleware('sub-permission:role.manage')->group(function () {
+            Route::get('/roles', [SubRoleController::class, 'index'])
+                ->name('tenant.roles.index');
+            Route::post('/roles', [SubRoleController::class, 'store'])
+                ->name('tenant.roles.store');
+            Route::put('/roles/{subRole}', [SubRoleController::class, 'update'])
+                ->whereNumber('subRole')
+                ->name('tenant.roles.update');
+            Route::delete('/roles/{subRole}', [SubRoleController::class, 'destroy'])
+                ->whereNumber('subRole')
+                ->name('tenant.roles.destroy');
         });
 
         Route::middleware('sub-permission:staff.create')->group(function () {

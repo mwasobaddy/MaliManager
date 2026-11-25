@@ -16,6 +16,7 @@ import {
     Plus,
     ReceiptText,
     ScrollText,
+    Shield,
     Sparkles,
     Tags,
     Trash2,
@@ -77,6 +78,7 @@ import {
 } from '@/routes/tenant/properties';
 import { index as reportsNavIndex } from '@/routes/tenant/reports';
 import { index as staffIndex } from '@/routes/tenant/staff';
+import { index as staffRolesIndex } from '@/routes/tenant/roles';
 import { index as unitsIndex } from '@/routes/tenant/units';
 import type { NavItem } from '@/types';
 
@@ -86,6 +88,8 @@ export function AppSidebar() {
     const organization = context?.organization;
     const canManageStaff =
         context?.permissions?.includes('staff.manage') ?? false;
+    const canManageStaffRoles =
+        context?.permissions?.includes('role.manage') ?? false;
     const canManageOccupants =
         context?.permissions?.includes('occupant.manage') ?? false;
     const canManageLandParcels =
@@ -419,11 +423,7 @@ export function AppSidebar() {
                                   undefined,
                                   '/units',
                               ),
-                              item(
-                                  'Utilities',
-                                  utilityReadingsIndex(),
-                                  Gauge,
-                              ),
+                              item('Utilities', utilityReadingsIndex(), Gauge),
                           ]
                         : []),
                     ...(canManageLandParcels
@@ -494,16 +494,19 @@ export function AppSidebar() {
             {
                 label: 'Administration',
                 items: [
-                    ...(canManageStaff
+                    ...(canManageStaffRoles
                         ? [
                               item(
-                                  'Staff',
-                                  staffIndex(),
-                                  Users,
+                                  'Roles',
+                                  staffRolesIndex(),
+                                  Shield,
                                   undefined,
-                                  '/staff',
+                                  '/roles',
                               ),
                           ]
+                        : []),
+                    ...(canManageStaff
+                        ? [item('Staff', staffIndex(), Users)]
                         : []),
                     ...(isOwner
                         ? [item('Billing', billingShow(), CreditCard)]

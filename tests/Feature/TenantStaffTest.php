@@ -3,7 +3,10 @@
 use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\Plan;
+use App\Models\SubPermission;
+use App\Models\SubRole;
 use App\Models\User;
+use App\Models\UtilityCharge;
 use App\Services\StaffService;
 use App\Services\TenantService;
 use Database\Seeders\PlansSeeder;
@@ -396,4 +399,246 @@ test('staff create and edit are overlays addressed by url', function () {
             ->has('sub_roles')
             ->has('properties')
             ->where('focusedStaff.id', $staff->id));
+});
+
+test('owner can create a sub-role with permissions', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createStaffOrganization($owner);
+
+    $this->actingAs($owner)
+        ->post(staffTenantUrl($organization, '/roles'), [
+            'name' => 'Plumber',
+            'description' => 'Fixes leaks, nothing else.',
+            'permissions' => ['maintenance.manage', 'maintenance.create'],
+        ])
+        ->assertRedirect();
+
+    $role = SubRole::where('organization_id', $organization->id)->where('slug', 'plumber')->firstOrFail();
+
+    expect($role->description)->toBe('Fixes leaks, nothing else.')
+        ->and($role->subPermissions()->pluck('key')->sort()->values()->all())
+        ->toBe(['maintenance.create', 'maintenance.manage']);
+});
+
+test('built-in bundle names are reserved for sub-roles', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createStaffOrganization($owner);
+
+    $this->actingAs($owner)
+        ->from(staffTenantUrl($organization, '/roles'))
+        ->post(staffTenantUrl($organization, '/roles'), [
+            'name' => 'Caretaker!',
+            'permissions' => [],
+        ])
+        ->assertRedirect();
+    assertErrorToast();
+
+    expect(SubRole::where('organization_id', $organization->id)->where('slug', 'caretaker!')->exists())->toBeFalse()
+        ->and(SubRole::where('organization_id', $organization->id)->count())->toBe(3);
+});
+
+test('the landlord bundle is locked against edits', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createStaffOrganization($owner);
+    $landlord = $organization->subRoles()->where('slug', 'landlord')->firstOrFail();
+
+    $this->actingAs($owner)
+        ->from(staffTenantUrl($organization, '/roles'))
+        ->put(staffTenantUrl($organization, "/roles/{$landlord->id}"), [
+            'name' => 'Landlord',
+            'permissions' => [],
+        ])
+        ->assertRedirect();
+    assertErrorToast();
+
+    expect($landlord->refresh()->name)->toBe('Landlord');
+});
+
+test('deleting a sub-role with holders is rejected', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createStaffOrganization($owner);
+    $caretaker = $organization->subRoles()->where('slug', 'caretaker')->firstOrFail();
+
+    addStaffMember($organization, $owner);
+
+    $this->actingAs($owner)
+        ->from(staffTenantUrl($organization, '/roles'))
+        ->delete(staffTenantUrl($organization, "/roles/{$caretaker->id}"), [
+            'password' => 'password',
+        ])
+        ->assertRedirect();
+    assertErrorToast();
+
+    expect(SubRole::find($caretaker->id))->not->toBeNull()
+        ->and(SubRole::withTrashed()->find($caretaker->id))->not->toBeNull();
+});
+
+test('staff.manage without role.manage cannot manage sub-roles', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createStaffOrganization($owner);
+
+    $role = SubRole::create([
+        'organization_id' => $organization->id,
+        'name' => 'HR',
+        'slug' => 'hr',
+        'created_by' => $owner->id,
+    ]);
+    $role->subPermissions()->attach(
+        SubPermission::whereIn('key', ['staff.manage', 'staff.create', 'staff.edit'])->pluck('id')
+    );
+
+    $staff = User::factory()->create(['onboarded_at' => now()]);
+    $organization->users()->attach($staff->id, ['sub_role_id' => $role->id, 'status' => 'active']);
+
+    $this->actingAs($staff)
+        ->get(staffTenantUrl($organization, '/roles'))
+        ->assertRedirect();
+    assertErrorToast();
+
+    expect(SubRole::where('organization_id', $organization->id)->count())->toBe(4);
+});
+
+test('an empty custom sub-role can be deleted', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createStaffOrganization($owner);
+
+    $role = SubRole::create([
+        'organization_id' => $organization->id,
+        'name' => 'Plumber',
+        'slug' => 'plumber',
+        'created_by' => $owner->id,
+    ]);
+
+    $this->actingAs($owner)
+        ->delete(staffTenantUrl($organization, "/roles/{$role->id}"), [
+            'password' => 'password',
+        ])
+        ->assertRedirect();
+
+    expect(SubRole::find($role->id))->toBeNull()
+        ->and(SubRole::withTrashed()->find($role->id))->not->toBeNull();
+});
+
+test('staff without staff.manage cannot open the roles page', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createStaffOrganization($owner);
+
+    $agent = User::factory()->create(['onboarded_at' => now()]);
+    $organization->users()->attach($agent->id, [
+        'sub_role_id' => $organization->subRoles()->where('slug', 'agent')->first()->id,
+        'status' => 'active',
+    ]);
+
+    $this->actingAs($agent)
+        ->get(staffTenantUrl($organization, '/roles'))
+        ->assertRedirect();
+    assertErrorToast();
+});
+
+test('granting a permission to a bundle takes effect on next request', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createStaffOrganization($owner);
+    $property = $organization->properties()->create([
+        'name' => 'Sunset Heights', 'slug' => 'sunset-heights', 'status' => 'active', 'created_by' => $owner->id,
+    ]);
+    $unit = $property->units()->create([
+        'name' => 'A1', 'status' => 'vacant', 'created_by' => $owner->id,
+    ]);
+
+    $caretaker = User::factory()->create(['onboarded_at' => now()]);
+    $organization->users()->attach($caretaker->id, [
+        'sub_role_id' => $organization->subRoles()->where('slug', 'caretaker')->first()->id,
+        'status' => 'active',
+    ]);
+
+    // Before the grant: the caretaker records readings but cannot price.
+    $this->actingAs($caretaker)
+        ->post(staffTenantUrl($organization, '/utilities/charges'), [
+            'property_id' => $property->id,
+            'name' => 'Water',
+            'kind' => 'metered',
+            'utility' => 'water',
+            'rate' => '50',
+            'unit_ids' => [$unit->id],
+        ])
+        ->assertRedirect();
+    assertErrorToast();
+    expect(UtilityCharge::count())->toBe(0);
+
+    // The landlord grants utility.manage to the caretaker bundle.
+    $bundle = $organization->subRoles()->where('slug', 'caretaker')->firstOrFail();
+
+    $this->actingAs($owner)
+        ->put(staffTenantUrl($organization, "/roles/{$bundle->id}"), [
+            'name' => 'Caretaker',
+            'permissions' => ['unit.manage', 'utility.manage'],
+        ])
+        ->assertRedirect();
+
+    // After the grant: the same caretaker prices the charge.
+    $this->actingAs($caretaker)
+        ->post(staffTenantUrl($organization, '/utilities/charges'), [
+            'property_id' => $property->id,
+            'name' => 'Water',
+            'kind' => 'metered',
+            'utility' => 'water',
+            'rate' => '50',
+            'unit_ids' => [$unit->id],
+        ])
+        ->assertRedirect();
+
+    expect(UtilityCharge::count())->toBe(1);
+});
+
+test('staff without staff.manage cannot manage sub-roles', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createStaffOrganization($owner);
+    $agent = User::factory()->create(['onboarded_at' => now()]);
+    $organization->users()->attach($agent->id, [
+        'sub_role_id' => $organization->subRoles()->where('slug', 'agent')->first()->id,
+        'status' => 'active',
+    ]);
+
+    $this->actingAs($agent)
+        ->post(staffTenantUrl($organization, '/roles'), [
+            'name' => 'Sneaky',
+            'permissions' => [],
+        ])
+        ->assertRedirect();
+    assertErrorToast();
+
+    expect(SubRole::where('organization_id', $organization->id)->count())->toBe(3);
+});
+
+test('the roles index searches, filters and paginates', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createStaffOrganization($owner);
+
+    $this->actingAs($owner)
+        ->get(staffTenantUrl($organization, '/roles?search=caretaker'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('organisation/staff/roles')
+            ->where('roles.total', 1)
+            ->where('roles.data.0.slug', 'caretaker'));
+
+    $this->actingAs($owner)
+        ->get(staffTenantUrl($organization, '/roles?type=custom'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('roles.total', 0));
+
+    $this->actingAs($owner)
+        ->post(staffTenantUrl($organization, '/roles'), [
+            'name' => 'Plumber',
+            'permissions' => ['maintenance.manage'],
+        ])
+        ->assertRedirect();
+
+    $this->actingAs($owner)
+        ->get(staffTenantUrl($organization, '/roles?type=custom'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('roles.total', 1)
+            ->where('roles.data.0.slug', 'plumber'));
 });

@@ -49,6 +49,16 @@ class SubRole extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    /**
+     * Staff holding this role. Soft-deleted memberships do not count:
+     * a removed member must not block deleting the role.
+     */
+    public function members(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'organization_user', 'sub_role_id', 'user_id')
+            ->wherePivotNull('organization_user.deleted_at');
+    }
+
     public function hasSubPermissionFor(SubPermissionKey $key): bool
     {
         return $this->subPermissions()->where('key', $key->value)->exists();

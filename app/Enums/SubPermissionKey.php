@@ -56,6 +56,8 @@ enum SubPermissionKey: string
 
     case UtilityManage = 'utility.manage';
 
+    case RoleManage = 'role.manage';
+
     case AiUse = 'ai.use';
 
     case AuditView = 'audit.view';
@@ -77,8 +79,33 @@ enum SubPermissionKey: string
             self::StaffManage, self::StaffCreate, self::StaffEdit, self::StaffDelete => 'staff',
             self::InspectionManage => 'inspection',
             self::UtilityManage => 'utility',
+            self::RoleManage => 'role',
             self::AiUse => 'ai',
             self::AuditView => 'audit',
+        };
+    }
+
+    /**
+     * Human-readable module label for grouped permission pickers.
+     */
+    public function moduleLabel(): string
+    {
+        return match ($this->module()) {
+            'property' => 'Properties',
+            'unit' => 'Units',
+            'land_parcel' => 'Land parcels',
+            'occupant' => 'Occupants',
+            'lease' => 'Leases',
+            'payment' => 'Payments',
+            'expense' => 'Expenses',
+            'maintenance' => 'Maintenance',
+            'staff' => 'Staff',
+            'inspection' => 'Inspections',
+            'utility' => 'Utilities',
+            'role' => 'Roles',
+            'ai' => 'AI assistant',
+            'audit' => 'Audit log',
+            default => ucfirst($this->module()),
         };
     }
 
@@ -121,6 +148,7 @@ enum SubPermissionKey: string
             self::MaintenanceDelegate => 'Delegate maintenance requests',
             self::InspectionManage => 'Manage inspections',
             self::UtilityManage => 'Manage utility charges',
+            self::RoleManage => 'Manage roles',
             self::AiUse => 'Use the AI assistant',
             self::StaffManage => 'Manage staff',
             self::StaffCreate => 'Create staff',
