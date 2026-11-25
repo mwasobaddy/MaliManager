@@ -27,7 +27,7 @@ use Illuminate\Support\Facades\DB;
 final class UtilityBilling
 {
     /**
-     * @return array{lines: list<array{charge_id: int, name: string, kind: string, detail: string, amount: string, last_reading: string|null, last_read_on: string|null}>, extra_lines: list<array{extra_id: int, name: string, kind: string, detail: string, amount: string}>, metered: string, fixed: string, one_time: string, shared: string, extras: string, total: string}
+     * @return array{lines: list<array{charge_id: int, name: string, kind: string, detail: string, amount: string, last_reading: string|null, last_read_on: string|null}>, extra_lines: list<array{extra_id: int, name: string, kind: string, detail: string, amount: string}>, metered: string, fixed: string, shared: string, extras: string, total: string}
      */
     public static function breakdownForLease(Lease $lease): array
     {
@@ -47,7 +47,6 @@ final class UtilityBilling
         $extraLines = [];
         $metered = '0.00';
         $fixed = '0.00';
-        $oneTime = '0.00';
         $shared = '0.00';
         $extras = '0.00';
 
@@ -107,22 +106,6 @@ final class UtilityBilling
                 continue;
             }
 
-            if ($charge->kind === UtilityChargeKind::OneTime && $pivot->amount !== null && $pivot->consumed_at === null) {
-                $amount = number_format((float) $pivot->amount, 2, '.', '');
-                $lines[] = [
-                    'charge_id' => $charge->id,
-                    'name' => $charge->name,
-                    'kind' => $charge->kind->value,
-                    'detail' => 'one-time',
-                    'amount' => $amount,
-                    'last_reading' => null,
-                    'last_read_on' => null,
-                ];
-                $oneTime = bcadd($oneTime, $amount, 2);
-
-                continue;
-            }
-
             if ($charge->kind === UtilityChargeKind::Shared) {
                 $share = $sharedShares[$charge->id] ?? null;
                 $amount = $share['units'][(int) $lease->unit_id] ?? null;
@@ -149,10 +132,9 @@ final class UtilityBilling
             'extra_lines' => $extraLines,
             'metered' => $metered,
             'fixed' => $fixed,
-            'one_time' => $oneTime,
             'shared' => $shared,
             'extras' => $extras,
-            'total' => bcadd(bcadd(bcadd(bcadd((string) ($lease->rent_amount ?? 0), $metered, 2), bcadd($fixed, $oneTime, 2), 2), $shared, 2), $extras, 2),
+            'total' => bcadd(bcadd(bcadd((string) ($lease->rent_amount ?? 0), bcadd($metered, $fixed, 2), 2), $shared, 2), $extras, 2),
         ];
     }
 
@@ -162,7 +144,7 @@ final class UtilityBilling
      * pays per-row.
      *
      * @param  Collection<int, Lease>  $leases
-     * @return array<int, array{metered: string, fixed: string, one_time: string, shared: string, extras: string, total: string}>
+     * @return array<int, array{metered: string, fixed: string, shared: string, extras: string, total: string}>
      */
     public static function totalsForLeases(Collection $leases): array
     {
@@ -202,7 +184,6 @@ final class UtilityBilling
             foreach ($leasesInProperty as $lease) {
                 $metered = '0.00';
                 $fixed = '0.00';
-                $oneTime = '0.00';
                 $shared = '0.00';
                 $extras = $extrasByLease[$lease->id] ?? '0.00';
 
@@ -216,8 +197,6 @@ final class UtilityBilling
                         $metered = bcadd($metered, bcmul($unbilled['consumption'], (string) ($charge->rate ?? 0), 2), 2);
                     } elseif ($charge->kind === UtilityChargeKind::Fixed && $pivot->amount !== null) {
                         $fixed = bcadd($fixed, number_format((float) $pivot->amount, 2, '.', ''), 2);
-                    } elseif ($charge->kind === UtilityChargeKind::OneTime && $pivot->amount !== null && $pivot->consumed_at === null) {
-                        $oneTime = bcadd($oneTime, number_format((float) $pivot->amount, 2, '.', ''), 2);
                     } elseif ($charge->kind === UtilityChargeKind::Shared) {
                         $share = $sharedShares[$charge->id] ?? null;
                         $amount = $share['units'][(int) $lease->unit_id] ?? '0.00';
@@ -228,10 +207,9 @@ final class UtilityBilling
                 $result[$lease->id] = [
                     'metered' => $metered,
                     'fixed' => $fixed,
-                    'one_time' => $oneTime,
                     'shared' => $shared,
                     'extras' => $extras,
-                    'total' => bcadd(bcadd(bcadd(bcadd((string) ($lease->rent_amount ?? 0), $metered, 2), bcadd($fixed, $oneTime, 2), 2), $shared, 2), $extras, 2),
+                    'total' => bcadd(bcadd(bcadd((string) ($lease->rent_amount ?? 0), bcadd($metered, $fixed, 2), 2), $shared, 2), $extras, 2),
                 ];
             }
         }
@@ -534,10 +512,10 @@ final class UtilityBilling
     }
 
     /**
-     * @return array{lines: list<array{charge_id: int, name: string, kind: string, detail: string, amount: string, last_reading: string|null, last_read_on: string|null}>, extra_lines: list<array{extra_id: int, name: string, kind: string, detail: string, amount: string}>, metered: string, fixed: string, one_time: string, shared: string, extras: string, total: string}
+     * @return array{lines: list<array{charge_id: int, name: string, kind: string, detail: string, amount: string, last_reading: string|null, last_read_on: string|null}>, extra_lines: list<array{extra_id: int, name: string, kind: string, detail: string, amount: string}>, metered: string, fixed: string, shared: string, extras: string, total: string}
      */
     private static function empty(): array
     {
-        return ['lines' => [], 'extra_lines' => [], 'metered' => '0.00', 'fixed' => '0.00', 'one_time' => '0.00', 'shared' => '0.00', 'extras' => '0.00', 'total' => '0.00'];
+        return ['lines' => [], 'extra_lines' => [], 'metered' => '0.00', 'fixed' => '0.00', 'shared' => '0.00', 'extras' => '0.00', 'total' => '0.00'];
     }
 }

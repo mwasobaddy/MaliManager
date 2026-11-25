@@ -237,6 +237,10 @@ Route::middleware([
             // would otherwise swallow remind-bulk as a lease id.
             Route::post('/{property:slug}/leases/remind-bulk', [LeaseController::class, 'remindBulk'])
                 ->name('tenant.leases.remind-bulk');
+            // Fixed segment before any /{lease} routes: an unconstrained
+            // {lease} would otherwise swallow bulk-additional-charges.
+            Route::post('/{property:slug}/leases/bulk-additional-charges', [LeaseController::class, 'bulkStoreAdditionalCharges'])
+                ->name('tenant.leases.additional-charges.bulk-store');
             Route::post('/{property:slug}/leases/{lease}/remind', [LeaseController::class, 'remind'])
                 ->name('tenant.leases.remind');
             // A dated rent change: history keeps every rate, so earlier

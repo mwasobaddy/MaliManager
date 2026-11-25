@@ -68,6 +68,7 @@ import {
     renewalSuggestion,
 } from '@/routes/tenant/leases';
 import {
+    bulkStore as bulkStoreExtra,
     destroy as destroyExtra,
     store as storeExtra,
     update as updateExtra,
@@ -98,7 +99,6 @@ type UtilityBreakdown = {
     extra_lines: AdditionalChargeLine[];
     metered: string;
     fixed: string;
-    one_time: string;
     shared: string;
     extras: string;
     total: string;
@@ -312,6 +312,28 @@ export default function LeasesIndex({ leases, focusedLease }: Props) {
     function closeExtraSheets() {
         setDeleteExtra(null);
         setOverlayParam('extra', null, {
+            replace: true,
+            only: ['leases', 'focusedLease'],
+        });
+    }
+
+    // Bulk extras: one fee posted to every selected lease (the fence levy
+    // every tenancy owes), in one step instead of one sheet per lease.
+    // Ended leases are skipped server-side and counted in the toast.
+    const isBulkExtraOpen = query.get('bulkExtra') === 'new';
+    const [bulkExtraKind, setBulkExtraKind] = useState<'fixed' | 'one_time'>(
+        'fixed',
+    );
+    const [bulkExtraCurrency, setBulkExtraCurrency] = useState('KES');
+
+    function openBulkExtraCreate() {
+        setBulkExtraKind('fixed');
+        setBulkExtraCurrency('KES');
+        setOverlayParam('bulkExtra', 'new');
+    }
+
+    function closeBulkExtraSheet() {
+        setOverlayParam('bulkExtra', null, {
             replace: true,
             only: ['leases', 'focusedLease'],
         });
@@ -1084,6 +1106,16 @@ export default function LeasesIndex({ leases, focusedLease }: Props) {
                             <Button size="sm" onClick={sendBulkReminders}>
                                 Send reminders
                             </Button>
+                            {canManageExtras && (
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={openBulkExtraCreate}
+                                >
+                                    <Plus className="size-4" />
+                                    Add charge
+                                </Button>
+                            )}
                             <Button
                                 variant="ghost"
                                 size="sm"
@@ -1767,6 +1799,203 @@ export default function LeasesIndex({ leases, focusedLease }: Props) {
                     onSuccess={() => setDeleteExtra(null)}
                 />
             )}
+
+            <ResponsiveOverlay
+                open={isBulkExtraOpen}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        closeBulkExtraSheet();
+                    }
+                }}
+                title={`Add a charge to ${selected.length} ${selected.length === 1 ? 'lease' : 'leases'}`}
+                description="One fee posted to every selected lease. Ended leases are skipped."
+                footer={
+                    <OverlayFooter
+                        onCancel={closeBulkExtraSheet}
+                        actions={[
+                            {
+                                label: 'Add charge',
+                                form: 'lease-bulk-extra-form',
+                                type: 'submit',
+                            },
+                        ]}
+                    />
+                }
+            >
+                <Form
+                    key="extra-bulk-new"
+                    id="lease-bulk-extra-form"
+                    {...bulkStoreExtra.form({
+                        property: propertySlug,
+                    })}
+                    options={{ preserveScroll: true }}
+                    onSuccess={() => {
+                        closeBulkExtraSheet();
+                        setSelected([]);
+                    }}
+                    className="grid gap-4 py-2"
+                >
+                    {({ errors }) => (
+                        <>
+                            {selected.map((id) => (
+                                <input
+                                    key={id}
+                                    type="hidden"
+                                    name="lease_ids[]"
+                                    value={String(id)}
+                                />
+                            ))}
+                            <div className="grid gap-2">
+                                <Label htmlFor="bulk-extra-name">
+                                    Charge name
+                                </Label>
+                                <Input
+                                    id="bulk-extra-name"
+                                    name="name"
+                                    placeholder="Fence levy"
+                                />
+                                <InputError message={errors.name} />
+                            </div>
+
+                            <fieldset className="space-y-3">
+                                <legend className="text-sm font-medium">
+                                    Billing type
+                                </legend>
+                                <input
+                                    type="hidden"
+                                    name="kind"
+                                    value={bulkExtraKind}
+                                />
+                                <RadioGroup
+                                    value={bulkExtraKind}
+                                    onValueChange={(value) =>
+                                        setBulkExtraKind(
+                                            value as 'fixed' | 'one_time',
+                                        )
+                                    }
+                                    className="space-y-3"
+                                >
+                                    {(
+                                        [
+                                            [
+                                                'fixed',
+                                                'Every period',
+                                                'A flat amount every period.',
+                                            ],
+                                            [
+                                                'one_time',
+                                                'One-time',
+                                                'Billed once against the next invoice, then done.',
+                                            ],
+                                        ] as [string, string, string][]
+                                    ).map(([value, label, hint]) => (
+                                        <div
+                                            key={value}
+                                            className="flex items-start gap-2"
+                                        >
+                                            <RadioGroupItem
+                                                id={`bulk-extra-kind-${value}`}
+                                                value={value}
+                                                className="mt-0.5"
+                                            />
+                                            <div className="grid gap-0.5">
+                                                <Label
+                                                    htmlFor={`bulk-extra-kind-${value}`}
+                                                    className="cursor-pointer"
+                                                >
+                                                    {label}
+                                                </Label>
+                                                <p className="text-xs text-muted-foreground">
+                                                    {hint}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </RadioGroup>
+                                <InputError message={errors.kind} />
+                            </fieldset>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="grid gap-2">
+                                    <Label htmlFor="bulk-extra-amount">
+                                        Amount ({bulkExtraCurrency})
+                                    </Label>
+                                    <Input
+                                        id="bulk-extra-amount"
+                                        name="amount"
+                                        type="number"
+                                        inputMode="decimal"
+                                        step="0.01"
+                                        min="0"
+                                        placeholder="2000.00"
+                                    />
+                                    <InputError message={errors.amount} />
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="bulk-extra-currency">
+                                        Currency
+                                    </Label>
+                                    <input
+                                        type="hidden"
+                                        name="currency"
+                                        value={bulkExtraCurrency}
+                                    />
+                                    <Select
+                                        value={bulkExtraCurrency}
+                                        onValueChange={setBulkExtraCurrency}
+                                    >
+                                        <SelectTrigger
+                                            id="bulk-extra-currency"
+                                            className="w-full"
+                                        >
+                                            <SelectValue placeholder="Select currency" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {['KES', 'USD', 'EUR', 'GBP'].map(
+                                                (value) => (
+                                                    <SelectItem
+                                                        key={value}
+                                                        value={value}
+                                                    >
+                                                        {value}
+                                                    </SelectItem>
+                                                ),
+                                            )}
+                                        </SelectContent>
+                                    </Select>
+                                    <InputError message={errors.currency} />
+                                </div>
+                            </div>
+
+                            <Collapsible className="group/collapsible">
+                                <CollapsibleTrigger asChild>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        className="justify-start gap-1 px-0 text-muted-foreground"
+                                    >
+                                        <ChevronRight className="size-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                                        Accounting (optional)
+                                    </Button>
+                                </CollapsibleTrigger>
+                                <CollapsibleContent className="grid gap-2 pt-2">
+                                    <Label htmlFor="bulk-extra-gl-code">
+                                        Accounting code
+                                    </Label>
+                                    <Input
+                                        id="bulk-extra-gl-code"
+                                        name="gl_code"
+                                        placeholder="4100-levy"
+                                        maxLength={32}
+                                    />
+                                    <InputError message={errors.gl_code} />
+                                </CollapsibleContent>
+                            </Collapsible>
+                        </>
+                    )}
+                </Form>
+            </ResponsiveOverlay>
 
             {viewedLease && (
                 <ResponsiveOverlay

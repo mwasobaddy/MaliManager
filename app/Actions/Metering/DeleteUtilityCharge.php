@@ -10,7 +10,7 @@ use App\Services\Service;
 /**
  * Removes a charge and its unit assignments. Readings are untouched — they
  * are raw meter facts, not billing rows — so nothing already measured is
- * lost. Pending one-time amounts simply stop being listed.
+ * lost.
  */
 class DeleteUtilityCharge extends Service
 {

@@ -121,10 +121,9 @@ class LeaseAgreementTemplate
             }
 
             $amount = number_format((float) ($pivot->amount ?? 0), 2);
-            $suffix = $charge->kind === UtilityChargeKind::OneTime ? 'one-time' : 'per period';
+            $suffix = 'per period';
 
             if ($charge->kind === UtilityChargeKind::Shared) {
-                $suffix = "shared master bill ({$charge->allocation} split)";
                 $split = $charge->allocation === 'occupants' ? 'split by occupants' : 'even split';
 
                 $suffix = "shared master bill ({$split})";

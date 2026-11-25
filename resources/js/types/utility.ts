@@ -48,7 +48,7 @@ export type PaginatedReadings = {
 export type ChargeUnit = {
     id: number;
     name: string;
-    /** Per-unit amount for fixed and one-time charges; null for metered. */
+    /** Per-unit amount for fixed charges; null for metered and shared. */
     amount: string | null;
 };
 
@@ -57,7 +57,7 @@ export type UtilityChargeRow = {
     property_id: number;
     property_name: string | null;
     name: string;
-    kind: 'metered' | 'fixed' | 'one_time' | 'shared';
+    kind: 'metered' | 'fixed' | 'shared';
     kind_label: string;
     utility: string | null;
     utility_label: string | null;

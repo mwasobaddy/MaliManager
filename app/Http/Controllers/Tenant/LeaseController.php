@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\Tenant;
 
 use App\Actions\Leases\AmendLeaseRent;
+use App\Actions\Leases\BulkCreateLeaseAdditionalCharges;
 use App\Actions\Leases\ExportLeases;
 use App\Actions\Leases\SendBulkRentReminders;
 use App\Actions\Leases\SendRentReminder;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Tenant\AmendLeaseRentRequest;
+use App\Http\Requests\Tenant\BulkStoreLeaseAdditionalChargeRequest;
 use App\Http\Requests\Tenant\EndLeaseRequest;
 use App\Http\Requests\Tenant\ExportLeasesRequest;
 use App\Http\Requests\Tenant\LeaseIndexRequest;
@@ -117,6 +119,28 @@ class LeaseController extends Controller
     }
 
     /**
+     * Posts one extra to every selected lease: the fence levy every active
+     * tenancy owes, in one step instead of one sheet per lease. Ended
+     * leases are skipped and counted, never rewritten.
+     */
+    public function bulkStoreAdditionalCharges(BulkStoreLeaseAdditionalChargeRequest $request, Property $property, BulkCreateLeaseAdditionalCharges $bulk): RedirectResponse
+    {
+        $this->authorizePropertyAccess($request, $property);
+
+        $result = $bulk->handle($request->user(), TenancyContext::organization()->refresh(), $property, $request->validated());
+
+        $message = "Added {$request->string('name')} to {$result['created']} lease".($result['created'] === 1 ? '' : 's').'.';
+
+        if ($result['skipped'] > 0) {
+            $message .= " Skipped {$result['skipped']} ended.";
+        }
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => $message]);
+
+        return back();
+    }
+
+    /**
      * Nudge one overdue lease. Throttle and balance errors surface as
      * toasts via the shared exception handler — no dialog needed.
      */
@@ -183,7 +207,7 @@ class LeaseController extends Controller
      */
     private function presentLease(Lease $lease, array $balances, ?array $utilityTotals = null): array
     {
-        $utility = $utilityTotals ?? ['metered' => '0.00', 'fixed' => '0.00', 'one_time' => '0.00', 'shared' => '0.00', 'extras' => '0.00', 'total' => (string) ($lease->rent_amount ?? 0)];
+        $utility = $utilityTotals ?? ['metered' => '0.00', 'fixed' => '0.00', 'shared' => '0.00', 'extras' => '0.00', 'total' => (string) ($lease->rent_amount ?? 0)];
 
         return [
             'id' => $lease->id,
@@ -275,7 +299,6 @@ class LeaseController extends Controller
                 [
                     'metered' => $breakdown['metered'],
                     'fixed' => $breakdown['fixed'],
-                    'one_time' => $breakdown['one_time'],
                     'shared' => $breakdown['shared'],
                     'extras' => $breakdown['extras'],
                     'total' => $breakdown['total'],

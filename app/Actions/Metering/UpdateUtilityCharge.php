@@ -40,12 +40,12 @@ class UpdateUtilityCharge extends Service
 
         $unitIds = $this->resolveUnitIds($property, (array) ($data['unit_ids'] ?? []));
 
-        if (in_array($charge->kind, [UtilityChargeKind::Fixed, UtilityChargeKind::OneTime], true)) {
+        if ($charge->kind === UtilityChargeKind::Fixed) {
             foreach ($unitIds as $unitId) {
                 abort_unless(
                     isset($data['amounts'][$unitId]) && (float) $data['amounts'][$unitId] > 0,
                     422,
-                    'Every assigned unit needs an amount for a fixed or one-time charge.'
+                    'Every assigned unit needs an amount for a fixed charge.'
                 );
             }
         }
@@ -68,7 +68,7 @@ class UpdateUtilityCharge extends Service
 
             foreach (array_diff($unitIds, $current) as $unitId) {
                 $charge->units()->attach($unitId, [
-                    'amount' => in_array($charge->kind, [UtilityChargeKind::Fixed, UtilityChargeKind::OneTime], true)
+                    'amount' => $charge->kind === UtilityChargeKind::Fixed
                         ? $data['amounts'][$unitId]
                         : null,
                     'last_billed_reading_id' => $charge->kind === UtilityChargeKind::Metered && $charge->utility !== null
@@ -78,7 +78,7 @@ class UpdateUtilityCharge extends Service
             }
 
             foreach (array_intersect($unitIds, $current) as $unitId) {
-                if (in_array($charge->kind, [UtilityChargeKind::Fixed, UtilityChargeKind::OneTime], true)) {
+                if ($charge->kind === UtilityChargeKind::Fixed) {
                     $charge->units()->updateExistingPivot($unitId, ['amount' => $data['amounts'][$unitId]]);
                 }
             }

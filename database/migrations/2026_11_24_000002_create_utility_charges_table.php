@@ -16,13 +16,13 @@ return new class extends Migration
             $table->string('name');
             // metered: billed per unit of consumption at `rate`.
             // fixed: flat amount per unit per period, stored per unit.
-            // one_time: billed once against the next invoice, then done.
             // shared: a master-meter bill (`master_amount`) split across the
             // assigned units by `allocation` (RUBS for buildings with one
-            // water meter and no submeters).
+            // water meter and no submeters). Single fees live on the lease
+            // as additional charges, never here.
             $table->string('kind')->default('fixed');
-            // Metered utility being billed (power, water, gas). Fixed and
-            // one-time charges (garbage, security, move-in fees) leave it null.
+            // Metered utility being billed (power, water, gas). Fixed
+            // charges (garbage, security) leave it null.
             $table->string('utility')->nullable();
             // Per-unit price for metered charges (KES per kWh/m³).
             $table->decimal('rate', 14, 4)->nullable();

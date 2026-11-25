@@ -282,3 +282,91 @@ test('deleting an extra needs the current password', function () {
 
     expect(LeaseAdditionalCharge::count())->toBe(0);
 });
+
+test('bulk posting adds one extra to every selected lease and skips ended ones', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = extrasOrganization($owner);
+    $property = extrasProperty($organization, $owner);
+    [, $leaseA] = makeExtrasLease($organization, $owner, $property, 'A1');
+    [, $leaseB] = makeExtrasLease($organization, $owner, $property, 'B2');
+    [, $leaseC] = makeExtrasLease($organization, $owner, $property, 'C3');
+    $leaseC->update(['status' => 'ended', 'ends_at' => '2026-10-01']);
+
+    $this->actingAs($owner)
+        ->from(extrasUrl($organization, "/{$property->slug}/leases"))
+        ->post(extrasUrl($organization, "/{$property->slug}/leases/bulk-additional-charges"), [
+            'lease_ids' => [$leaseA->id, $leaseB->id, $leaseC->id],
+            'name' => 'Fence levy',
+            'kind' => 'one_time',
+            'amount' => '2000',
+            'currency' => 'KES',
+        ])
+        ->assertRedirect(extrasUrl($organization, "/{$property->slug}/leases"))
+        ->assertSessionHas('inertia.flash_data', fn (array $flash) => str_contains(
+            $flash['toast']['message'] ?? '',
+            'Added Fence levy to 2 leases.'
+        ) && str_contains(
+            $flash['toast']['message'] ?? '',
+            'Skipped 1 ended.'
+        ));
+
+    expect(LeaseAdditionalCharge::count())->toBe(2)
+        ->and(LeaseAdditionalCharge::where('lease_id', $leaseA->id)->firstOrFail()->amount)->toEqual(2000)
+        ->and(LeaseAdditionalCharge::where('lease_id', $leaseB->id)->firstOrFail()->amount)->toEqual(2000)
+        ->and(LeaseAdditionalCharge::where('lease_id', $leaseC->id)->count())->toBe(0);
+});
+
+test('bulk posting validates its payload', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = extrasOrganization($owner);
+    $property = extrasProperty($organization, $owner);
+    [, $lease] = makeExtrasLease($organization, $owner, $property, 'A1');
+
+    $this->actingAs($owner)
+        ->post(extrasUrl($organization, "/{$property->slug}/leases/bulk-additional-charges"), [
+            'lease_ids' => [],
+            'name' => '',
+            'kind' => 'bogus',
+            'amount' => 'not-a-number',
+        ])
+        ->assertSessionHasErrors(['lease_ids', 'name', 'kind', 'amount']);
+
+    expect(LeaseAdditionalCharge::count())->toBe(0);
+
+    $this->actingAs($owner)
+        ->from(extrasUrl($organization, "/{$property->slug}/leases"))
+        ->post(extrasUrl($organization, "/{$property->slug}/leases/bulk-additional-charges"), [
+            'lease_ids' => [$lease->id],
+            'name' => 'Fence levy',
+            'kind' => 'one_time',
+            'amount' => '0',
+        ])
+        ->assertRedirect()
+        ->assertSessionHas('inertia.flash_data', fn (array $flash) => str_contains(
+            $flash['toast']['message'] ?? '',
+            'above zero'
+        ));
+
+    expect(LeaseAdditionalCharge::count())->toBe(0);
+});
+
+test('bulk posting rejects leases from another property', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = extrasOrganization($owner);
+    $property = extrasProperty($organization, $owner);
+    $other = $property->replicate(['slug']);
+    $other->slug = 'other-court';
+    $other->save();
+    [, $foreign] = makeExtrasLease($organization, $owner, $other, 'Z9');
+
+    $this->actingAs($owner)
+        ->post(extrasUrl($organization, "/{$property->slug}/leases/bulk-additional-charges"), [
+            'lease_ids' => [$foreign->id],
+            'name' => 'Fence levy',
+            'kind' => 'one_time',
+            'amount' => '2000',
+        ])
+        ->assertNotFound();
+
+    expect(LeaseAdditionalCharge::count())->toBe(0);
+});

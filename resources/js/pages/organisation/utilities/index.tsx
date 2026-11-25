@@ -138,7 +138,8 @@ export default function UtilitiesIndex({
     }
 
     // Utility charges: landlord-configured billing (metered rates, fixed
-    // per-unit fees, one-time fees) assigned to the units that pay them.
+    // per-unit fees, shared master bills) assigned to the units that
+    // pay them. Single fees live on each lease instead.
     const chargeParam = query.get('charge');
     const isChargeCreateOpen = chargeParam === 'new';
     const chargeId = Number(chargeParam);
@@ -172,7 +173,7 @@ export default function UtilitiesIndex({
 
     const [chargePropertyId, setChargePropertyId] = useState('');
     const [chargeKind, setChargeKind] = useState<
-        'metered' | 'fixed' | 'one_time' | 'shared'
+        'metered' | 'fixed' | 'shared'
     >('metered');
     const [chargeUtility, setChargeUtility] = useState('');
     const [chargeRate, setChargeRate] = useState('');
@@ -241,7 +242,7 @@ export default function UtilitiesIndex({
         });
     }
 
-    const needsAmounts = chargeKind === 'fixed' || chargeKind === 'one_time';
+    const needsAmounts = chargeKind === 'fixed';
     function chargeFields(
         errors: Record<string, string>,
         idPrefix: string,
@@ -304,11 +305,7 @@ export default function UtilitiesIndex({
                             value={chargeKind}
                             onValueChange={(value) =>
                                 setChargeKind(
-                                    value as
-                                        | 'metered'
-                                        | 'fixed'
-                                        | 'one_time'
-                                        | 'shared',
+                                    value as 'metered' | 'fixed' | 'shared',
                                 )
                             }
                             className="space-y-3"
@@ -325,9 +322,6 @@ export default function UtilitiesIndex({
                                         'Every period',
                                         'A flat amount per unit, every period.',
                                     ],
-                                        'one_time',
-                                        'One-time',
-                                        'Billed once against the next invoice, then done.',
                                     [
                                         'shared',
                                         'Shared bill',
@@ -1065,8 +1059,9 @@ export default function UtilitiesIndex({
                         <div className="min-w-0 flex-1">
                             <h2 className="font-medium">Utility charges</h2>
                             <p className="text-sm text-muted-foreground">
-                                Metered rates, fixed fees and one-time charges,
-                                and which units pay them.
+                                Metered rates, fixed and shared bills — and
+                                which units pay them. Single fees live on each
+                                lease instead.
                             </p>
                         </div>
                         <LabelledIconButton
@@ -1413,7 +1408,7 @@ export default function UtilitiesIndex({
                     }
                 }}
                 title="Add a utility charge"
-                description="Metered rates, fixed fees and one-time charges billed to the units that pay them."
+                description="Metered rates, fixed and shared bills charged to the units that pay them. Single fees live on each lease instead."
                 footer={
                     <OverlayFooter
                         onCancel={closeChargeSheets}

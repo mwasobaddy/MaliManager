@@ -124,7 +124,7 @@ test('a metered charge records its rate and backfills the billing watermark', fu
         ->and($charge->units()->first()->pivot->last_billed_reading_id)->toBe($latest->id);
 });
 
-test('fixed and one-time charges require a per-unit amount', function () {
+test('fixed charges require a per-unit amount', function () {
     $owner = User::factory()->create(['onboarded_at' => now()]);
     $organization = utilityOrganization($owner);
     $property = utilityProperty($organization, $owner);
@@ -195,7 +195,7 @@ test('charges reject units from another property', function () {
     expect(UtilityCharge::count())->toBe(0);
 });
 
-test('the lease total adds fixed, metered and one-time lines to rent', function () {
+test('the lease total adds fixed and metered lines to rent', function () {
     $owner = User::factory()->create(['onboarded_at' => now()]);
     $organization = utilityOrganization($owner);
     $property = utilityProperty($organization, $owner);
@@ -210,20 +210,16 @@ test('the lease total adds fixed, metered and one-time lines to rent', function 
         'recorded_by' => $owner->id,
     ]);
 
-    // Fixed garbage 500 + one-time cleaning 200 on the unit.
-    foreach ([
-        ['Garbage', 'fixed', ['amounts' => [$unit->id => '500']]],
-        ['Move-in cleaning', 'one_time', ['amounts' => [$unit->id => '200']]],
-    ] as [$name, $kind, $extra]) {
-        $this->actingAs($owner)
-            ->post(utilityChargeUrl($organization, '/utilities/charges'), chargePayload($property, [$unit->id], array_merge([
-                'name' => $name,
-                'kind' => $kind,
-                'utility' => null,
-                'rate' => null,
-            ], $extra)))
-            ->assertRedirect();
-    }
+    // Fixed garbage 500 on the unit.
+    $this->actingAs($owner)
+        ->post(utilityChargeUrl($organization, '/utilities/charges'), chargePayload($property, [$unit->id], [
+            'name' => 'Garbage',
+            'kind' => 'fixed',
+            'utility' => null,
+            'rate' => null,
+            'amounts' => [$unit->id => '500'],
+        ]))
+        ->assertRedirect();
 
     // Metered water at 10/unit: backfill marks 100, then 150 arrives.
     $this->actingAs($owner)
@@ -247,13 +243,35 @@ test('the lease total adds fixed, metered and one-time lines to rent', function 
 
     expect($breakdown['fixed'])->toBe('500.00')
         ->and($breakdown['metered'])->toBe('500.00')
-        ->and($breakdown['one_time'])->toBe('200.00')
-        ->and($breakdown['total'])->toBe('26200.00')
-        ->and($breakdown['lines'])->toHaveCount(3);
+        ->and($breakdown['total'])->toBe('26000.00')
+        ->and($breakdown['lines'])->toHaveCount(2);
 
     $this->actingAs($owner)
         ->get(utilityChargeUrl($organization, "/meter-court/leases?mode=view&lease={$lease->id}"))
         ->assertOk();
+});
+
+test('property charges reject the retired one-time kind', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = utilityOrganization($owner);
+    $property = utilityProperty($organization, $owner);
+    [$unit] = [makeUnitWithLease($organization, $owner, $property, 'A1')[0]];
+
+    // Once-off fees live on the lease as additional charges now; the
+    // property template only bills recurring kinds.
+    $this->actingAs($owner)
+        ->from(utilityChargeUrl($organization, '/utilities'))
+        ->post(utilityChargeUrl($organization, '/utilities/charges'), chargePayload($property, [$unit->id], [
+            'name' => 'Move-in cleaning',
+            'kind' => 'one_time',
+            'utility' => null,
+            'rate' => null,
+            'amounts' => [$unit->id => '200'],
+        ]))
+        ->assertRedirect(utilityChargeUrl($organization, '/utilities'))
+        ->assertSessionHasErrors('kind');
+
+    expect(UtilityCharge::count())->toBe(0);
 });
 
 test('inactive charges are excluded from the total', function () {

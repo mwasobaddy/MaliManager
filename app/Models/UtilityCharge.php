@@ -11,9 +11,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 /**
- * What the landlord charges for a utility at a property: a metered rate,
- * a fixed per-unit amount, or a one-time fee. Landlord-scoped, not global —
- * tariffs differ per building.
+ * What the landlord charges for a utility at a property: a metered rate, a
+ * fixed per-unit amount, or a shared master bill. Property templates are
+ * recurring only — single fees live on the lease as additional charges.
+ * Landlord-scoped, not global — tariffs differ per building.
  *
  * Which units pay is explicit (`units` pivot): units without a row absorb
  * the cost or aren't metered. Per-unit amounts live on the pivot so garbage
@@ -75,7 +76,7 @@ class UtilityCharge extends Model
     public function units(): BelongsToMany
     {
         return $this->belongsToMany(Unit::class, 'utility_charge_unit')
-            ->withPivot(['amount', 'last_billed_reading_id', 'consumed_at'])
+            ->withPivot(['amount', 'last_billed_reading_id'])
             ->withTimestamps();
     }
 

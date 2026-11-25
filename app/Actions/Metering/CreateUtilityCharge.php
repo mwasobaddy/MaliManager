@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\DB;
 /**
  * Creates a utility charge and assigns it to units. Kind-specific
  * completeness lives here, where the units are known: metered needs a
- * utility and a rate, fixed and one-time need an amount per unit.
+ * utility and a rate, fixed needs an amount per unit.
  *
  * Metered assignments backfill the billing watermark to the latest reading,
  * so a new charge only ever bills consumption recorded after it exists.
@@ -48,12 +48,12 @@ class CreateUtilityCharge extends Service
 
         $unitIds = $this->resolveUnitIds($property, (array) ($data['unit_ids'] ?? []));
 
-        if (in_array($kind, [UtilityChargeKind::Fixed, UtilityChargeKind::OneTime], true)) {
+        if ($kind === UtilityChargeKind::Fixed) {
             foreach ($unitIds as $unitId) {
                 abort_unless(
                     isset($data['amounts'][$unitId]) && (float) $data['amounts'][$unitId] > 0,
                     422,
-                    'Every assigned unit needs an amount for a fixed or one-time charge.'
+                    'Every assigned unit needs an amount for a fixed charge.'
                 );
             }
         }
@@ -77,7 +77,7 @@ class CreateUtilityCharge extends Service
 
             foreach ($unitIds as $unitId) {
                 $charge->units()->attach($unitId, [
-                    'amount' => in_array($kind, [UtilityChargeKind::Fixed, UtilityChargeKind::OneTime], true)
+                    'amount' => $kind === UtilityChargeKind::Fixed
                         ? $data['amounts'][$unitId]
                         : null,
                     'last_billed_reading_id' => $kind === UtilityChargeKind::Metered && $utility !== null
