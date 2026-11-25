@@ -30,6 +30,13 @@ const actionColorVariants = cva('', {
             view: 'bg-action-view-fill text-white hover:brightness-90 focus-visible:ring-action-view-fill/40 dark:hover:brightness-125',
             edit: 'bg-action-edit-fill text-white hover:brightness-90 focus-visible:ring-action-edit-fill/40 dark:hover:brightness-125',
             danger: 'bg-action-danger-fill text-white hover:brightness-90 focus-visible:ring-action-danger-fill/40 dark:hover:brightness-125',
+            /**
+             * Solid theme-flipped gray for row actions that must read in both
+             * modes without a semantic color: darker gray on light backgrounds,
+             * lighter gray on dark ones (`muted-foreground` flips that way),
+             * with the background token as the icon color for contrast.
+             */
+            gray: 'bg-muted-foreground text-background hover:brightness-90 focus-visible:ring-muted-foreground/40 dark:hover:brightness-110',
             brand: 'bg-muted text-muted-foreground hover:bg-brand-primary-100 hover:text-primary-text focus-visible:ring-primary-text/30',
             accent: 'bg-brand-accent/12 text-brand-accent hover:bg-brand-accent/20 focus-visible:ring-brand-accent/30',
             /**
@@ -62,6 +69,7 @@ const ghostHoverLocks = {
     view: 'hover:bg-action-view-fill hover:text-white',
     edit: 'hover:bg-action-edit-fill hover:text-white',
     danger: 'hover:bg-action-danger-fill hover:text-white',
+    gray: 'hover:bg-muted-foreground hover:text-background',
     primary: 'hover:text-primary-foreground',
     accent: 'hover:text-brand-accent',
     teal: 'hover:text-on-accent',
@@ -79,8 +87,9 @@ type ActionIconButtonProps = React.ComponentProps<typeof Button> & {
      */
     label: string;
     /**
-     * Semantic color. `view` blue, `edit` green, `danger` red, `brand`
-     * terracotta, `accent` teal, or a shadcn default.
+     * Semantic color. `view` blue, `edit` green, `danger` red, `gray`
+     * theme-flipped neutral, `brand` terracotta, `accent` teal, or a shadcn
+     * default.
      */
     color?:
         | 'default'
@@ -88,6 +97,7 @@ type ActionIconButtonProps = React.ComponentProps<typeof Button> & {
         | 'view'
         | 'edit'
         | 'danger'
+        | 'gray'
         | 'brand'
         | 'accent'
         | 'teal';

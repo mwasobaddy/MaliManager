@@ -981,7 +981,7 @@ export default function LeasesIndex({ leases, focusedLease }: Props) {
                             <ActionIconButton
                                 icon={<Plus />}
                                 label={`Add charge to ${lease.occupant_name ?? 'occupant'}'s lease`}
-                                color="default"
+                                color="gray"
                                 onClick={() => openExtraCreateFor(lease)}
                             />
                         )}
