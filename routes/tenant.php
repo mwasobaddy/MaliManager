@@ -165,17 +165,24 @@ Route::middleware([
                 ->name('tenant.utilities.export');
             Route::post('/utilities', [UtilityReadingController::class, 'store'])
                 ->name('tenant.utilities.store');
+            // One row per walked meter: the grid posts only filled rows, one
+            // shared date. Same gate as single readings, so a caretaker with
+            // unit.manage records the route while rates stay landlord-set.
+            Route::post('/utilities/bulk-readings', [UtilityReadingController::class, 'bulkStore'])
+                ->name('tenant.utilities.bulk-store');
 
-            // Landlord-configured charges: metered rates, fixed per-unit
-            // fees and one-time fees, assigned to the units that pay them.
-            Route::post('/utilities/charges', [UtilityChargeController::class, 'store'])
-                ->name('tenant.utilities.charges.store');
-            Route::put('/utilities/charges/{charge}', [UtilityChargeController::class, 'update'])
-                ->whereNumber('charge')
-                ->name('tenant.utilities.charges.update');
-            Route::delete('/utilities/charges/{charge}', [UtilityChargeController::class, 'destroy'])
-                ->whereNumber('charge')
-                ->name('tenant.utilities.charges.destroy');
+            Route::middleware('sub-permission:utility.manage')->group(function () {
+                // Landlord-configured charges: metered rates, fixed per-unit
+                // fees and shared bills, assigned to the units that pay them.
+                Route::post('/utilities/charges', [UtilityChargeController::class, 'store'])
+                    ->name('tenant.utilities.charges.store');
+                Route::put('/utilities/charges/{charge}', [UtilityChargeController::class, 'update'])
+                    ->whereNumber('charge')
+                    ->name('tenant.utilities.charges.update');
+                Route::delete('/utilities/charges/{charge}', [UtilityChargeController::class, 'destroy'])
+                    ->whereNumber('charge')
+                    ->name('tenant.utilities.charges.destroy');
+            });
             // Retired `/meter-readings` URLs keep working for bookmarks.
             Route::redirect('/meter-readings', '/utilities', 301);
         });

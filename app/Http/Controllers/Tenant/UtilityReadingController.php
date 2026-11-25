@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Tenant;
 
+use App\Actions\Metering\BulkRecordUtilityReadings;
 use App\Actions\Metering\ExportUtilityReadings;
 use App\Actions\Metering\RecordUtilityReading;
+use App\Enums\UtilityChargeKind;
 use App\Enums\UtilityType;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Tenant\BulkStoreUtilityReadingRequest;
 use App\Http\Requests\Tenant\ExportUtilityReadingsRequest;
 use App\Http\Requests\Tenant\StoreUtilityReadingRequest;
 use App\Http\Requests\Tenant\UtilityReadingIndexRequest;
@@ -55,6 +58,12 @@ class UtilityReadingController extends Controller
             'units' => $this->units($organizationId),
             'properties' => $this->properties($organizationId),
             'charges' => $this->charges($organizationId),
+            // One walked route at a time: the bulk grid covers a single
+            // property's metered assignments with the last reading shown.
+            'readingGrid' => $this->readingGrid(
+                $organizationId,
+                $request->integer('grid_property') ?: null,
+            ),
             'setup' => $this->setup($organizationId),
             'utilities' => $this->utilities(),
             'filters' => [
@@ -222,6 +231,112 @@ class UtilityReadingController extends Controller
         ]);
 
         return InertiaRedirect::to($request->header('Referer') ?? route('tenant.utilities.index'), $request);
+    }
+
+    public function bulkStore(BulkStoreUtilityReadingRequest $request, BulkRecordUtilityReadings $bulk): RedirectResponse
+    {
+        $saved = $bulk->handle(
+            $request->user(),
+            (int) TenancyContext::organization()?->id,
+            $request->validated()['readings'],
+        );
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => count($saved) === 1 ? 'Reading recorded for 1 meter.' : 'Readings recorded for '.count($saved).' meters.',
+        ]);
+
+        return InertiaRedirect::to($request->header('Referer') ?? route('tenant.utilities.index'), $request);
+    }
+
+    /**
+     * One walked route: every unit in the property with an active metered
+     * charge, paired with its latest reading. The grid posts only filled
+     * rows, so the payload stays small and validation stays per-row.
+     *
+     * @return array{property_id: ?int, rows: list<array{unit_id: int, unit_name: string, utility: string, utility_label: string, unit_of_measure: string, rate: string|null, currency: string, last_reading: string|null, last_read_on: string|null}>}
+     */
+    private function readingGrid(int $organizationId, ?int $propertyId): array
+    {
+        $propertyIds = Property::query()
+            ->where('organization_id', $organizationId)
+            ->orderBy('name')
+            ->pluck('id')
+            ->map(fn ($id): int => (int) $id)
+            ->all();
+
+        if ($propertyIds === []) {
+            return ['property_id' => null, 'rows' => []];
+        }
+
+        // Default to the first building that actually has metered billing —
+        // a caretaker opening the grid usually starts where meters live.
+        if ($propertyId === null || ! in_array($propertyId, $propertyIds, true)) {
+            $propertyId = UtilityCharge::query()
+                ->where('organization_id', $organizationId)
+                ->where('is_active', true)
+                ->where('kind', UtilityChargeKind::Metered->value)
+                ->whereIn('property_id', $propertyIds)
+                ->orderBy('property_id')
+                ->value('property_id') ?? $propertyIds[0];
+            $propertyId = (int) $propertyId;
+        }
+
+        $charges = UtilityCharge::query()
+            ->where('organization_id', $organizationId)
+            ->where('property_id', $propertyId)
+            ->where('is_active', true)
+            ->where('kind', UtilityChargeKind::Metered->value)
+            ->with(['units:id,name'])
+            ->orderBy('name')
+            ->get();
+
+        $pairs = [];
+
+        foreach ($charges as $charge) {
+            $utility = $charge->utility?->value;
+
+            if ($utility === null) {
+                continue;
+            }
+
+            foreach ($charge->units as $unit) {
+                $pairs[$unit->id.'|'.$utility] = [
+                    'unit_id' => (int) $unit->id,
+                    'unit_name' => $unit->name,
+                    'utility' => $utility,
+                    'utility_label' => $charge->utility?->label(),
+                    'unit_of_measure' => $charge->utility?->unitOfMeasure(),
+                    'rate' => $charge->rate,
+                    'currency' => $charge->currency,
+                ];
+            }
+        }
+
+        if ($pairs === []) {
+            return ['property_id' => $propertyId, 'rows' => []];
+        }
+
+        $latest = UtilityReading::query()
+            ->whereIn('unit_id', array_column($pairs, 'unit_id'))
+            ->orderByDesc('read_on')
+            ->orderByDesc('id')
+            ->get(['unit_id', 'utility', 'reading', 'read_on'])
+            ->keyBy(fn (UtilityReading $reading): string => $reading->unit_id.'|'.$reading->utility->value);
+
+        $rows = [];
+
+        foreach ($pairs as $key => $pair) {
+            $previous = $latest->get($key);
+            $rows[] = $pair + [
+                'last_reading' => $previous !== null ? (string) $previous->reading : null,
+                'last_read_on' => $previous?->read_on?->toDateString(),
+            ];
+        }
+
+        usort($rows, fn (array $a, array $b): int => [$a['unit_name'], $a['utility']] <=> [$b['unit_name'], $b['utility']]);
+
+        return ['property_id' => $propertyId, 'rows' => $rows];
     }
 
     /**

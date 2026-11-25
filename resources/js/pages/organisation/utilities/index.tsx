@@ -6,6 +6,7 @@ import {
     Check,
     ChevronRight,
     Circle,
+    ClipboardList,
     Download,
     Gauge,
     ListFilter,
@@ -58,6 +59,7 @@ import {
 } from '@/routes/tenant/utilities/charges';
 import { index as unitsIndex } from '@/routes/tenant/units';
 import {
+    bulkStore as bulkStoreUtilityReadings,
     exportMethod as exportUtilities,
     index as utilitiesIndex,
     store as storeUtilityReading,
@@ -65,6 +67,7 @@ import {
 import type {
     ChargeProperty,
     PaginatedReadings,
+    ReadingGrid,
     SetupProperty,
     UnitOption,
     UtilityChargeRow,
@@ -81,6 +84,7 @@ type Props = {
     charges: UtilityChargeRow[];
     utilities: UtilityOption[];
     setup: SetupProperty[];
+    readingGrid: ReadingGrid;
     filters: UtilityReadingFilters;
 };
 
@@ -95,8 +99,16 @@ export default function UtilitiesIndex({
     charges = [],
     utilities,
     setup = [],
+    readingGrid,
 }: Props) {
     const { query, setOverlayParam } = useOverlayParam();
+    const { context } = usePage().props;
+    // Charge setup (names, kinds, rates) is landlord work behind
+    // utility.manage. Recording readings needs only unit.manage, so the
+    // grid and the single sheet stay open to caretakers.
+    const canManageCharges = (context?.permissions ?? []).includes(
+        'utility.manage',
+    );
     const [isTableLoading, setIsTableLoading] = useState(false);
     const [isMoreOpen, setIsMoreOpen] = useState(false);
     const [createUtility, setCreateUtility] = useState('');
@@ -117,6 +129,51 @@ export default function UtilitiesIndex({
     const isExportOpen =
         query.get('export') !== null && query.get('export') !== '';
     const isCreateOpen = query.get('create') === '1';
+
+    // Bulk entry: one walked route per sheet. The property picker reloads
+    // only the grid rows; the shared date defaults to today and each row
+    // posts just unit, utility and reading — rates belong to the charge
+    // and are shown read-only so a caretaker can never reprice.
+    const isBulkOpen = query.get('bulk') === 'new';
+    const [gridPropertyId, setGridPropertyId] = useState<string>('');
+    const [gridReadOn, setGridReadOn] = useState(
+        new Date().toISOString().slice(0, 10),
+    );
+    const [gridValues, setGridValues] = useState<Record<string, string>>({});
+
+    useEffect(() => {
+        setGridPropertyId(
+            readingGrid?.property_id != null
+                ? String(readingGrid.property_id)
+                : '',
+        );
+    }, [readingGrid?.property_id]);
+
+    function openBulkReadings() {
+        setGridValues({});
+        setGridReadOn(new Date().toISOString().slice(0, 10));
+        setOverlayParam('bulk', 'new');
+    }
+
+    function closeBulkReadings() {
+        setGridValues({});
+        setOverlayParam('bulk', null, { replace: true });
+    }
+
+    function pickGridProperty(value: string) {
+        setGridPropertyId(value);
+        setGridValues({});
+        setOverlayParam('grid_property', value, {
+            replace: true,
+            only: ['readingGrid'],
+        });
+    }
+
+    const gridRows = readingGrid?.rows ?? [];
+    const filledGridRows = gridRows.filter(
+        (row) =>
+            (gridValues[`${row.unit_id}:${row.utility}`] ?? '').trim() !== '',
+    );
 
     // The record is a sheet on this page, so the id travels in the URL and
     // the server resolves it into `focusedReading`. Falling back to the
@@ -189,26 +246,59 @@ export default function UtilitiesIndex({
     const [chargeUnitIds, setChargeUnitIds] = useState<number[]>([]);
     const [chargeAllocation, setChargeAllocation] = useState('equal');
     const [chargeMasterAmount, setChargeMasterAmount] = useState('');
+    const [chargeName, setChargeName] = useState('');
     const [chargeAmounts, setChargeAmounts] = useState<Record<number, string>>(
         {},
     );
 
+    /**
+     * Common starting points so a landlord picks what tenants pay for
+     * instead of learning billing vocabulary first. A preset fills the
+     * name, kind and utility; the landlord still types the numbers, and
+     * units stay ticked from the pre-select below.
+     */
+    const CHARGE_PRESETS = [
+        { name: 'Water', kind: 'metered', utility: 'water' },
+        { name: 'Electricity', kind: 'metered', utility: 'electricity' },
+        { name: 'Gas', kind: 'metered', utility: 'gas' },
+        { name: 'Garbage', kind: 'fixed', utility: '' },
+        { name: 'Security', kind: 'fixed', utility: '' },
+    ] as const;
+
+    function applyChargePreset(preset: (typeof CHARGE_PRESETS)[number]) {
+        setChargeName(preset.name);
+        setChargeKind(preset.kind);
+        setChargeUtility(preset.utility);
+    }
+
+    function unitIdsForProperty(propertyId: string): number[] {
+        return (
+            properties
+                .find((property) => String(property.id) === propertyId)
+                ?.units.map((unit) => unit.id) ?? []
+        );
+    }
+
     function resetChargeForm(defaultPropertyId?: number) {
         const fallback = properties.length > 0 ? String(properties[0].id) : '';
-        setChargePropertyId(
+        const propertyId =
             defaultPropertyId !== undefined &&
-                properties.some((p) => p.id === defaultPropertyId)
+            properties.some((p) => p.id === defaultPropertyId)
                 ? String(defaultPropertyId)
-                : fallback,
-        );
+                : fallback;
+        setChargePropertyId(propertyId);
         setChargeKind('metered');
         setChargeUtility('');
         setChargeRate('');
         setChargeCurrency('KES');
         setChargeIsActive(true);
-        setChargeUnitIds([]);
+        // New charges start with every unit ticked — unticking the few
+        // that don't pay is faster than ticking dozens, and a charge with
+        // no units bills nothing, which reads as broken.
+        setChargeUnitIds(unitIdsForProperty(propertyId));
         setChargeAllocation('equal');
         setChargeMasterAmount('');
+        setChargeName('');
         setChargeAmounts({});
     }
 
@@ -274,7 +364,7 @@ export default function UtilitiesIndex({
                             value={chargePropertyId}
                             onValueChange={(value) => {
                                 setChargePropertyId(value);
-                                setChargeUnitIds([]);
+                                setChargeUnitIds(unitIdsForProperty(value));
                                 setChargeAmounts({});
                             }}
                             placeholder="Choose a property"
@@ -295,16 +385,54 @@ export default function UtilitiesIndex({
 
                 <div className="grid gap-2">
                     <Label htmlFor={`${idPrefix}-name`}>Charge name</Label>
-                    <Input
-                        id={`${idPrefix}-name`}
-                        name="name"
-                        placeholder="Water"
-                        defaultValue={
-                            mode === 'edit' ? (editCharge?.name ?? '') : ''
-                        }
-                    />
+                    {mode === 'create' ? (
+                        <Input
+                            id={`${idPrefix}-name`}
+                            name="name"
+                            placeholder="Water"
+                            value={chargeName}
+                            onChange={(event) =>
+                                setChargeName(event.target.value)
+                            }
+                        />
+                    ) : (
+                        <Input
+                            id={`${idPrefix}-name`}
+                            name="name"
+                            placeholder="Water"
+                            defaultValue={editCharge?.name ?? ''}
+                        />
+                    )}
                     <InputError message={errors.name} />
                 </div>
+
+                {mode === 'create' && (
+                    <div className="grid gap-2">
+                        <span className="text-sm leading-none font-medium">
+                            Start from a preset{' '}
+                            <span className="font-normal text-muted-foreground">
+                                (optional)
+                            </span>
+                        </span>
+                        <div className="flex flex-wrap gap-2">
+                            {CHARGE_PRESETS.map((preset) => (
+                                <Button
+                                    key={preset.name}
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => applyChargePreset(preset)}
+                                >
+                                    {preset.name}
+                                </Button>
+                            ))}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                            Fills in the name and billing type — you still set
+                            the rate below.
+                        </p>
+                    </div>
+                )}
 
                 {mode === 'create' ? (
                     <fieldset className="space-y-3">
@@ -960,18 +1088,22 @@ export default function UtilitiesIndex({
                         className="flex justify-end gap-1"
                         onClick={(event) => event.stopPropagation()}
                     >
-                        <ActionIconButton
-                            icon={<SquarePen />}
-                            label={`Edit ${charge.name}`}
-                            color="edit"
-                            onClick={() => openChargeEdit(charge)}
-                        />
-                        <ActionIconButton
-                            icon={<Trash2 />}
-                            label={`Delete ${charge.name}`}
-                            color="danger"
-                            onClick={() => setDeleteCharge(charge)}
-                        />
+                        {canManageCharges && (
+                            <ActionIconButton
+                                icon={<SquarePen />}
+                                label={`Edit ${charge.name}`}
+                                color="edit"
+                                onClick={() => openChargeEdit(charge)}
+                            />
+                        )}
+                        {canManageCharges && (
+                            <ActionIconButton
+                                icon={<Trash2 />}
+                                label={`Delete ${charge.name}`}
+                                color="danger"
+                                onClick={() => setDeleteCharge(charge)}
+                            />
+                        )}
                     </div>
                 );
             },
@@ -990,14 +1122,25 @@ export default function UtilitiesIndex({
                         title="Utilities"
                         description="Record utility consumption for a unit. Consumption is calculated from the previous reading."
                     />
-                    <LabelledIconButton
-                        icon={<Plus />}
-                        label="Record reading"
-                        tooltip="Record a utility reading"
-                        color="primary"
-                        onClick={() => setOverlayParam('create', '1')}
-                        className="ml-auto max-w-20 sm:max-w-24"
-                    />
+                    <div className="ml-auto flex items-center gap-2">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={openBulkReadings}
+                        >
+                            <ClipboardList className="size-4" />
+                            Record many
+                        </Button>
+                        <LabelledIconButton
+                            icon={<Plus />}
+                            label="Record reading"
+                            tooltip="Record a utility reading"
+                            color="primary"
+                            onClick={() => setOverlayParam('create', '1')}
+                            className="max-w-20 sm:max-w-24"
+                        />
+                    </div>
                 </div>
 
                 {setup.some(
@@ -1115,20 +1258,21 @@ export default function UtilitiesIndex({
                                                     )}
                                                 </span>
                                                 {property.active_charges ===
-                                                    0 && (
-                                                    <Button
-                                                        type="button"
-                                                        size="sm"
-                                                        variant="outline"
-                                                        onClick={() =>
-                                                            openChargeCreate(
-                                                                property.id,
-                                                            )
-                                                        }
-                                                    >
-                                                        Add charge
-                                                    </Button>
-                                                )}
+                                                    0 &&
+                                                    canManageCharges && (
+                                                        <Button
+                                                            type="button"
+                                                            size="sm"
+                                                            variant="outline"
+                                                            onClick={() =>
+                                                                openChargeCreate(
+                                                                    property.id,
+                                                                )
+                                                            }
+                                                        >
+                                                            Add charge
+                                                        </Button>
+                                                    )}
                                             </li>
                                             <li className="flex items-center gap-2 text-sm">
                                                 {property.latest_reading_on !==
@@ -1249,14 +1393,16 @@ export default function UtilitiesIndex({
                                 lease instead.
                             </p>
                         </div>
-                        <LabelledIconButton
-                            icon={<Plus />}
-                            label="Add charge"
-                            tooltip="Add a utility charge"
-                            color="primary"
-                            onClick={openChargeCreate}
-                            className="ml-auto max-w-20 sm:max-w-24"
-                        />
+                        {canManageCharges && (
+                            <LabelledIconButton
+                                icon={<Plus />}
+                                label="Add charge"
+                                tooltip="Add a utility charge"
+                                color="primary"
+                                onClick={openChargeCreate}
+                                className="ml-auto max-w-20 sm:max-w-24"
+                            />
+                        )}
                     </div>
 
                     <DataTable
@@ -1399,6 +1545,191 @@ export default function UtilitiesIndex({
                 ]}
                 onExport={runExport}
             />
+
+            <ResponsiveOverlay
+                open={isBulkOpen}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        closeBulkReadings();
+                    }
+                }}
+                title="Record many readings"
+                description="One walked route: fill every meter you read, leave the rest blank. Only filled rows are saved."
+                footer={
+                    <OverlayFooter
+                        onCancel={closeBulkReadings}
+                        actions={[
+                            {
+                                label: `Save ${filledGridRows.length === 1 ? 'reading' : 'readings'}`,
+                                form: 'utility-bulk-reading-form',
+                                type: 'submit',
+                                disabled: filledGridRows.length === 0,
+                            },
+                        ]}
+                    />
+                }
+            >
+                <Form
+                    id="utility-bulk-reading-form"
+                    {...bulkStoreUtilityReadings.form()}
+                    options={{ preserveScroll: true, preserveState: true }}
+                    onSuccess={closeBulkReadings}
+                    className="grid gap-4 py-2"
+                >
+                    {({ errors }) => (
+                        <>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="grid gap-2">
+                                    <Label htmlFor="bulk-grid-property">
+                                        Property
+                                    </Label>
+                                    <SearchableSelect
+                                        id="bulk-grid-property"
+                                        name="grid_property"
+                                        options={properties.map((property) => ({
+                                            value: String(property.id),
+                                            label: property.name,
+                                        }))}
+                                        value={gridPropertyId}
+                                        onValueChange={pickGridProperty}
+                                        placeholder="Choose a property"
+                                        searchPlaceholder="Search properties…"
+                                    />
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="bulk-grid-read-on">
+                                        Read on
+                                    </Label>
+                                    <Input
+                                        id="bulk-grid-read-on"
+                                        type="date"
+                                        max={new Date()
+                                            .toISOString()
+                                            .slice(0, 10)}
+                                        value={gridReadOn}
+                                        onChange={(event) =>
+                                            setGridReadOn(event.target.value)
+                                        }
+                                    />
+                                </div>
+                            </div>
+                            <InputError message={errors.readings} />
+                            {gridRows.length === 0 ? (
+                                <p className="text-sm text-muted-foreground">
+                                    No metered charges assigned in this building
+                                    yet — add a water or electricity charge
+                                    first, then come back to walk the route.
+                                </p>
+                            ) : (
+                                <div className="grid gap-2">
+                                    {gridRows.map((row) => {
+                                        const key = `${row.unit_id}:${row.utility}`;
+                                        const index = filledGridRows.findIndex(
+                                            (filled) =>
+                                                `${filled.unit_id}:${filled.utility}` ===
+                                                key,
+                                        );
+                                        const posted = index !== -1;
+
+                                        return (
+                                            <div
+                                                key={key}
+                                                className="grid gap-1 rounded-lg border border-border-strong p-3"
+                                            >
+                                                <div className="flex items-baseline justify-between gap-2">
+                                                    <span className="text-sm font-medium">
+                                                        {row.unit_name} ·{' '}
+                                                        {row.utility_label}
+                                                    </span>
+                                                    <span className="text-xs text-muted-foreground">
+                                                        {row.rate !== null
+                                                            ? `${formatMoney(row.rate, row.currency)} per ${row.unit_of_measure}`
+                                                            : 'No rate set'}
+                                                    </span>
+                                                </div>
+                                                <p className="text-xs text-muted-foreground">
+                                                    {row.last_reading !== null
+                                                        ? `Last: ${Number(row.last_reading).toLocaleString()} ${row.unit_of_measure} on ${row.last_read_on}`
+                                                        : 'No readings yet — this one starts the history.'}
+                                                </p>
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    <Input
+                                                        id={`bulk-reading-${key}`}
+                                                        type="number"
+                                                        inputMode="decimal"
+                                                        step="0.001"
+                                                        min="0"
+                                                        placeholder="New reading"
+                                                        aria-label={`New ${row.utility_label} reading for ${row.unit_name}`}
+                                                        value={
+                                                            gridValues[key] ??
+                                                            ''
+                                                        }
+                                                        onChange={(event) =>
+                                                            setGridValues(
+                                                                (current) => ({
+                                                                    ...current,
+                                                                    [key]: event
+                                                                        .target
+                                                                        .value,
+                                                                }),
+                                                            )
+                                                        }
+                                                    />
+                                                    {posted && (
+                                                        <>
+                                                            <input
+                                                                type="hidden"
+                                                                name={`readings[${index}][unit_id]`}
+                                                                value={
+                                                                    row.unit_id
+                                                                }
+                                                            />
+                                                            <input
+                                                                type="hidden"
+                                                                name={`readings[${index}][utility]`}
+                                                                value={
+                                                                    row.utility
+                                                                }
+                                                            />
+                                                            <input
+                                                                type="hidden"
+                                                                name={`readings[${index}][reading]`}
+                                                                value={
+                                                                    gridValues[
+                                                                        key
+                                                                    ] ?? ''
+                                                                }
+                                                            />
+                                                            <input
+                                                                type="hidden"
+                                                                name={`readings[${index}][read_on]`}
+                                                                value={
+                                                                    gridReadOn
+                                                                }
+                                                            />
+                                                        </>
+                                                    )}
+                                                </div>
+                                                <InputError
+                                                    message={
+                                                        errors[
+                                                            `readings.${index}.reading`
+                                                        ] ??
+                                                        errors[
+                                                            `readings.${index}.read_on`
+                                                        ]
+                                                    }
+                                                />
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </>
+                    )}
+                </Form>
+            </ResponsiveOverlay>
 
             <ResponsiveOverlay
                 open={isCreateOpen}
@@ -1585,43 +1916,45 @@ export default function UtilitiesIndex({
                     </dl>
                 </ResponsiveOverlay>
             )}
-            <ResponsiveOverlay
-                open={isChargeCreateOpen}
-                onOpenChange={(open) => {
-                    if (!open) {
-                        closeChargeSheets();
+            {canManageCharges && (
+                <ResponsiveOverlay
+                    open={isChargeCreateOpen}
+                    onOpenChange={(open) => {
+                        if (!open) {
+                            closeChargeSheets();
+                        }
+                    }}
+                    title="Add a utility charge"
+                    description="Metered rates, fixed and shared bills charged to the units that pay them. Single fees live on each lease instead."
+                    footer={
+                        <OverlayFooter
+                            onCancel={closeChargeSheets}
+                            actions={[
+                                {
+                                    label: 'Add charge',
+                                    form: 'utility-charge-form',
+                                    type: 'submit',
+                                },
+                            ]}
+                        />
                     }
-                }}
-                title="Add a utility charge"
-                description="Metered rates, fixed and shared bills charged to the units that pay them. Single fees live on each lease instead."
-                footer={
-                    <OverlayFooter
-                        onCancel={closeChargeSheets}
-                        actions={[
-                            {
-                                label: 'Add charge',
-                                form: 'utility-charge-form',
-                                type: 'submit',
-                            },
-                        ]}
-                    />
-                }
-            >
-                <Form
-                    key="charge-new"
-                    id="utility-charge-form"
-                    {...storeUtilityCharge.form()}
-                    options={{ preserveScroll: true }}
-                    onSuccess={() => closeChargeSheets()}
-                    className="grid gap-4 py-2"
                 >
-                    {({ errors }) =>
-                        chargeFields(errors, 'charge-new', 'create')
-                    }
-                </Form>
-            </ResponsiveOverlay>
+                    <Form
+                        key="charge-new"
+                        id="utility-charge-form"
+                        {...storeUtilityCharge.form()}
+                        options={{ preserveScroll: true }}
+                        onSuccess={() => closeChargeSheets()}
+                        className="grid gap-4 py-2"
+                    >
+                        {({ errors }) =>
+                            chargeFields(errors, 'charge-new', 'create')
+                        }
+                    </Form>
+                </ResponsiveOverlay>
+            )}
 
-            {editCharge && (
+            {canManageCharges && editCharge && (
                 <ResponsiveOverlay
                     open={isChargeEditOpen}
                     onOpenChange={(open) => {
@@ -1661,7 +1994,7 @@ export default function UtilitiesIndex({
                 </ResponsiveOverlay>
             )}
 
-            {deleteCharge !== null && (
+            {canManageCharges && deleteCharge !== null && (
                 <ConfirmDeleteOverlay
                     open
                     onOpenChange={(open) => {

@@ -1,9 +1,13 @@
 <?php
 
+use App\Actions\Metering\CreateUtilityCharge;
+use App\Enums\SubPermissionKey;
 use App\Enums\UtilityType;
 use App\Models\Organization;
 use App\Models\Plan;
 use App\Models\Property;
+use App\Models\SubPermission;
+use App\Models\SubRole;
 use App\Models\Unit;
 use App\Models\User;
 use App\Models\UtilityCharge;
@@ -445,5 +449,189 @@ test('properties without units are skipped by the setup checklist', function () 
         ->assertInertia(fn ($page) => $page
             ->component('organisation/utilities/index')
             ->has('setup', 0)
+        );
+});
+
+function meterStaff(User $owner, Organization $organization, array $keys): User
+{
+    $staff = User::factory()->create(['onboarded_at' => now()]);
+    $role = SubRole::factory()->create([
+        'organization_id' => $organization->id,
+        'created_by' => $owner->id,
+    ]);
+    $role->subPermissions()->attach(
+        SubPermission::whereIn('key', $keys)->pluck('id')->all()
+    );
+    $organization->users()->attach($staff->id, ['sub_role_id' => $role->id, 'status' => 'active']);
+
+    return $staff;
+}
+
+function meterCharge(Property $property, User $owner, array $unitIds, array $overrides = []): UtilityCharge
+{
+    return app(CreateUtilityCharge::class)->handle(
+        $owner,
+        $property->organization,
+        $property,
+        array_merge([
+            'name' => 'Water',
+            'kind' => 'metered',
+            'utility' => 'water',
+            'rate' => '50',
+            'unit_ids' => $unitIds,
+        ], $overrides),
+    );
+}
+
+test('a caretaker records readings but cannot manage charges', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = meterOrganization($owner);
+    $unit = meterUnit(meterProperty($organization, $owner));
+    $caretaker = meterStaff($owner, $organization, [SubPermissionKey::UnitManage->value]);
+
+    $this->actingAs($caretaker)
+        ->post(utilityUrl($organization, '/utilities'), [
+            'unit_id' => $unit->id,
+            'utility' => 'water',
+            'reading' => '1200.5',
+            'read_on' => now()->toDateString(),
+        ])
+        ->assertRedirect();
+
+    expect(UtilityReading::count())->toBe(1);
+
+    $this->actingAs($caretaker)
+        ->post(utilityUrl($organization, '/utilities/charges'), [
+            'property_id' => $unit->property_id,
+            'name' => 'Water',
+            'kind' => 'metered',
+            'utility' => 'water',
+            'rate' => '50',
+            'unit_ids' => [$unit->id],
+        ])
+        ->assertRedirect();
+    assertErrorToast();
+
+    expect(UtilityCharge::count())->toBe(0);
+});
+
+test('bulk readings record a walked route with consumption', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = meterOrganization($owner);
+    $property = meterProperty($organization, $owner);
+    $unitA = meterUnit($property);
+    $unitB = meterUnit($property);
+
+    meterCharge($property, $owner, [$unitA->id, $unitB->id]);
+
+    UtilityReading::create([
+        'organization_id' => $organization->id,
+        'unit_id' => $unitA->id,
+        'utility' => 'water',
+        'reading' => '1000.000',
+        'consumption' => null,
+        'read_on' => now()->subDay()->toDateString(),
+        'recorded_by' => $owner->id,
+    ]);
+
+    $this->actingAs($owner)
+        ->post(utilityUrl($organization, '/utilities/bulk-readings'), [
+            'readings' => [
+                ['unit_id' => $unitA->id, 'utility' => 'water', 'reading' => '1010.5', 'read_on' => now()->toDateString()],
+                ['unit_id' => $unitB->id, 'utility' => 'water', 'reading' => '200', 'read_on' => now()->toDateString()],
+            ],
+        ])
+        ->assertRedirect();
+
+    $readings = UtilityReading::orderBy('id')->get();
+
+    expect($readings)->toHaveCount(3)
+        ->and((float) $readings[1]->consumption)->toBe(10.5)
+        ->and($readings[2]->consumption)->toBeNull();
+});
+
+test('bulk readings validate each row', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = meterOrganization($owner);
+    $unit = meterUnit(meterProperty($organization, $owner));
+    $foreign = User::factory()->create(['onboarded_at' => now()]);
+    $foreignOrg = meterOrganization($foreign);
+    $foreignUnit = meterUnit(meterProperty($foreignOrg, $foreign));
+
+    $this->actingAs($owner)
+        ->from(utilityUrl($organization, '/utilities'))
+        ->post(utilityUrl($organization, '/utilities/bulk-readings'), [
+            'readings' => [
+                ['unit_id' => $unit->id, 'utility' => 'bogus', 'reading' => '100', 'read_on' => now()->toDateString()],
+                ['unit_id' => $foreignUnit->id, 'utility' => 'water', 'reading' => '100', 'read_on' => now()->addDay()->toDateString()],
+            ],
+        ])
+        ->assertRedirect()
+        ->assertSessionHasErrors(['readings.0.utility', 'readings.1.unit_id', 'readings.1.read_on']);
+
+    expect(UtilityReading::count())->toBe(0);
+});
+
+test('bulk readings reject an empty route', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = meterOrganization($owner);
+    meterUnit(meterProperty($organization, $owner));
+
+    $this->actingAs($owner)
+        ->from(utilityUrl($organization, '/utilities'))
+        ->post(utilityUrl($organization, '/utilities/bulk-readings'), ['readings' => []])
+        ->assertRedirect()
+        ->assertSessionHasErrors('readings');
+
+    expect(UtilityReading::count())->toBe(0);
+});
+
+test('a caretaker records a walked route in bulk', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = meterOrganization($owner);
+    $property = meterProperty($organization, $owner);
+    $unit = meterUnit($property);
+    $caretaker = meterStaff($owner, $organization, [SubPermissionKey::UnitManage->value]);
+
+    meterCharge($property, $owner, [$unit->id]);
+
+    $this->actingAs($caretaker)
+        ->post(utilityUrl($organization, '/utilities/bulk-readings'), [
+            'readings' => [
+                ['unit_id' => $unit->id, 'utility' => 'water', 'reading' => '300', 'read_on' => now()->toDateString()],
+            ],
+        ])
+        ->assertRedirect();
+
+    expect(UtilityReading::count())->toBe(1);
+});
+
+test('the utilities index ships the reading grid with last readings', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = meterOrganization($owner);
+    $property = meterProperty($organization, $owner);
+    $unit = meterUnit($property);
+
+    meterCharge($property, $owner, [$unit->id]);
+
+    UtilityReading::create([
+        'organization_id' => $organization->id,
+        'unit_id' => $unit->id,
+        'utility' => 'water',
+        'reading' => '1000.000',
+        'consumption' => null,
+        'read_on' => now()->subDay()->toDateString(),
+        'recorded_by' => $owner->id,
+    ]);
+
+    $this->actingAs($owner)
+        ->get(utilityUrl($organization, '/utilities'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('organisation/utilities/index')
+            ->where('readingGrid.property_id', $property->id)
+            ->where('readingGrid.rows.0.unit_id', $unit->id)
+            ->where('readingGrid.rows.0.utility', 'water')
+            ->where('readingGrid.rows.0.last_reading', fn ($value) => (float) $value === 1000.0)
         );
 });

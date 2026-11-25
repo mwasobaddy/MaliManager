@@ -94,6 +94,31 @@ export type SetupProperty = {
 };
 
 /**
+ * One walked meter: a unit's metered utility with its rate (read-only —
+ * caretakers record, landlords price) and the last reading for context.
+ */
+export type ReadingGridRow = {
+    unit_id: number;
+    unit_name: string;
+    utility: UtilityType;
+    utility_label: string;
+    unit_of_measure: string;
+    rate: string | null;
+    currency: string;
+    last_reading: string | null;
+    last_read_on: string | null;
+};
+
+/**
+ * The bulk grid covers one property at a time so the payload stays small;
+ * the picker reloads just this prop.
+ */
+export type ReadingGrid = {
+    property_id: number | null;
+    rows: ReadingGridRow[];
+};
+
+/**
  * The form's own shape. `unit_id` and `reading` are strings because that is
  * what an `<input>`/`<option>` produces — converting at the boundary keeps the
  * component from making numeric decisions the server already makes.
