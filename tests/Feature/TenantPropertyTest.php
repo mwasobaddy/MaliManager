@@ -167,11 +167,21 @@ test('property navigation persists onto org-level pages within the session', fun
 test('org-level pages show no property context without a prior visit', function () {
     $user = User::factory()->create(['onboarded_at' => now()]);
     $organization = createTestOrganization($user);
-    $organization->properties()->create([
-        'name' => 'Sunset Heights',
-        'slug' => 'sunset-heights',
-        'status' => 'active',
-        'created_by' => $user->id,
+    // Two buildings: with a single property the nav context pre-selects
+    // it (see the dashboard tests), so the ambiguous case needs two.
+    $organization->properties()->createMany([
+        [
+            'name' => 'Sunset Heights',
+            'slug' => 'sunset-heights',
+            'status' => 'active',
+            'created_by' => $user->id,
+        ],
+        [
+            'name' => 'Umoja Blocks',
+            'slug' => 'umoja-blocks',
+            'status' => 'active',
+            'created_by' => $user->id,
+        ],
     ]);
 
     $context = $this->actingAs($user)

@@ -292,3 +292,61 @@ test('the organization overview only shows delegated properties overdue leases t
             ->has('overdue_leases', 1)
             ->where('overdue_leases.0.occupant', 'Jane Tenant'));
 });
+
+test('a single-property organization pre-selects it for the nav context', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createOverviewOrganization($owner);
+    $property = createOverviewProperty($organization, $owner, 'Sunset Heights', 'sunset-heights');
+
+    // No property visited yet: the only building is selected so the
+    // property-scoped nav (occupants, leases) renders on first paint.
+    $this->actingAs($owner)
+        ->get(tenantOverviewUrl($organization, '/overview'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('context.property.id', $property->id)
+            ->where('context.property.slug', 'sunset-heights'));
+});
+
+test('a multi-property organization selects nothing for the nav context', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createOverviewOrganization($owner);
+    createOverviewProperty($organization, $owner, 'Sunset Heights', 'sunset-heights');
+    createOverviewProperty($organization, $owner, 'Umoja Blocks', 'umoja-blocks');
+
+    // Guessing between buildings would mislead: the landlord picks.
+    $this->actingAs($owner)
+        ->get(tenantOverviewUrl($organization, '/overview'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('context.property', null));
+});
+
+test('a staffer with one delegated property gets it as nav context', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createOverviewOrganization($owner);
+    $property = createOverviewProperty($organization, $owner, 'Sunset Heights', 'sunset-heights');
+    createOverviewProperty($organization, $owner, 'Umoja Blocks', 'umoja-blocks');
+
+    $staff = User::factory()->create(['onboarded_at' => now()]);
+    $subRole = SubRole::factory()->create();
+    $staff->organizations()->attach($organization->id, [
+        'is_owner' => false,
+        'sub_role_id' => $subRole->id,
+        'status' => 'active',
+    ]);
+
+    $membership = $staff->membershipFor($organization);
+    Delegation::create([
+        'organization_user_id' => $membership->id,
+        'organization_id' => $organization->id,
+        'delegatable_type' => Property::class,
+        'delegatable_id' => $property->id,
+    ]);
+
+    $this->actingAs($staff)
+        ->get(tenantOverviewUrl($organization, '/overview'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('context.property.id', $property->id));
+});

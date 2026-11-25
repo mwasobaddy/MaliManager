@@ -55,6 +55,10 @@ class HandleInertiaRequests extends Middleware
             : [];
         $property = $this->resolveProperty($request, $organization, $access);
 
+        if ($property === null && $organization !== null) {
+            $property = $this->singleAccessibleProperty($organization, $access);
+        }
+
         return [
             ...parent::share($request),
             'name' => config('app.name'),
@@ -153,6 +157,37 @@ class HandleInertiaRequests extends Middleware
             ->pluck('id');
 
         return $accessible->contains($property->id) ? $property : null;
+    }
+
+    /**
+     * Single-property shortcut: when the actor can see exactly one property
+     * and has not picked one yet, select it so the property-scoped nav
+     * (occupants, leases, units) renders on first paint instead of hiding
+     * behind a picker the landlord never needed. Multi-property actors keep
+     * the explicit pick — guessing between buildings would mislead.
+     */
+    private function singleAccessibleProperty(?object $organization, array $access): ?Property
+    {
+        if ($organization === null) {
+            return null;
+        }
+
+        $accessible = collect($access)
+            ->where('id', $organization->id)
+            ->flatMap(fn (array $item) => $item['properties'])
+            ->pluck('id')
+            ->map(fn ($id): int => (int) $id)
+            ->unique()
+            ->values();
+
+        if ($accessible->count() !== 1) {
+            return null;
+        }
+
+        return Property::query()
+            ->where('organization_id', $organization->id)
+            ->whereKey($accessible->first())
+            ->first(['id', 'name', 'slug']);
     }
 
     /**
