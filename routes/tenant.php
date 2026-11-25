@@ -27,6 +27,7 @@ use App\Http\Controllers\Tenant\PropertyController;
 use App\Http\Controllers\Tenant\ReportController;
 use App\Http\Controllers\Tenant\SetupController;
 use App\Http\Controllers\Tenant\StaffController;
+use App\Http\Controllers\Tenant\SubRoleController;
 use App\Http\Controllers\Tenant\TrashController;
 use App\Http\Controllers\Tenant\UnitController;
 use App\Http\Controllers\Tenant\UtilityChargeController;
@@ -479,6 +480,20 @@ Route::middleware([
         Route::middleware('sub-permission:staff.manage')->group(function () {
             Route::get('/staff', [StaffController::class, 'index'])
                 ->name('tenant.staff.index');
+
+            // Sub-role bundles: the landlord shapes caretaker/agent and
+            // creates narrower roles here. Registered before any /staff/{id}
+            // route so `roles` can never bind as a staff id.
+            Route::get('/staff/roles', [SubRoleController::class, 'index'])
+                ->name('tenant.staff.roles.index');
+            Route::post('/staff/roles', [SubRoleController::class, 'store'])
+                ->name('tenant.staff.roles.store');
+            Route::put('/staff/roles/{subRole}', [SubRoleController::class, 'update'])
+                ->whereNumber('subRole')
+                ->name('tenant.staff.roles.update');
+            Route::delete('/staff/roles/{subRole}', [SubRoleController::class, 'destroy'])
+                ->whereNumber('subRole')
+                ->name('tenant.staff.roles.destroy');
         });
 
         Route::middleware('sub-permission:staff.create')->group(function () {

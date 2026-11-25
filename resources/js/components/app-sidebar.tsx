@@ -16,6 +16,7 @@ import {
     Plus,
     ReceiptText,
     ScrollText,
+    Shield,
     Sparkles,
     Tags,
     Trash2,
@@ -77,6 +78,7 @@ import {
 } from '@/routes/tenant/properties';
 import { index as reportsNavIndex } from '@/routes/tenant/reports';
 import { index as staffIndex } from '@/routes/tenant/staff';
+import { index as staffRolesIndex } from '@/routes/tenant/staff/roles';
 import { index as unitsIndex } from '@/routes/tenant/units';
 import type { NavItem } from '@/types';
 
@@ -419,11 +421,7 @@ export function AppSidebar() {
                                   undefined,
                                   '/units',
                               ),
-                              item(
-                                  'Utilities',
-                                  utilityReadingsIndex(),
-                                  Gauge,
-                              ),
+                              item('Utilities', utilityReadingsIndex(), Gauge),
                           ]
                         : []),
                     ...(canManageLandParcels
@@ -497,12 +495,13 @@ export function AppSidebar() {
                     ...(canManageStaff
                         ? [
                               item(
-                                  'Staff',
-                                  staffIndex(),
-                                  Users,
+                                  'Roles',
+                                  staffRolesIndex(),
+                                  Shield,
                                   undefined,
-                                  '/staff',
+                                  '/staff/roles',
                               ),
+                              item('Staff', staffIndex(), Users),
                           ]
                         : []),
                     ...(isOwner

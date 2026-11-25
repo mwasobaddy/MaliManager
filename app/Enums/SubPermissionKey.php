@@ -83,6 +83,29 @@ enum SubPermissionKey: string
     }
 
     /**
+     * Human-readable module label for grouped permission pickers.
+     */
+    public function moduleLabel(): string
+    {
+        return match ($this->module()) {
+            'property' => 'Properties',
+            'unit' => 'Units',
+            'land_parcel' => 'Land parcels',
+            'occupant' => 'Occupants',
+            'lease' => 'Leases',
+            'payment' => 'Payments',
+            'expense' => 'Expenses',
+            'maintenance' => 'Maintenance',
+            'staff' => 'Staff',
+            'inspection' => 'Inspections',
+            'utility' => 'Utilities',
+            'ai' => 'AI assistant',
+            'audit' => 'Audit log',
+            default => ucfirst($this->module()),
+        };
+    }
+
+    /**
      * Human-readable label for the UI.
      */
     public function label(): string
