@@ -215,3 +215,39 @@ test('land parcel page resolves to org context with ai enabled when org has a cr
             return true;
         });
 });
+
+test('re-assigning a removed parcel manager does not violate the delegation index', function () {
+    $owner = User::factory()->create(['onboarded_at' => now(), 'password' => 'secret-pass']);
+    $organization = createLandParcelOrganization($owner);
+    $parcel = createParcel($organization, $owner);
+    $manager = User::factory()->create(['onboarded_at' => now()]);
+    $organization->users()->attach($manager->id, [
+        'sub_role_id' => $organization->subRoles()->where('slug', 'caretaker')->first()->id,
+        'status' => 'active',
+    ]);
+
+    $payload = [
+        'name' => $parcel->name,
+        'zoning' => $parcel->zoning,
+        'status' => 'active',
+        'available_for_lease' => '0',
+    ];
+
+    $this->actingAs($owner)
+        ->put(parcelTenantUrl($organization, "/land-parcels/{$parcel->slug}"), $payload + ['manager_ids' => [$manager->id]])
+        ->assertRedirect();
+
+    $this->actingAs($owner)
+        ->put(parcelTenantUrl($organization, "/land-parcels/{$parcel->slug}"), $payload + ['manager_ids' => []])
+        ->assertRedirect();
+
+    // Re-adding used to blow up with a 1062: the unique index counts the
+    // soft-deleted row, so the fix restores it instead of re-inserting.
+    $this->actingAs($owner)
+        ->put(parcelTenantUrl($organization, "/land-parcels/{$parcel->slug}"), $payload + ['manager_ids' => [$manager->id]])
+        ->assertRedirect();
+
+    expect(Delegation::where('delegatable_type', LandParcel::class)
+        ->where('delegatable_id', $parcel->id)
+        ->count())->toBe(1);
+});

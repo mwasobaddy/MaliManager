@@ -47,11 +47,25 @@ trait StaffHelpers
         $this->deletePropertyDelegations($membership);
 
         foreach (array_unique($propertyIds) as $propertyId) {
-            $delegation = new Delegation([
-                'organization_id' => $membership->organization_id,
+            // Restoring beats re-inserting: the unique index counts
+            // soft-deleted rows, so a blind insert blows up the second
+            // time a staffer is assigned to the same property.
+            $delegation = Delegation::withTrashed()->firstOrNew([
                 'organization_user_id' => $membership->id,
                 'delegatable_type' => Property::class,
                 'delegatable_id' => (int) $propertyId,
+            ]);
+
+            if ($delegation->exists) {
+                if ($delegation->trashed()) {
+                    $delegation->restore();
+                }
+
+                continue;
+            }
+
+            $delegation->fill([
+                'organization_id' => $membership->organization_id,
                 'created_by' => $actor->id,
             ]);
 

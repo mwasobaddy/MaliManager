@@ -213,6 +213,46 @@ test('owner can update staff role and property assignments', function () {
         ->and(app(StaffService::class)->delegatedPropertyIds($membership))->toContain($property->id);
 });
 
+test('re-assigning a removed property does not violate the delegation index', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = createStaffOrganization($owner);
+
+    $staff = addStaffMember($organization, $owner);
+
+    $property = $organization->properties()->create([
+        'name' => 'Ocean View',
+        'slug' => 'ocean-view',
+        'status' => 'active',
+        'created_by' => $owner->id,
+    ]);
+
+    $payload = [
+        'name' => 'Jane Staff',
+        'email' => $staff->email,
+        'sub_role_id' => $organization->subRoles()->where('slug', 'caretaker')->first()->id,
+    ];
+
+    $this->actingAs($owner)
+        ->put(staffTenantUrl($organization, "/staff/{$staff->id}"), $payload + ['property_ids' => [$property->id]])
+        ->assertRedirect();
+
+    $this->actingAs($owner)
+        ->put(staffTenantUrl($organization, "/staff/{$staff->id}"), $payload + ['property_ids' => []])
+        ->assertRedirect();
+
+    // Re-adding used to blow up with a 1062: the unique index counts the
+    // soft-deleted row, so the fix restores it instead of re-inserting.
+    $this->actingAs($owner)
+        ->put(staffTenantUrl($organization, "/staff/{$staff->id}"), $payload + ['property_ids' => [$property->id]])
+        ->assertRedirect();
+
+    $membership = OrganizationUser::where('organization_id', $organization->id)
+        ->where('user_id', $staff->id)
+        ->firstOrFail();
+
+    expect(app(StaffService::class)->delegatedPropertyIds($membership))->toBe([$property->id]);
+});
+
 test('removing staff requires the staff.delete sub-permission', function () {
     $owner = User::factory()->create(['onboarded_at' => now()]);
     $organization = createStaffOrganization($owner);

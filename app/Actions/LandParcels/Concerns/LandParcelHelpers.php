@@ -34,13 +34,29 @@ trait LandParcelHelpers
             ->all();
 
         foreach ($membershipIds as $membershipId) {
-            $this->save(new Delegation([
-                'organization_id' => $parcel->organization_id,
+            // Restoring beats re-inserting: the unique index counts
+            // soft-deleted rows, so a blind insert blows up the second
+            // time a manager is assigned to the same parcel.
+            $delegation = Delegation::withTrashed()->firstOrNew([
                 'organization_user_id' => $membershipId,
                 'delegatable_type' => LandParcel::class,
                 'delegatable_id' => $parcel->id,
+            ]);
+
+            if ($delegation->exists) {
+                if ($delegation->trashed()) {
+                    $delegation->restore();
+                }
+
+                continue;
+            }
+
+            $delegation->fill([
+                'organization_id' => $parcel->organization_id,
                 'created_by' => $actor->id,
-            ]));
+            ]);
+
+            $this->save($delegation);
         }
     }
 }
