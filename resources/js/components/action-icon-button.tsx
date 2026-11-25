@@ -31,12 +31,11 @@ const actionColorVariants = cva('', {
             edit: 'bg-action-edit-fill text-white hover:brightness-90 focus-visible:ring-action-edit-fill/40 dark:hover:brightness-125',
             danger: 'bg-action-danger-fill text-white hover:brightness-90 focus-visible:ring-action-danger-fill/40 dark:hover:brightness-125',
             /**
-             * Solid theme-flipped gray for row actions that must read in both
-             * modes without a semantic color: darker gray on light backgrounds,
-             * lighter gray on dark ones (`muted-foreground` flips that way),
-             * with the background token as the icon color for contrast.
+             * Solid gray for row actions that must read in both modes
+             * without a semantic color: stone-600 on light backgrounds,
+             * stone-300 on dark ones, each with a contrasting icon color.
              */
-            gray: 'bg-muted-foreground text-background hover:brightness-90 focus-visible:ring-muted-foreground/40 dark:hover:brightness-110',
+            gray: 'bg-stone-600 text-white hover:brightness-90 focus-visible:ring-stone-500/40 dark:bg-stone-300 dark:text-stone-900 dark:hover:brightness-105',
             brand: 'bg-muted text-muted-foreground hover:bg-brand-primary-100 hover:text-primary-text focus-visible:ring-primary-text/30',
             accent: 'bg-brand-accent/12 text-brand-accent hover:bg-brand-accent/20 focus-visible:ring-brand-accent/30',
             /**
@@ -69,7 +68,7 @@ const ghostHoverLocks = {
     view: 'hover:bg-action-view-fill hover:text-white',
     edit: 'hover:bg-action-edit-fill hover:text-white',
     danger: 'hover:bg-action-danger-fill hover:text-white',
-    gray: 'hover:bg-muted-foreground hover:text-background',
+    gray: 'hover:bg-stone-600 hover:text-white dark:hover:bg-stone-300 dark:hover:text-stone-900',
     primary: 'hover:text-primary-foreground',
     accent: 'hover:text-brand-accent',
     teal: 'hover:text-on-accent',
