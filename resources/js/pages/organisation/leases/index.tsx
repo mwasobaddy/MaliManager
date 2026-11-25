@@ -2050,6 +2050,7 @@ export default function LeasesIndex({ leases, focusedLease }: Props) {
                                         message={errors.effective_date}
                                     />
                                 </div>
+
                                 <div className="grid gap-2">
                                     <Label htmlFor="amend-rent-amount">
                                         New rent (
@@ -2074,6 +2075,7 @@ export default function LeasesIndex({ leases, focusedLease }: Props) {
                     </Form>
                 </ResponsiveOverlay>
             )}
+
             <Dialog
                 open={endTarget !== null}
                 onOpenChange={(open) => !open && closeLeaseDialog()}
