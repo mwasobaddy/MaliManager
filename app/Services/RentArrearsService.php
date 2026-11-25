@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Lease;
+use App\Models\LeaseRentChange;
 use App\Models\Organization;
 use App\Models\Payment;
 use Carbon\CarbonImmutable;
@@ -43,8 +44,10 @@ class RentArrearsService extends Service
 
         $balances = [];
 
+        $ratesByLease = $this->ratesByLeases($leases);
+
         foreach ($leases as $lease) {
-            $balances[$lease->id] = $this->balanceFor($lease, (string) ($paidByLease->get($lease->id) ?? '0.00'));
+            $balances[$lease->id] = $this->balanceFor($lease, (string) ($paidByLease->get($lease->id) ?? '0.00'), $ratesByLease[$lease->id] ?? null);
         }
 
         return $balances;
@@ -54,16 +57,27 @@ class RentArrearsService extends Service
      * Balance for a single lease (tenant dashboard, reminders). The paid
      * total can be supplied by the caller; otherwise it is queried.
      *
+     * Expected totals price each due date at the rent in effect that day,
+     * so a mid-lease amendment moves only future periods — history keeps
+     * what it owed. The dated rates can be supplied by the caller (the
+     * batch path loads them once); otherwise they are queried.
+     *
+     * @param  list<array{date: string, amount: string}>|null  $rates
      * @return array{lease: Lease, expected: string, paid: string, outstanding: string, overdue: bool, days_overdue: int, latest_due_date: ?string}
      */
-    public function balanceFor(Lease $lease, ?string $paid = null): array
+    public function balanceFor(Lease $lease, ?string $paid = null, ?array $rates = null): array
     {
         $paid ??= (string) $lease->payments()->where('status', 'received')->where('type', '!=', 'deposit')->sum('amount');
 
-        $rent = number_format((float) ($lease->rent_amount ?? 0), 2, '.', '');
         $dueDates = $this->dueDates($lease);
+        $rates ??= $this->ratesForLease($lease);
 
-        $expected = bcmul($rent, (string) count($dueDates), 2);
+        $expected = '0.00';
+
+        foreach ($dueDates as $due) {
+            $expected = bcadd($expected, $this->rateFor($rates, $due, $lease), 2);
+        }
+
         $outstanding = bcsub($expected, number_format((float) $paid, 2, '.', ''), 2);
         // Only active leases can be overdue: ended ones keep their final
         // balance for display, but nothing is due anymore.
@@ -96,12 +110,12 @@ class RentArrearsService extends Service
             return null;
         }
 
-        $rent = number_format((float) ($lease->rent_amount ?? 0), 2, '.', '');
+        $rates = $this->ratesForLease($lease);
         $paid = number_format((float) $lease->payments()->where('status', 'received')->where('type', '!=', 'deposit')->sum('amount'), 2, '.', '');
         $expected = '0.00';
 
         foreach ($dueDates as $due) {
-            $expected = bcadd($expected, $rent, 2);
+            $expected = bcadd($expected, $this->rateFor($rates, $due, $lease), 2);
 
             if (bccomp($expected, $paid, 2) === 1) {
                 return $due;
@@ -132,6 +146,69 @@ class RentArrearsService extends Service
             ->filter(fn (array $balance): bool => $balance['overdue'])
             ->keys()
             ->all();
+    }
+
+    /**
+     * Dated rates per lease, oldest first: one schedule query for the whole
+     * batch. Leases without rows (created before rent history existed, or
+     * built directly in tests) price every period at their current rent.
+     *
+     * @param  Collection<int, Lease>  $leases
+     * @return array<int, list<array{date: string, amount: string}>>
+     */
+    private function ratesByLeases(Collection $leases): array
+    {
+        if ($leases->isEmpty()) {
+            return [];
+        }
+
+        $rows = LeaseRentChange::query()
+            ->whereIn('lease_id', $leases->modelKeys())
+            ->orderBy('effective_date')
+            ->get(['lease_id', 'effective_date', 'rent_amount']);
+
+        $byLease = [];
+
+        foreach ($rows as $row) {
+            $byLease[$row->lease_id][] = [
+                'date' => $row->effective_date->toDateString(),
+                'amount' => number_format((float) $row->rent_amount, 2, '.', ''),
+            ];
+        }
+
+        return $byLease;
+    }
+
+    /**
+     * @return list<array{date: string, amount: string}>
+     */
+    private function ratesForLease(Lease $lease): array
+    {
+        if ($lease->id === null) {
+            return [];
+        }
+
+        return $this->ratesByLeases($lease->newCollection([$lease]))[$lease->id] ?? [];
+    }
+
+    /**
+     * The rent in effect on a due date: the latest change on or before it,
+     * else the lease's current rent (leases without history rows).
+     *
+     * @param  list<array{date: string, amount: string}>  $rates
+     */
+    private function rateFor(array $rates, CarbonImmutable $date, Lease $lease): string
+    {
+        $rate = null;
+
+        foreach ($rates as $row) {
+            if ($row['date'] > $date->toDateString()) {
+                break;
+            }
+            $rate = $row['amount'];
+        }
+
+        return $rate ?? number_format((float) ($lease->rent_amount ?? 0), 2, '.', '');
     }
 
     /**

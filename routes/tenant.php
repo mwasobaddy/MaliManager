@@ -239,6 +239,10 @@ Route::middleware([
                 ->name('tenant.leases.remind-bulk');
             Route::post('/{property:slug}/leases/{lease}/remind', [LeaseController::class, 'remind'])
                 ->name('tenant.leases.remind');
+            // A dated rent change: history keeps every rate, so earlier
+            // periods stay priced at their own rent.
+            Route::post('/{property:slug}/leases/{lease}/amend-rent', [LeaseController::class, 'amendRent'])
+                ->name('tenant.leases.amend-rent');
             // Free-form extras on one lease: parking, pets and other
             // tenant-specific fees the property template cannot express.
             Route::post('/{property:slug}/leases/{lease}/additional-charges', [LeaseAdditionalChargeController::class, 'store'])

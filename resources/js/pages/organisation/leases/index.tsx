@@ -53,6 +53,7 @@ import { useOverlayParam } from '@/hooks/use-overlay-param';
 import { formatMoney } from '@/lib/format-money';
 import { page as draftingPage } from '@/routes/tenant/drafting';
 import {
+    amendRent as amendLeaseRent,
     end as endLease,
     index as leasesIndex,
     exportMethod as exportLeases,
@@ -108,6 +109,12 @@ type LeaseExtra = {
     is_active: boolean;
 };
 
+type RentHistoryLine = {
+    id: number;
+    effective_date: string;
+    amount: string;
+};
+
 type LeaseRow = {
     id: number;
     occupant_id: number;
@@ -134,6 +141,8 @@ type LeaseRow = {
     utility_breakdown: UtilityBreakdown | null;
     /** Free-form extras on this lease; present only on the server record. */
     additional_charges: LeaseExtra[];
+    /** Dated rent history; present only on the server record. */
+    rent_history: RentHistoryLine[];
 };
 
 type Props = {
@@ -162,6 +171,7 @@ export default function LeasesIndex({ leases, focusedLease }: Props) {
     const permissions = context?.permissions ?? [];
     const canEndLease = permissions.includes('lease.delete');
     const canRemind = permissions.includes('lease.manage');
+    const canAmendRent = permissions.includes('lease.manage');
     const aiEnabled = usePage().props.auth?.ai_enabled ?? false;
 
     const [selected, setSelected] = useState<number[]>([]);
@@ -296,6 +306,23 @@ export default function LeasesIndex({ leases, focusedLease }: Props) {
     function closeExtraSheets() {
         setDeleteExtra(null);
         setOverlayParam('extra', null, {
+            replace: true,
+            only: ['leases', 'focusedLease'],
+        });
+    }
+
+    // Dated rent amendments on the viewed lease: the sheet posts the new
+    // rate and its first day, history keeps every rate, and arrears price
+    // each period at the rate in effect. Same URL-addressed pattern, so
+    // Back closes the sheet.
+    const isAmendOpen = query.get('amend') === '1' && viewedLease !== null;
+
+    function openAmendRent() {
+        setOverlayParam('amend', '1');
+    }
+
+    function closeAmendSheet() {
+        setOverlayParam('amend', null, {
             replace: true,
             only: ['leases', 'focusedLease'],
         });
@@ -1261,6 +1288,17 @@ export default function LeasesIndex({ leases, focusedLease }: Props) {
                                     Remind
                                 </Button>
                             )}
+                            {canAmendRent && viewedLease.is_active && (
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={openAmendRent}
+                                >
+                                    <SquarePen className="size-4" />
+                                    Amend rent
+                                </Button>
+                            )}
                             {viewedLease.expiring_soon && aiEnabled && (
                                 <Button
                                     type="button"
@@ -1496,6 +1534,35 @@ export default function LeasesIndex({ leases, focusedLease }: Props) {
                         </div>
                     )}
 
+                    {viewedLease.rent_history.length > 1 && (
+                        <div className="mt-2">
+                            <h2 className="font-medium">Rent history</h2>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                                Earlier periods keep the rate that was in effect
+                                — only future dues move.
+                            </p>
+                            <dl className="mt-3 grid gap-x-6 gap-y-3 text-sm">
+                                {viewedLease.rent_history.map((row) => (
+                                    <div
+                                        key={row.id}
+                                        className="grid grid-cols-[8rem_1fr_auto] items-baseline gap-2"
+                                    >
+                                        <dt className="text-muted-foreground">
+                                            From {row.effective_date}
+                                        </dt>
+                                        <dd />
+                                        <dd className="text-right font-medium tabular-nums">
+                                            {formatMoney(
+                                                row.amount,
+                                                viewedLease.currency,
+                                            )}
+                                        </dd>
+                                    </div>
+                                ))}
+                            </dl>
+                        </div>
+                    )}
+
                     {viewedLease.utility_breakdown && (
                         <div className="mt-2">
                             <div className="flex items-center justify-between gap-2">
@@ -1683,6 +1750,83 @@ export default function LeasesIndex({ leases, focusedLease }: Props) {
                 />
             )}
 
+            {viewedLease && (
+                <ResponsiveOverlay
+                    open={isAmendOpen}
+                    onOpenChange={(open) => {
+                        if (!open) {
+                            closeAmendSheet();
+                        }
+                    }}
+                    title="Amend rent"
+                    description={`Change what ${viewedLease.occupant_name}'s lease charges from the date below. Earlier periods keep their rate.`}
+                    footer={
+                        <OverlayFooter
+                            onCancel={closeAmendSheet}
+                            actions={[
+                                {
+                                    label: 'Amend rent',
+                                    form: 'lease-amend-form',
+                                    type: 'submit',
+                                },
+                            ]}
+                        />
+                    }
+                >
+                    <Form
+                        key={`amend-${viewedLease.id}-${viewedLease.rent_history.length}`}
+                        id="lease-amend-form"
+                        {...amendLeaseRent.form({
+                            property: propertySlug,
+                            lease: viewedLease.id,
+                        })}
+                        options={{ preserveScroll: true }}
+                        onSuccess={() => closeAmendSheet()}
+                        className="grid gap-4 py-2"
+                    >
+                        {({ errors }) => (
+                            <>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="amend-effective-date">
+                                        Takes effect
+                                    </Label>
+                                    <Input
+                                        id="amend-effective-date"
+                                        name="effective_date"
+                                        type="date"
+                                        min={viewedLease.starts_at ?? undefined}
+                                        defaultValue={new Date()
+                                            .toISOString()
+                                            .slice(0, 10)}
+                                    />
+                                    <InputError
+                                        message={errors.effective_date}
+                                    />
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="amend-rent-amount">
+                                        New rent (
+                                        {viewedLease.currency ?? 'KES'})
+                                    </Label>
+                                    <Input
+                                        id="amend-rent-amount"
+                                        name="rent_amount"
+                                        type="number"
+                                        inputMode="decimal"
+                                        step="0.01"
+                                        min="0"
+                                        placeholder="20000.00"
+                                        defaultValue={
+                                            viewedLease.rent_amount ?? ''
+                                        }
+                                    />
+                                    <InputError message={errors.rent_amount} />
+                                </div>
+                            </>
+                        )}
+                    </Form>
+                </ResponsiveOverlay>
+            )}
             <Dialog
                 open={endTarget !== null}
                 onOpenChange={(open) => !open && closeLeaseDialog()}

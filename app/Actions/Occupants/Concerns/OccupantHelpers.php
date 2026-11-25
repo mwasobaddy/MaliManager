@@ -141,6 +141,16 @@ trait OccupantHelpers
 
         $lease->save();
 
+        // Seed the inception row so every billed period has exactly one
+        // rate, even before the first amendment. Rent-less bookings seed
+        // 0.00, matching what arrears charges them today.
+        $lease->rentChanges()->create([
+            'organization_id' => $property->organization_id,
+            'effective_date' => $lease->starts_at?->toDateString() ?? now()->toDateString(),
+            'rent_amount' => $lease->rent_amount ?? 0,
+            'created_by' => $actor->id,
+        ]);
+
         $this->refreshUnitStatus($unitId);
 
         return $lease;

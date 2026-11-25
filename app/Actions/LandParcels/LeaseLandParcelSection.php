@@ -55,6 +55,13 @@ class LeaseLandParcelSection extends Service
             ]);
             $this->save($lease);
 
+            $lease->rentChanges()->create([
+                'organization_id' => $organization->id,
+                'effective_date' => $lease->starts_at?->toDateString() ?? now()->toDateString(),
+                'rent_amount' => $lease->rent_amount ?? 0,
+                'created_by' => $actor->id,
+            ]);
+
             $agreement = $this->generateAgreement($organization, $lease, $data->templateId);
 
             if ($agreement !== null) {

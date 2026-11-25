@@ -222,6 +222,16 @@ class Lease extends Model implements HasMedia
     }
 
     /**
+     * The rent history: inception terms plus every dated amendment, oldest
+     * first. Arrears prices each period at the rate in effect on its due
+     * date; the lease's own columns always mirror the latest row.
+     */
+    public function rentChanges(): HasMany
+    {
+        return $this->hasMany(LeaseRentChange::class)->orderBy('effective_date');
+    }
+
+    /**
      * Free-form extras on this lease (parking, pets). Property-template
      * charges live on `UtilityCharge`; these live and die with the lease.
      */

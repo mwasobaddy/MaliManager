@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers\Tenant;
 
+use App\Actions\Leases\AmendLeaseRent;
 use App\Actions\Leases\ExportLeases;
 use App\Actions\Leases\SendBulkRentReminders;
 use App\Actions\Leases\SendRentReminder;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Tenant\AmendLeaseRentRequest;
 use App\Http\Requests\Tenant\EndLeaseRequest;
 use App\Http\Requests\Tenant\ExportLeasesRequest;
 use App\Http\Requests\Tenant\LeaseIndexRequest;
@@ -14,11 +16,13 @@ use App\Http\Requests\Tenant\RemindLeaseRequest;
 use App\Http\Requests\Tenant\RenewalSuggestionRequest;
 use App\Models\Lease;
 use App\Models\LeaseAdditionalCharge;
+use App\Models\LeaseRentChange;
 use App\Models\Property;
 use App\Services\AiRenewalService;
 use App\Services\OccupantService;
 use App\Services\RentArrearsService;
 use App\Services\StaffService;
+use App\Support\TenancyContext;
 use App\Support\UtilityBilling;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -91,6 +95,25 @@ class LeaseController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Lease ended.']);
 
         return redirect()->route('tenant.leases.index', $property);
+    }
+
+    /**
+     * Change the rent from a date. History keeps every rate, so earlier
+     * periods stay priced at their own rent — only future dues move.
+     * Throttle and balance errors surface as toasts, same as reminders.
+     */
+    public function amendRent(AmendLeaseRentRequest $request, Property $property, Lease $lease, AmendLeaseRent $amend): RedirectResponse
+    {
+        $this->authorizePropertyAccess($request, $property);
+
+        abort_if($lease->property_id !== $property->id, 403);
+        abort_if(! $lease->isActive(), 422, 'Only an active lease can have its rent amended.');
+
+        $amend->handle($request->user(), TenancyContext::organization()->refresh(), $lease, $request->validated());
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Rent amended.']);
+
+        return back();
     }
 
     /**
@@ -173,6 +196,7 @@ class LeaseController extends Controller
             'starts_at' => $lease->starts_at?->toDateString(),
             'ends_at' => $lease->ends_at?->toDateString(),
             'status' => $lease->status,
+            'is_active' => $lease->isActive(),
             'property_name' => $lease->property?->name,
             'expiring_soon' => $lease->status === 'active'
                 && $lease->ends_at !== null
@@ -188,6 +212,7 @@ class LeaseController extends Controller
             'utilities_total' => $utility['total'],
             'utility_breakdown' => null,
             'additional_charges' => [],
+            'rent_history' => [],
         ];
     }
 
@@ -233,6 +258,16 @@ class LeaseController extends Controller
             ])
             ->all();
 
+        $rentHistory = $lease->rentChanges()
+            ->orderBy('effective_date')
+            ->get(['id', 'effective_date', 'rent_amount'])
+            ->map(fn (LeaseRentChange $change): array => [
+                'id' => $change->id,
+                'effective_date' => $change->effective_date->toDateString(),
+                'amount' => $change->rent_amount,
+            ])
+            ->all();
+
         return [
             ...$this->presentLease(
                 $lease,
@@ -248,6 +283,7 @@ class LeaseController extends Controller
             ),
             'utility_breakdown' => $breakdown,
             'additional_charges' => $extras,
+            'rent_history' => $rentHistory,
         ];
     }
 

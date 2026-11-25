@@ -260,6 +260,16 @@ export default function OccupantFormFields({
     // change. Editing an occupant never reaches here, because existing
     // leases keep their own terms.
     const hasLeaseDefaults = defaults.lease != null;
+    // Assigning a fresh unit unlocks the section below: the terms then
+    // draft that unit's booking, while the booked lease stays untouched.
+    const addingUnits = unitIds.some(
+        (id) => !(defaults.unit_ids ?? []).includes(id),
+    );
+    // A present lease owns its terms: the update path only creates leases
+    // for newly assigned units, so edited money below would be silently
+    // discarded. Locked inputs show the agreed terms for context; the rent
+    // itself moves through a dated amendment on the lease record.
+    const termsLocked = hasLeaseDefaults && !addingUnits;
     useEffect(() => {
         if (hasLeaseDefaults || unitIds.length !== 1) {
             return;
@@ -464,6 +474,13 @@ export default function OccupantFormFields({
                     title="Lease details"
                     description={leaseSectionHint}
                 />
+                {termsLocked && (
+                    <p className="text-xs text-muted-foreground">
+                        These terms were fixed when the lease was booked and are
+                        shown for context — saving leaves them untouched. Amend
+                        the rent from the lease record.
+                    </p>
+                )}
                 <div className="grid gap-6 md:grid-cols-2">
                     <div className="grid gap-2">
                         <Label htmlFor={`${idPrefix}-lease-starts_at`}>
@@ -474,6 +491,7 @@ export default function OccupantFormFields({
                             name="lease[starts_at]"
                             type="date"
                             defaultValue={lease.starts_at ?? ''}
+                            disabled={termsLocked}
                         />
                         <InputError message={errors['lease.starts_at']} />
                     </div>
@@ -487,6 +505,7 @@ export default function OccupantFormFields({
                             name="lease[rent_frequency]"
                             value={rentFrequency}
                             onValueChange={setRentFrequency}
+                            disabled={termsLocked}
                         />
                         <InputError message={errors['lease.rent_frequency']} />
                     </div>
@@ -506,6 +525,7 @@ export default function OccupantFormFields({
                             onChange={(event) =>
                                 setRentAmount(event.target.value)
                             }
+                            disabled={termsLocked}
                         />
                         <p className="text-xs text-muted-foreground">
                             Prefilled from the unit — per{' '}
@@ -516,7 +536,7 @@ export default function OccupantFormFields({
                                   : rentFrequency === 'yearly'
                                     ? 'year'
                                     : 'month'}
-                            . Editable.
+                            . {termsLocked ? 'Locked.' : 'Editable.'}
                         </p>
                         <InputError message={errors['lease.rent_amount']} />
                     </div>
@@ -544,6 +564,7 @@ export default function OccupantFormFields({
                             <Select
                                 value={rentDueWeekday}
                                 onValueChange={setRentDueWeekday}
+                                disabled={termsLocked}
                             >
                                 <SelectTrigger
                                     id={`${idPrefix}-lease-rent_due_weekday`}
@@ -586,6 +607,7 @@ export default function OccupantFormFields({
                                 <Select
                                     value={rentDueMonth}
                                     onValueChange={setRentDueMonth}
+                                    disabled={termsLocked}
                                 >
                                     <SelectTrigger
                                         id={`${idPrefix}-lease-rent_due_month`}
@@ -622,6 +644,7 @@ export default function OccupantFormFields({
                                     max="31"
                                     placeholder="5"
                                     value={rentDueDay}
+                                    disabled={termsLocked}
                                     onChange={(event) => {
                                         setRentDueDay(event.target.value);
                                         setFieldError(
@@ -663,6 +686,7 @@ export default function OccupantFormFields({
                                 max="31"
                                 placeholder="5"
                                 value={rentDueDay}
+                                disabled={termsLocked}
                                 onChange={(event) => {
                                     setRentDueDay(event.target.value);
                                     setFieldError('lease.rent_due_day', null);
@@ -702,6 +726,7 @@ export default function OccupantFormFields({
                             step="0.01"
                             placeholder="25000"
                             defaultValue={lease.deposit ?? ''}
+                            disabled={termsLocked}
                         />
                         <InputError message={errors['lease.deposit']} />
                     </div>
@@ -715,7 +740,11 @@ export default function OccupantFormFields({
                             name="lease[currency]"
                             value={currency}
                         />
-                        <Select value={currency} onValueChange={setCurrency}>
+                        <Select
+                            value={currency}
+                            onValueChange={setCurrency}
+                            disabled={termsLocked}
+                        >
                             <SelectTrigger
                                 id={`${idPrefix}-lease-currency`}
                                 className="w-full"
