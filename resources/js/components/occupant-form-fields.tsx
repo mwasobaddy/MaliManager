@@ -1,11 +1,11 @@
 import { Check, Plus, Search, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Button } from '@/components/ui/button';
 import DocumentBuilder from '@/components/document-builder';
 import { FrequencySelect } from '@/components/frequency-select';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import type { TemplateToken } from '@/components/rich-text-editor';
+import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -142,6 +142,50 @@ export default function OccupantFormFields({
     const [gender, setGender] = useState(defaults.gender ?? 'unspecified');
     const [unitQuery, setUnitQuery] = useState('');
     const [unitPickerOpen, setUnitPickerOpen] = useState(false);
+    const firstFieldRef = useRef<HTMLInputElement | null>(null);
+
+    useEffect(() => {
+        // The agreement editor focuses itself when it mounts (TipTap applies
+        // the initial content through selection updates, which focus an
+        // unfocused view) — and it mounts lazily, after this effect runs,
+        // stealing focus twice in quick succession. Redirect each programmatic
+        // steal back to the first field. A focus that immediately follows a
+        // pointer/keyboard gesture is the user choosing the editor, so those
+        // are left alone. Time-boxed to the open transition.
+        firstFieldRef.current?.focus();
+
+        let lastGesture = 0;
+        const markGesture = () => {
+            lastGesture = Date.now();
+        };
+        const redirectSteal = (event: FocusEvent) => {
+            if (Date.now() - lastGesture < 350) {
+                return;
+            }
+
+            const target = event.target as HTMLElement | null;
+
+            if (target?.closest?.('.ProseMirror')) {
+                firstFieldRef.current?.focus();
+            }
+        };
+
+        document.addEventListener('pointerdown', markGesture);
+        document.addEventListener('keydown', markGesture);
+        document.addEventListener('focusin', redirectSteal);
+        const timer = window.setTimeout(() => {
+            document.removeEventListener('pointerdown', markGesture);
+            document.removeEventListener('keydown', markGesture);
+            document.removeEventListener('focusin', redirectSteal);
+        }, 2000);
+
+        return () => {
+            document.removeEventListener('pointerdown', markGesture);
+            document.removeEventListener('keydown', markGesture);
+            document.removeEventListener('focusin', redirectSteal);
+            window.clearTimeout(timer);
+        };
+    }, []);
 
     const matchingUnits = useMemo(() => {
         const needle = unitQuery.trim().toLowerCase();
@@ -311,6 +355,7 @@ export default function OccupantFormFields({
             return;
         }
 
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setRentFrequency(picked.rent_frequency ?? 'monthly');
 
         if (picked.rent_amount != null) {
@@ -350,13 +395,25 @@ export default function OccupantFormFields({
                         required
                         autoComplete="off"
                         placeholder="Jane"
+                        ref={firstFieldRef}
                         defaultValue={defaults.first_name ?? ''}
-                        onBlur={(event) =>
+                        onBlur={(event) => {
+                            // The agreement editor steals focus on mount (see
+                            // the effect above); that programmatic blur is not
+                            // the user leaving the field, so don't flag it.
+                            if (
+                                (
+                                    event.relatedTarget as HTMLElement | null
+                                )?.closest?.('.ProseMirror')
+                            ) {
+                                return;
+                            }
+
                             setFieldError(
                                 'first_name',
                                 validateField('first_name', event.target.value),
-                            )
-                        }
+                            );
+                        }}
                         onChange={() => setFieldError('first_name', null)}
                     />
                     <InputError

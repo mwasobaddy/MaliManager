@@ -12,7 +12,6 @@ import {
     Upload,
     Users,
     Plus,
-    Zap,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActionIconButton } from '@/components/action-icon-button';
@@ -508,6 +507,29 @@ export default function OccupantsIndex({
         }
     }
 
+    /** Remembers which occupant form this person prefers, so the mode
+     * default only decides the first visit and the human decides after
+     * that. Missing or unreadable storage behaves like no preference. */
+    const FORM_PREF_KEY = 'occupant.form.default';
+
+    function readFormPref(): 'quick' | 'full' | null {
+        try {
+            const raw = localStorage.getItem(FORM_PREF_KEY);
+
+            return raw === 'quick' || raw === 'full' ? raw : null;
+        } catch {
+            return null;
+        }
+    }
+
+    function writeFormPref(value: 'quick' | 'full') {
+        try {
+            localStorage.setItem(FORM_PREF_KEY, value);
+        } catch {
+            // Private browsing etc: the preference just does not stick.
+        }
+    }
+
     function openCreate() {
         ensureFormOptions();
         setOverlayParam('create', '1', {
@@ -520,6 +542,51 @@ export default function OccupantsIndex({
         // full form's option list is untouched.
         setOverlayParam('quick', '1', {
             only: ['occupants', 'units'],
+        });
+    }
+
+    /**
+     * One entry point for adding an occupant. The organization's mode picks
+     * the starting sheet — quick for simple orgs, full for pro ones — but
+     * an explicit switch (either direction) becomes this person's default.
+     */
+    function openAddOccupant() {
+        const preference = readFormPref();
+
+        if (preference === 'full') {
+            openCreate();
+
+            return;
+        }
+
+        if (preference === 'quick') {
+            openQuickAdd();
+
+            return;
+        }
+
+        if (context?.organization?.mode === 'pro') {
+            openCreate();
+        } else {
+            openQuickAdd();
+        }
+    }
+
+    function switchToQuickAdd() {
+        writeFormPref('quick');
+        setOverlayParam('quick', '1', {
+            replace: true,
+            only: ['occupants', 'units'],
+            keep: { create: '' },
+        });
+    }
+
+    function switchToFullForm() {
+        writeFormPref('full');
+        setOverlayParam('create', '1', {
+            replace: true,
+            only: ['occupants', 'units', 'templates', 'availableTokens'],
+            keep: { quick: '' },
         });
     }
 
@@ -728,31 +795,14 @@ export default function OccupantsIndex({
                         description="The people renting units in this property."
                     />
                     {canCreate && (
-                        <>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={openQuickAdd}
-                                className="ml-auto"
-                            >
-                                <Zap className="size-4" />
-                                Quick add
-                            </Button>
-                            <ActionIconButton
-                                icon={<Upload />}
-                                label="Import occupants"
-                                color="teal"
-                                onClick={() => setOverlayParam('import', '1')}
-                            />
-                            <LabelledIconButton
-                                icon={<Plus />}
-                                label="Add occupant"
-                                tooltip="Add an occupant to this property"
-                                color="primary"
-                                onClick={openCreate}
-                                className="max-w-20 sm:max-w-24"
-                            />
-                        </>
+                        <LabelledIconButton
+                            icon={<Plus />}
+                            label="Add occupant"
+                            tooltip="Add an occupant to this property"
+                            color="primary"
+                            onClick={openAddOccupant}
+                            className="ml-auto max-w-20 sm:max-w-24"
+                        />
                     )}
                 </div>
 
@@ -784,6 +834,15 @@ export default function OccupantsIndex({
                                     : setOverlayParam('filters', '1')
                             }
                         />
+                        {canCreate && (
+                            <ActionIconButton
+                                icon={<Upload />}
+                                label="Import occupants"
+                                color="teal"
+                                className="coarse:min-h-9 coarse:min-w-9"
+                                onClick={() => setOverlayParam('import', '1')}
+                            />
+                        )}
                     </div>
 
                     <BulkDeleteBar
@@ -834,7 +893,7 @@ export default function OccupantsIndex({
                                             <Button
                                                 type="button"
                                                 className="mt-6"
-                                                onClick={openCreate}
+                                                onClick={openAddOccupant}
                                             >
                                                 Add your first occupant
                                             </Button>
@@ -1236,6 +1295,13 @@ export default function OccupantsIndex({
                         />
                     }
                 >
+                    <button
+                        type="button"
+                        onClick={switchToFullForm}
+                        className="mb-4 text-sm text-accent-text underline underline-offset-4 hover:text-accent-text-hover"
+                    >
+                        Need the full form? Agreements, extras, templates.
+                    </button>
                     {units === undefined ? (
                         <div className="flex justify-center py-8">
                             <Spinner />
@@ -1303,6 +1369,13 @@ export default function OccupantsIndex({
                         />
                     }
                 >
+                    <button
+                        type="button"
+                        onClick={switchToQuickAdd}
+                        className="mb-4 text-sm text-accent-text underline underline-offset-4 hover:text-accent-text-hover"
+                    >
+                        Just the basics? Name, phone, unit, rent.
+                    </button>
                     {units === undefined ||
                     templates === undefined ||
                     availableTokens === undefined ? (
