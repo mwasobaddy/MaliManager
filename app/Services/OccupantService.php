@@ -90,9 +90,11 @@ class OccupantService extends Service
     /**
      * Terminate a single lease early: stamp the end date, mark it ended,
      * and strip the occupant platform role if no active leases remain.
+     * The actor is threaded through so ending the lease can start the
+     * deposit refund in the same breath.
      */
-    public function terminateLease(Lease $lease): void
+    public function terminateLease(Lease $lease, ?User $actor = null): void
     {
-        app(TerminateLeaseOccupant::class)->handle($lease);
+        app(TerminateLeaseOccupant::class)->handle($lease, $actor);
     }
 }

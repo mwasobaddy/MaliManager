@@ -14,10 +14,9 @@ use App\Support\TenancyContext;
 use Illuminate\Auth\Access\HandlesAuthorization;
 
 /**
- * Refunds are money leaving the organization, so requesting, deciding and
+ * Refunds are money leaving the organization, so requesting, reviewing,
  * marking paid are separate permissions: any staff member with
- * `lease.manage` can raise one, but only an owner or a `deposit.manage`
- * holder can approve it or record the payout.
+ * `lease.manage` can raise one, a `deposit.review` holder signs off the inspection, and only an owner or a `deposit.manage` holder can decide the payout or record it.
  */
 class DepositRefundPolicy
 {
@@ -53,11 +52,33 @@ class DepositRefundPolicy
         return $this->canMoveMoney($user, $refund);
     }
 
+    /** Approve or send back inspected deductions. Own key: a reviewer signs
+     * off someone else's numbers but never moves money, so the landlord can
+     * hand review to a manager without handing them the payout. */
+    public function review(User $user, DepositRefund $refund): bool
+    {
+        return $this->canReview($user, $refund);
+    }
+
     /** Mark an approved refund paid. Same gate as deciding: the payer is
      * accountable for the money leaving. */
     public function pay(User $user, DepositRefund $refund): bool
     {
         return $this->canMoveMoney($user, $refund);
+    }
+
+    private function canReview(User $user, DepositRefund $refund): bool
+    {
+        $organization = $this->findOrganization($refund);
+
+        if (! $organization) {
+            return $user->hasRole(PlatformRole::Admin->value);
+        }
+
+        return $user->hasRole(PlatformRole::Admin->value)
+            || $user->isOwnerOf($organization)
+            || ($user->hasSubPermission($organization, SubPermissionKey::DepositReview)
+                && $this->delegatedToRefund($user, $refund));
     }
 
     private function canMoveMoney(User $user, DepositRefund $refund): bool

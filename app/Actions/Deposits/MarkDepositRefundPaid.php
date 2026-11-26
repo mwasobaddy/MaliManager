@@ -8,6 +8,7 @@ use App\Data\Deposits\MarkDepositRefundPaidData;
 use App\Enums\DepositRefundStatus;
 use App\Models\DepositRefund;
 use App\Models\User;
+use App\Services\NotificationService;
 use App\Services\Service;
 
 /**
@@ -17,6 +18,8 @@ use App\Services\Service;
  */
 class MarkDepositRefundPaid extends Service
 {
+    public function __construct(private NotificationService $notifications) {}
+
     public function handle(DepositRefund $refund, User $payer, MarkDepositRefundPaidData $data): DepositRefund
     {
         abort_unless($refund->status === DepositRefundStatus::Approved, 422, 'Only an approved refund can be marked paid.');
@@ -29,6 +32,13 @@ class MarkDepositRefundPaid extends Service
                 'paid_reference' => $data->reference,
             ]);
             $this->save($refund);
+
+            $this->notifications->notifyTenantForRefund(
+                $refund,
+                "Deposit refund paid ({$refund->currency} {$refund->amount()})",
+                "Your deposit refund of {$refund->currency} {$refund->amount()} has been paid."
+                .($data->reference !== null ? " Reference: {$data->reference}." : ''),
+            );
 
             return $refund->refresh();
         });

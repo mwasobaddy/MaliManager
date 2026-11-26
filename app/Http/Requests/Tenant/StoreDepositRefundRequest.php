@@ -96,7 +96,7 @@ class StoreDepositRefundRequest extends FormRequest
 
                 $hasOpenRefund = DepositRefund::query()
                     ->where('lease_id', $lease->id)
-                    ->pending()
+                    ->open()
                     ->exists();
 
                 if ($hasOpenRefund) {

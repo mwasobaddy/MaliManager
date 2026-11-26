@@ -8,7 +8,9 @@ use App\Data\MoveOut\SubmitMoveOutNoticeData;
 use App\Enums\MoveOutNoticeStatus;
 use App\Models\Lease;
 use App\Models\MoveOutNotice;
+use App\Models\Organization;
 use App\Models\User;
+use App\Services\NotificationService;
 use App\Services\Service;
 
 /**
@@ -18,6 +20,8 @@ use App\Services\Service;
  */
 class SubmitMoveOutNotice extends Service
 {
+    public function __construct(private NotificationService $notifications) {}
+
     public function handle(User $actor, Lease $lease, SubmitMoveOutNoticeData $data): MoveOutNotice
     {
         abort_unless($lease->organization_id === $data->organizationId, 404);
@@ -42,7 +46,22 @@ class SubmitMoveOutNotice extends Service
                 'note' => $data->note,
             ]);
 
-            return $this->save($notice);
+            $this->save($notice);
+
+            $organization = Organization::find($data->organizationId);
+
+            if ($organization !== null) {
+                $unit = $lease->unit?->name ?? "unit #{$lease->unit_id}";
+                $property = $lease->property?->name ?? 'the property';
+
+                $this->notifications->notifyOwners(
+                    $organization,
+                    "Move-out notice for {$unit}",
+                    "{$actor->name} gave notice to vacate {$unit} ({$property}) on {$notice->move_out_date->toDateString()}.",
+                );
+            }
+
+            return $notice->refresh();
         });
     }
 }

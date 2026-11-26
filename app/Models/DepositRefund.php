@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
@@ -39,6 +40,9 @@ class DepositRefund extends Model
         'paid_by',
         'paid_at',
         'paid_reference',
+        'reviewed_by',
+        'reviewed_at',
+        'review_note',
     ];
 
     /**
@@ -51,12 +55,23 @@ class DepositRefund extends Model
             'amount_cents' => 'integer',
             'decided_at' => 'datetime',
             'paid_at' => 'datetime',
+            'reviewed_at' => 'datetime',
         ];
     }
 
     public function payer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'paid_by');
+    }
+
+    public function reviewer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
+    }
+
+    public function deductions(): HasMany
+    {
+        return $this->hasMany(DepositDeduction::class, 'refund_id');
     }
 
     public function lease(): BelongsTo
@@ -82,6 +97,21 @@ class DepositRefund extends Model
     public function scopePending(Builder $query): Builder
     {
         return $query->where('status', DepositRefundStatus::Pending->value);
+    }
+
+    /**
+     * Refunds with money still in play: pending, under inspection or
+     * review, or approved but not yet paid. Rejected and paid refunds
+     * are closed and never block a fresh request.
+     */
+    public function scopeOpen(Builder $query): Builder
+    {
+        return $query->whereIn('status', [
+            DepositRefundStatus::Pending->value,
+            DepositRefundStatus::AwaitingInspection->value,
+            DepositRefundStatus::InReview->value,
+            DepositRefundStatus::Approved->value,
+        ]);
     }
 
     /** Money out, formatted for display. */

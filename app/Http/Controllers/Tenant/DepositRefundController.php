@@ -5,14 +5,24 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Tenant;
 
 use App\Actions\Deposits\DecideDepositRefund;
+use App\Actions\Deposits\DeleteDepositDeduction;
 use App\Actions\Deposits\MarkDepositRefundPaid;
 use App\Actions\Deposits\RequestDepositRefund;
+use App\Actions\Deposits\ReviewDepositDeductions;
+use App\Actions\Deposits\StoreDepositDeduction;
+use App\Actions\Deposits\SubmitDepositRefundForReview;
+use App\Enums\DepositRefundStatus;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Tenant\ApproveDepositDeductionsRequest;
 use App\Http\Requests\Tenant\DepositRefundIndexRequest;
+use App\Http\Requests\Tenant\DestroyDepositDeductionRequest;
 use App\Http\Requests\Tenant\MarkDepositRefundPaidRequest;
+use App\Http\Requests\Tenant\ReviewDepositRefundRequest;
+use App\Http\Requests\Tenant\StoreDepositDeductionRequest;
 use App\Http\Requests\Tenant\StoreDepositRefundRequest;
 use App\Http\Requests\Tenant\UpdateDepositRefundRequest;
 use App\Http\Resources\Deposits\DepositRefundResource;
+use App\Models\DepositDeduction;
 use App\Models\DepositRefund;
 use App\Models\Lease;
 use App\Services\StaffService;
@@ -68,6 +78,8 @@ class DepositRefundController extends Controller
                 'requester:id,name',
                 'decider:id,name',
                 'payer:id,name',
+                'reviewer:id,name',
+                'deductions',
             ])
             ->when(
                 $sort === 'amount',
@@ -81,7 +93,7 @@ class DepositRefundController extends Controller
         return Inertia::render('organisation/deposit-refunds/index', [
             'refunds' => $refunds,
             'focusedRefund' => $request->string('mode')->toString() === 'view'
-                ? $this->focusedRefund($request->integer('refund'), $organizationId)
+                ? $this->focusedRefund($organizationId, $request->integer('refund'))
                 : null,
             'leases' => $this->leases($request, $organizationId),
             'filters' => ['status' => $status, 'search' => $search],
@@ -112,6 +124,8 @@ class DepositRefundController extends Controller
                 'requester:id,name',
                 'decider:id,name',
                 'payer:id,name',
+                'reviewer:id,name',
+                'deductions',
             ])
             ->first();
 
@@ -158,6 +172,54 @@ class DepositRefundController extends Controller
         return InertiaRedirect::to(route('tenant.deposit-refunds.index'), $request);
     }
 
+    public function storeDeduction(StoreDepositDeductionRequest $request, DepositRefund $refund, StoreDepositDeduction $store): RedirectResponse
+    {
+        $deduction = $store->handle($refund, $request->user(), $request->validated(), $request->file('photos', []));
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => "Deduction '{$deduction->description}' added.",
+        ]);
+
+        return back();
+    }
+
+    public function destroyDeduction(DestroyDepositDeductionRequest $request, DepositRefund $refund, DepositDeduction $deduction, DeleteDepositDeduction $delete): RedirectResponse
+    {
+        $delete->handle($refund, $deduction, $request->user());
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => 'Deduction removed.',
+        ]);
+
+        return back();
+    }
+
+    public function submit(ReviewDepositRefundRequest $request, DepositRefund $refund, SubmitDepositRefundForReview $submit): RedirectResponse
+    {
+        $submit->handle($refund, $request->user());
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => 'Refund submitted for review.',
+        ]);
+
+        return back();
+    }
+
+    public function review(ApproveDepositDeductionsRequest $request, DepositRefund $refund, ReviewDepositDeductions $review): RedirectResponse
+    {
+        $review->handle($refund, $request->user(), $request->toData());
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => $request->input('decision') === 'approve' ? 'Deductions approved.' : 'Deductions sent back for re-inspection.',
+        ]);
+
+        return back();
+    }
+
     /**
      * @return array<int, array{value: int, label: string, deposit: float}>
      */
@@ -171,7 +233,28 @@ class DepositRefundController extends Controller
 
         return Lease::query()
             ->where('organization_id', $organizationId)
-            ->where('status', 'active')
+            ->where(function ($query) {
+                // Active tenancies plus ended ones still holding a deposit
+                // with no refund in flight: the dashboard flag and the
+                // lease sheet both point here, so an ended lease must be
+                // requestable instead of a dead end.
+                $query->where('status', 'active')
+                    ->orWhere(function ($query) {
+                        $query->where('status', 'ended')
+                            ->where('deposit', '>', 0)
+                            ->whereNotExists(function ($query) {
+                                $query->selectRaw('1')
+                                    ->from('deposit_refunds')
+                                    ->whereColumn('deposit_refunds.lease_id', 'leases.id')
+                                    ->whereIn('deposit_refunds.status', [
+                                        DepositRefundStatus::Pending->value,
+                                        DepositRefundStatus::AwaitingInspection->value,
+                                        DepositRefundStatus::InReview->value,
+                                        DepositRefundStatus::Approved->value,
+                                    ]);
+                            });
+                    });
+            })
             ->when(
                 $delegatedIds !== null,
                 fn ($query) => $query->whereIn('property_id', $delegatedIds),

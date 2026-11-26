@@ -3,7 +3,11 @@
 namespace App\Services;
 
 use App\Mail\BillingReminderMail;
+use App\Mail\OperationalNoticeMail;
 use App\Mail\RentReminderMail;
+use App\Models\DepositRefund;
+use App\Models\Lease;
+use App\Models\Organization;
 use App\Models\User;
 use Illuminate\Support\Facades\Mail;
 
@@ -79,5 +83,127 @@ class NotificationService extends Service
         }
 
         return true;
+    }
+
+    /**
+     * One operational status update (move-out and deposit traffic) to a
+     * single recipient, routed by their channel preference like every
+     * other notifier here. Never throws: a failed notification must not
+     * roll back the business write that triggered it.
+     */
+    public function sendOperationalNotice(User $recipient, string $subject, string $body, ?string $url = null): bool
+    {
+        try {
+            if ($recipient->prefersSms() && $recipient->phone) {
+                $result = $this->sms->send($recipient->phone, $body);
+
+                if ($this->sms->succeeded($result)) {
+                    return true;
+                }
+
+                logger()->warning('Operational SMS failed, falling back to email.', [
+                    'user_id' => $recipient->id,
+                    'subject' => $subject,
+                ]);
+            }
+
+            Mail::to($recipient->email)->send(new OperationalNoticeMail($subject, $body, $url));
+
+            return true;
+        } catch (\Throwable $exception) {
+            logger()->warning('Operational notice failed.', [
+                'user_id' => $recipient->id,
+                'subject' => $subject,
+                'error' => $exception->getMessage(),
+            ]);
+
+            return false;
+        }
+    }
+
+    /**
+     * Fan-out to every owner of the organization. Owners always exist,
+     * unlike delegated staff, so operational news has a guaranteed
+     * audience. Best effort per recipient: one bad address never
+     * silences the rest.
+     */
+    public function notifyOwners(Organization $organization, string $subject, string $body, ?string $url = null): void
+    {
+        $owners = $organization->users()
+            ->wherePivot('is_owner', true)
+            ->wherePivot('status', 'active')
+            ->get();
+
+        foreach ($owners as $owner) {
+            $this->sendOperationalNotice($owner, $subject, $body, $url);
+        }
+    }
+
+    /**
+     * Reach the tenant behind a refund: their account when they have one,
+     * otherwise their person record's email or phone, mirroring the rent
+     * reminder fallback. Someone without any contact simply cannot be
+     * reached, which the caller treats as delivered-nowhere, not an error.
+     */
+    public function notifyTenantForRefund(DepositRefund $refund, string $subject, string $body, ?string $url = null): bool
+    {
+        $refund->loadMissing(['lease.person', 'requester']);
+
+        if ($refund->requester instanceof User) {
+            return $this->sendOperationalNotice($refund->requester, $subject, $body, $url);
+        }
+
+        $person = $refund->lease?->person;
+
+        $account = $person !== null
+            ? User::query()->where('person_id', $person->id)->first()
+            : null;
+
+        if ($account !== null) {
+            return $this->sendOperationalNotice($account, $subject, $body, $url);
+        }
+
+        try {
+            if ($person?->email) {
+                Mail::to($person->email)->send(new OperationalNoticeMail($subject, $body, $url));
+
+                return true;
+            }
+
+            if ($person?->phone) {
+                return $this->sendSmsTo($person->phone, $body);
+            }
+        } catch (\Throwable $exception) {
+            logger()->warning('Operational notice to tenant failed.', [
+                'lease_id' => $refund->lease_id,
+                'subject' => $subject,
+                'error' => $exception->getMessage(),
+            ]);
+
+            return false;
+        }
+
+        return false;
+    }
+
+    /**
+     * Reach the tenant behind a lease, for move-out traffic where the
+     * notice itself names the requester. Same account-first, contact-
+     * fallback order as refunds.
+     */
+    public function notifyTenantForLease(Lease $lease, ?User $knownUser, string $subject, string $body, ?string $url = null): bool
+    {
+        $lease->loadMissing('person');
+
+        $account = $knownUser
+            ?? ($lease->person !== null
+                ? User::query()->where('person_id', $lease->person->id)->first()
+                : null);
+
+        if ($account instanceof User) {
+            return $this->sendOperationalNotice($account, $subject, $body, $url);
+        }
+
+        return false;
     }
 }

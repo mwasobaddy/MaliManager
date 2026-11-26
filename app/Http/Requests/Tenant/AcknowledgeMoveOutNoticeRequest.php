@@ -25,7 +25,13 @@ class AcknowledgeMoveOutNoticeRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [];
+        return [
+            // Optional confirmed move-out day: the landlord and tenant may
+            // agree a different day than the notice first named. Unlike the
+            // tenant's own 30-day notice, an agreed day only needs to not be
+            // in the past.
+            'move_out_date' => ['nullable', 'date', 'after_or_equal:today'],
+        ];
     }
 
     /**

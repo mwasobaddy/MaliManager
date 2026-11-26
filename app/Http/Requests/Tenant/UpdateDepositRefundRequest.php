@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\Tenant;
 
 use App\Data\Deposits\DecideDepositRefundData;
+use App\Enums\DepositRefundStatus;
 use App\Models\DepositRefund;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -43,10 +44,15 @@ class UpdateDepositRefundRequest extends FormRequest
                 /** @var DepositRefund|null $refund */
                 $refund = $this->route('refund');
 
-                if ($refund !== null && $refund->status->isDecided()) {
+                if ($refund !== null && $refund->status === DepositRefundStatus::Paid) {
                     $validator->errors()->add(
                         'decision',
-                        'This refund has already been '.$refund->status->value.'.',
+                        'This refund has already been paid.',
+                    );
+                } elseif ($refund !== null && $refund->status !== DepositRefundStatus::Pending) {
+                    $validator->errors()->add(
+                        'decision',
+                        'Only a pending refund can be decided. Inspections and reviews finish first.',
                     );
                 }
             },

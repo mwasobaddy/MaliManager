@@ -115,6 +115,19 @@ Route::middleware([
                 ->name('tenant.deposit-refunds.index');
             Route::post('/deposit-refunds', [DepositRefundController::class, 'store'])
                 ->name('tenant.deposit-refunds.store');
+
+            // Inspecting a refund: photo-backed damage line items and the
+            // submit that sends them for review. Still the inspector's job,
+            // so it stays on the request-side permission.
+            Route::post('/deposit-refunds/{refund}/deductions', [DepositRefundController::class, 'storeDeduction'])
+                ->whereNumber('refund')
+                ->name('tenant.deposit-refunds.deductions.store');
+            Route::delete('/deposit-refunds/{refund}/deductions/{deduction}', [DepositRefundController::class, 'destroyDeduction'])
+                ->whereNumber(['refund', 'deduction'])
+                ->name('tenant.deposit-refunds.deductions.destroy');
+            Route::post('/deposit-refunds/{refund}/submit', [DepositRefundController::class, 'submit'])
+                ->whereNumber('refund')
+                ->name('tenant.deposit-refunds.submit');
         });
 
         Route::patch('/deposit-refunds/{refund}', [DepositRefundController::class, 'update'])
@@ -123,6 +136,9 @@ Route::middleware([
         Route::post('/deposit-refunds/{refund}/pay', [DepositRefundController::class, 'pay'])
             ->middleware('sub-permission:deposit.manage')
             ->name('tenant.deposit-refunds.pay');
+        Route::post('/deposit-refunds/{refund}/review', [DepositRefundController::class, 'review'])
+            ->middleware('sub-permission:deposit.review')
+            ->name('tenant.deposit-refunds.review');
         Route::get('/properties', [PropertyController::class, 'index'])
             ->middleware('sub-permission:property.manage')
             ->name('tenant.properties.index');

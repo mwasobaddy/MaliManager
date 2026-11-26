@@ -95,7 +95,7 @@ class LeaseController extends Controller
         abort_if($lease->property_id !== $property->id, 403);
         abort_if(! $lease->isActive(), 422, 'This lease has already ended.');
 
-        $occupantService->terminateLease($lease);
+        $occupantService->terminateLease($lease, $request->user());
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Lease ended.']);
 
@@ -302,7 +302,7 @@ class LeaseController extends Controller
         if ($lease->status === 'ended' && (float) ($lease->deposit ?? 0) > 0) {
             $refundState = DepositRefund::query()
                 ->where('lease_id', $lease->id)
-                ->whereIn('status', ['pending', 'approved', 'paid'])
+                ->open()
                 ->exists() ? 'open' : 'missing';
         }
 

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\DepositRefundStatus;
 use App\Enums\MoveOutNoticeStatus;
 use App\Models\Expense;
 use App\Models\Lease;
@@ -390,7 +391,12 @@ class OrganizationDashboardService extends Service
                 $query->selectRaw('1')
                     ->from('deposit_refunds')
                     ->whereColumn('deposit_refunds.lease_id', 'leases.id')
-                    ->whereIn('deposit_refunds.status', ['pending', 'approved', 'paid']);
+                    ->whereIn('deposit_refunds.status', [
+                        DepositRefundStatus::Pending->value,
+                        DepositRefundStatus::AwaitingInspection->value,
+                        DepositRefundStatus::InReview->value,
+                        DepositRefundStatus::Approved->value,
+                    ]);
             })
             ->count();
 
