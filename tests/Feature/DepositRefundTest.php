@@ -1,8 +1,10 @@
 <?php
 
+use App\Mail\OperationalNoticeMail;
 use App\Models\Delegation;
 use App\Models\DepositRefund;
 use App\Models\Lease;
+use App\Models\MoveOutNotice;
 use App\Models\Occupant;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
@@ -17,6 +19,8 @@ use App\Services\TenantService;
 use Database\Seeders\PlansSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Mail;
 
 uses(RefreshDatabase::class);
 
@@ -508,6 +512,19 @@ test('a caretaker can request but cannot decide or pay', function () {
         ->and($refund->fresh()->paid_by)->toBe($staff->id);
 });
 
+test('ended leases holding a deposit are requestable', function () {
+    [$owner, $organization, $lease] = refundGraph();
+    $lease->update(['status' => 'ended']);
+
+    $this->actingAs($owner)
+        ->get(refundUrl($organization, '/deposit-refunds'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('leases', 1)
+            ->where('leases.0.value', $lease->id)
+        );
+});
+
 test('the refunds index ships tenant, unit and property names', function () {
     [$owner, $organization, $lease] = refundGraph();
 
@@ -545,4 +562,349 @@ test('the refunds index ships tenant, unit and property names', function () {
         ->assertInertia(fn ($page) => $page
             ->where('refunds.total', 0)
         );
+});
+
+function refundNotice(array $overrides = []): array
+{
+    [$owner, $organization, $lease] = refundGraph();
+
+    $notice = MoveOutNotice::create(array_merge([
+        'organization_id' => $organization->id,
+        'lease_id' => $lease->id,
+        'requested_by' => $owner->id,
+        'move_out_date' => now()->addDays(40)->toDateString(),
+        'status' => 'pending',
+    ], $overrides));
+
+    return [$owner, $organization, $lease, $notice];
+}
+
+test('acknowledging a notice auto-creates an awaiting-inspection refund', function () {
+    [$owner, $organization, $lease, $notice] = refundNotice();
+
+    $this->actingAs($owner)
+        ->post(refundUrl($organization, "/move-out-notices/{$notice->id}/acknowledge"))
+        ->assertRedirect();
+
+    $refund = DepositRefund::firstOrFail();
+
+    expect($refund->status->value)->toBe('awaiting_inspection')
+        ->and($refund->amount_cents)->toBe(5000000)
+        ->and($refund->requested_by)->toBeNull();
+});
+
+test('acknowledging twice does not duplicate the refund', function () {
+    [$owner, $organization, $lease, $notice] = refundNotice();
+
+    $this->actingAs($owner)
+        ->post(refundUrl($organization, "/move-out-notices/{$notice->id}/acknowledge"))
+        ->assertRedirect();
+
+    // Second acknowledge finds no pending notice left to act on.
+    $this->actingAs($owner)
+        ->from(refundUrl($organization, '/deposit-refunds'))
+        ->post(refundUrl($organization, "/move-out-notices/{$notice->id}/acknowledge"))
+        ->assertRedirect();
+
+    expect(DepositRefund::count())->toBe(1);
+});
+
+test('ending a lease auto-requests the deposit refund', function () {
+    [$owner, $organization, $lease] = refundGraph();
+
+    $this->actingAs($owner)
+        ->post(refundUrl($organization, "/{$lease->property->slug}/leases/{$lease->id}/end"), [
+            'password' => 'password',
+        ])
+        ->assertRedirect();
+
+    $refund = DepositRefund::firstOrFail();
+
+    expect($refund->status->value)->toBe('awaiting_inspection')
+        ->and($refund->amount_cents)->toBe(5000000);
+});
+
+test('ending a lease with no deposit files nothing', function () {
+    [$owner, $organization, $lease] = refundGraph();
+    $lease->update(['deposit' => 0]);
+
+    $this->actingAs($owner)
+        ->post(refundUrl($organization, "/{$lease->property->slug}/leases/{$lease->id}/end"), [
+            'password' => 'password',
+        ])
+        ->assertRedirect();
+
+    expect(DepositRefund::count())->toBe(0);
+});
+
+test('an inspector adds photo-backed deductions and submits for review', function () {
+    [$owner, $organization, $lease] = refundGraph();
+
+    $refund = DepositRefund::create([
+        'organization_id' => $organization->id,
+        'lease_id' => $lease->id,
+        'amount_cents' => 2500000,
+        'currency' => 'KES',
+        'reason' => 'Vacated.',
+        'status' => 'awaiting_inspection',
+        'requested_by' => $owner->id,
+    ]);
+
+    $staff = refundStaff($organization, ['lease.manage']);
+    delegateToProperty($organization, $owner, $staff, $lease->property_id);
+
+    $this->actingAs($staff)
+        ->post(refundUrl($organization, "/deposit-refunds/{$refund->id}/deductions"), [
+            'description' => 'Broken window pane',
+            'amount' => '3500',
+            'photos' => [UploadedFile::fake()->image('damage.jpg')],
+        ])
+        ->assertRedirect();
+
+    expect($refund->deductions()->count())->toBe(1);
+
+    $this->actingAs($staff)
+        ->post(refundUrl($organization, "/deposit-refunds/{$refund->id}/submit"))
+        ->assertRedirect();
+
+    expect($refund->fresh()->status->value)->toBe('in_review');
+});
+
+test('deductions require photo proof', function () {
+    [$owner, $organization, $lease] = refundGraph();
+
+    $refund = DepositRefund::create([
+        'organization_id' => $organization->id,
+        'lease_id' => $lease->id,
+        'amount_cents' => 2500000,
+        'currency' => 'KES',
+        'reason' => 'Vacated.',
+        'status' => 'awaiting_inspection',
+        'requested_by' => $owner->id,
+    ]);
+
+    $this->actingAs($owner)
+        ->from(refundUrl($organization, '/deposit-refunds'))
+        ->post(refundUrl($organization, "/deposit-refunds/{$refund->id}/deductions"), [
+            'description' => 'Broken window pane',
+            'amount' => '3500',
+        ])
+        ->assertRedirect()
+        ->assertSessionHasErrors('photos');
+
+    expect($refund->deductions()->count())->toBe(0);
+});
+
+test('a reviewer approves deductions and the refund moves to pending', function () {
+    [$owner, $organization, $lease] = refundGraph();
+
+    $refund = DepositRefund::create([
+        'organization_id' => $organization->id,
+        'lease_id' => $lease->id,
+        'amount_cents' => 2500000,
+        'currency' => 'KES',
+        'reason' => 'Vacated.',
+        'status' => 'in_review',
+        'requested_by' => $owner->id,
+    ]);
+
+    $this->actingAs($owner)
+        ->post(refundUrl($organization, "/deposit-refunds/{$refund->id}/review"), [
+            'decision' => 'approve',
+            'note' => 'Photos check out.',
+        ])
+        ->assertRedirect();
+
+    $refund = $refund->fresh();
+
+    expect($refund->status->value)->toBe('pending')
+        ->and($refund->reviewed_by)->toBe($owner->id)
+        ->and($refund->review_note)->toBe('Photos check out.');
+});
+
+test('a reviewer can send deductions back with a reason', function () {
+    [$owner, $organization, $lease] = refundGraph();
+
+    $refund = DepositRefund::create([
+        'organization_id' => $organization->id,
+        'lease_id' => $lease->id,
+        'amount_cents' => 2500000,
+        'currency' => 'KES',
+        'reason' => 'Vacated.',
+        'status' => 'in_review',
+        'requested_by' => $owner->id,
+    ]);
+
+    $this->actingAs($owner)
+        ->post(refundUrl($organization, "/deposit-refunds/{$refund->id}/review"), [
+            'decision' => 'reject',
+        ])
+        ->assertRedirect()
+        ->assertSessionHasErrors('note');
+
+    $this->actingAs($owner)
+        ->post(refundUrl($organization, "/deposit-refunds/{$refund->id}/review"), [
+            'decision' => 'reject',
+            'note' => 'Need a photo of the second bedroom too.',
+        ])
+        ->assertRedirect();
+
+    expect($refund->fresh()->status->value)->toBe('awaiting_inspection');
+});
+
+test('an inspector cannot approve deductions or decide the refund', function () {
+    [$owner, $organization, $lease] = refundGraph();
+
+    $refund = DepositRefund::create([
+        'organization_id' => $organization->id,
+        'lease_id' => $lease->id,
+        'amount_cents' => 2500000,
+        'currency' => 'KES',
+        'reason' => 'Vacated.',
+        'status' => 'pending',
+        'requested_by' => $owner->id,
+    ]);
+
+    $staff = refundStaff($organization, ['lease.manage']);
+    delegateToProperty($organization, $owner, $staff, $lease->property_id);
+
+    $this->actingAs($staff)
+        ->post(refundUrl($organization, "/deposit-refunds/{$refund->id}/review"), [
+            'decision' => 'approve',
+        ])
+        ->assertRedirect();
+    assertErrorToast();
+
+    $this->actingAs($staff)
+        ->patch(refundUrl($organization, "/deposit-refunds/{$refund->id}"), [
+            'decision' => 'approve',
+        ])
+        ->assertRedirect();
+    assertErrorToast();
+
+    expect($refund->fresh()->status->value)->toBe('pending');
+});
+
+test('a money holder without the review key cannot approve deductions', function () {
+    [$owner, $organization, $lease] = refundGraph();
+
+    $refund = DepositRefund::create([
+        'organization_id' => $organization->id,
+        'lease_id' => $lease->id,
+        'amount_cents' => 2500000,
+        'currency' => 'KES',
+        'reason' => 'Vacated.',
+        'status' => 'in_review',
+        'requested_by' => $owner->id,
+    ]);
+
+    $staff = refundStaff($organization, ['lease.manage', 'deposit.manage']);
+    delegateToProperty($organization, $owner, $staff, $lease->property_id);
+
+    $this->actingAs($staff)
+        ->post(refundUrl($organization, "/deposit-refunds/{$refund->id}/review"), [
+            'decision' => 'approve',
+        ])
+        ->assertRedirect();
+    assertErrorToast();
+
+    expect($refund->fresh()->status->value)->toBe('in_review');
+});
+
+test('a reviewer can approve deductions but cannot decide the payout', function () {
+    [$owner, $organization, $lease] = refundGraph();
+
+    $refund = DepositRefund::create([
+        'organization_id' => $organization->id,
+        'lease_id' => $lease->id,
+        'amount_cents' => 2500000,
+        'currency' => 'KES',
+        'reason' => 'Vacated.',
+        'status' => 'in_review',
+        'requested_by' => $owner->id,
+    ]);
+
+    $staff = refundStaff($organization, ['lease.manage', 'deposit.review']);
+    delegateToProperty($organization, $owner, $staff, $lease->property_id);
+
+    $this->actingAs($staff)
+        ->post(refundUrl($organization, "/deposit-refunds/{$refund->id}/review"), [
+            'decision' => 'approve',
+            'note' => 'Looks good.',
+        ])
+        ->assertRedirect();
+
+    expect($refund->fresh()->status->value)->toBe('pending');
+
+    $this->actingAs($staff)
+        ->patch(refundUrl($organization, "/deposit-refunds/{$refund->id}"), [
+            'decision' => 'approve',
+        ])
+        ->assertRedirect();
+    assertErrorToast();
+
+    expect($refund->fresh()->status->value)->toBe('pending');
+});
+
+test('a pending refund cannot be paid before approval', function () {
+    [$owner, $organization, $lease] = refundGraph();
+
+    $refund = DepositRefund::create([
+        'organization_id' => $organization->id,
+        'lease_id' => $lease->id,
+        'amount_cents' => 2500000,
+        'currency' => 'KES',
+        'reason' => 'Vacated.',
+        'status' => 'in_review',
+        'requested_by' => $owner->id,
+    ]);
+
+    $this->actingAs($owner)
+        ->from(refundUrl($organization, '/deposit-refunds'))
+        ->post(refundUrl($organization, "/deposit-refunds/{$refund->id}/pay"))
+        ->assertRedirect()
+        ->assertSessionHasErrors('reference');
+
+    expect($refund->fresh()->status->value)->toBe('in_review');
+});
+
+test('owners and tenant are notified through the full inspection flow', function () {
+    Mail::fake();
+
+    [$owner, $organization, $lease, $notice] = refundNotice();
+
+    $this->actingAs($owner)
+        ->post(refundUrl($organization, "/move-out-notices/{$notice->id}/acknowledge"))
+        ->assertRedirect();
+
+    $refund = DepositRefund::firstOrFail();
+    expect($refund->status->value)->toBe('awaiting_inspection');
+
+    $this->actingAs($owner)
+        ->post(refundUrl($organization, "/deposit-refunds/{$refund->id}/submit"))
+        ->assertRedirect();
+
+    $this->actingAs($owner)
+        ->post(refundUrl($organization, "/deposit-refunds/{$refund->id}/review"), [
+            'decision' => 'approve',
+            'note' => 'Photos check out.',
+        ])
+        ->assertRedirect();
+
+    $this->actingAs($owner)
+        ->patch(refundUrl($organization, "/deposit-refunds/{$refund->id}"), [
+            'decision' => 'approve',
+            'note' => 'Pay the balance.',
+        ])
+        ->assertRedirect();
+
+    $this->actingAs($owner)
+        ->post(refundUrl($organization, "/deposit-refunds/{$refund->id}/pay"), [
+            'reference' => 'M-Pesa X',
+        ])
+        ->assertRedirect();
+
+    expect($refund->fresh()->status->value)->toBe('paid');
+
+    Mail::assertSent(OperationalNoticeMail::class, 6);
 });
