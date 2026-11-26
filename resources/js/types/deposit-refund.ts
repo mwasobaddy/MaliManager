@@ -1,4 +1,18 @@
-export type DepositRefundStatus = 'pending' | 'approved' | 'rejected' | 'paid';
+export type DepositRefundStatus =
+    | 'pending'
+    | 'awaiting_inspection'
+    | 'in_review'
+    | 'approved'
+    | 'rejected'
+    | 'paid';
+
+export type DepositDeduction = {
+    id: number;
+    description: string;
+    amount: string;
+    amount_cents: number;
+    photos: { id: number; url: string }[];
+};
 
 export type DepositRefund = {
     id: number;
@@ -9,13 +23,18 @@ export type DepositRefund = {
     reason: string;
     status: DepositRefundStatus;
     status_label: string;
-    status_variant: 'neutral' | 'success' | 'danger' | 'info';
+    status_variant: 'neutral' | 'success' | 'danger' | 'info' | 'warning';
     requested_by: number | null;
     requester_name: string | null;
     decided_by: number | null;
     decider_name: string | null;
     decided_at: string | null;
     decision_note: string | null;
+    reviewed_by: number | null;
+    reviewer_name: string | null;
+    reviewed_at: string | null;
+    review_note: string | null;
+    deductions: DepositDeduction[];
     tenant_name: string | null;
     unit_name: string | null;
     property_name: string | null;

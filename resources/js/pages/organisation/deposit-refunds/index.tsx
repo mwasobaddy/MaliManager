@@ -1,6 +1,6 @@
 import { Form, Head, router, usePage } from '@inertiajs/react';
 import type { ColumnDef, SortingState } from '@tanstack/react-table';
-import { Check, HandCoins, Plus, Search, X } from 'lucide-react';
+import { Check, HandCoins, Plus, Search, Trash2, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActionIconButton } from '@/components/action-icon-button';
 import { DataTable } from '@/components/data-table';
@@ -25,7 +25,12 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useOverlayParam } from '@/hooks/use-overlay-param';
+import { formatMoney } from '@/lib/format-money';
 import * as refundRoutes from '@/routes/tenant/deposit-refunds';
+import {
+    destroy as destroyDeduction,
+    store as storeDeduction,
+} from '@/routes/tenant/deposit-refunds/deductions';
 import type {
     DepositRefund,
     LeaseOption,
@@ -51,6 +56,7 @@ export default function DepositRefunds({
     const { query, setOverlayParam } = useOverlayParam();
     const { context } = usePage().props;
     const canDecide = (context?.permissions ?? []).includes('deposit.manage');
+    const canReview = (context?.permissions ?? []).includes('deposit.review');
 
     const sort = {
         column: query.get('sort') || null,
@@ -319,6 +325,12 @@ export default function DepositRefunds({
                                     <SelectItem value="all">
                                         All statuses
                                     </SelectItem>
+                                    <SelectItem value="awaiting_inspection">
+                                        Awaiting inspection
+                                    </SelectItem>
+                                    <SelectItem value="in_review">
+                                        In review
+                                    </SelectItem>
                                     <SelectItem value="pending">
                                         Pending
                                     </SelectItem>
@@ -369,6 +381,7 @@ export default function DepositRefunds({
                 <RefundSheet
                     refund={viewedRefund}
                     canDecide={canDecide}
+                    canReview={canReview}
                     onClose={closeSheets}
                 />
             )}
@@ -434,7 +447,7 @@ function RequestSheet({
                                 }))}
                                 value={leaseId}
                                 onValueChange={setLeaseId}
-                                placeholder="Choose an active lease"
+                                placeholder="Choose a lease"
                                 searchPlaceholder="Search leases…"
                             />
                             {selectedLease && (
@@ -477,10 +490,12 @@ function RequestSheet({
 function RefundSheet({
     refund,
     canDecide,
+    canReview,
     onClose,
 }: {
     refund: DepositRefund;
     canDecide: boolean;
+    canReview: boolean;
     onClose: () => void;
 }) {
     const [note, setNote] = useState('');
@@ -520,7 +535,9 @@ function RefundSheet({
                                 : ''}
                         </dd>
                     </div>
-                    {refund.status !== 'pending' && (
+                    {['approved', 'rejected', 'paid'].includes(
+                        refund.status,
+                    ) && (
                         <>
                             <div className="grid grid-cols-[7rem_1fr] gap-2">
                                 <dt className="text-muted-foreground">
@@ -572,6 +589,96 @@ function RefundSheet({
                         </>
                     )}
                 </dl>
+
+                <DeductionsSection refund={refund} onClose={onClose} />
+
+                {refund.status === 'in_review' && canReview && (
+                    <div className="grid gap-2 rounded-lg border border-border-strong p-3">
+                        <p className="text-sm font-medium">
+                            Review the deductions
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                            Accepting sends the refund on for the final
+                            decision; sending back returns it to inspection with
+                            a note on what to fix.
+                        </p>
+                        <Label htmlFor="refund-review-note">
+                            Review note
+                            <span className="font-normal text-muted-foreground">
+                                {' '}
+                                (required to send back)
+                            </span>
+                        </Label>
+                        <Textarea
+                            id="refund-review-note"
+                            rows={2}
+                            maxLength={2000}
+                            value={note}
+                            onChange={(event) => setNote(event.target.value)}
+                        />
+                        <div className="flex gap-2">
+                            <Form
+                                {...refundRoutes.review.form(refund.id)}
+                                options={{ preserveScroll: true }}
+                                onSuccess={onClose}
+                            >
+                                {({ errors, processing }) => (
+                                    <>
+                                        <input
+                                            type="hidden"
+                                            name="decision"
+                                            value="approve"
+                                        />
+                                        <input
+                                            type="hidden"
+                                            name="note"
+                                            value={note}
+                                        />
+                                        <Button
+                                            type="submit"
+                                            size="sm"
+                                            disabled={processing}
+                                        >
+                                            <Check className="size-4" />
+                                            Approve deductions
+                                        </Button>
+                                        <InputError message={errors.decision} />
+                                    </>
+                                )}
+                            </Form>
+                            <Form
+                                {...refundRoutes.review.form(refund.id)}
+                                options={{ preserveScroll: true }}
+                                onSuccess={onClose}
+                            >
+                                {({ errors, processing }) => (
+                                    <>
+                                        <input
+                                            type="hidden"
+                                            name="decision"
+                                            value="reject"
+                                        />
+                                        <input
+                                            type="hidden"
+                                            name="note"
+                                            value={note}
+                                        />
+                                        <Button
+                                            type="submit"
+                                            size="sm"
+                                            variant="outline"
+                                            disabled={processing}
+                                        >
+                                            <X className="size-4" />
+                                            Send back
+                                        </Button>
+                                        <InputError message={errors.note} />
+                                    </>
+                                )}
+                            </Form>
+                        </div>
+                    </div>
+                )}
 
                 {refund.status === 'pending' && canDecide && (
                     <div className="grid gap-2 rounded-lg border border-border-strong p-3">
@@ -690,3 +797,195 @@ function RefundSheet({
 DepositRefunds.layout = {
     breadcrumbs: [{ title: 'Deposit refunds' }],
 };
+
+function DeductionsSection({
+    refund,
+    onClose,
+}: {
+    refund: DepositRefund;
+    onClose: () => void;
+}) {
+    const totalCents = refund.deductions.reduce(
+        (sum, deduction) => sum + deduction.amount_cents,
+        0,
+    );
+    const [showForm, setShowForm] = useState(false);
+
+    return (
+        <div className="grid gap-2">
+            <h2 className="text-sm font-medium">
+                Deductions{' '}
+                <span className="font-normal text-muted-foreground">
+                    · {formatMoney(totalCents / 100, refund.currency)}
+                </span>
+            </h2>
+            {refund.deductions.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                    {refund.status === 'awaiting_inspection'
+                        ? 'No damage recorded yet — add each item with a photo.'
+                        : 'No deductions were recorded.'}
+                </p>
+            ) : (
+                <ul className="grid gap-2">
+                    {refund.deductions.map((deduction) => (
+                        <li
+                            key={deduction.id}
+                            className="rounded-lg border border-border-strong p-3"
+                        >
+                            <div className="flex items-start justify-between gap-2">
+                                <div className="min-w-0">
+                                    <p className="text-sm font-medium">
+                                        {deduction.description}
+                                    </p>
+                                    <p className="text-sm text-muted-foreground tabular-nums">
+                                        {refund.currency} {deduction.amount}
+                                    </p>
+                                </div>
+                                {refund.status === 'awaiting_inspection' && (
+                                    <Form
+                                        {...destroyDeduction.form({
+                                            refund: refund.id,
+                                            deduction: deduction.id,
+                                        })}
+                                        options={{ preserveScroll: true }}
+                                    >
+                                        {({ processing }) => (
+                                            <Button
+                                                type="submit"
+                                                size="sm"
+                                                variant="ghost"
+                                                className="gap-1 text-status-danger"
+                                                disabled={processing}
+                                                aria-label={`Remove ${deduction.description}`}
+                                            >
+                                                <Trash2 className="size-4" />
+                                                Remove
+                                            </Button>
+                                        )}
+                                    </Form>
+                                )}
+                            </div>
+                            {deduction.photos.length > 0 && (
+                                <div className="mt-2 flex flex-wrap gap-2">
+                                    {deduction.photos.map((photo) => (
+                                        <a
+                                            key={photo.id}
+                                            href={photo.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                        >
+                                            <img
+                                                src={photo.url}
+                                                alt={`Photo evidence for ${deduction.description}`}
+                                                className="size-16 rounded-md border border-border-strong object-cover"
+                                                loading="lazy"
+                                            />
+                                        </a>
+                                    ))}
+                                </div>
+                            )}
+                        </li>
+                    ))}
+                </ul>
+            )}
+
+            {refund.status === 'awaiting_inspection' && (
+                <>
+                    {!showForm ? (
+                        <div className="flex gap-2">
+                            <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setShowForm(true)}
+                            >
+                                <Plus className="size-4" />
+                                Add deduction
+                            </Button>
+                            <Form
+                                {...refundRoutes.submit.form(refund.id)}
+                                options={{ preserveScroll: true }}
+                                onSuccess={onClose}
+                            >
+                                {({ processing }) => (
+                                    <Button
+                                        type="submit"
+                                        size="sm"
+                                        disabled={processing}
+                                    >
+                                        <Check className="size-4" />
+                                        Submit for review
+                                    </Button>
+                                )}
+                            </Form>
+                        </div>
+                    ) : (
+                        <Form
+                            {...storeDeduction.form(refund.id)}
+                            options={{ preserveScroll: true }}
+                            onSuccess={() => setShowForm(false)}
+                            className="grid gap-2 rounded-lg border border-border-strong p-3"
+                        >
+                            {({ errors, processing }) => (
+                                <>
+                                    <Label htmlFor="deduction-description">
+                                        What was damaged
+                                    </Label>
+                                    <Input
+                                        id="deduction-description"
+                                        name="description"
+                                        placeholder="Broken window pane"
+                                        required
+                                    />
+                                    <InputError message={errors.description} />
+                                    <Label htmlFor="deduction-amount">
+                                        Amount ({refund.currency})
+                                    </Label>
+                                    <Input
+                                        id="deduction-amount"
+                                        name="amount"
+                                        type="number"
+                                        inputMode="decimal"
+                                        step="0.01"
+                                        min="0.01"
+                                        required
+                                    />
+                                    <InputError message={errors.amount} />
+                                    <Label htmlFor="deduction-photos">
+                                        Photo proof
+                                    </Label>
+                                    <Input
+                                        id="deduction-photos"
+                                        name="photos[]"
+                                        type="file"
+                                        accept="image/*"
+                                        multiple
+                                        required
+                                    />
+                                    <InputError message={errors.photos} />
+                                    <div className="flex gap-2">
+                                        <Button
+                                            type="submit"
+                                            size="sm"
+                                            disabled={processing}
+                                        >
+                                            Add deduction
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            size="sm"
+                                            variant="ghost"
+                                            onClick={() => setShowForm(false)}
+                                        >
+                                            Cancel
+                                        </Button>
+                                    </div>
+                                </>
+                            )}
+                        </Form>
+                    )}
+                </>
+            )}
+        </div>
+    );
+}
