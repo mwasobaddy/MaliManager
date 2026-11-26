@@ -22,6 +22,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { firstAsset } from '@/routes/onboarding';
 import { show as billing } from '@/routes/tenant/billing';
 import { index } from '@/routes/tenant/properties';
@@ -83,6 +84,9 @@ export default function PropertyAssetForm({
     setup: boolean;
 }) {
     const [units, setUnits] = useState<UnitDraft[]>([]);
+    const [pasteOpen, setPasteOpen] = useState(false);
+    const [pasteText, setPasteText] = useState('');
+    const [pasteNote, setPasteNote] = useState<string | null>(null);
 
     const updateUnit = (
         index: number,
@@ -95,6 +99,59 @@ export default function PropertyAssetForm({
             ),
         );
     };
+
+    /**
+     * One unit name per line. Blanks and names already on the form are
+     * skipped, and the batch stops at the effective limit (plan cap or
+     * the server's per-request cap) so the submit never fails after
+     * all that typing.
+     */
+    function addPastedUnits() {
+        const limit = Math.min(plan.units_limit ?? 100, 100);
+        const seen = new Set(
+            units.map((unit) => unit.name.trim().toLowerCase()),
+        );
+        const fresh: string[] = [];
+        let skipped = 0;
+
+        for (const line of pasteText.split('\n')) {
+            const name = line.trim();
+
+            if (name === '' || seen.has(name.toLowerCase())) {
+                skipped += 1;
+                continue;
+            }
+
+            seen.add(name.toLowerCase());
+            fresh.push(name);
+        }
+
+        const room = Math.max(0, limit - units.length);
+        const taken = fresh.slice(0, room);
+
+        setUnits((prev) => [
+            ...prev,
+            ...taken.map((name) => ({ ...emptyUnit(), name })),
+        ]);
+        setPasteText('');
+        setPasteOpen(false);
+
+        const parts = [
+            `Added ${taken.length} ${taken.length === 1 ? 'unit' : 'units'}.`,
+        ];
+
+        if (skipped > 0) {
+            parts.push(
+                `${skipped} blank or duplicate ${skipped === 1 ? 'line' : 'lines'} skipped.`,
+            );
+        }
+
+        if (fresh.length > taken.length) {
+            parts.push(`Limit is ${limit} units — the rest were left out.`);
+        }
+
+        setPasteNote(parts.join(' '));
+    }
 
     if (!canCreateProperty) {
         return (
@@ -266,23 +323,69 @@ export default function PropertyAssetForm({
                                         {`Optional for now. ${plan.units_limit ? `Your plan allows up to ${plan.units_limit} units per property.` : 'No unit limit on your plan.'}`}
                                     </CardDescription>
                                 </div>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() =>
-                                        setUnits((prev) => [
-                                            ...prev,
-                                            emptyUnit(),
-                                        ])
-                                    }
-                                >
-                                    <Plus className="size-4" />
-                                    Add unit
-                                </Button>
+                                <div className="flex items-center gap-2">
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() =>
+                                            setPasteOpen((open) => !open)
+                                        }
+                                    >
+                                        Paste a list
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() =>
+                                            setUnits((prev) => [
+                                                ...prev,
+                                                emptyUnit(),
+                                            ])
+                                        }
+                                    >
+                                        <Plus className="size-4" />
+                                        Add unit
+                                    </Button>
+                                </div>
                             </div>
                         </CardHeader>
                         <CardContent>
+                            {pasteOpen ? (
+                                <div className="mb-4 grid gap-2">
+                                    <Label htmlFor="units-paste">
+                                        One unit name per line
+                                    </Label>
+                                    <Textarea
+                                        id="units-paste"
+                                        rows={4}
+                                        placeholder={'A1\nA2\nA3'}
+                                        value={pasteText}
+                                        onChange={(e) =>
+                                            setPasteText(e.target.value)
+                                        }
+                                    />
+                                    <div>
+                                        <Button
+                                            type="button"
+                                            size="sm"
+                                            disabled={pasteText.trim() === ''}
+                                            onClick={addPastedUnits}
+                                        >
+                                            Add units
+                                        </Button>
+                                    </div>
+                                </div>
+                            ) : null}
+                            {pasteNote ? (
+                                <p
+                                    className="mb-4 text-sm text-muted-foreground"
+                                    role="status"
+                                >
+                                    {pasteNote}
+                                </p>
+                            ) : null}
                             {units.length === 0 ? (
                                 <p className="text-sm text-muted-foreground">
                                     You can add units now or later from the

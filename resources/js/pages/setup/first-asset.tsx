@@ -1,5 +1,5 @@
 import { Head, Link } from '@inertiajs/react';
-import { ArrowLeft, Building2, Map } from 'lucide-react';
+import { ArrowLeft, Building2 } from 'lucide-react';
 import Heading from '@/components/heading';
 import {
     SetupSidePanel,
@@ -51,7 +51,7 @@ export default function FirstAsset({ organization, setupProgress }: Props) {
                             variant="small"
                             level="h1"
                             title={`Add your first asset${organization ? ` to ${organization.name}` : ''}`}
-                            description="Choose what you'd like to set up first. You can add the other type later."
+                            description="Most landlords start with a building — units and tenants live there. Only have land? There is a link for that below."
                         />
                         <Button asChild variant="outline" size="sm">
                             <Link href={becomeLandlord()}>
@@ -79,34 +79,21 @@ export default function FirstAsset({ organization, setupProgress }: Props) {
                                 </CardHeader>
                                 <CardContent>
                                     <Button asChild>
-                                        <span>Add a building</span>
+                                        <span>Start with a building</span>
                                     </Button>
                                 </CardContent>
                             </Card>
                         </Link>
 
-                        <Link
-                            href={createParcel({ query: { setup: 1 } })}
-                            className="rounded-xl border border-input bg-card transition-colors hover:bg-muted"
-                        >
-                            <Card className="border-0 bg-transparent shadow-none">
-                                <CardHeader>
-                                    <div className="flex items-center gap-2">
-                                        <Map className="size-5 text-muted-foreground" />
-                                        <CardTitle>Land parcel</CardTitle>
-                                    </div>
-                                    <CardDescription>
-                                        A standalone plot of land with zoning,
-                                        acreage and lease availability.
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <Button asChild>
-                                        <span>Add a land parcel</span>
-                                    </Button>
-                                </CardContent>
-                            </Card>
-                        </Link>
+                        <p className="text-center text-sm text-muted-foreground">
+                            Only have land?{' '}
+                            <Link
+                                href={createParcel({ query: { setup: 1 } })}
+                                className="font-medium text-primary underline"
+                            >
+                                Add a land parcel instead
+                            </Link>
+                        </p>
                     </div>
                 </div>
             </div>
