@@ -24,6 +24,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Pagination } from '@/components/ui/pagination';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
     Select,
     SelectContent,
@@ -66,6 +67,7 @@ type Props = {
     security: {
         require_staff_two_factor: boolean;
         is_owner: boolean;
+        mode: string;
     };
 };
 
@@ -78,45 +80,84 @@ function SecurityPolicyCard({
     security: {
         require_staff_two_factor: boolean;
         is_owner: boolean;
+        mode: string;
     };
 }) {
     const [required, setRequired] = useState(security.require_staff_two_factor);
+    const [mode, setMode] = useState(security.mode);
 
     return (
-        <Card className="p-4">
+        <Card className="space-y-4 p-4">
             <Form {...updateSecurityPolicy.form()}>
                 {({ processing }) => (
-                    <div className="flex items-center justify-between gap-4">
-                        <Label
-                            htmlFor="require_staff_two_factor"
-                            className="flex-1 cursor-pointer"
-                        >
-                            <span className="block text-sm font-medium">
-                                Require two-factor authentication for staff
+                    <>
+                        <div className="flex items-center justify-between gap-4">
+                            <span className="flex-1">
+                                <span className="block text-sm font-medium">
+                                    Interface view
+                                </span>
+                                <span className="block text-sm text-muted-foreground">
+                                    Simple hides advanced modules from the
+                                    sidebar. Every page stays reachable by link.
+                                </span>
                             </span>
-                            <span className="block text-sm text-muted-foreground">
-                                Staff without two-factor enabled are sent to set
-                                it up at their next sign-in. Owners are never
-                                blocked.
-                            </span>
-                        </Label>
-                        <Checkbox
-                            id="require_staff_two_factor"
-                            checked={required}
-                            onCheckedChange={(checked) =>
-                                setRequired(checked === true)
-                            }
-                        />
-                        <input
-                            type="hidden"
-                            name="require_staff_two_factor"
-                            value={required ? '1' : '0'}
-                        />
-                        <Button type="submit" disabled={processing}>
-                            {processing && <Spinner />}
-                            Save policy
-                        </Button>
-                    </div>
+                            <input type="hidden" name="mode" value={mode} />
+                            <RadioGroup
+                                value={mode}
+                                onValueChange={setMode}
+                                className="flex items-center gap-4"
+                                aria-label="Interface view"
+                            >
+                                <div className="flex items-center gap-2">
+                                    <RadioGroupItem
+                                        value="simple"
+                                        id="policy-mode-simple"
+                                    />
+                                    <Label htmlFor="policy-mode-simple">
+                                        Simple
+                                    </Label>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <RadioGroupItem
+                                        value="pro"
+                                        id="policy-mode-pro"
+                                    />
+                                    <Label htmlFor="policy-mode-pro">Pro</Label>
+                                </div>
+                            </RadioGroup>
+                        </div>
+                        <div className="flex items-center justify-between gap-4">
+                            <Label
+                                htmlFor="require_staff_two_factor"
+                                className="flex-1 cursor-pointer"
+                            >
+                                <span className="block text-sm font-medium">
+                                    Require two-factor authentication for staff
+                                </span>
+                                <span className="block text-sm text-muted-foreground">
+                                    Staff without two-factor enabled are sent to
+                                    set it up at their next sign-in. Owners are
+                                    never blocked.
+                                </span>
+                            </Label>
+                            <Checkbox
+                                id="require_staff_two_factor"
+                                checked={required}
+                                onCheckedChange={(checked) =>
+                                    setRequired(checked === true)
+                                }
+                            />
+                            <input
+                                type="hidden"
+                                name="require_staff_two_factor"
+                                value={required ? '1' : '0'}
+                            />
+                            <Button type="submit" disabled={processing}>
+                                {processing && <Spinner />}
+                                Save policy
+                            </Button>
+                        </div>
+                    </>
                 )}
             </Form>
         </Card>
@@ -411,7 +452,7 @@ export default function StaffRolesIndex({
 
                 {security.is_owner ? (
                     <SecurityPolicyCard
-                        key={String(security.require_staff_two_factor)}
+                        key={`${String(security.require_staff_two_factor)}-${security.mode}`}
                         security={security}
                     />
                 ) : null}

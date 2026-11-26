@@ -16,7 +16,7 @@ Source review: `doc/enterprise-and-landlord-review.md` §A3, §B6.
 
 ## Revamp proposal
 1. Ship one default agreement template per org at creation; quick-add path (doc 06) auto-attaches it — landlord prints without ever opening the template library.
-2. Keep the full template studio (org + property scope, picker, TipTap) under Advanced; no functional change.
+2. Keep the full template studio (org + property scope, picker, TipTap) in the Pro lens (already out of the simple sidebar); no functional change.
 3. Add to the lease model (non-breaking): `rent_increment_schedule` (annual %, effective date), `currency` enforcement per lease, `archived` scope for ended leases.
 4. Renewal suggestions stay; add increment preview ("rent becomes X from date Y").
 

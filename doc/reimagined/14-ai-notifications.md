@@ -13,7 +13,7 @@ Source review: `doc/enterprise-and-landlord-review.md` §A10, §B9, §B10.
 - No notification centre, no per-event template/channel preferences, no delivery log, no retry/backoff. At volume, inline cron sends time out with no proof of "who was told what".
 
 ## Revamp proposal
-1. AI: hide key setup until asked — orgs start on a platform default (capped), BYO key stays under Advanced; surface only two landlord-visible AI features (triage suggestion in 11, renewal suggestion in 07) plus the weekly digest.
+1. AI: hide key setup until asked — orgs start on a platform default (capped); the AI settings page is already out of the simple sidebar (Pro lens, see 03), keeping BYO keys there is enough. Surface only two landlord-visible AI features (triage suggestion in 11, renewal suggestion in 07) plus the weekly digest.
 2. Notifications: DB notification centre + queued mail/SMS drivers; per-event template/channel preferences; recipient-channel routing (existing `NotificationService` rule: recipient's channel, SMS needs phone or fall back to email); delivery log linked to audit (feeds 15).
 3. Queue: mandate Redis/SQS + supervised workers in prod; convert all fan-out to idempotent `ShouldQueue` jobs (unique per lease+period); failed-job dashboard with retry; rate-limited SMS batching.
 

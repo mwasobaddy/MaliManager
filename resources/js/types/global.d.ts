@@ -13,7 +13,13 @@ declare module '@inertiajs/core' {
             name: string;
             auth: Auth;
             context: {
-                organization: { id: number; name: string; slug: string } | null;
+                organization: {
+                    id: number;
+                    name: string;
+                    slug: string;
+                    mode: string;
+                    suggest_pro_mode: boolean;
+                } | null;
                 property: { id: number; name: string; slug: string } | null;
                 permissions: string[];
             };

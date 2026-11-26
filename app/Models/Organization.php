@@ -68,6 +68,10 @@ class Organization extends Model
         });
     }
 
+    public const MODE_SIMPLE = 'simple';
+
+    public const MODE_PRO = 'pro';
+
     /**
      * Whether staff logins to this organization require confirmed
      * two-factor authentication. Stored in the schemaless settings
@@ -76,6 +80,44 @@ class Organization extends Model
     public function requiresStaffTwoFactor(): bool
     {
         return (bool) ($this->settings['require_staff_two_factor'] ?? false);
+    }
+
+    /**
+     * The interface lens for this organization: `simple` hides advanced
+     * modules from the sidebar for landlords who need four actions, `pro`
+     * shows everything. Existing organizations predate the question and
+     * default to the full view so nothing disappears on upgrade.
+     */
+    public function mode(): string
+    {
+        return $this->settings['mode'] ?? self::MODE_PRO;
+    }
+
+    public function isSimpleMode(): bool
+    {
+        return $this->mode() === self::MODE_SIMPLE;
+    }
+
+    /**
+     * Whether a simple-mode organization has outgrown the simple lens:
+     * more than one asset, any staff, or more than ten units. Dismissable
+     * per organization; the lens itself never blocks a route.
+     */
+    public function suggestsProMode(): bool
+    {
+        if (! $this->isSimpleMode() || ($this->settings['mode_suggestion_dismissed'] ?? false)) {
+            return false;
+        }
+
+        if ($this->properties()->count() + $this->landParcels()->count() > 1) {
+            return true;
+        }
+
+        if ($this->users()->wherePivot('is_owner', false)->wherePivot('status', 'active')->exists()) {
+            return true;
+        }
+
+        return Unit::whereIn('property_id', $this->properties()->select('properties.id'))->count() > 10;
     }
 
     public function tenant(): BelongsTo

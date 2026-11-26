@@ -21,6 +21,7 @@ test('guest becomes a landlord with an organization and tenancy', function () {
         ->post(route('guest.become-landlord'), [
             'organization_name' => 'Sunset Apartments',
             'currency' => 'KES',
+            'mode' => 'simple',
         ])->assertRedirect('http://sunset-apartments.malimanager.test/setup/first-asset');
 
     $user->refresh();
@@ -43,6 +44,7 @@ test('landlord upgrade honours the public listing opt-in', function () {
         ->post(route('guest.become-landlord'), [
             'organization_name' => 'Open Estates',
             'currency' => 'KES',
+            'mode' => 'simple',
             'plan_slug' => 'free',
             'list_publicly' => true,
         ])->assertRedirect();
@@ -57,6 +59,7 @@ test('landlord upgrade starts on the free plan; the paid choice moved to Plan & 
         ->post(route('guest.become-landlord'), [
             'organization_name' => 'Sunset Apartments',
             'currency' => 'KES',
+            'mode' => 'simple',
         ])->assertRedirect('http://sunset-apartments.malimanager.test/setup/first-asset');
 
     $organization = Organization::where('name', 'Sunset Apartments')->firstOrFail();
@@ -89,6 +92,7 @@ test('existing owners cannot provision a second organization by accident', funct
         ->post(route('guest.become-landlord'), [
             'organization_name' => 'Second Estates',
             'currency' => 'KES',
+            'mode' => 'simple',
             'plan_slug' => 'free',
         ])->assertRedirect();
 
@@ -104,6 +108,7 @@ test('cross-domain redirect to tenant uses 409 X-Inertia-Location for Inertia re
         ->post(route('guest.become-landlord'), [
             'organization_name' => 'Sunset Apartments',
             'currency' => 'KES',
+            'mode' => 'simple',
             'plan_slug' => 'free',
         ])->assertStatus(409)
         ->assertHeader('X-Inertia-Location', 'http://sunset-apartments.malimanager.test/setup/first-asset');

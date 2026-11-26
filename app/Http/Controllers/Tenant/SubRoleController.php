@@ -87,6 +87,7 @@ class SubRoleController extends Controller
             'security' => [
                 'require_staff_two_factor' => $organization->requiresStaffTwoFactor(),
                 'is_owner' => $request->user()->isOwnerOf($organization),
+                'mode' => $organization->mode(),
             ],
         ]);
     }

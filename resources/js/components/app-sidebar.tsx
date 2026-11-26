@@ -32,6 +32,7 @@ import { NavMain } from '@/components/nav-main';
 import type { NavGroup } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
 import { usePropertyPicker } from '@/components/property-picker-dialog';
+import { Button } from '@/components/ui/button';
 import {
     Sidebar,
     SidebarContent,
@@ -45,17 +46,16 @@ import { dashboard as centralDashboard } from '@/routes';
 import { home as guestHome } from '@/routes/guest';
 import { index as platformAuditIndex } from '@/routes/platform/audit';
 import { index as platformExpensesIndex } from '@/routes/platform/expenses';
-import { index as platformTrashIndex } from '@/routes/platform/trash';
 import { index as organizationsIndex } from '@/routes/platform/organizations';
 import { index as plansIndex } from '@/routes/platform/plans';
 import { index as propertyTypesIndex } from '@/routes/platform/property-types';
 import { index as rolesIndex } from '@/routes/platform/roles';
 import { index as subscriptionPaymentsIndex } from '@/routes/platform/subscription-payments';
+import { index as platformTrashIndex } from '@/routes/platform/trash';
 import { index as usersIndex } from '@/routes/platform/users';
 import { rentals as searcherRentals } from '@/routes/searcher';
 import { index as maintenanceRoute } from '@/routes/searcher/maintenance';
 import { overview as overviewIndex } from '@/routes/tenant';
-import { index as trashIndex } from '@/routes/tenant/trash';
 import agreementTemplates, {
     orgIndex as agreementTemplatesIndex,
 } from '@/routes/tenant/agreement-templates';
@@ -69,7 +69,6 @@ import { index as inspectionsIndex } from '@/routes/tenant/inspections';
 import { index as landParcelsIndex } from '@/routes/tenant/land-parcels';
 import { index as leasesIndex } from '@/routes/tenant/leases';
 import { index as maintenanceIndex } from '@/routes/tenant/maintenance';
-import { index as utilityReadingsIndex } from '@/routes/tenant/utilities';
 import { index as occupantsIndex } from '@/routes/tenant/occupants';
 import { index as paymentsIndex } from '@/routes/tenant/payments';
 import {
@@ -77,15 +76,21 @@ import {
     index as propertiesIndex,
 } from '@/routes/tenant/properties';
 import { index as reportsNavIndex } from '@/routes/tenant/reports';
-import { index as staffIndex } from '@/routes/tenant/staff';
 import { index as staffRolesIndex } from '@/routes/tenant/roles';
+import { update as updateSecurityPolicy } from '@/routes/tenant/security-policy';
+import { index as staffIndex } from '@/routes/tenant/staff';
+import { index as trashIndex } from '@/routes/tenant/trash';
 import { index as unitsIndex } from '@/routes/tenant/units';
+import { index as utilityReadingsIndex } from '@/routes/tenant/utilities';
 import type { NavItem } from '@/types';
 
 export function AppSidebar() {
     const { context } = usePage().props;
     const property = context?.property;
     const organization = context?.organization;
+    // Simple mode is a lens, never a lock (see the nav trim below): the
+    // value is shared per organization in HandleInertiaRequests.
+    const simpleMode = organization?.mode === 'simple';
     const canManageStaff =
         context?.permissions?.includes('staff.manage') ?? false;
     const canManageStaffRoles =
@@ -667,6 +672,56 @@ export function AppSidebar() {
         ];
     }
 
+    // Simple mode is a lens over tenant navigation — never a lock, and
+    // never applied to the platform admin branch. Every route stays
+    // reachable by URL; this only trims the sidebar to the daily jobs
+    // plus money and team.
+    if (simpleMode && (property || organization)) {
+        const SIMPLE_TITLES = new Set([
+            'Dashboard',
+            'Overview',
+            'Switch property or land',
+            'Manage properties',
+            'Land parcels',
+            'Units',
+            'Occupants',
+            'Leases',
+            'Maintenance',
+            'Payments',
+            'Expenses',
+            'Deposit refunds',
+            'Team',
+            'Staff',
+            'Roles',
+            'Billing',
+        ]);
+
+        navGroups = navGroups
+            .map((group) => ({
+                ...group,
+                items: group.items.filter((i) => SIMPLE_TITLES.has(i.title)),
+            }))
+            .filter((group) => group.items.length > 0);
+
+        if (isOwner) {
+            navGroups.push({
+                label: 'View',
+                items: [
+                    {
+                        title: 'Show all features',
+                        icon: Sparkles,
+                        onClick: () =>
+                            router.put(
+                                updateSecurityPolicy().url,
+                                { mode: 'pro' },
+                                { preserveScroll: true },
+                            ),
+                    },
+                ],
+            });
+        }
+    }
+
     const homeHref = property
         ? propertyDashboard(property.slug)
         : organization
@@ -703,6 +758,48 @@ export function AppSidebar() {
                 <NavMain
                     groups={navGroups.filter((group) => group.items.length > 0)}
                 />
+                {simpleMode &&
+                    isOwner &&
+                    (organization?.suggest_pro_mode ?? false) && (
+                        <div className="mx-2 mt-2 rounded-lg border border-border p-3">
+                            <p className="text-sm font-medium">
+                                Outgrowing the simple view?
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                                Your organization now has the shape for the full
+                                view — teams, reports and advanced tools.
+                            </p>
+                            <div className="mt-2 flex items-center gap-2">
+                                <Button
+                                    size="sm"
+                                    onClick={() =>
+                                        router.put(
+                                            updateSecurityPolicy().url,
+                                            { mode: 'pro' },
+                                            { preserveScroll: true },
+                                        )
+                                    }
+                                >
+                                    Switch to Pro
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() =>
+                                        router.put(
+                                            updateSecurityPolicy().url,
+                                            {
+                                                dismiss_pro_suggestion: true,
+                                            },
+                                            { preserveScroll: true },
+                                        )
+                                    }
+                                >
+                                    Not now
+                                </Button>
+                            </div>
+                        </div>
+                    )}
             </SidebarContent>
 
             <SidebarFooter>

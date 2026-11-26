@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Data\Onboarding\BecomeLandlordData;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 /**
  * Becoming a landlord: the two things signup deliberately did not ask.
@@ -29,6 +30,7 @@ class BecomeLandlordRequest extends FormRequest
             'organization_name' => ['required', 'string', 'max:255'],
             'currency' => ['required', 'string', 'size:3'],
             'list_publicly' => ['nullable', 'boolean'],
+            'mode' => ['required', Rule::in(['simple', 'pro'])],
         ];
     }
 
@@ -38,6 +40,7 @@ class BecomeLandlordRequest extends FormRequest
             organizationName: (string) $this->string('organization_name'),
             currency: (string) $this->string('currency'),
             listPublicly: $this->boolean('list_publicly'),
+            mode: (string) $this->string('mode', 'simple'),
         );
     }
 }

@@ -18,6 +18,7 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
     Select,
     SelectContent,
@@ -58,6 +59,7 @@ const currencies = ['KES', 'USD', 'UGX', 'TZS', 'RWF', 'NGN', 'GBP', 'EUR'];
 export default function BecomeLandlord({ setupProgress }: Props) {
     const [currency, setCurrency] = useState('KES');
     const [listPublicly, setListPublicly] = useState(false);
+    const [mode, setMode] = useState('simple');
 
     return (
         <>
@@ -186,6 +188,71 @@ export default function BecomeLandlord({ setupProgress }: Props) {
                                                 value={listPublicly ? '1' : '0'}
                                             />
                                         </div>
+                                    </CardContent>
+                                </Card>
+
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle className="text-base font-medium">
+                                            How will you use MaliManager?
+                                        </CardTitle>
+                                        <CardDescription>
+                                            This sets the starting view. You can
+                                            switch any time from the Staff roles
+                                            page.
+                                        </CardDescription>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <input
+                                            type="hidden"
+                                            name="mode"
+                                            value={mode}
+                                        />
+                                        <RadioGroup
+                                            value={mode}
+                                            onValueChange={setMode}
+                                            className="grid gap-2"
+                                        >
+                                            <div className="flex items-center gap-3 rounded-lg border p-4">
+                                                <RadioGroupItem
+                                                    value="simple"
+                                                    id="mode-simple"
+                                                />
+                                                <Label
+                                                    htmlFor="mode-simple"
+                                                    className="flex-1 cursor-pointer"
+                                                >
+                                                    <span className="block text-sm font-medium">
+                                                        Just my own rentals
+                                                    </span>
+                                                    <span className="block text-sm text-muted-foreground">
+                                                        A simple view: record
+                                                        rent, tenants, issues
+                                                        and balances.
+                                                    </span>
+                                                </Label>
+                                            </div>
+                                            <div className="flex items-center gap-3 rounded-lg border p-4">
+                                                <RadioGroupItem
+                                                    value="pro"
+                                                    id="mode-pro"
+                                                />
+                                                <Label
+                                                    htmlFor="mode-pro"
+                                                    className="flex-1 cursor-pointer"
+                                                >
+                                                    <span className="block text-sm font-medium">
+                                                        A company or agency
+                                                    </span>
+                                                    <span className="block text-sm text-muted-foreground">
+                                                        The full view: teams,
+                                                        branches, reports and
+                                                        advanced tools.
+                                                    </span>
+                                                </Label>
+                                            </div>
+                                        </RadioGroup>
+                                        <InputError message={errors.mode} />
                                     </CardContent>
                                 </Card>
 

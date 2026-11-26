@@ -10,5 +10,6 @@ final readonly class BecomeLandlordData
         public string $organizationName,
         public string $currency,
         public bool $listPublicly = false,
+        public string $mode = 'simple',
     ) {}
 }

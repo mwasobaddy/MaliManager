@@ -19,11 +19,13 @@ Source review: `doc/enterprise-and-landlord-review.md` §A1, §A8, §B3, §B4.
 2. Two-person approval on refunds/payouts/voids above threshold (pairs with docs 08/10/12).
 3. Soften delete: delegated staff soft-archive with trail + self-serve restore; passwords stay for owner permanent-delete only.
 4. Audit: append-only hash-chained store, retention per tier (7y enterprise), signed PDF+CSV export, auditor read-only API.
+5. Security policy surface: **built**. Staff → Roles hosts the policy card (staff two-factor requirement + Simple/Pro switch, `PUT /security-policy`, owner-only enforced in `UpdateOrganizationSecurity`), and the sidebar "Show all features" item flips the same flag.
 
 ## Acceptance
 - Caretaker records rent and drafts deductions but can never approve, pay, or permanently delete.
 - Refund above threshold with one approver is rejected by policy test.
 - Audit rows are uneditable (no update/delete path) with retention enforced per tier.
+- Owners switch Simple/Pro from Roles or the sidebar; staff never see the switch.
 
 ## Next
 Work on `16-platform-api.md` — the platform surface that ties it all together.

@@ -81,7 +81,13 @@ class HandleInertiaRequests extends Middleware
                     && ! $user->organizations()->wherePivot('is_owner', true)->exists(),
             ],
             'context' => [
-                'organization' => $organization?->only('id', 'name', 'slug'),
+                'organization' => $organization !== null
+                    ? [
+                        ...$organization->only('id', 'name', 'slug'),
+                        'mode' => $organization->mode(),
+                        'suggest_pro_mode' => $organization->suggestsProMode(),
+                    ]
+                    : null,
                 'is_owner' => $user !== null && $organization !== null && $user->isOwnerOf($organization),
                 'property' => $property instanceof Property
                     ? $property->only('id', 'name', 'slug')

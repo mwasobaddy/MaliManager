@@ -47,6 +47,7 @@ trait OnboardingHelpers
                 'name' => $data->organizationName,
                 'settings' => array_merge($organization->settings ?? [], [
                     'currency' => $data->currency,
+                    'mode' => $data->mode,
                 ]),
             ]);
 
@@ -64,6 +65,7 @@ trait OnboardingHelpers
         $organization->update([
             'settings' => [
                 'currency' => $data->currency,
+                'mode' => $data->mode,
             ],
         ]);
 

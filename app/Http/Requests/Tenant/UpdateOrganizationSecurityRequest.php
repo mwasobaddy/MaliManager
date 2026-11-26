@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Tenant;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateOrganizationSecurityRequest extends FormRequest
 {
@@ -17,7 +18,9 @@ class UpdateOrganizationSecurityRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'require_staff_two_factor' => ['required', 'boolean'],
+            'require_staff_two_factor' => ['nullable', 'boolean'],
+            'mode' => ['nullable', Rule::in(['simple', 'pro'])],
+            'dismiss_pro_suggestion' => ['nullable', 'boolean'],
         ];
     }
 }

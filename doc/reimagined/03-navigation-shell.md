@@ -14,14 +14,14 @@ Source review: `doc/enterprise-and-landlord-review.md` §A6, §A10.
 - No branch switcher (flat org picker breaks at 20+ properties), no favourites/recents at scale, no global command-palette scoping by branch, notification stub means no operational triage surface.
 
 ## Revamp proposal
-1. Single-property mode: when `properties + parcels == 1`, land directly on that dashboard, hide picker/slug, keep `/properties` under Advanced.
-2. Progressive shell: default nav = Home, Tenants, Money, Issues, More. Everything else (Reports, AI, Templates, Roles, Audit, Trash) moves under More/Advanced until the org qualifies (property count, plan tier).
-3. Search stays but scopes to branch when branches land (see 15); keep PII gating (`manageUsers`).
-4. Replace the notification stub with a real centre (feeds 14): rent-due, arrears, SLA breach, approval tasks.
+1. Single-property mode: when `properties + parcels == 1`, land directly on that dashboard, hide picker/slug, keep `/properties` reachable (it is outside the simple sidebar today). **Still open.**
+2. Progressive shell: **built** as the Simple/Pro lens. `organizations.settings['mode']` (asked in `become-landlord`, switchable by owners in Staff → Roles → Security policy) is shared in `HandleInertiaRequests` context; `app-sidebar.tsx` trims to daily jobs + money + team in simple mode, with an owner-only "Show all features" switch and a dismissible Pro suggestion when the org outgrows simple (2nd asset, staff, >10 units). Routes are never gated — the lens only trims the sidebar.
+3. Search stays but scopes to branch when branches land (see 15); keep PII gating (`manageUsers`). **Still open.**
+4. Replace the notification stub with a real centre (feeds 14): rent-due, arrears, SLA breach, approval tasks. **Still open.**
 
 ## Acceptance
-- 1-property user never sees a picker or slug; 20-property user gets branch-grouped switching.
-- New org nav fits on a phone screen without scrolling; Advanced is one tap away, never a dead end.
+- 1-property user never sees a picker or slug; 20-property user gets branch-grouped switching. **Picker/slug part still open; nav trim done.**
+- New org nav fits on a phone screen without scrolling; switching to the full view is one tap away, never a dead end. **Done via mode switch.**
 
 ## Next
 Work on `04-properties-units.md` — the asset foundation everything else hangs off.
