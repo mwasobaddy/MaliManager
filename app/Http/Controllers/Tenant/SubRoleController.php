@@ -84,6 +84,10 @@ class SubRoleController extends Controller
         return Inertia::render('organisation/staff/roles', [
             'roles' => $roles,
             'permissionCatalog' => $this->permissionCatalog(),
+            'security' => [
+                'require_staff_two_factor' => $organization->requiresStaffTwoFactor(),
+                'is_owner' => $request->user()->isOwnerOf($organization),
+            ],
         ]);
     }
 

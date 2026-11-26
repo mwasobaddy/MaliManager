@@ -68,6 +68,16 @@ class Organization extends Model
         });
     }
 
+    /**
+     * Whether staff logins to this organization require confirmed
+     * two-factor authentication. Stored in the schemaless settings
+     * array so the policy needs no migration to adopt.
+     */
+    public function requiresStaffTwoFactor(): bool
+    {
+        return (bool) ($this->settings['require_staff_two_factor'] ?? false);
+    }
+
     public function tenant(): BelongsTo
     {
         return $this->belongsTo(Tenant::class, 'tenant_id');

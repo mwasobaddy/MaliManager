@@ -27,6 +27,12 @@ class LoginController extends Controller
         }
 
         if ($user->status !== 'active') {
+            activity()->inLog('auth')
+                ->causedBy($user)
+                ->performedOn($user)
+                ->event('login.suspended')
+                ->log('Blocked sign-in for a suspended account');
+
             throw ValidationException::withMessages([
                 'email' => 'This account has been suspended.',
             ]);
@@ -34,7 +40,16 @@ class LoginController extends Controller
 
         $otpService->issue($user);
 
-        $request->session()->put('login.email', $validated['email']);
+        activity()->inLog('auth')
+            ->causedBy($user)
+            ->performedOn($user)
+            ->event('otp.issued')
+            ->log('Issued one-time code');
+
+        $request->session()->put([
+            'login.email' => $validated['email'],
+            'login.remember' => (bool) ($validated['remember'] ?? false),
+        ]);
 
         return redirect()->route('login.otp');
     }

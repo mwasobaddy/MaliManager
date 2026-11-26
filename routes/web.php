@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Auth\SuspendedController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Guest\GuestController;
 use App\Http\Controllers\Guest\LandlordController;
@@ -141,7 +142,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('search', [SearchController::class, 'index'])->name('search');
 });
 
-Route::inertia('suspended', 'auth/suspended')->name('suspended');
+Route::get('suspended', [SuspendedController::class, 'show'])->name('suspended');
 
 require __DIR__.'/platform.php';
 require __DIR__.'/settings.php';

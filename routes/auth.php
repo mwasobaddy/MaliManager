@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\OtpController;
+use App\Http\Controllers\Auth\ReactivationController;
 use App\Http\Controllers\Auth\SocialiteController;
 use App\Http\Controllers\OnboardingController;
 use Illuminate\Support\Facades\Route;
@@ -21,6 +22,10 @@ Route::middleware(['guest'])->group(function () {
     Route::get('auth/{provider}/callback', [SocialiteController::class, 'callback'])
         ->whereIn('provider', ['google'])
         ->name('auth.socialite.callback');
+
+    Route::post('auth/reactivation', [ReactivationController::class, 'store'])
+        ->middleware('throttle:login')
+        ->name('reactivation.store');
 });
 
 // Post-login onboarding completion.

@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Support\AuthLanding;
 use App\Support\InertiaRedirect;
 use App\Support\OtpService;
+use App\Support\TwoFactorRequirement;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Facades\Auth;
@@ -54,14 +55,21 @@ class OtpController extends Controller
         }
 
         $request->session()->forget('login.email');
+        $remember = (bool) $request->session()->pull('login.remember', false);
 
-        Auth::login($user);
+        Auth::login($user, $remember);
 
         activity()->inLog('auth')
             ->causedBy($user)
             ->performedOn($user)
             ->event('otp.verified')
             ->log('Verified one-time code');
+
+        if ($enforcement = TwoFactorRequirement::for($user)) {
+            Inertia::flash('toast', ['type' => 'warning', 'message' => $enforcement['message']]);
+
+            return InertiaRedirect::to($enforcement['url'], $request);
+        }
 
         $landing = $user->isOnboarded()
             ? AuthLanding::for($user, $request)
@@ -87,6 +95,13 @@ class OtpController extends Controller
         }
 
         $otpService->issue($user);
+
+        activity()->inLog('auth')
+            ->causedBy($user)
+            ->performedOn($user)
+            ->event('otp.issued')
+            ->withProperties(['resent' => true])
+            ->log('Re-issued one-time code');
 
         return back()->with('status', 'A new code has been sent to your email.');
     }

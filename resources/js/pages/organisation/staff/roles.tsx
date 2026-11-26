@@ -31,9 +31,11 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
 import { useOverlayParam } from '@/hooks/use-overlay-param';
 import * as roleRoutes from '@/routes/tenant/roles';
+import { update as updateSecurityPolicy } from '@/routes/tenant/security-policy';
 
 type PermissionRef = { value: string; label: string };
 
@@ -61,12 +63,71 @@ type Props = {
         total: number;
     };
     permissionCatalog: PermissionGroup[];
+    security: {
+        require_staff_two_factor: boolean;
+        is_owner: boolean;
+    };
 };
 
 /** Debounce so a fast typist issues one request, not one per keystroke. */
 const SEARCH_DEBOUNCE_MS = 350;
 
-export default function StaffRolesIndex({ roles, permissionCatalog }: Props) {
+function SecurityPolicyCard({
+    security,
+}: {
+    security: {
+        require_staff_two_factor: boolean;
+        is_owner: boolean;
+    };
+}) {
+    const [required, setRequired] = useState(security.require_staff_two_factor);
+
+    return (
+        <Card className="p-4">
+            <Form {...updateSecurityPolicy.form()}>
+                {({ processing }) => (
+                    <div className="flex items-center justify-between gap-4">
+                        <Label
+                            htmlFor="require_staff_two_factor"
+                            className="flex-1 cursor-pointer"
+                        >
+                            <span className="block text-sm font-medium">
+                                Require two-factor authentication for staff
+                            </span>
+                            <span className="block text-sm text-muted-foreground">
+                                Staff without two-factor enabled are sent to set
+                                it up at their next sign-in. Owners are never
+                                blocked.
+                            </span>
+                        </Label>
+                        <Checkbox
+                            id="require_staff_two_factor"
+                            checked={required}
+                            onCheckedChange={(checked) =>
+                                setRequired(checked === true)
+                            }
+                        />
+                        <input
+                            type="hidden"
+                            name="require_staff_two_factor"
+                            value={required ? '1' : '0'}
+                        />
+                        <Button type="submit" disabled={processing}>
+                            {processing && <Spinner />}
+                            Save policy
+                        </Button>
+                    </div>
+                )}
+            </Form>
+        </Card>
+    );
+}
+
+export default function StaffRolesIndex({
+    roles,
+    permissionCatalog,
+    security,
+}: Props) {
     const { query, setOverlayParam } = useOverlayParam();
     const pageUrl = usePage().url;
 
@@ -80,7 +141,7 @@ export default function StaffRolesIndex({ roles, permissionCatalog }: Props) {
         direction: query.get('direction') === 'asc' ? 'asc' : 'desc',
     };
 
-    const only = ['roles', 'permissionCatalog'];
+    const only = ['roles', 'permissionCatalog', 'security'];
 
     function navigate(
         params: Record<string, string | number>,
@@ -347,6 +408,13 @@ export default function StaffRolesIndex({ roles, permissionCatalog }: Props) {
                         className="ml-auto max-w-20 sm:max-w-24"
                     />
                 </div>
+
+                {security.is_owner ? (
+                    <SecurityPolicyCard
+                        key={String(security.require_staff_two_factor)}
+                        security={security}
+                    />
+                ) : null}
 
                 <Card className="gap-0 py-0">
                     <div className="flex flex-wrap items-center gap-2 border-b border-border-strong p-4">

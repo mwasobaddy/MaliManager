@@ -5,6 +5,7 @@ import InputError from '@/components/input-error';
 // Passkeys disabled.
 // import PasskeyVerify from '@/components/passkey-verify';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
@@ -20,6 +21,7 @@ const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function Login({ status }: Props) {
     const [email, setEmail] = useState('');
+    const [remember, setRemember] = useState(false);
     const [touched, setTouched] = useState(false);
 
     const emailValid = emailPattern.test(email);
@@ -95,6 +97,34 @@ export default function Login({ status }: Props) {
                                 {processing && <Spinner />}
                                 Continue
                             </Button>
+
+                            <div className="flex items-start gap-2">
+                                <Checkbox
+                                    id="remember"
+                                    checked={remember}
+                                    onCheckedChange={(checked) =>
+                                        setRemember(checked === true)
+                                    }
+                                />
+                                <input
+                                    type="hidden"
+                                    name="remember"
+                                    value={remember ? '1' : '0'}
+                                />
+                                <div>
+                                    <Label
+                                        htmlFor="remember"
+                                        className="cursor-pointer text-sm font-medium"
+                                    >
+                                        Stay signed in on this phone
+                                    </Label>
+                                    <p className="text-sm text-muted-foreground">
+                                        Keeps you signed in for 30 days on this
+                                        device. Don&apos;t use this on a shared
+                                        phone.
+                                    </p>
+                                </div>
+                            </div>
                         </div>
                     </>
                 )}

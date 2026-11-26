@@ -7,6 +7,7 @@ use App\Http\Requests\Auth\SocialiteCallbackRequest;
 use App\Models\User;
 use App\Support\AuthLanding;
 use App\Support\InertiaRedirect;
+use App\Support\TwoFactorRequirement;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Facades\Auth;
@@ -37,6 +38,12 @@ class SocialiteController extends Controller
         $user = $this->findOrCreateUser($provider, $socialUser);
 
         if ($user->status !== 'active') {
+            activity()->inLog('auth')
+                ->causedBy($user)
+                ->performedOn($user)
+                ->event('login.suspended')
+                ->log('Blocked sign-in for a suspended account');
+
             Inertia::flash('toast', ['type' => 'error', 'message' => 'This account has been suspended.']);
 
             return redirect()->route('login');
@@ -48,6 +55,12 @@ class SocialiteController extends Controller
             ->causedBy($user)
             ->event('login.socialite')
             ->log('Signed in with '.ucfirst($provider));
+
+        if ($enforcement = TwoFactorRequirement::for($user)) {
+            Inertia::flash('toast', ['type' => 'warning', 'message' => $enforcement['message']]);
+
+            return InertiaRedirect::to($enforcement['url'], $request);
+        }
 
         $landing = $user->isOnboarded()
             ? AuthLanding::for($user, $request)

@@ -23,6 +23,7 @@ use App\Http\Controllers\Tenant\MoveOutNoticeController;
 use App\Http\Controllers\Tenant\MpesaCallbackController;
 use App\Http\Controllers\Tenant\OccupantController;
 use App\Http\Controllers\Tenant\OrganizationDashboardController;
+use App\Http\Controllers\Tenant\OrganizationSecurityController;
 use App\Http\Controllers\Tenant\PaymentController;
 use App\Http\Controllers\Tenant\PropertyController;
 use App\Http\Controllers\Tenant\ReportController;
@@ -514,6 +515,8 @@ Route::middleware([
         Route::middleware('sub-permission:role.manage')->group(function () {
             Route::get('/roles', [SubRoleController::class, 'index'])
                 ->name('tenant.roles.index');
+            Route::put('/security-policy', [OrganizationSecurityController::class, 'update'])
+                ->name('tenant.security-policy.update');
             Route::post('/roles', [SubRoleController::class, 'store'])
                 ->name('tenant.roles.store');
             Route::put('/roles/{subRole}', [SubRoleController::class, 'update'])
