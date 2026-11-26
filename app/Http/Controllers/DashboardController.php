@@ -66,7 +66,9 @@ class DashboardController extends Controller
         return Inertia::render('dashboard', array_merge(
             app(DashboardService::class)->payload($user, $access, $year ?: null, $month ?: null, $request->integer('property') ?: null),
             [
-                'autoOpenPropertyPicker' => $accessibleAssets->isNotEmpty()
+                // A single accessible asset needs no choosing: force-opening
+                // the picker for one button is the small-org tax this removes.
+                'autoOpenPropertyPicker' => $accessibleAssets->count() > 1
                     && ! $request->session()->get(self::ACK_KEY, false),
                 'platform' => $metrics ? $platform->payload() : null,
                 'growth' => $metrics ? [

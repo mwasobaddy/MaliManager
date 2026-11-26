@@ -25,6 +25,12 @@ type PropertyPickerContextValue = {
     hasProperties: boolean;
     hasLand: boolean;
     hasAssets: boolean;
+    /**
+     * Choosing only makes sense with more than one destination: the
+     * sidebar switcher hides itself and the dashboard stops force-opening
+     * below this, so single-asset users never meet the picker.
+     */
+    hasMultipleAssets: boolean;
 };
 
 const PropertyPickerContext = createContext<PropertyPickerContextValue | null>(
@@ -121,6 +127,14 @@ export function PropertyPickerProvider({
         (organization) => organization.land_parcels.length > 0,
     );
     const hasAssets = hasProperties || hasLand;
+    const hasMultipleAssets =
+        organizations.reduce(
+            (count, organization) =>
+                count +
+                organization.properties.length +
+                organization.land_parcels.length,
+            0,
+        ) > 1;
 
     // Only users holding the central "access admin dashboard" permission may
     // leave the picker via the platform admin dashboard.
@@ -130,7 +144,9 @@ export function PropertyPickerProvider({
     // that has properties; staff only see it once they manage more than one
     // property (a single delegated property means the property dashboard is
     // their destination, not an overview).
-    const canAccessOrgDashboard = (organization: OrganizationSummary): boolean =>
+    const canAccessOrgDashboard = (
+        organization: OrganizationSummary,
+    ): boolean =>
         organization.properties.length > 0 &&
         (organization.is_owner || organization.properties.length > 1);
 
@@ -235,6 +251,7 @@ export function PropertyPickerProvider({
                 hasProperties,
                 hasLand,
                 hasAssets,
+                hasMultipleAssets,
             }}
         >
             {children}
@@ -448,9 +465,8 @@ export function PropertyPickerProvider({
                                                     dashboard
                                                 </span>
                                                 <span className="block text-xs text-white/80 dark:text-[#1A1917]/80">
-                                                    {organization.name} —
-                                                    see how all its assets are
-                                                    doing
+                                                    {organization.name} — see
+                                                    how all its assets are doing
                                                 </span>
                                             </span>
                                         </span>

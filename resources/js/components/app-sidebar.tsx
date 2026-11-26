@@ -190,7 +190,7 @@ export function AppSidebar() {
         'property-type.delete',
         'role.delete',
     ].some((permission) => authPermissions.includes(permission));
-    const { open, hasAssets } = usePropertyPicker();
+    const { open, hasMultipleAssets } = usePropertyPicker();
 
     const item = (
         title: string,
@@ -207,10 +207,10 @@ export function AppSidebar() {
     });
 
     // Opens the cross-organization property picker so an admin can jump to a
-    // different property or land parcel. Only shown when they actually have
-    // properties to switch between.
+    // different property or land parcel. Only shown when there is more than
+    // one destination to switch between — a single asset needs no choosing.
     const switchPropertyItem = (): NavItem | null =>
-        hasAssets
+        hasMultipleAssets
             ? {
                   title: 'Switch property or land',
                   icon: ArrowLeftRight,

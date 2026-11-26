@@ -117,7 +117,7 @@ it('restricts staff to only their delegated land parcels', function () {
     expect($parcelIds)->not->toContain($other->id);
 });
 
-it('auto-opens the picker on the dashboard when the user only has a land parcel', function () {
+it('does not auto-open the picker on the dashboard for a single land parcel', function () {
     $user = onboardedUser();
     $org = Organization::factory()->create();
 
@@ -127,7 +127,7 @@ it('auto-opens the picker on the dashboard when the user only has a land parcel'
     $this->actingAs($user)
         ->get(route('dashboard'))
         ->assertInertia(fn ($page) => $page->component('dashboard')
-            ->where('autoOpenPropertyPicker', true));
+            ->where('autoOpenPropertyPicker', false));
 });
 
 it('redirects to the central dashboard when the user has multiple properties', function () {
@@ -160,11 +160,25 @@ it('lands on the central dashboard with the picker when there is a single proper
     expect(route('dashboard'))->toBe($landing);
 });
 
-it('auto-opens the picker on the dashboard for any accessible property', function () {
+it('does not auto-open the picker on the dashboard for a single property', function () {
     $user = onboardedUser();
     $org = Organization::factory()->create();
 
     $user->organizations()->attach($org->id, ['is_owner' => true, 'status' => 'active']);
+    Property::factory()->for($org)->create();
+
+    $this->actingAs($user)
+        ->get(route('dashboard'))
+        ->assertInertia(fn ($page) => $page->component('dashboard')
+            ->where('autoOpenPropertyPicker', false));
+});
+
+it('auto-opens the picker on the dashboard when the user has multiple assets', function () {
+    $user = onboardedUser();
+    $org = Organization::factory()->create();
+
+    $user->organizations()->attach($org->id, ['is_owner' => true, 'status' => 'active']);
+    Property::factory()->for($org)->create();
     Property::factory()->for($org)->create();
 
     $this->actingAs($user)
