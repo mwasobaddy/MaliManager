@@ -30,8 +30,10 @@ import {
 import {
     destroy as destroySection,
     lease,
+    status as updateSectionStatus,
     store,
 } from '@/routes/tenant/land-parcel-sections';
+import { end as endSectionLease } from '@/routes/tenant/land-parcel-sections/leases';
 import { destroy, edit, index } from '@/routes/tenant/land-parcels';
 
 type Organization = {
@@ -52,6 +54,14 @@ type ParcelImage = {
     name: string;
 };
 
+type ActiveLease = {
+    id: number;
+    tenant_name: string;
+    rent_amount: string | number | null;
+    currency: string | null;
+    ends_at: string | null;
+};
+
 type Section = {
     id: number;
     name: string;
@@ -59,6 +69,7 @@ type Section = {
     status: string;
     notes: string | null;
     deletable: boolean;
+    active_lease: ActiveLease | null;
 };
 
 type LandParcel = {
@@ -88,6 +99,7 @@ type Props = {
     canDeleteLandParcel: boolean;
     canManageSections: boolean;
     canLease: boolean;
+    canEndLease: boolean;
 };
 
 const Detail = ({
@@ -116,10 +128,12 @@ export default function LandParcelShow({
     canDeleteLandParcel,
     canManageSections,
     canLease,
+    canEndLease,
 }: Props) {
     const passwordInput = useRef<HTMLInputElement>(null);
     const [addSection, setAddSection] = useState(false);
     const [deleteSectionId, setDeleteSectionId] = useState<number | null>(null);
+    const [endSectionId, setEndSectionId] = useState<number | null>(null);
     const [leaseSectionId, setLeaseSectionId] = useState<number | null>(null);
     const [agreementHtml, setAgreementHtml] = useState<string | null>(null);
 
@@ -320,6 +334,11 @@ export default function LandParcelShow({
                                                             Vacant
                                                         </SelectItem>
                                                         <SelectItem
+                                                            value={'reserved'}
+                                                        >
+                                                            Reserved
+                                                        </SelectItem>
+                                                        <SelectItem
                                                             value={'leased'}
                                                         >
                                                             Leased
@@ -385,6 +404,27 @@ export default function LandParcelShow({
                                                             ? ` · ${section.notes}`
                                                             : ''}
                                                     </p>
+                                                    {section.active_lease ? (
+                                                        <p className="truncate text-sm text-muted-foreground">
+                                                            Leased to{' '}
+                                                            {
+                                                                section
+                                                                    .active_lease
+                                                                    .tenant_name
+                                                            }
+                                                            {section
+                                                                .active_lease
+                                                                .rent_amount !=
+                                                            null
+                                                                ? ` · ${section.active_lease.rent_amount} ${section.active_lease.currency ?? ''}`
+                                                                : ''}
+                                                            {section
+                                                                .active_lease
+                                                                .ends_at
+                                                                ? ` until ${section.active_lease.ends_at}`
+                                                                : ''}
+                                                        </p>
+                                                    ) : null}
                                                 </div>
                                                 <div className="flex items-center gap-3">
                                                     <Badge
@@ -397,26 +437,103 @@ export default function LandParcelShow({
                                                     >
                                                         {section.status}
                                                     </Badge>
-                                                    {canLease && (
-                                                        <Button
-                                                            size="sm"
-                                                            variant="outline"
-                                                            onClick={() =>
-                                                                setLeaseSectionId(
-                                                                    leaseSectionId ===
-                                                                        section.id
-                                                                        ? null
-                                                                        : section.id,
-                                                                )
-                                                            }
-                                                        >
-                                                            <FileText className="size-4" />
-                                                            {leaseSectionId ===
-                                                            section.id
-                                                                ? 'Close'
-                                                                : 'Lease'}
-                                                        </Button>
-                                                    )}
+                                                    {canLease &&
+                                                        section.status ===
+                                                            'vacant' && (
+                                                            <Form
+                                                                {...updateSectionStatus.form(
+                                                                    {
+                                                                        land_parcel:
+                                                                            parcel.slug,
+                                                                        land_parcel_section:
+                                                                            section.id,
+                                                                    },
+                                                                )}
+                                                                options={{
+                                                                    preserveScroll: true,
+                                                                }}
+                                                            >
+                                                                <input
+                                                                    type="hidden"
+                                                                    name="status"
+                                                                    value="reserved"
+                                                                />
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    type="submit"
+                                                                >
+                                                                    Reserve
+                                                                </Button>
+                                                            </Form>
+                                                        )}
+                                                    {canLease &&
+                                                        section.status ===
+                                                            'reserved' && (
+                                                            <Form
+                                                                {...updateSectionStatus.form(
+                                                                    {
+                                                                        land_parcel:
+                                                                            parcel.slug,
+                                                                        land_parcel_section:
+                                                                            section.id,
+                                                                    },
+                                                                )}
+                                                                options={{
+                                                                    preserveScroll: true,
+                                                                }}
+                                                            >
+                                                                <input
+                                                                    type="hidden"
+                                                                    name="status"
+                                                                    value="vacant"
+                                                                />
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    type="submit"
+                                                                >
+                                                                    Release
+                                                                </Button>
+                                                            </Form>
+                                                        )}
+                                                    {canEndLease &&
+                                                        section.active_lease !==
+                                                            null && (
+                                                            <Button
+                                                                size="sm"
+                                                                variant="outline"
+                                                                onClick={() =>
+                                                                    setEndSectionId(
+                                                                        section.id,
+                                                                    )
+                                                                }
+                                                            >
+                                                                End lease
+                                                            </Button>
+                                                        )}
+                                                    {canLease &&
+                                                        section.active_lease ===
+                                                            null && (
+                                                            <Button
+                                                                size="sm"
+                                                                variant="outline"
+                                                                onClick={() =>
+                                                                    setLeaseSectionId(
+                                                                        leaseSectionId ===
+                                                                            section.id
+                                                                            ? null
+                                                                            : section.id,
+                                                                    )
+                                                                }
+                                                            >
+                                                                <FileText className="size-4" />
+                                                                {leaseSectionId ===
+                                                                section.id
+                                                                    ? 'Close'
+                                                                    : 'Lease'}
+                                                            </Button>
+                                                        )}
                                                     {canManageSections && (
                                                         <ActionIconButton
                                                             icon={<Trash2 />}
@@ -813,7 +930,83 @@ export default function LandParcelShow({
                     }
                     title={`Delete section ${sections.find((section) => section.id === deleteSectionId)?.name ?? ''}?`}
                     description="The section is removed and can no longer be leased. Confirm with your password — this cannot be undone."
+                    onSuccess={() => setDeleteSectionId(null)}
                 />
+            )}
+
+            {canEndLease && endSectionId !== null && (
+                <Dialog
+                    open={endSectionId !== null}
+                    onOpenChange={(open) => {
+                        if (!open) {
+                            setEndSectionId(null);
+                        }
+                    }}
+                >
+                    <DialogContent>
+                        <DialogTitle>
+                            End the lease on{' '}
+                            {
+                                sections.find(
+                                    (section) => section.id === endSectionId,
+                                )?.name
+                            }
+                            ?
+                        </DialogTitle>
+                        <DialogDescription>
+                            The tenant&apos;s lease ends now and the section
+                            returns to vacant. If a deposit was held, a refund
+                            review starts automatically. Confirm with your
+                            password.
+                        </DialogDescription>
+                        <Form
+                            {...endSectionLease.form({
+                                land_parcel: parcel.slug,
+                                land_parcel_section: endSectionId,
+                            })}
+                            options={{ preserveScroll: true }}
+                            onError={() => passwordInput.current?.focus()}
+                            onSuccess={() => setEndSectionId(null)}
+                            className="space-y-6"
+                        >
+                            {({ processing, errors }) => (
+                                <>
+                                    <div className="grid gap-2">
+                                        <Label
+                                            htmlFor="end-lease-password"
+                                            className="sr-only"
+                                        >
+                                            Password
+                                        </Label>
+                                        <PasswordInput
+                                            id="end-lease-password"
+                                            name="password"
+                                            ref={passwordInput}
+                                            placeholder="Password"
+                                            autoComplete="current-password"
+                                        />
+                                        <InputError message={errors.password} />
+                                    </div>
+                                    <DialogFooter>
+                                        <OverlayFooter
+                                            onCancel={() =>
+                                                setEndSectionId(null)
+                                            }
+                                            actions={[
+                                                {
+                                                    label: 'End lease',
+                                                    tone: 'danger',
+                                                    type: 'submit',
+                                                    disabled: processing,
+                                                },
+                                            ]}
+                                        />
+                                    </DialogFooter>
+                                </>
+                            )}
+                        </Form>
+                    </DialogContent>
+                </Dialog>
             )}
         </>
     );

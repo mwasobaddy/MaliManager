@@ -483,6 +483,20 @@ Route::middleware([
                 ->name('tenant.land-parcel-sections.destroy');
         });
 
+        // Pre-lease section states: reserve a vacant section, release a
+        // reserved one. Leased sections end their lease instead.
+        Route::middleware('sub-permission:lease.manage')->group(function () {
+            Route::patch('/land-parcels/{land_parcel}/sections/{land_parcel_section}/status', [LandParcelSectionController::class, 'updateStatus'])
+                ->name('tenant.land-parcel-sections.status');
+        });
+
+        // Ending a section lease is destructive like ending a unit lease:
+        // password-confirmed via EndLeaseRequest, gated on lease.delete.
+        Route::middleware('sub-permission:lease.delete')->group(function () {
+            Route::post('/land-parcels/{land_parcel}/sections/{land_parcel_section}/leases/end', [LandParcelSectionController::class, 'endLease'])
+                ->name('tenant.land-parcel-sections.leases.end');
+        });
+
         Route::middleware('sub-permission:payment.manage')->group(function () {
             Route::get('/payments', [PaymentController::class, 'index'])
                 ->name('tenant.payments.index');

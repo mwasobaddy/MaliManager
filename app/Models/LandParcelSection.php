@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
@@ -50,6 +51,23 @@ class LandParcelSection extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function leases(): HasMany
+    {
+        return $this->hasMany(Lease::class, 'land_parcel_section_id');
+    }
+
+    /**
+     * The running tenancy on this section, if any. Sections lease one
+     * tenant at a time, so the latest active row is the current one.
+     */
+    public function activeLease(): ?Lease
+    {
+        return $this->leases()
+            ->where('status', 'active')
+            ->latest('id')
+            ->first();
     }
 
     /**

@@ -27,7 +27,7 @@ class StoreLandParcelSectionRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'area' => ['nullable', 'numeric', 'min:0'],
-            'status' => ['required', Rule::in(['vacant', 'leased', 'maintenance'])],
+            'status' => ['required', Rule::in(['vacant', 'reserved', 'leased', 'maintenance'])],
             'notes' => ['nullable', 'string'],
         ];
     }

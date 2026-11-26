@@ -5,11 +5,15 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Tenant;
 
 use App\Actions\LandParcels\DeleteLandParcelSection;
+use App\Actions\LandParcels\EndLandParcelSectionLease;
 use App\Actions\LandParcels\LeaseLandParcelSection;
+use App\Actions\LandParcels\UpdateLandParcelSectionStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Tenant\DestroyLandParcelSectionRequest;
+use App\Http\Requests\Tenant\EndLeaseRequest;
 use App\Http\Requests\Tenant\LeaseLandParcelSectionRequest;
 use App\Http\Requests\Tenant\StoreLandParcelSectionRequest;
+use App\Http\Requests\Tenant\UpdateLandParcelSectionRequest;
 use App\Models\AgreementTemplate;
 use App\Models\LandParcel;
 use App\Models\LandParcelSection;
@@ -74,6 +78,7 @@ class LandParcelSectionController extends Controller
     ): RedirectResponse {
         $this->authorizeParcelAccess($request, $landParcel);
         abort_if($landParcelSection->land_parcel_id !== $landParcel->id, 404);
+        abort_if($landParcelSection->activeLease() !== null, 422, 'This section already has an active lease. End it first.');
 
         $organization = TenancyContext::organization();
         abort_if($organization === null, 403);
@@ -94,6 +99,50 @@ class LandParcelSectionController extends Controller
             'type' => 'success',
             'message' => "Lease created for {$landParcelSection->name}.",
         ]);
+
+        return redirect()->route('tenant.land-parcels.show', [
+            'land_parcel' => $landParcel->slug,
+        ]);
+    }
+
+    /**
+     * Reserve a vacant section or release a reserved one. Leased sections
+     * end their lease instead of changing status here.
+     */
+    public function updateStatus(
+        UpdateLandParcelSectionRequest $request,
+        LandParcel $landParcel,
+        LandParcelSection $landParcelSection,
+        UpdateLandParcelSectionStatus $update,
+    ): RedirectResponse {
+        $this->authorizeParcelAccess($request, $landParcel);
+        abort_if($landParcelSection->land_parcel_id !== $landParcel->id, 404);
+
+        $update->handle($landParcelSection, $request->user(), $request->string('status')->toString());
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => "Section {$landParcelSection->refresh()->status}."]);
+
+        return redirect()->route('tenant.land-parcels.show', [
+            'land_parcel' => $landParcel->slug,
+        ]);
+    }
+
+    /**
+     * End a section lease early, mirroring unit-lease termination:
+     * password-confirmed, section freed back to vacant.
+     */
+    public function endLease(
+        EndLeaseRequest $request,
+        LandParcel $landParcel,
+        LandParcelSection $landParcelSection,
+        EndLandParcelSectionLease $end,
+    ): RedirectResponse {
+        $this->authorizeParcelAccess($request, $landParcel);
+        abort_if($landParcelSection->land_parcel_id !== $landParcel->id, 404);
+
+        $end->handle($landParcel, $landParcelSection, $request->user());
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Section lease ended.']);
 
         return redirect()->route('tenant.land-parcels.show', [
             'land_parcel' => $landParcel->slug,

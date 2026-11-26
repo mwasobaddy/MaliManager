@@ -11,6 +11,7 @@ use App\Http\Requests\Tenant\StoreLandParcelRequest;
 use App\Http\Requests\Tenant\UpdateLandParcelRequest;
 use App\Models\Branch;
 use App\Models\LandParcel;
+use App\Models\LandParcelSection;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\SubRole;
@@ -110,15 +111,27 @@ class LandParcelController extends Controller
             'sections' => $landParcel->sections()
                 ->orderBy('name')
                 ->get(['id', 'name', 'area', 'status', 'notes', 'created_by'])
-                ->map(fn ($section): array => [
-                    'id' => $section->id,
-                    'name' => $section->name,
-                    'area' => $section->area,
-                    'status' => $section->status,
-                    'notes' => $section->notes,
-                    'deletable' => DeletionTier::allows($user, $landParcel->organization, $section),
-                ])
+                ->map(function (LandParcelSection $section) use ($user, $landParcel): array {
+                    $activeLease = $section->activeLease();
+
+                    return [
+                        'id' => $section->id,
+                        'name' => $section->name,
+                        'area' => $section->area,
+                        'status' => $section->status,
+                        'notes' => $section->notes,
+                        'deletable' => DeletionTier::allows($user, $landParcel->organization, $section),
+                        'active_lease' => $activeLease === null ? null : [
+                            'id' => $activeLease->id,
+                            'tenant_name' => trim(($activeLease->person->first_name ?? '').' '.($activeLease->person->last_name ?? '')) ?: $activeLease->person->email,
+                            'rent_amount' => $activeLease->rent_amount,
+                            'currency' => $activeLease->currency,
+                            'ends_at' => $activeLease->ends_at?->toDateString(),
+                        ],
+                    ];
+                })
                 ->all(),
+            'canEndLease' => $user->hasSubPermission($organization, SubPermissionKey::LeaseDelete),
             'canEditLandParcel' => $user->hasSubPermission($organization, SubPermissionKey::LandParcelEdit),
             'canDeleteLandParcel' => $user->hasSubPermission($organization, SubPermissionKey::LandParcelDelete),
             'canManageSections' => $user->hasSubPermission($organization, SubPermissionKey::LandParcelManage),
