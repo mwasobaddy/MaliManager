@@ -2,8 +2,6 @@ import { Form, Head } from '@inertiajs/react';
 import { useState } from 'react';
 import { GoogleIcon } from '@/components/google-icon';
 import InputError from '@/components/input-error';
-// Passkeys disabled.
-// import PasskeyVerify from '@/components/passkey-verify';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -18,13 +16,16 @@ type Props = {
 };
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const phonePattern = /^[+\d][\d\s\-().]{7,}$/;
 
 export default function Login({ status }: Props) {
-    const [email, setEmail] = useState('');
+    const [identifier, setIdentifier] = useState('');
     const [remember, setRemember] = useState(false);
     const [touched, setTouched] = useState(false);
 
-    const emailValid = emailPattern.test(email);
+    const trimmed = identifier.trim();
+    const identifierValid =
+        emailPattern.test(trimmed) || phonePattern.test(trimmed);
 
     return (
         <>
@@ -44,7 +45,7 @@ export default function Login({ status }: Props) {
             <div className="relative my-6 text-center text-sm">
                 <span className="absolute inset-x-0 top-1/2 border-t border-border" />
                 <span className="relative z-10 bg-card px-3 text-muted-foreground">
-                    Or continue with email
+                    Or continue with email or phone
                 </span>
             </div>
 
@@ -53,37 +54,42 @@ export default function Login({ status }: Props) {
                     <>
                         <div className="grid gap-6">
                             <div className="grid gap-2">
-                                <Label htmlFor="email">Email address</Label>
+                                <Label htmlFor="identifier">
+                                    Email address or phone number
+                                </Label>
                                 <Input
-                                    id="email"
-                                    type="email"
-                                    name="email"
+                                    id="identifier"
+                                    type="text"
+                                    name="identifier"
                                     required
                                     autoFocus
                                     tabIndex={1}
-                                    autoComplete="email"
-                                    placeholder="email@example.com"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
+                                    autoComplete="username"
+                                    placeholder="email@example.com or 0712 000 000"
+                                    value={identifier}
+                                    onChange={(e) =>
+                                        setIdentifier(e.target.value)
+                                    }
                                     onBlur={() => setTouched(true)}
-                                    aria-invalid={touched && !emailValid}
+                                    aria-invalid={touched && !identifierValid}
                                     aria-describedby={
-                                        touched && !emailValid
-                                            ? 'email-hint'
+                                        touched && !identifierValid
+                                            ? 'identifier-hint'
                                             : undefined
                                     }
                                 />
-                                {touched && !emailValid ? (
+                                {touched && !identifierValid ? (
                                     <p
-                                        id="email-hint"
+                                        id="identifier-hint"
                                         role="alert"
                                         className="text-sm text-destructive"
-                                        data-test="email-invalid"
+                                        data-test="identifier-invalid"
                                     >
-                                        Please enter a valid email address.
+                                        Enter a valid email address or phone
+                                        number.
                                     </p>
                                 ) : (
-                                    <InputError message={errors.email} />
+                                    <InputError message={errors.identifier} />
                                 )}
                             </div>
 
@@ -91,7 +97,7 @@ export default function Login({ status }: Props) {
                                 type="submit"
                                 className="mt-4 w-full"
                                 tabIndex={2}
-                                disabled={processing || !emailValid}
+                                disabled={processing || !identifierValid}
                                 data-test="login-button"
                             >
                                 {processing && <Spinner />}
@@ -137,7 +143,7 @@ export default function Login({ status }: Props) {
             )}
 
             <p className="mt-2 text-center text-sm text-muted-foreground">
-                We'll email you a one-time code to sign in.
+                We&apos;ll send you a one-time code to sign in.
             </p>
         </>
     );
@@ -145,5 +151,5 @@ export default function Login({ status }: Props) {
 
 Login.layout = {
     title: 'Log in to your account',
-    description: 'Enter your email and we will send you a one-time code',
+    description: 'Enter your email or phone number to get a one-time code',
 };

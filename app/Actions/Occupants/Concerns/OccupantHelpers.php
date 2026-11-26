@@ -10,6 +10,7 @@ use App\Models\Property;
 use App\Models\Unit;
 use App\Models\User;
 use App\Services\PaymentService;
+use App\Support\PhoneNumber;
 use App\Support\TenancyContext;
 
 trait OccupantHelpers
@@ -157,17 +158,28 @@ trait OccupantHelpers
     }
 
     /**
-     * Find (by email) or create the global Person record.
+     * Find (by email, else by phone) or create the global Person record.
+     * Phone-matched people keep their email empty until someone provides
+     * one; the account link is made then, not now.
      */
-    private function findOrCreatePerson(array $data, User $user, User $actor): Person
+    private function findOrCreatePerson(array $data, ?User $user, User $actor): Person
     {
-        $person = Person::where('email', $data['email'])->first();
+        $person = null;
+
+        if (! empty($data['email'])) {
+            $person = Person::where('email', $data['email'])->first();
+        }
+
+        if ($person === null && ! empty($data['phone'])) {
+            $phone = PhoneNumber::normalize((string) $data['phone']) ?? (string) $data['phone'];
+            $person = Person::whereNull('email')->where('phone', $phone)->first();
+        }
 
         if (! $person) {
             $person = new Person([
                 'first_name' => $data['first_name'],
                 'last_name' => $data['last_name'] ?? null,
-                'email' => $data['email'],
+                'email' => $data['email'] ?? null,
                 'phone' => $data['phone'] ?? null,
                 'national_id' => $data['national_id'] ?? null,
                 'gender' => $data['gender'] ?? null,
@@ -179,14 +191,15 @@ trait OccupantHelpers
         } else {
             $person->fill([
                 'first_name' => $data['first_name'],
-                'last_name' => $data['last_name'] ?? null,
+                'last_name' => $data['last_name'] ?? $person->last_name,
+                'email' => $data['email'] ?? $person->email,
                 'phone' => $data['phone'] ?? $person->phone,
                 'national_id' => $data['national_id'] ?? $person->national_id,
                 'gender' => $data['gender'] ?? $person->gender,
             ])->save();
         }
 
-        if (! $user->person_id) {
+        if ($user !== null && ! $user->person_id) {
             $user->fill(['person_id' => $person->id])->save();
         }
 
@@ -194,9 +207,41 @@ trait OccupantHelpers
     }
 
     /**
-     * Find the user account for an occupant, creating it if needed.
+     * Find the user account for an occupant, creating it if needed. Email
+     * accounts dedupe globally by address; phone-only accounts dedupe by
+     * number and get a non-routable placeholder address until a real email
+     * is known, with SMS as the channel so reminders still reach them.
      */
     private function findOrCreateUser(array $data): User
+    {
+        if (! empty($data['email'])) {
+            return $this->findOrCreateEmailUser($data);
+        }
+
+        $phone = PhoneNumber::normalize((string) ($data['phone'] ?? ''));
+
+        if ($phone !== null && ($existing = User::where('phone', $phone)->first()) !== null) {
+            $existing->assignRole(PlatformRole::Occupant->value);
+
+            return $existing;
+        }
+
+        $user = new User([
+            'name' => trim(($data['first_name'] ?? '').' '.($data['last_name'] ?? '')) ?: ($phone ?? 'Tenant'),
+            'email' => $phone !== null ? ltrim($phone, '+').'@phone.invalid' : null,
+            'phone' => $phone,
+            'notification_channel' => 'sms',
+            'onboarded_at' => now(),
+            'status' => 'active',
+        ]);
+
+        $user = $this->save($user);
+        $user->assignRole(PlatformRole::Occupant->value);
+
+        return $user;
+    }
+
+    private function findOrCreateEmailUser(array $data): User
     {
         $user = User::where('email', $data['email'])->first();
 

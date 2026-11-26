@@ -21,13 +21,21 @@ class UpdateOccupant extends Service
             $person->fill([
                 'first_name' => $data['first_name'],
                 'last_name' => $data['last_name'] ?? null,
-                'email' => $data['email'],
+                'email' => $data['email'] ?? $person->email,
                 'phone' => $data['phone'] ?? null,
                 'national_id' => $data['national_id'] ?? null,
                 'gender' => $data['gender'] ?? null,
             ])->save();
 
-            $this->findOrCreateUser($data);
+            // Completing the profile: the account link is made the first
+            // time an email is known, never before.
+            if (! empty($data['email'])) {
+                $user = $this->findOrCreateUser($data);
+
+                if (! $user->person_id) {
+                    $user->fill(['person_id' => $person->id])->save();
+                }
+            }
 
             $requestedStatus = $data['status'] ?? $occupant->status;
 

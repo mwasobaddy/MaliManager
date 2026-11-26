@@ -5,11 +5,13 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Enums\PlatformRole;
 use App\Enums\SubPermissionKey;
+use App\Support\PhoneNumber;
 use App\Support\Search;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -63,6 +65,21 @@ class User extends Authenticatable implements PasskeyUser
             'onboarded_at' => 'datetime',
             'two_factor_confirmed_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Phone numbers are stored canonical (E.164) no matter how they were
+     * typed, so login and person matching can compare exactly instead of
+     * guessing at formats. Unparseable input is kept as-is for validation
+     * to reject.
+     */
+    protected function phone(): Attribute
+    {
+        return Attribute::make(
+            set: fn (mixed $value): mixed => is_string($value) && $value !== ''
+                ? (PhoneNumber::normalize($value) ?? $value)
+                : $value,
+        );
     }
 
     public function person(): BelongsTo

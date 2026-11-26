@@ -12,20 +12,20 @@ test('login sends an OTP for an existing user and stores the email', function ()
 
     $user = User::factory()->create(['email' => 'existing@example.com']);
 
-    $this->post(route('login.store'), ['email' => 'existing@example.com'])
+    $this->post(route('login.store'), ['identifier' => 'existing@example.com'])
         ->assertRedirect(route('login.otp'));
 
     Mail::assertSent(LoginOtpMail::class, fn ($mail) => $mail->hasTo('existing@example.com'));
 
     $this->assertGuest();
-    expect(session('login.email'))->toBe('existing@example.com')
+    expect(session('login.identifier'))->toBe('existing@example.com')
         ->and(LoginOtp::where('user_id', $user->id)->count())->toBe(1);
 });
 
 test('login creates a user from an unknown email and sends an OTP', function () {
     Mail::fake();
 
-    $this->post(route('login.store'), ['email' => 'brand.new@example.com'])
+    $this->post(route('login.store'), ['identifier' => 'brand.new@example.com'])
         ->assertRedirect(route('login.otp'));
 
     Mail::assertSent(LoginOtpMail::class);
@@ -36,21 +36,23 @@ test('login creates a user from an unknown email and sends an OTP', function () 
         ->and(LoginOtp::where('user_id', $user->id)->count())->toBe(1);
 });
 
-test('login validates the email', function () {
-    $this->post(route('login.store'), ['email' => 'not-an-email'])
-        ->assertSessionHasErrors('email');
+test('login validates the identifier', function () {
+    $this->post(route('login.store'), ['identifier' => 'not-an-email'])
+        ->assertSessionHasErrors('identifier');
 });
 
 test('otp page requires a stored email', function () {
     $this->get(route('login.otp'))->assertRedirect(route('login'));
 });
 
-test('otp page shows the pending email', function () {
-    session(['login.email' => 'existing@example.com']);
+test('otp page shows the pending identifier', function () {
+    session(['login.identifier' => 'existing@example.com', 'login.channel' => 'email']);
 
     $this->get(route('login.otp'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page->component('auth/otp')
+            ->where('identifier', 'existing@example.com')
+            ->where('channel', 'email')
             ->where('email', 'existing@example.com'));
 });
 
@@ -60,14 +62,14 @@ test('correct code marks the email verified and logs the user in', function () {
     $user = User::factory()->create(['email' => 'existing@example.com']);
     $code = app(OtpService::class)->issue($user);
 
-    session(['login.email' => 'existing@example.com']);
+    session(['login.identifier' => 'existing@example.com', 'login.channel' => 'email']);
 
     $this->post(route('login.otp.verify'), ['code' => $code])
         ->assertRedirect(route('onboarding.show'));
 
     $this->assertAuthenticatedAs($user);
     expect($user->refresh()->email_verified_at)->not->toBeNull()
-        ->and(session('login.email'))->toBeNull()
+        ->and(session('login.identifier'))->toBeNull()
         ->and(LoginOtp::where('user_id', $user->id)->first()->used_at)->not->toBeNull()
         ->and(Audit::where('event', 'login')->where('subject_type', User::class)->where('subject_id', $user->id)->exists())->toBeTrue()
         ->and(Audit::where('event', 'otp.verified')->where('subject_type', User::class)->where('subject_id', $user->id)->exists())->toBeTrue();
@@ -79,7 +81,7 @@ test('correct code redirects onboarded guests to the guest home', function () {
     $user = User::factory()->create(['email' => 'existing@example.com', 'onboarded_at' => now()]);
     $code = app(OtpService::class)->issue($user);
 
-    session(['login.email' => 'existing@example.com']);
+    session(['login.identifier' => 'existing@example.com', 'login.channel' => 'email']);
 
     $this->post(route('login.otp.verify'), ['code' => $code])
         ->assertRedirect(route('guest.home'));
@@ -91,7 +93,7 @@ test('wrong code is rejected', function () {
     $user = User::factory()->create(['email' => 'existing@example.com']);
     app(OtpService::class)->issue($user);
 
-    session(['login.email' => 'existing@example.com']);
+    session(['login.identifier' => 'existing@example.com', 'login.channel' => 'email']);
 
     $this->post(route('login.otp.verify'), ['code' => '000000'])
         ->assertSessionHasErrors('code');
@@ -109,7 +111,7 @@ test('expired code is rejected', function () {
         'expires_at' => now()->subMinute(),
     ]);
 
-    session(['login.email' => 'existing@example.com']);
+    session(['login.identifier' => 'existing@example.com', 'login.channel' => 'email']);
 
     $this->post(route('login.otp.verify'), ['code' => '123456'])
         ->assertSessionHasErrors('code');
@@ -123,12 +125,12 @@ test('used code cannot be reused', function () {
     $user = User::factory()->create(['email' => 'existing@example.com']);
     $code = app(OtpService::class)->issue($user);
 
-    session(['login.email' => 'existing@example.com']);
+    session(['login.identifier' => 'existing@example.com', 'login.channel' => 'email']);
     $this->post(route('login.otp.verify'), ['code' => $code])->assertRedirect();
 
     $this->post(route('logout'));
 
-    session(['login.email' => 'existing@example.com']);
+    session(['login.identifier' => 'existing@example.com', 'login.channel' => 'email']);
     $this->post(route('login.otp.verify'), ['code' => $code])
         ->assertSessionHasErrors('code');
 });
@@ -139,7 +141,7 @@ test('resend reuses the existing code when it is still valid', function () {
     $user = User::factory()->create(['email' => 'existing@example.com']);
     $code = app(OtpService::class)->issue($user);
 
-    session(['login.email' => 'existing@example.com']);
+    session(['login.identifier' => 'existing@example.com', 'login.channel' => 'email']);
 
     $this->post(route('login.otp.resend'))
         ->assertRedirect()
@@ -160,7 +162,7 @@ test('resend generates a new code when the previous one has expired', function (
         'expires_at' => now()->subMinute(),
     ]);
 
-    session(['login.email' => 'existing@example.com']);
+    session(['login.identifier' => 'existing@example.com', 'login.channel' => 'email']);
 
     $this->post(route('login.otp.resend'))->assertRedirect();
 
@@ -179,7 +181,7 @@ test('verify returns a 409 inertia location when the landing is cross-domain', f
     $user = User::factory()->create(['email' => 'existing@example.com', 'onboarded_at' => now()]);
     $code = app(OtpService::class)->issue($user);
 
-    session(['login.email' => 'existing@example.com']);
+    session(['login.identifier' => 'existing@example.com', 'login.channel' => 'email']);
     session(['url.intended' => 'http://tenant.example.test/dashboard']);
 
     $this->withHeader('X-Inertia', 'true')

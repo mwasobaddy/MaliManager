@@ -9,13 +9,16 @@ import {
     Search,
     SquarePen,
     Trash2,
+    Upload,
     Users,
     Plus,
+    Zap,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActionIconButton } from '@/components/action-icon-button';
 import { BulkDeleteBar } from '@/components/bulk-delete-bar';
 import ConfirmDeleteOverlay from '@/components/confirm-delete-overlay';
+import { CsvImportSheet } from '@/components/csv-actions';
 import { DataTable } from '@/components/data-table';
 import { LabelledIconButton } from '@/components/labelled-icon-button';
 import Heading from '@/components/heading';
@@ -58,6 +61,7 @@ import {
     show as showOccupant,
     store as storeOccupant,
     update as updateOccupant,
+    importMethod as importOccupants,
 } from '@/routes/tenant/occupants';
 import { index as propertiesIndex } from '@/routes/tenant/properties';
 import { bulk as trashBulk } from '@/routes/tenant/trash';
@@ -102,7 +106,7 @@ type Occupant = {
     id: number;
     first_name: string;
     last_name: string | null;
-    email: string;
+    email: string | null;
     phone: string | null;
     national_id: string | null;
     status: string;
@@ -138,10 +142,114 @@ const STATUSES = [
 /** Debounce so a fast typist issues one request, not one per keystroke. */
 const SEARCH_DEBOUNCE_MS = 350;
 
+type QuickUnit = {
+    id: number;
+    name: string;
+};
+
+/**
+ * The sub-minute tenant capture: name, phone, unit, rent. Everything else
+ * (email, agreement, extras) stays in the full form. Posts to the same
+ * store endpoint with the lease pre-filled: monthly, property currency,
+ * moved in now.
+ */
+function QuickAddFields({
+    units,
+    currency,
+    errors,
+}: {
+    units: QuickUnit[];
+    currency: string;
+    errors: Record<string, string>;
+}) {
+    const [name, setName] = useState('');
+    const [unitId, setUnitId] = useState('');
+    const [rent, setRent] = useState('');
+
+    const valid = name.trim() !== '' && unitId !== '' && Number(rent) > 0;
+
+    return (
+        <div className="grid gap-4">
+            <div className="grid gap-2">
+                <Label htmlFor="quick-first-name">First name</Label>
+                <Input
+                    id="quick-first-name"
+                    name="first_name"
+                    type="text"
+                    required
+                    autoComplete="off"
+                    placeholder="John"
+                    value={name}
+                    onChange={(event) => setName(event.target.value)}
+                />
+                <InputError message={errors.first_name} />
+            </div>
+            <div className="grid gap-2">
+                <Label htmlFor="quick-phone">Phone (optional)</Label>
+                <Input
+                    id="quick-phone"
+                    name="phone"
+                    type="tel"
+                    autoComplete="off"
+                    placeholder="0712 000 000"
+                />
+                <InputError message={errors.phone} />
+            </div>
+            <div className="grid gap-2">
+                <Label htmlFor="quick-unit">Unit</Label>
+                <input type="hidden" name="unit_ids[]" value={unitId} />
+                <input type="hidden" name="status" value="active" />
+                <input type="hidden" name="move_in_now" value="1" />
+                <input
+                    type="hidden"
+                    name="lease[rent_frequency]"
+                    value="monthly"
+                />
+                <input type="hidden" name="lease[currency]" value={currency} />
+                <Select value={unitId} onValueChange={setUnitId}>
+                    <SelectTrigger id="quick-unit">
+                        <SelectValue placeholder="Choose a unit" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {units.map((unit) => (
+                            <SelectItem key={unit.id} value={String(unit.id)}>
+                                {unit.name}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+                <InputError message={errors.unit_ids} />
+            </div>
+            <div className="grid gap-2">
+                <Label htmlFor="quick-rent">Monthly rent ({currency})</Label>
+                <Input
+                    id="quick-rent"
+                    name="lease[rent_amount]"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    required
+                    placeholder="5000"
+                    value={rent}
+                    onChange={(event) => setRent(event.target.value)}
+                />
+                <InputError message={errors['lease.rent_amount']} />
+            </div>
+            {!valid && (
+                <p className="text-sm text-muted-foreground" role="note">
+                    Fill name, unit and rent to add the tenant — email and the
+                    agreement can wait.
+                </p>
+            )}
+        </div>
+    );
+}
+
 type Props = {
     property: Property;
     occupants: Paginator;
     focusedOccupant: Occupant | null;
+    currency: string;
     units?: Unit[];
     templates?: {
         property: AgreementTemplateOption[];
@@ -154,6 +262,7 @@ export default function OccupantsIndex({
     property,
     occupants,
     focusedOccupant,
+    currency,
     units,
     templates,
     availableTokens,
@@ -326,6 +435,8 @@ export default function OccupantsIndex({
         : null;
 
     const isCreateOpen = query.get('create') === '1';
+    const isQuickOpen = query.get('quick') === '1';
+    const isImportOpen = query.get('import') === '1';
 
     // Deep links from the Needs attention panel (?create=1&unit=5) arrive
     // with the unit to fill. Validated against this property's units so a
@@ -369,15 +480,23 @@ export default function OccupantsIndex({
         templates !== undefined &&
         availableTokens !== undefined;
 
-    // Direct links (?create=1, shared URLs) open the sheet without a button
-    // click, so the options also load on mount when a form sheet is open.
+    // Direct links (?create=1, ?quick=1, shared URLs) open the sheet
+    // without a button click, so the options also load on mount when a
+    // form sheet is open. Quick add needs units only — the template
+    // library and token list stay unloaded.
     useEffect(() => {
+        if (isQuickOpen && units === undefined) {
+            router.reload({ only: ['units'] });
+
+            return;
+        }
+
         if ((isCreateOpen || isEditOpen) && !formOptionsLoaded) {
             router.reload({
                 only: ['units', 'templates', 'availableTokens'],
             });
         }
-    }, [isCreateOpen, isEditOpen, formOptionsLoaded]);
+    }, [isCreateOpen, isEditOpen, isQuickOpen, formOptionsLoaded, units]);
 
     // The unit list, template library and tokens are heavy enough to skip
     // until a form sheet actually opens.
@@ -393,6 +512,14 @@ export default function OccupantsIndex({
         ensureFormOptions();
         setOverlayParam('create', '1', {
             only: ['occupants', 'units', 'templates', 'availableTokens'],
+        });
+    }
+
+    function openQuickAdd() {
+        // The mount effect below fetches units when the sheet opens; the
+        // full form's option list is untouched.
+        setOverlayParam('quick', '1', {
+            only: ['occupants', 'units'],
         });
     }
 
@@ -579,6 +706,14 @@ export default function OccupantsIndex({
         amount: string | null,
     ) => (amount === null ? '—' : `${currency ?? ''} ${amount}`.trim());
 
+    function closeQuickAdd() {
+        setOverlayParam('quick', null, {
+            replace: true,
+            only: ['occupants'],
+            keep: { occupant: '', create: '', quick: '' },
+        });
+    }
+
     return (
         <>
             <Head title={`${property.name} occupants`} />
@@ -593,14 +728,31 @@ export default function OccupantsIndex({
                         description="The people renting units in this property."
                     />
                     {canCreate && (
-                        <LabelledIconButton
-                            icon={<Plus />}
-                            label="Add occupant"
-                            tooltip="Add an occupant to this property"
-                            color="primary"
-                            onClick={openCreate}
-                            className="ml-auto max-w-20 sm:max-w-24"
-                        />
+                        <>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={openQuickAdd}
+                                className="ml-auto"
+                            >
+                                <Zap className="size-4" />
+                                Quick add
+                            </Button>
+                            <ActionIconButton
+                                icon={<Upload />}
+                                label="Import occupants"
+                                color="teal"
+                                onClick={() => setOverlayParam('import', '1')}
+                            />
+                            <LabelledIconButton
+                                icon={<Plus />}
+                                label="Add occupant"
+                                tooltip="Add an occupant to this property"
+                                color="primary"
+                                onClick={openCreate}
+                                className="max-w-20 sm:max-w-24"
+                            />
+                        </>
                     )}
                 </div>
 
@@ -859,7 +1011,7 @@ export default function OccupantsIndex({
                     <dl className="grid gap-x-6 gap-y-3 py-2 text-sm sm:grid-cols-2">
                         {(
                             [
-                                ['Email', viewedOccupant.email],
+                                ['Email', viewedOccupant.email ?? '—'],
                                 ['Phone', viewedOccupant.phone ?? '—'],
                                 [
                                     'National ID',
@@ -876,7 +1028,18 @@ export default function OccupantsIndex({
                                 <dt className="text-muted-foreground">
                                     {label}
                                 </dt>
-                                <dd className="min-w-0 break-words">{value}</dd>
+                                <dd className="min-w-0 break-words">
+                                    {value}
+                                    {label === 'Email' &&
+                                        viewedOccupant.email === null &&
+                                        canEdit && (
+                                            <span className="mt-1 block text-xs text-muted-foreground">
+                                                No email on file — edit to add
+                                                one for portal access and
+                                                reminders.
+                                            </span>
+                                        )}
+                                </dd>
                             </div>
                         ))}
                     </dl>
@@ -1047,6 +1210,72 @@ export default function OccupantsIndex({
                         setSelectedIds([]);
                         setBulkOpen(false);
                     }}
+                />
+            )}
+
+            {canCreate && (
+                <ResponsiveOverlay
+                    open={isQuickOpen}
+                    onOpenChange={(open) => {
+                        if (!open) {
+                            closeQuickAdd();
+                        }
+                    }}
+                    title="Quick add tenant"
+                    description={`Record ${property.name}'s new tenant in under a minute. Email and agreements can wait.`}
+                    footer={
+                        <OverlayFooter
+                            onCancel={closeQuickAdd}
+                            actions={[
+                                {
+                                    label: 'Add tenant',
+                                    form: 'occupant-quick-form',
+                                    type: 'submit',
+                                },
+                            ]}
+                        />
+                    }
+                >
+                    {units === undefined ? (
+                        <div className="flex justify-center py-8">
+                            <Spinner />
+                        </div>
+                    ) : (
+                        <Form
+                            id="occupant-quick-form"
+                            {...storeOccupant.form(property.slug)}
+                            onSuccess={() => closeQuickAdd()}
+                            className="space-y-6"
+                        >
+                            {({ errors }) => (
+                                <QuickAddFields
+                                    units={units}
+                                    currency={currency}
+                                    errors={errors}
+                                />
+                            )}
+                        </Form>
+                    )}
+                </ResponsiveOverlay>
+            )}
+
+            {canCreate && (
+                <CsvImportSheet
+                    open={isImportOpen}
+                    onClose={() => setOverlayParam('import', null)}
+                    route={() => importOccupants({ property: property.slug })}
+                    idPrefix="occupants"
+                    title="Import tenants"
+                    description="Upload a CSV to move tenants in, one row each. Rows with problems are reported and skipped."
+                    required={['First name', 'Unit', 'Rent amount']}
+                    optional={[
+                        'Last name',
+                        'Email (enables portal access)',
+                        'Phone',
+                        'National ID',
+                    ]}
+                    canImport={canCreate}
+                    buttonLabel="Import"
                 />
             )}
 

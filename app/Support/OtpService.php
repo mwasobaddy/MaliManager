@@ -5,19 +5,29 @@ namespace App\Support;
 use App\Mail\LoginOtpMail;
 use App\Models\LoginOtp;
 use App\Models\User;
+use App\Services\SmsClient;
 use Illuminate\Support\Facades\Mail;
 
 /**
- * Issues and verifies one-time passwords for email login.
+ * Issues and verifies one-time passwords for login, over email or SMS.
  *
  * A fresh OTP is generated only when the previous one has been used or
- * expired; otherwise the existing code is re-sent.
+ * expired; otherwise the existing code is re-sent. SMS goes through the
+ * shared SmsClient; when no gateway credentials are configured (local
+ * development, CI) the code is logged instead of thrown away, mirroring
+ * the mail log driver.
  */
 class OtpService
 {
     public const TTL_MINUTES = 10;
 
-    public function issue(User $user): string
+    public const CHANNEL_EMAIL = 'email';
+
+    public const CHANNEL_SMS = 'sms';
+
+    public function __construct(private SmsClient $sms) {}
+
+    public function issue(User $user, string $channel = self::CHANNEL_EMAIL, ?string $to = null): string
     {
         $otp = $this->latestUsable($user);
 
@@ -29,9 +39,28 @@ class OtpService
             ]);
         }
 
-        Mail::to($user->email)->send(new LoginOtpMail($otp->code));
+        if ($channel === self::CHANNEL_SMS) {
+            $this->sendSms($to ?? $user->phone ?? '', $otp->code);
+        } else {
+            Mail::to($to ?? $user->email)->send(new LoginOtpMail($otp->code));
+        }
 
         return $otp->code;
+    }
+
+    /**
+     * @return array{status: string, data: mixed}|null null when the gateway
+     *                                                 is unconfigured and the code was only logged (local dev, CI).
+     */
+    private function sendSms(string $to, string $code): ?array
+    {
+        if ($to === '' || (string) config('services.africastalking.key') === '') {
+            logger()->info('OTP SMS not sent: no recipient or no gateway configured.', ['to' => $to, 'code' => $code]);
+
+            return null;
+        }
+
+        return $this->sms->send(PhoneNumber::normalize($to) ?? $to, "Your MaliManager login code is {$code}");
     }
 
     public function verify(User $user, string $code): bool

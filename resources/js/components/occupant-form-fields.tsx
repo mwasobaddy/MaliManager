@@ -56,7 +56,7 @@ type LeaseDefaults = {
 type Defaults = {
     first_name?: string;
     last_name?: string | null;
-    email?: string;
+    email?: string | null;
     phone?: string | null;
     national_id?: string | null;
     gender?: string | null;

@@ -51,7 +51,7 @@ test('login with remember-me persists the session via the recaller cookie', func
 
     $user = User::factory()->create(['email' => 'existing@example.com', 'onboarded_at' => now()]);
 
-    $this->post(route('login.store'), ['email' => 'existing@example.com', 'remember' => true])
+    $this->post(route('login.store'), ['identifier' => 'existing@example.com', 'remember' => true])
         ->assertRedirect(route('login.otp'));
 
     expect(session('login.remember'))->toBeTrue();
@@ -69,7 +69,7 @@ test('login without remember-me leaves no recaller cookie', function () {
 
     $user = User::factory()->create(['email' => 'plain@example.com', 'onboarded_at' => now()]);
 
-    $this->post(route('login.store'), ['email' => 'plain@example.com'])
+    $this->post(route('login.store'), ['identifier' => 'plain@example.com'])
         ->assertRedirect(route('login.otp'));
 
     $this->post(route('login.otp.verify'), ['code' => hardeningIssueCode($user)])
@@ -84,7 +84,7 @@ test('one-time code issuance is audit logged', function () {
 
     $user = User::factory()->create(['email' => 'logged@example.com']);
 
-    $this->post(route('login.store'), ['email' => 'logged@example.com'])
+    $this->post(route('login.store'), ['identifier' => 'logged@example.com'])
         ->assertRedirect(route('login.otp'));
 
     expect(Audit::where('event', 'otp.issued')
@@ -98,7 +98,7 @@ test('resends are audit logged as re-issues', function () {
 
     $user = User::factory()->create(['email' => 'resend@example.com']);
 
-    session(['login.email' => 'resend@example.com']);
+    session(['login.identifier' => 'resend@example.com', 'login.channel' => 'email']);
 
     $this->post(route('login.otp.resend'))->assertRedirect();
 
@@ -111,8 +111,8 @@ test('resends are audit logged as re-issues', function () {
 test('suspended accounts are blocked at login and the attempt is logged', function () {
     $user = User::factory()->create(['email' => 'suspended@example.com', 'status' => 'suspended']);
 
-    $this->post(route('login.store'), ['email' => 'suspended@example.com'])
-        ->assertSessionHasErrors('email');
+    $this->post(route('login.store'), ['identifier' => 'suspended@example.com'])
+        ->assertSessionHasErrors('identifier');
 
     $this->assertGuest();
 
@@ -133,7 +133,7 @@ test('staff without two-factor are redirected when the organization requires it'
     $staff = User::factory()->create(['onboarded_at' => now()]);
     attachHardeningStaff($organization, $staff);
 
-    $this->post(route('login.store'), ['email' => $staff->email])
+    $this->post(route('login.store'), ['identifier' => $staff->email])
         ->assertRedirect(route('login.otp'));
 
     $this->post(route('login.otp.verify'), ['code' => hardeningIssueCode($staff)])
@@ -159,7 +159,7 @@ test('staff with confirmed two-factor pass the requirement', function () {
     ])->save();
     attachHardeningStaff($organization, $staff);
 
-    $this->post(route('login.store'), ['email' => $staff->email])
+    $this->post(route('login.store'), ['identifier' => $staff->email])
         ->assertRedirect(route('login.otp'));
 
     $response = $this->post(route('login.otp.verify'), ['code' => hardeningIssueCode($staff)]);
@@ -176,7 +176,7 @@ test('owners are exempt from their own two-factor requirement', function () {
     $organization->settings = ['require_staff_two_factor' => true];
     $organization->save();
 
-    $this->post(route('login.store'), ['email' => $owner->email])
+    $this->post(route('login.store'), ['identifier' => $owner->email])
         ->assertRedirect(route('login.otp'));
 
     $response = $this->post(route('login.otp.verify'), ['code' => hardeningIssueCode($owner)]);

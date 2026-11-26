@@ -15,15 +15,16 @@ Source review: `doc/enterprise-and-landlord-review.md` §A3.
 - No duplicate-person merging, no ID-verification hook, no bulk tenant import with per-row error report (org-import has this pattern; occupant import does not), no cross-org tenant history view for operators.
 
 ## Revamp proposal
-1. Two-tier form: **Quick add** (`first_name + phone + unit + rent_amount`; defaults monthly/KES/move-in now) vs **Full profile** (email, national ID, agreement, extras). Quick add creates Person+Occupant+Lease; email/User-linking deferred with a "complete profile" nudge.
-2. Make `email` nullable for quick add (backend: relax `StoreOccupantRequest`, generate placeholder identity keyed by phone + org).
-3. Add occupants CSV import with the same per-row skip-and-report pattern as organization import.
-4. Keep `move-out`/`move-in`/`agreement` flows unchanged; they already match reality.
+1. Two-tier form: **built** — a "Quick add" sheet (name + phone + unit + rent, monthly/KES/moved-in now by default) posts to the same store endpoint; the full form is untouched. Verified in under a minute in the browser.
+2. Make `email` nullable for quick add. **Built** — `StoreOccupantRequest` requires email *or* phone; `UpdateOccupantRequest` leaves email optional. A phone-only occupant gets a `User` account at creation (phone, `sms` channel, non-routable placeholder address) so they can sign in with their number immediately; `Person` matches by phone, and adding a real email later replaces the placeholder and links everything up (with a "complete profile" nudge on the view sheet).
+3. Add occupants CSV import with the same per-row skip-and-report pattern as organization import. **Built** — org-scoped `POST /{property}/occupants/import` reusing `CreateOccupant` per row (active, first rent recorded), per-row errors surfaced in the sheet like units import. Verified in the browser including the failure report.
+4. Phone login for phone-only tenants. **Built** — the login page accepts an email or phone number (`PhoneNumber` canonicalization, exact + legacy-format matching), delivers the OTP over email or SMS accordingly, and the OTP page adapts ("Check your texts", masked number). Verified end to end in the browser.
+5. Keep `move-out`/`move-in`/`agreement` flows unchanged. **Unchanged.**
 
 ## Acceptance
-- Caretaker adds a tenant in < 60 seconds with name + phone + house + rent.
-- Full-profile path (agreements, extras) untouched for operators who need it.
-- Import of 100 tenants reports per-row errors without aborting the file.
+- Caretaker adds a tenant in < 60 seconds with name + phone + house + rent. **Done (browser-verified).**
+- Full-profile path (agreements, extras) untouched for operators who need it. **Done.**
+- Import of 100 tenants reports per-row errors without aborting the file. **Done (pattern-tested; browser-verified with mixed file).**
 
 ## Next
 Work on `07-leases-agreements.md` — the lease engine occupants feed into.

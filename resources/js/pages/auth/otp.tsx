@@ -12,16 +12,20 @@ const RESEND_COOLDOWN_SECONDS = 90;
 const COOLDOWN_KEY = 'malimanager.otp-cooldown';
 
 type Props = {
-    email: string;
+    identifier: string;
+    channel: 'email' | 'sms';
+    masked: string;
+    /** Kept for backwards compatibility; mirrors identifier for email logins. */
+    email?: string | null;
     status?: string;
 };
 
 /**
- * Reads the persisted resend deadline for this email. Returns 0 when there
- * is none, it belongs to another email, it already passed, or storage is
- * unavailable — all of which simply mean "no cooldown".
+ * Reads the persisted resend deadline for this contact. Returns 0 when
+ * there is none, it belongs to a different login, it already passed, or
+ * storage is unavailable — all of which simply mean "no cooldown".
  */
-function readCooldown(email: string): number {
+function readCooldown(identifier: string): number {
     try {
         const raw = localStorage.getItem(COOLDOWN_KEY);
 
@@ -30,11 +34,14 @@ function readCooldown(email: string): number {
         }
 
         const parsed = JSON.parse(raw) as {
-            email?: unknown;
+            identifier?: unknown;
             availableAt?: unknown;
         };
 
-        if (parsed.email !== email || typeof parsed.availableAt !== 'number') {
+        if (
+            parsed.identifier !== identifier ||
+            typeof parsed.availableAt !== 'number'
+        ) {
             return 0;
         }
 
@@ -44,11 +51,11 @@ function readCooldown(email: string): number {
     }
 }
 
-function writeCooldown(email: string, availableAt: number): void {
+function writeCooldown(identifier: string, availableAt: number): void {
     try {
         localStorage.setItem(
             COOLDOWN_KEY,
-            JSON.stringify({ email, availableAt }),
+            JSON.stringify({ identifier, availableAt }),
         );
     } catch {
         // Private browsing etc: the timer just won't survive a refresh.
@@ -71,25 +78,20 @@ function formatRemaining(totalSeconds: number): string {
 }
 
 /**
- * Shows just enough to confirm where the code went — first letter plus the
- * domain — so a shared screen never leaks the full address.
+ * Shows just enough to confirm where the code went. The server masks the
+ * contact; this falls back to the raw value when it is absent (e.g. a
+ * stale cached page) so the screen never goes blank.
  */
-function maskEmail(email: string): string {
-    const at = email.indexOf('@');
-
-    if (at <= 0 || at === email.length - 1) {
-        return email;
-    }
-
-    return `${email.slice(0, 1)}•••••${email.slice(at)}`;
+function maskContact(masked: string | undefined, identifier: string): string {
+    return masked && masked.length > 0 ? masked : identifier;
 }
 
-export default function Otp({ email, status }: Props) {
+export default function Otp({ identifier, channel, masked, status }: Props) {
     const [digits, setDigits] = useState<string[]>(() =>
         Array<string>(CODE_LENGTH).fill(''),
     );
     const [cooldownUntil, setCooldownUntil] = useState<number>(() =>
-        readCooldown(email),
+        readCooldown(identifier),
     );
     const [now, setNow] = useState<number>(() => Date.now());
     const boxes = useRef<Array<HTMLInputElement | null>>([]);
@@ -103,9 +105,9 @@ export default function Otp({ email, status }: Props) {
         }
 
         const fresh = Date.now() + RESEND_COOLDOWN_SECONDS * 1000;
-        writeCooldown(email, fresh);
+        writeCooldown(identifier, fresh);
         setCooldownUntil(fresh);
-    }, [email, cooldownUntil]);
+    }, [identifier, cooldownUntil]);
 
     useEffect(() => {
         if (cooldownUntil <= Date.now()) {
@@ -242,13 +244,14 @@ export default function Otp({ email, status }: Props) {
 
     const restartCooldown = (): void => {
         const availableAt = Date.now() + RESEND_COOLDOWN_SECONDS * 1000;
-        writeCooldown(email, availableAt);
+        writeCooldown(identifier, availableAt);
         setCooldownUntil(availableAt);
         setNow(Date.now());
     };
 
     const code = digits.join('');
     const complete = code.length === CODE_LENGTH;
+    const viaSms = channel === 'sms';
 
     return (
         <>
@@ -256,10 +259,12 @@ export default function Otp({ email, status }: Props) {
 
             <div className="space-y-6">
                 <div className="space-y-1">
-                    <h2 className="text-lg font-medium">Check your email</h2>
+                    <h2 className="text-lg font-medium">
+                        {viaSms ? 'Check your texts' : 'Check your email'}
+                    </h2>
                     <p className="text-sm text-muted-foreground">
                         We sent a one-time code to{' '}
-                        <strong>{maskEmail(email)}</strong>.
+                        <strong>{maskContact(masked, identifier)}</strong>.
                     </p>
                 </div>
 
@@ -375,7 +380,7 @@ export default function Otp({ email, status }: Props) {
                         href={login()}
                         className="text-muted-foreground hover:text-foreground"
                     >
-                        Use a different email
+                        Use a different login
                     </Link>
                 </div>
             </div>
@@ -385,5 +390,5 @@ export default function Otp({ email, status }: Props) {
 
 Otp.layout = {
     title: 'Enter your code',
-    description: 'Verify your email to continue',
+    description: 'Verify your login to continue',
 };

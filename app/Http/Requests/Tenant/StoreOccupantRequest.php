@@ -7,12 +7,27 @@ use App\Models\Property;
 use App\Support\LeaseAgreementTemplate;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class StoreOccupantRequest extends FormRequest
 {
     public function authorize(): bool
     {
         return true;
+    }
+
+    /**
+     * A tenant needs at least one reachable contact: without an email
+     * *and* a phone there is nowhere to send codes, reminders, or the
+     * portal link, and the account row cannot be created.
+     */
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            if (blank($this->input('email')) && blank($this->input('phone'))) {
+                $validator->errors()->add('email', 'Provide an email address or a phone number.');
+            }
+        });
     }
 
     public function rules(): array
@@ -22,7 +37,10 @@ class StoreOccupantRequest extends FormRequest
         return [
             'first_name' => ['required', 'string', 'max:255'],
             'last_name' => ['nullable', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255'],
+            // Email is optional: a caretaker capturing "John, 0712…, Hse 3"
+            // records the tenancy now; the account link waits until an
+            // email is known.
+            'email' => ['nullable', 'string', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:30'],
             'national_id' => ['nullable', 'string', 'max:30'],
             'gender' => ['nullable', 'string', Rule::in(['male', 'female'])],
@@ -38,7 +56,9 @@ class StoreOccupantRequest extends FormRequest
             'payment_reference' => ['nullable', 'string', 'max:255'],
             'lease' => ['nullable', 'array'],
             'lease.starts_at' => ['nullable', 'date'],
-            'lease.rent_amount' => ['nullable', 'numeric', 'min:0'],
+            // A move-in records the first rent immediately, so it needs an
+            // amount up front; bookings seed 0.00 and price later.
+            'lease.rent_amount' => ['nullable', Rule::requiredIf($this->boolean('move_in_now', true)), 'numeric', 'min:0'],
             'lease.rent_frequency' => ['nullable', 'string', Rule::in(['daily', 'weekly', 'monthly', 'yearly'])],
             'lease.rent_due_day' => ['nullable', 'integer', 'min:1', 'max:31'],
             'lease.rent_due_weekday' => ['nullable', 'integer', 'min:0', 'max:6'],

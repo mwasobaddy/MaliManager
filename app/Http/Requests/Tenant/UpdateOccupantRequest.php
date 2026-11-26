@@ -21,7 +21,7 @@ class UpdateOccupantRequest extends FormRequest
         return [
             'first_name' => ['required', 'string', 'max:255'],
             'last_name' => ['nullable', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255'],
+            'email' => ['nullable', 'string', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:30'],
             'national_id' => ['nullable', 'string', 'max:30'],
             'gender' => ['nullable', 'string', Rule::in(['male', 'female'])],

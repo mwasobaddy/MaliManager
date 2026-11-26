@@ -239,6 +239,10 @@ Route::middleware([
                 ->name('tenant.occupants.create');
             Route::post('/{property:slug}/occupants', [OccupantController::class, 'store'])
                 ->name('tenant.occupants.store');
+            // Property-scoped like the form: units resolve within this
+            // property, so the file never has to name one.
+            Route::post('/{property:slug}/occupants/import', [OccupantController::class, 'import'])
+                ->name('tenant.occupants.import');
         });
 
         Route::middleware('sub-permission:inspection.manage')->group(function () {

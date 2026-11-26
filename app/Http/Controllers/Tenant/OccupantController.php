@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers\Tenant;
 
+use App\Actions\Occupants\ImportOccupants;
+use App\Concerns\FlashesImportResult;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Tenant\DestroyOccupantRequest;
+use App\Http\Requests\Tenant\ImportOccupantsRequest;
 use App\Http\Requests\Tenant\MoveInOccupantRequest;
 use App\Http\Requests\Tenant\MoveOutOccupantRequest;
 use App\Http\Requests\Tenant\OccupantAccessRequest;
@@ -26,6 +29,8 @@ use Inertia\Response;
 
 class OccupantController extends Controller
 {
+    use FlashesImportResult;
+
     public function index(OccupantIndexRequest $request, Property $property): Response
     {
         $this->authorizePropertyAccess($request, $property);
@@ -49,6 +54,8 @@ class OccupantController extends Controller
             'organization' => TenancyContext::organization()->only('id', 'name', 'slug'),
             'property' => OccupantPresenter::property($property),
             'occupants' => $occupants,
+            // Quick add defaults the lease to this currency.
+            'currency' => $property->organization->settings['currency'] ?? 'KES',
             // The view sheet is on this page, so an occupant addressed by URL is
             // resolved here rather than by a page of its own. Scoped to the
             // property, so an id from another property resolves to nothing and
@@ -114,6 +121,19 @@ class OccupantController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Occupant added.']);
 
         return redirect()->route('tenant.occupants.index', $property);
+    }
+
+    /**
+     * Bulk-add tenants to this property from a CSV. Bad rows are reported
+     * per row and the sheet stays open on them.
+     */
+    public function import(ImportOccupantsRequest $request, Property $property, ImportOccupants $import): RedirectResponse
+    {
+        $this->authorizePropertyAccess($request, $property);
+
+        $result = $import->handle($request->toData($property));
+
+        return $this->respondToImport($result, 'occupant', 'occupants', 'tenant.occupants.index');
     }
 
     public function edit(OccupantAccessRequest $request, Property $property, Occupant $occupant): RedirectResponse

@@ -16,7 +16,7 @@ test('users can authenticate using a one-time code', function () {
     $user = User::factory()->create(['email' => 'existing@example.com', 'onboarded_at' => now()]);
     $code = app(OtpService::class)->issue($user);
 
-    session(['login.email' => 'existing@example.com']);
+    session(['login.identifier' => 'existing@example.com', 'login.channel' => 'email']);
 
     $response = $this->post(route('login.otp.verify'), ['code' => $code]);
 
@@ -40,14 +40,14 @@ test('users are rate limited on login', function () {
     RateLimiter::increment(md5('login'.implode('|', [$user->email, '127.0.0.1'])), amount: 5);
 
     $response = $this->post(route('login.store'), [
-        'email' => $user->email,
+        'identifier' => $user->email,
     ]);
 
     $response->assertTooManyRequests();
 });
 
 test('users are rate limited on otp verification', function () {
-    session(['login.email' => 'limited@example.com']);
+    session(['login.identifier' => 'limited@example.com', 'login.channel' => 'email']);
 
     RateLimiter::increment(md5('otp'.implode('|', ['limited@example.com', '127.0.0.1'])), amount: 5);
 
