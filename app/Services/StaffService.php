@@ -6,6 +6,7 @@ use App\Actions\Staff\Concerns\StaffHelpers;
 use App\Actions\Staff\CreateStaff;
 use App\Actions\Staff\DeleteStaff;
 use App\Actions\Staff\UpdateStaff;
+use App\Models\Branch;
 use App\Models\Delegation;
 use App\Models\LandParcel;
 use App\Models\Organization;
@@ -36,7 +37,7 @@ class StaffService extends Service
      * Dropdown data for the staff form, shared by the staff pages and the
      * setup funnel so both offer the same roles and properties.
      *
-     * @return array{sub_roles: array<int, array{id: int, name: string}>, properties: array<int, array{id: int, name: string, slug: string}>}
+     * @return array{sub_roles: array<int, array{id: int, name: string}>, properties: array<int, array{id: int, name: string, slug: string}>, branches: array<int, array{id: int, name: string}>}
      */
     public function formOptions(Organization $organization): array
     {
@@ -50,6 +51,11 @@ class StaffService extends Service
                 ->orderBy('name')
                 ->get(['id', 'name', 'slug'])
                 ->map(fn (Property $property) => ['id' => $property->id, 'name' => $property->name, 'slug' => $property->slug])
+                ->all(),
+            'branches' => Branch::where('organization_id', $organization->id)
+                ->orderBy('name')
+                ->get(['id', 'name'])
+                ->map(fn (Branch $branch) => ['id' => $branch->id, 'name' => $branch->name])
                 ->all(),
         ];
     }
@@ -99,7 +105,9 @@ class StaffService extends Service
     }
 
     /**
-     * The ids of properties a staff member is delegated to.
+     * The ids of properties a staff member is delegated to, directly or
+     * through a branch. Branch delegations expand to every property
+     * currently in the branch, so a new building needs no re-invite.
      *
      * @return array<int, int>
      */
@@ -109,15 +117,30 @@ class StaffService extends Service
             return [];
         }
 
-        return Delegation::where('organization_user_id', $membership->id)
+        $direct = Delegation::where('organization_user_id', $membership->id)
             ->where('delegatable_type', Property::class)
             ->pluck('delegatable_id')
             ->map(fn ($id) => (int) $id)
             ->all();
+
+        $branchIds = $this->delegatedBranchIds($membership);
+
+        if ($branchIds === []) {
+            return $direct;
+        }
+
+        $inherited = Property::where('organization_id', $membership->organization_id)
+            ->whereIn('branch_id', $branchIds)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        return array_values(array_unique([...$direct, ...$inherited]));
     }
 
     /**
-     * The ids of land parcels a staff member is delegated to.
+     * The ids of land parcels a staff member is delegated to, directly or
+     * through a branch.
      *
      * @return array<int, int>
      */
@@ -127,8 +150,40 @@ class StaffService extends Service
             return [];
         }
 
-        return Delegation::where('organization_user_id', $membership->id)
+        $direct = Delegation::where('organization_user_id', $membership->id)
             ->where('delegatable_type', LandParcel::class)
+            ->pluck('delegatable_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        $branchIds = $this->delegatedBranchIds($membership);
+
+        if ($branchIds === []) {
+            return $direct;
+        }
+
+        $inherited = LandParcel::where('organization_id', $membership->organization_id)
+            ->whereIn('branch_id', $branchIds)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        return array_values(array_unique([...$direct, ...$inherited]));
+    }
+
+    /**
+     * The ids of branches a staff member is delegated to manage wholesale.
+     *
+     * @return array<int, int>
+     */
+    public function delegatedBranchIds(?OrganizationUser $membership): array
+    {
+        if (! $membership) {
+            return [];
+        }
+
+        return Delegation::where('organization_user_id', $membership->id)
+            ->where('delegatable_type', Branch::class)
             ->pluck('delegatable_id')
             ->map(fn ($id) => (int) $id)
             ->all();

@@ -16,6 +16,7 @@ class UpdateLandParcel extends Service
         return $this->transaction(function () use ($parcel, $actor, $data) {
             $parcel->fill([
                 'name' => $data['name'],
+                'branch_id' => $data['branch_id'] ?? $parcel->branch_id,
                 'title_deed_number' => $data['title_deed_number'] ?? null,
                 'acreage' => $data['acreage'] ?? null,
                 'zoning' => $data['zoning'] ?? $parcel->zoning,

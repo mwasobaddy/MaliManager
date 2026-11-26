@@ -72,14 +72,23 @@ const MAX_UNIT_PHOTOS = 12;
  * and the form lives here. `setup` keeps the onboarding funnel moving to
  * the team step instead of landing on the dashboard.
  */
+export type AssetBranch = {
+    id: number;
+    name: string;
+};
+
 export default function PropertyAssetForm({
     plan,
     propertyTypes,
+    branches,
+    defaultBranchId,
     canCreateProperty,
     setup,
 }: {
     plan: AssetPlan;
     propertyTypes: AssetPropertyType[];
+    branches: AssetBranch[];
+    defaultBranchId?: number | null;
     canCreateProperty: boolean;
     setup: boolean;
 }) {
@@ -309,6 +318,35 @@ export default function PropertyAssetForm({
                                 </p>
                                 <InputError message={errors.property_type_id} />
                             </div>
+
+                            {branches.length > 1 ? (
+                                <div className="grid gap-2 md:col-span-2">
+                                    <Label htmlFor="branch">Branch</Label>
+                                    <Select
+                                        name="branch_id"
+                                        defaultValue={
+                                            defaultBranchId
+                                                ? String(defaultBranchId)
+                                                : undefined
+                                        }
+                                    >
+                                        <SelectTrigger id="branch">
+                                            <SelectValue placeholder="Choose a branch" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {branches.map((branch) => (
+                                                <SelectItem
+                                                    key={branch.id}
+                                                    value={String(branch.id)}
+                                                >
+                                                    {branch.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <InputError message={errors.branch_id} />
+                                </div>
+                            ) : null}
                         </CardContent>
                     </Card>
 

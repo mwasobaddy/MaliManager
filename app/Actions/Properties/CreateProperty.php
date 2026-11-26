@@ -25,6 +25,7 @@ class CreateProperty extends Service
         return $this->transaction(function () use ($organization, $user, $data) {
             $property = $this->save(new Property([
                 'organization_id' => $organization->id,
+                'branch_id' => $data['branch_id'] ?? $organization->defaultBranch()->id,
                 'name' => $data['name'],
                 'slug' => Property::uniqueSlug($organization->id, $data['name']),
                 'address' => $data['address'] ?? null,

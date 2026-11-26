@@ -195,6 +195,24 @@ class Organization extends Model
         return $this->hasMany(SubRole::class);
     }
 
+    public function branches(): HasMany
+    {
+        return $this->hasMany(Branch::class);
+    }
+
+    /**
+     * The branch new assets land in when no branch is chosen. Every
+     * organization has one (created at provisioning, backfilled for older
+     * orgs), so callers never have to handle a branchless organization.
+     */
+    public function defaultBranch(): Branch
+    {
+        return $this->branches()->firstOrCreate(
+            ['slug' => 'main'],
+            ['name' => 'Main'],
+        );
+    }
+
     public function properties(): HasMany
     {
         return $this->hasMany(Property::class);

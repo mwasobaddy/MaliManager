@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Tenant;
 
 use App\Models\Unit;
+use App\Support\TenancyContext;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -15,8 +16,11 @@ class StorePropertyRequest extends FormRequest
 
     public function rules(): array
     {
+        $organizationId = TenancyContext::organization()?->id;
+
         return [
             'name' => ['required', 'string', 'max:255'],
+            'branch_id' => ['nullable', 'integer', Rule::exists('branches', 'id')->where('organization_id', $organizationId)],
             'address' => ['nullable', 'string', 'max:255'],
             'city' => ['nullable', 'string', 'max:255'],
             // A pasted map link, validated as http(s) rather than just "a

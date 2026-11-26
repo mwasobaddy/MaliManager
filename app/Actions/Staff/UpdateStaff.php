@@ -30,6 +30,7 @@ class UpdateStaff extends Service
             $this->save($membership);
 
             $this->syncPropertyDelegations($membership, $data['property_ids'] ?? [], $actor);
+            $this->syncBranchDelegations($membership, $data['branch_ids'] ?? [], $actor);
 
             return $staff;
         });

@@ -45,6 +45,11 @@ class CreateOrganization extends Service
 
             DefaultSubRoles::createFor($organization, $owner->id);
 
+            $organization->branches()->create([
+                'name' => 'Main',
+                'slug' => 'main',
+            ]);
+
             $organization->users()->attach($owner->id, [
                 'is_owner' => true,
                 'status' => 'active',

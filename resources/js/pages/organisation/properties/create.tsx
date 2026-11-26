@@ -1,7 +1,9 @@
 import { Head, Link } from '@inertiajs/react';
-import PropertyAssetForm, {
-    type AssetPlan,
-    type AssetPropertyType,
+import PropertyAssetForm from '@/components/assets/property-asset-form';
+import type {
+    AssetBranch,
+    AssetPlan,
+    AssetPropertyType,
 } from '@/components/assets/property-asset-form';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
@@ -17,6 +19,8 @@ type Props = {
     organization: Organization;
     plan: AssetPlan;
     propertyTypes: AssetPropertyType[];
+    branches: AssetBranch[];
+    defaultBranchId: number | null;
     canCreateProperty: boolean;
 };
 
@@ -24,6 +28,8 @@ export default function PropertiesCreate({
     organization,
     plan,
     propertyTypes,
+    branches,
+    defaultBranchId,
     canCreateProperty,
 }: Props) {
     return (
@@ -46,6 +52,8 @@ export default function PropertiesCreate({
                 <PropertyAssetForm
                     plan={plan}
                     propertyTypes={propertyTypes}
+                    branches={branches}
+                    defaultBranchId={defaultBranchId}
                     canCreateProperty={canCreateProperty}
                     setup={false}
                 />

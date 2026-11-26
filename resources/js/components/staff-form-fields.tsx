@@ -24,17 +24,24 @@ type Property = {
     slug: string;
 };
 
+type Branch = {
+    id: number;
+    name: string;
+};
+
 type Defaults = {
     name?: string;
     email?: string;
     phone?: string | null;
     sub_role_id?: number | null;
     property_ids?: number[];
+    branch_ids?: number[];
 };
 
 type Props = {
     sub_roles: SubRole[];
     properties: Property[];
+    branches: Branch[];
     errors: Record<string, string>;
     idPrefix: string;
     propertiesHint?: string;
@@ -51,6 +58,7 @@ type Props = {
 export default function StaffFormFields({
     sub_roles,
     properties,
+    branches,
     errors,
     idPrefix,
     propertiesHint = 'Select the properties this staff member can manage.',
@@ -131,6 +139,28 @@ export default function StaffFormFields({
                 </div>
             </div>
 
+            {branches.length > 1 ? (
+                <div className="space-y-4">
+                    <Heading
+                        variant="small"
+                        title="Branches to manage"
+                        description="An entire branch at once — new properties and parcels there are included automatically."
+                    />
+                    <div className="grid gap-3">
+                        {branches.map((branch) => (
+                            <StaffBranchToggle
+                                key={branch.id}
+                                branch={branch}
+                                defaultChecked={(
+                                    defaults.branch_ids ?? []
+                                ).includes(branch.id)}
+                            />
+                        ))}
+                        <InputError message={errors.branch_ids} />
+                    </div>
+                </div>
+            ) : null}
+
             <div className="space-y-4">
                 <Heading
                     variant="small"
@@ -158,6 +188,33 @@ export default function StaffFormFields({
                 )}
             </div>
         </>
+    );
+}
+
+function StaffBranchToggle({
+    branch,
+    defaultChecked,
+}: {
+    branch: Branch;
+    defaultChecked: boolean;
+}) {
+    const [checked, setChecked] = useState(defaultChecked);
+
+    return (
+        <label className="flex items-center gap-3 rounded-lg border border-input p-3 text-sm transition-colors hover:bg-muted">
+            <Checkbox
+                checked={checked}
+                onCheckedChange={() => setChecked((prev) => !prev)}
+            />
+            <input
+                type="hidden"
+                name="branch_ids[]"
+                value={String(branch.id)}
+                disabled={!checked}
+            />
+            <Building2 className="size-4 text-muted-foreground" />
+            <span className="font-medium">{branch.name}</span>
+        </label>
     );
 }
 

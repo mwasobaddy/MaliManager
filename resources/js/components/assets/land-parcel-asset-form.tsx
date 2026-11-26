@@ -45,13 +45,22 @@ const ZONING = [
  * and the form lives here. `setup` keeps the onboarding funnel moving to
  * the team step instead of landing on the detail page.
  */
+export type AssetBranch = {
+    id: number;
+    name: string;
+};
+
 export default function LandParcelAssetForm({
     managers,
     selected_manager_ids,
+    branches,
+    defaultBranchId,
     setup,
 }: {
     managers: AssetManager[];
     selected_manager_ids: number[];
+    branches: AssetBranch[];
+    defaultBranchId?: number | null;
     setup: boolean;
 }) {
     const [zoning, setZoning] = useState('residential');
@@ -102,6 +111,35 @@ export default function LandParcelAssetForm({
                                 />
                                 <InputError message={errors.name} />
                             </div>
+
+                            {branches.length > 1 ? (
+                                <div className="grid gap-2">
+                                    <Label htmlFor="branch">Branch</Label>
+                                    <Select
+                                        name="branch_id"
+                                        defaultValue={
+                                            defaultBranchId
+                                                ? String(defaultBranchId)
+                                                : undefined
+                                        }
+                                    >
+                                        <SelectTrigger id="branch">
+                                            <SelectValue placeholder="Choose a branch" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {branches.map((branch) => (
+                                                <SelectItem
+                                                    key={branch.id}
+                                                    value={String(branch.id)}
+                                                >
+                                                    {branch.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <InputError message={errors.branch_id} />
+                                </div>
+                            ) : null}
 
                             <div className="grid gap-2">
                                 <Label htmlFor="title_deed_number">

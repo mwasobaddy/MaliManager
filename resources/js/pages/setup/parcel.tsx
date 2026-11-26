@@ -1,7 +1,9 @@
 import { Head, Link } from '@inertiajs/react';
 import { ArrowLeft } from 'lucide-react';
-import LandParcelAssetForm, {
-    type AssetManager,
+import LandParcelAssetForm from '@/components/assets/land-parcel-asset-form';
+import type {
+    AssetBranch,
+    AssetManager,
 } from '@/components/assets/land-parcel-asset-form';
 import Heading from '@/components/heading';
 import {
@@ -19,6 +21,8 @@ type Props = {
         slug: string;
     };
     managers: AssetManager[];
+    branches: AssetBranch[];
+    defaultBranchId: number | null;
     selected_manager_ids: number[];
     setupProgress: SetupProgress;
 };
@@ -31,6 +35,8 @@ type Props = {
 export default function SetupParcel({
     organization,
     managers,
+    branches,
+    defaultBranchId,
     selected_manager_ids,
     setupProgress,
 }: Props) {
@@ -68,6 +74,8 @@ export default function SetupParcel({
                     <LandParcelAssetForm
                         managers={managers}
                         selected_manager_ids={selected_manager_ids}
+                        branches={branches}
+                        defaultBranchId={defaultBranchId}
                         setup
                     />
                 </div>

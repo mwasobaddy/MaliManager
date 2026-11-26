@@ -9,6 +9,7 @@ use App\Http\Requests\Tenant\LandParcelFormRequest;
 use App\Http\Requests\Tenant\LandParcelIndexRequest;
 use App\Http\Requests\Tenant\StoreLandParcelRequest;
 use App\Http\Requests\Tenant\UpdateLandParcelRequest;
+use App\Models\Branch;
 use App\Models\LandParcel;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
@@ -31,16 +32,25 @@ class LandParcelController extends Controller
         $organization = TenancyContext::organization();
         $user = $request->user();
 
+        $branchId = $request->integer('branch');
+        $branch = $branchId > 0
+            ? $organization->branches()->whereKey($branchId)->first()
+            : null;
+
         $parcels = $organization->landParcels()
             ->when(! $user->isOwnerOf($organization), fn ($query) => $query
                 ->whereIn('id', app(StaffService::class)->delegatedLandParcelIds($user->membershipFor($organization))))
+            ->when($branch instanceof Branch, fn ($query) => $query->where('branch_id', $branch->id))
+            ->with('branch:id,name')
             ->orderBy('created_at', 'desc')
             ->get()
-            ->map(fn (LandParcel $parcel) => $this->present($parcel));
+            ->map(fn (LandParcel $parcel) => [...$this->present($parcel), 'branch' => $parcel->branch?->only('id', 'name')]);
 
         return Inertia::render('organisation/land-parcels/index', [
             'organization' => $organization->only('id', 'name', 'slug'),
             'land_parcels' => $parcels,
+            'branches' => $organization->branches()->orderBy('name')->get(['id', 'name'])->all(),
+            'filters' => ['branch' => $branch?->id],
             'canCreateLandParcel' => $user->isOwnerOf($organization)
                 || $user->hasSubPermission($organization, SubPermissionKey::LandParcelCreate),
         ]);
@@ -52,6 +62,8 @@ class LandParcelController extends Controller
 
         $props = [
             'organization' => $organization->only('id', 'name', 'slug'),
+            'branches' => $organization->branches()->orderBy('name')->get(['id', 'name'])->all(),
+            'defaultBranchId' => $organization->defaultBranch()->id,
             'managers' => $this->managers($organization),
             'parcel' => null,
             'selected_manager_ids' => [],
@@ -124,6 +136,7 @@ class LandParcelController extends Controller
         return Inertia::render('organisation/land-parcels/edit', [
             'organization' => $organization->only('id', 'name', 'slug'),
             'parcel' => $this->present($landParcel, true),
+            'branches' => $organization->branches()->orderBy('name')->get(['id', 'name'])->all(),
             'managers' => $this->managers($organization),
             'canDeleteLandParcel' => $user->hasSubPermission($organization, SubPermissionKey::LandParcelDelete),
         ]);
@@ -165,6 +178,7 @@ class LandParcelController extends Controller
             'id' => $parcel->id,
             'name' => $parcel->name,
             'slug' => $parcel->slug,
+            'branch_id' => $parcel->branch_id,
             'title_deed_number' => $parcel->title_deed_number,
             'acreage' => $parcel->acreage,
             'zoning' => $parcel->zoning,

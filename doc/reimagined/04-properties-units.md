@@ -15,15 +15,15 @@ Source review: `doc/enterprise-and-landlord-review.md` §A6, §B2.
 - No `branches` layer: delegation is flat per-asset, reporting loops all properties org-wide, picker is org-flat. A 20-branch operator cannot do branch P&L or branch-scoped staff views.
 
 ## Revamp proposal
-1. Introduce `branches` (org → branch → property/parcel). Delegation becomes branch-inheritable; property-level delegation stays as override. Migrate existing orgs with one default branch ("Main").
-2. Keep per-asset CRUD identical; add `branch_id` filter to every dashboard/report/arrears query from day one.
-3. Unit creation: keep form, but promote "paste a list" (one name per line → bulk create) next to CSV import.
-4. Property dashboard becomes the branch-aware operational home (occupancy, arrears, open issues) — detail in 11.
+1. Introduce `branches` (org → branch → property/parcel). **Built**: `branches` table + `Branch` model, Main branch auto-created per org (backfilled), `branch_id` on properties and land parcels defaulting to Main, owner-only branch creation from the properties page. Delegation is branch-inheritable (one `Branch`-type row covers current and future assets); per-asset delegation stays as override. Verified end to end: a branch-delegated caretaker sees a property added *after* the delegation with no re-invite.
+2. Keep per-asset CRUD identical; add `branch_id` filter to every dashboard/report/arrears query from day one. **Partially built**: property and land-parcel indexes filter by branch; aggregate filters (dashboard, reports, arrears) stay open for docs 11/13.
+3. Unit creation: keep form, but promote "paste a list" (one name per line → bulk create) next to CSV import. **Built in doc 02.**
+4. Property dashboard becomes the branch-aware operational home (occupancy, arrears, open issues) — detail in 11. **Still open.**
 
 ## Acceptance
-- Existing single-branch orgs see zero change (one default branch, hidden).
-- Branch manager sees only their branch's properties, figures, staff — verified by a Feature test with two branches.
-- Pasting 8 unit names creates 8 units in one action.
+- Existing single-branch orgs see zero change (one default branch, hidden branch UI until a second branch exists). **Done.**
+- Branch manager sees only their branch's properties, figures, staff — verified by a Feature test with two branches. **Done** (plus browser verification of the inheritance case).
+- Pasting 8 unit names creates 8 units in one action. **Done in doc 02.**
 
 ## Next
 Work on `05-land-parcels.md` — the sibling asset type that should stop being a fork.

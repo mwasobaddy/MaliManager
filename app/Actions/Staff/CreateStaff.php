@@ -35,6 +35,7 @@ class CreateStaff extends Service
             $this->save($membership);
 
             $this->syncPropertyDelegations($membership, $data['property_ids'] ?? [], $actor);
+            $this->syncBranchDelegations($membership, $data['branch_ids'] ?? [], $actor);
 
             // Staff share the organization dashboard tab with owners. The
             // permission record is seeded centrally; if the spatie cache is

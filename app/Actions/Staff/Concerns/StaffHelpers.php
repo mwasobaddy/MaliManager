@@ -2,6 +2,7 @@
 
 namespace App\Actions\Staff\Concerns;
 
+use App\Models\Branch;
 use App\Models\Delegation;
 use App\Models\OrganizationUser;
 use App\Models\Property;
@@ -9,10 +10,10 @@ use App\Models\User;
 
 trait StaffHelpers
 {
-    private function deletePropertyDelegations(OrganizationUser $membership): void
+    private function deleteDelegations(OrganizationUser $membership): void
     {
         Delegation::where('organization_user_id', $membership->id)
-            ->where('delegatable_type', Property::class)
+            ->whereIn('delegatable_type', [Property::class, Branch::class])
             ->get()
             ->each(fn (Delegation $delegation) => $this->delete($delegation));
     }
@@ -44,32 +45,49 @@ trait StaffHelpers
 
     private function syncPropertyDelegations(OrganizationUser $membership, array $propertyIds, User $actor): void
     {
-        $this->deletePropertyDelegations($membership);
+        $this->deleteDelegations($membership);
 
         foreach (array_unique($propertyIds) as $propertyId) {
             // Restoring beats re-inserting: the unique index counts
             // soft-deleted rows, so a blind insert blows up the second
             // time a staffer is assigned to the same property.
-            $delegation = Delegation::withTrashed()->firstOrNew([
-                'organization_user_id' => $membership->id,
-                'delegatable_type' => Property::class,
-                'delegatable_id' => (int) $propertyId,
-            ]);
+            $this->syncDelegation($membership, Property::class, (int) $propertyId, $actor);
+        }
+    }
 
-            if ($delegation->exists) {
-                if ($delegation->trashed()) {
-                    $delegation->restore();
-                }
+    /**
+     * A branch delegation covers every current and future property and land
+     * parcel in that branch: access resolution expands it, so assigning a
+     * branch manager is one row, not one row per asset.
+     */
+    private function syncBranchDelegations(OrganizationUser $membership, array $branchIds, User $actor): void
+    {
+        foreach (array_unique($branchIds) as $branchId) {
+            $this->syncDelegation($membership, Branch::class, (int) $branchId, $actor);
+        }
+    }
 
-                continue;
+    private function syncDelegation(OrganizationUser $membership, string $type, int $id, User $actor): void
+    {
+        $delegation = Delegation::withTrashed()->firstOrNew([
+            'organization_user_id' => $membership->id,
+            'delegatable_type' => $type,
+            'delegatable_id' => $id,
+        ]);
+
+        if ($delegation->exists) {
+            if ($delegation->trashed()) {
+                $delegation->restore();
             }
 
-            $delegation->fill([
-                'organization_id' => $membership->organization_id,
-                'created_by' => $actor->id,
-            ]);
-
-            $this->save($delegation);
+            return;
         }
+
+        $delegation->fill([
+            'organization_id' => $membership->organization_id,
+            'created_by' => $actor->id,
+        ]);
+
+        $this->save($delegation);
     }
 }

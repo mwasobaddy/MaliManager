@@ -4,6 +4,7 @@ namespace App\Http\Requests\Tenant;
 
 use App\Support\TenancyContext;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateLandParcelRequest extends FormRequest
 {
@@ -18,6 +19,7 @@ class UpdateLandParcelRequest extends FormRequest
 
         return [
             'name' => ['required', 'string', 'max:255'],
+            'branch_id' => ['nullable', 'integer', Rule::exists('branches', 'id')->where('organization_id', $organizationId)],
             'title_deed_number' => ['nullable', 'string', 'max:255'],
             'acreage' => ['nullable', 'numeric', 'min:0'],
             'zoning' => ['required', 'string', 'in:residential,commercial,agricultural,mixed,industrial'],

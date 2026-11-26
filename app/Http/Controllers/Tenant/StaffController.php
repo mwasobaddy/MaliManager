@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Tenant\DestroyStaffRequest;
 use App\Http\Requests\Tenant\StoreStaffRequest;
 use App\Http\Requests\Tenant\UpdateStaffRequest;
+use App\Models\Branch;
 use App\Models\OrganizationUser;
 use App\Models\Property;
 use App\Models\User;
@@ -39,6 +40,10 @@ class StaffController extends Controller
                 'properties' => Property::query()
                     ->whereIn('id', $staffService->delegatedPropertyIds($membership))
                     ->get(['id', 'name', 'slug']),
+                'branches' => Branch::query()
+                    ->whereIn('id', $staffService->delegatedBranchIds($membership))
+                    ->orderBy('name')
+                    ->get(['id', 'name']),
                 'deletable' => $actor->isPlatformAdmin()
                     || $staffService->membership($organization, $membership->user) !== null,
             ]);
@@ -53,6 +58,9 @@ class StaffController extends Controller
             ),
             'properties' => Inertia::optional(
                 fn () => $staffService->formOptions($organization)['properties'],
+            ),
+            'branches' => Inertia::optional(
+                fn () => $staffService->formOptions($organization)['branches'],
             ),
             'focusedStaff' => Inertia::optional(
                 fn () => $this->focusedStaff($request, $organization, $staffService),
@@ -94,6 +102,7 @@ class StaffController extends Controller
             'phone' => $staff->phone,
             'sub_role_id' => $membership->sub_role_id,
             'property_ids' => $staffService->delegatedPropertyIds($membership),
+            'branch_ids' => $staffService->delegatedBranchIds($membership),
         ];
     }
 

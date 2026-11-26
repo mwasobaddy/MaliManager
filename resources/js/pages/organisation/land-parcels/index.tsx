@@ -1,4 +1,4 @@
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Map, Plus } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { BulkDeleteBar } from '@/components/bulk-delete-bar';
@@ -15,6 +15,13 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { create, show } from '@/routes/tenant/land-parcels';
 import { bulk as trashBulk } from '@/routes/tenant/trash';
 
@@ -24,6 +31,11 @@ type Organization = {
     slug: string;
 };
 
+type Branch = {
+    id: number;
+    name: string;
+};
+
 type LandParcel = {
     id: number;
     name: string;
@@ -31,23 +43,37 @@ type LandParcel = {
     city: string | null;
     status: string;
     zoning: string;
+    branch: { id: number; name: string } | null;
 };
 
 type Props = {
     organization: Organization;
     land_parcels: LandParcel[];
+    branches: Branch[];
+    filters: { branch: number | null };
     canCreateLandParcel: boolean;
 };
 
 export default function LandParcelsIndex({
     organization,
     land_parcels,
+    branches,
+    filters,
     canCreateLandParcel,
 }: Props) {
     const { context } = usePage().props;
     const canDelete = (context?.permissions ?? []).includes(
         'land_parcel.delete',
     );
+    const pageUrl = usePage().url.split('?')[0];
+
+    function filterByBranch(value: string) {
+        router.get(
+            pageUrl,
+            { branch: value === 'all' ? '' : value },
+            { preserveState: true, only: ['land_parcels', 'filters'] },
+        );
+    }
 
     const [bulkOpen, setBulkOpen] = useState(false);
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
@@ -86,6 +112,37 @@ export default function LandParcelsIndex({
                         />
                     )}
                 </div>
+
+                {branches.length > 1 ? (
+                    <div className="flex items-center gap-2">
+                        <Select
+                            value={
+                                filters.branch ? String(filters.branch) : 'all'
+                            }
+                            onValueChange={filterByBranch}
+                        >
+                            <SelectTrigger
+                                aria-label="Filter by branch"
+                                className="w-48"
+                            >
+                                <SelectValue placeholder="All branches" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">
+                                    All branches
+                                </SelectItem>
+                                {branches.map((branch) => (
+                                    <SelectItem
+                                        key={branch.id}
+                                        value={String(branch.id)}
+                                    >
+                                        {branch.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                ) : null}
 
                 {land_parcels.length === 0 ? (
                     <Card>
@@ -182,6 +239,9 @@ export default function LandParcelsIndex({
                                                     ? `${parcel.city} · `
                                                     : ''}
                                                 {parcel.zoning}
+                                                {parcel.branch
+                                                    ? ` · ${parcel.branch.name}`
+                                                    : null}
                                             </CardDescription>
                                         </CardHeader>
                                         <CardContent>

@@ -1,6 +1,8 @@
 import { Head, Link } from '@inertiajs/react';
-import LandParcelAssetForm, {
-    type AssetManager,
+import LandParcelAssetForm from '@/components/assets/land-parcel-asset-form';
+import type {
+    AssetBranch,
+    AssetManager,
 } from '@/components/assets/land-parcel-asset-form';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
@@ -15,6 +17,8 @@ type Organization = {
 type Props = {
     organization: Organization;
     managers: AssetManager[];
+    branches: AssetBranch[];
+    defaultBranchId: number | null;
     parcel: null;
     selected_manager_ids: number[];
 };
@@ -22,6 +26,8 @@ type Props = {
 export default function LandParcelCreate({
     organization,
     managers,
+    branches,
+    defaultBranchId,
     selected_manager_ids,
 }: Props) {
     return (
@@ -44,6 +50,8 @@ export default function LandParcelCreate({
                 <LandParcelAssetForm
                     managers={managers}
                     selected_manager_ids={selected_manager_ids}
+                    branches={branches}
+                    defaultBranchId={defaultBranchId}
                     setup={false}
                 />
             </div>

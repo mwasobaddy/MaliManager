@@ -7,6 +7,7 @@ use App\Http\Controllers\Tenant\AiSettingsController;
 use App\Http\Controllers\Tenant\AssistantController;
 use App\Http\Controllers\Tenant\AuditController;
 use App\Http\Controllers\Tenant\BillingController;
+use App\Http\Controllers\Tenant\BranchController;
 use App\Http\Controllers\Tenant\DepositRefundController;
 use App\Http\Controllers\Tenant\DraftingController;
 use App\Http\Controllers\Tenant\EditorImageController;
@@ -526,6 +527,11 @@ Route::middleware([
                 ->whereNumber('subRole')
                 ->name('tenant.roles.destroy');
         });
+
+        // Branch creation is owner-only (enforced in the controller): staff
+        // never reach it from the UI, which only offers it to owners.
+        Route::post('/branches', [BranchController::class, 'store'])
+            ->name('tenant.branches.store');
 
         Route::middleware('sub-permission:staff.create')->group(function () {
             Route::get('/staff/create', [StaffController::class, 'create'])

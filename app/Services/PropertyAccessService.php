@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Branch;
 use App\Models\Delegation;
 use App\Models\LandParcel;
 use App\Models\Organization;
@@ -116,8 +117,39 @@ class PropertyAccessService extends Service
                 ->keyBy('id');
         }
 
+        // Branch delegations expand to every asset currently in the branch,
+        // in three bounded queries regardless of organization count.
+        $delegatedBranch = collect();
+        if ($staffMembershipIds->isNotEmpty()) {
+            $delegatedBranch = Delegation::query()
+                ->where('delegatable_type', Branch::class)
+                ->whereIn('organization_user_id', $staffMembershipIds)
+                ->get(['organization_user_id', 'delegatable_id'])
+                ->groupBy('organization_user_id');
+        }
+
+        $branchIds = $delegatedBranch
+            ->flatten(1)
+            ->pluck('delegatable_id')
+            ->unique()
+            ->all();
+
+        $branchProperties = collect();
+        $branchParcels = collect();
+        if ($branchIds !== []) {
+            $branchProperties = Property::query()
+                ->withCount('units')
+                ->whereIn('branch_id', $branchIds)
+                ->get()
+                ->groupBy('organization_id');
+            $branchParcels = LandParcel::query()
+                ->whereIn('branch_id', $branchIds)
+                ->get()
+                ->groupBy('organization_id');
+        }
+
         return $organizations
-            ->map(function (Organization $organization) use ($memberships, $ownerProperties, $delegatedByMembership, $staffProperties, $ownerLandParcels, $delegatedLand, $staffLandParcels): array {
+            ->map(function (Organization $organization) use ($memberships, $ownerProperties, $delegatedByMembership, $staffProperties, $ownerLandParcels, $delegatedLand, $staffLandParcels, $delegatedBranch, $branchProperties, $branchParcels): array {
                 $isOwner = (bool) $organization->pivot->is_owner;
 
                 if ($isOwner) {
@@ -140,6 +172,23 @@ class PropertyAccessService extends Service
                         ->map(fn (int $id) => $staffLandParcels->get($id))
                         ->filter()
                         ->values();
+
+                    // Branch grants add every current asset in the branch,
+                    // deduplicated against the direct grants above.
+                    $branchPropertyIds = $membership
+                        ? $delegatedBranch->get($membership->id, collect())->pluck('delegatable_id')->all()
+                        : [];
+
+                    if ($branchPropertyIds !== []) {
+                        $properties = $properties
+                            ->merge($branchProperties->get($organization->id, collect()))
+                            ->unique('id')
+                            ->values();
+                        $landParcels = $landParcels
+                            ->merge($branchParcels->get($organization->id, collect()))
+                            ->unique('id')
+                            ->values();
+                    }
                 }
 
                 return [

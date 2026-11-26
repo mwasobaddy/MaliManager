@@ -24,6 +24,8 @@ class StoreStaffRequest extends FormRequest
             'sub_role_id' => ['required', 'integer', Rule::exists('sub_roles', 'id')->where('organization_id', $organization?->id)],
             'property_ids' => ['nullable', 'array'],
             'property_ids.*' => ['integer', Rule::exists('properties', 'id')->where('organization_id', $organization?->id)],
+            'branch_ids' => ['nullable', 'array'],
+            'branch_ids.*' => ['integer', Rule::exists('branches', 'id')->where('organization_id', $organization?->id)],
         ];
     }
 }

@@ -17,6 +17,7 @@ class CreateLandParcel extends Service
         return $this->transaction(function () use ($organization, $actor, $data) {
             $parcel = $this->save(new LandParcel([
                 'organization_id' => $organization->id,
+                'branch_id' => $data['branch_id'] ?? $organization->defaultBranch()->id,
                 'name' => $data['name'],
                 'slug' => LandParcel::uniqueSlug($organization->id, $data['name']),
                 'title_deed_number' => $data['title_deed_number'] ?? null,

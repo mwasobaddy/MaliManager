@@ -41,6 +41,7 @@ class LandParcel extends Model implements HasMedia
 
     protected $fillable = [
         'organization_id',
+        'branch_id',
         'name',
         'slug',
         'title_deed_number',
@@ -75,6 +76,11 @@ class LandParcel extends Model implements HasMedia
     public function organization(): BelongsTo
     {
         return $this->belongsTo(Organization::class);
+    }
+
+    public function branch(): BelongsTo
+    {
+        return $this->belongsTo(Branch::class);
     }
 
     public function sections(): HasMany

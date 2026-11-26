@@ -46,6 +46,11 @@ type Property = {
     slug: string;
 };
 
+type Branch = {
+    id: number;
+    name: string;
+};
+
 type StaffMember = {
     id: number;
     name: string;
@@ -54,6 +59,7 @@ type StaffMember = {
     status: string;
     sub_role: SubRole | null;
     properties: Property[];
+    branches: Branch[];
     deletable: boolean;
 };
 
@@ -64,6 +70,7 @@ type FocusedStaff = {
     phone: string | null;
     sub_role_id: number | null;
     property_ids: number[];
+    branch_ids: number[];
 };
 
 type Props = {
@@ -71,6 +78,7 @@ type Props = {
     staff: StaffMember[];
     sub_roles?: SubRole[];
     properties?: Property[];
+    branches?: Branch[];
     focusedStaff?: FocusedStaff | null;
 };
 
@@ -79,6 +87,7 @@ export default function StaffIndex({
     staff,
     sub_roles,
     properties,
+    branches,
     focusedStaff,
 }: Props) {
     const { context } = usePage().props;
@@ -123,6 +132,7 @@ export default function StaffIndex({
                   property_ids: editRow.properties.map(
                       (property) => property.id,
                   ),
+                  branch_ids: editRow.branches.map((branch) => branch.id),
               }
             : focusedStaff?.id === editTargetId
               ? focusedStaff
@@ -131,8 +141,14 @@ export default function StaffIndex({
 
     // The option lists are heavy enough to skip until a sheet actually opens.
     function ensureFormOptions() {
-        if (sub_roles === undefined || properties === undefined) {
-            router.reload({ only: ['sub_roles', 'properties'] });
+        if (
+            sub_roles === undefined ||
+            properties === undefined ||
+            branches === undefined
+        ) {
+            router.reload({
+                only: ['sub_roles', 'properties', 'branches'],
+            });
         }
     }
 
@@ -141,16 +157,20 @@ export default function StaffIndex({
     useEffect(() => {
         if (
             (query.get('create') === '1' || query.get('mode') === 'edit') &&
-            (sub_roles === undefined || properties === undefined)
+            (sub_roles === undefined ||
+                properties === undefined ||
+                branches === undefined)
         ) {
-            router.reload({ only: ['sub_roles', 'properties'] });
+            router.reload({
+                only: ['sub_roles', 'properties', 'branches'],
+            });
         }
-    }, [query, sub_roles, properties]);
+    }, [query, sub_roles, properties, branches]);
 
     function openCreate() {
         ensureFormOptions();
         setOverlayParam('create', '1', {
-            only: ['staff', 'sub_roles', 'properties'],
+            only: ['staff', 'sub_roles', 'properties', 'branches'],
         });
     }
 
@@ -304,7 +324,21 @@ export default function StaffIndex({
                                         <p className="text-xs tracking-wide text-muted-foreground uppercase">
                                             Manages
                                         </p>
-                                        {member.properties.length === 0 ? (
+                                        {member.branches.length > 0 && (
+                                            <div className="mt-1 flex flex-wrap gap-1.5">
+                                                {member.branches.map(
+                                                    (branch) => (
+                                                        <Badge
+                                                            key={`branch-${branch.id}`}
+                                                        >
+                                                            {branch.name} branch
+                                                        </Badge>
+                                                    ),
+                                                )}
+                                            </div>
+                                        )}
+                                        {member.properties.length === 0 &&
+                                        member.branches.length === 0 ? (
                                             <p className="text-sm text-muted-foreground">
                                                 No properties assigned
                                             </p>
@@ -446,7 +480,9 @@ export default function StaffIndex({
                         />
                     }
                 >
-                    {sub_roles === undefined || properties === undefined ? (
+                    {sub_roles === undefined ||
+                    properties === undefined ||
+                    branches === undefined ? (
                         <div className="flex justify-center py-8">
                             <Spinner />
                         </div>
@@ -461,6 +497,7 @@ export default function StaffIndex({
                                 <StaffFormFields
                                     sub_roles={sub_roles}
                                     properties={properties}
+                                    branches={branches}
                                     errors={errors}
                                     idPrefix="create"
                                     propertiesHint="Select the properties this staff member can manage. They will land directly on a single assigned property after login."
@@ -494,7 +531,9 @@ export default function StaffIndex({
                         />
                     }
                 >
-                    {sub_roles === undefined || properties === undefined ? (
+                    {sub_roles === undefined ||
+                    properties === undefined ||
+                    branches === undefined ? (
                         <div className="flex justify-center py-8">
                             <Spinner />
                         </div>
@@ -511,6 +550,7 @@ export default function StaffIndex({
                                     key={editTarget.id}
                                     sub_roles={sub_roles}
                                     properties={properties}
+                                    branches={branches}
                                     errors={errors}
                                     idPrefix="edit"
                                     defaults={{
@@ -519,6 +559,7 @@ export default function StaffIndex({
                                         phone: editTarget.phone,
                                         sub_role_id: editTarget.sub_role_id,
                                         property_ids: editTarget.property_ids,
+                                        branch_ids: editTarget.branch_ids,
                                     }}
                                 />
                             )}

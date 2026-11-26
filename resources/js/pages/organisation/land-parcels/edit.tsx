@@ -45,10 +45,16 @@ type ParcelImage = {
     name: string;
 };
 
+type Branch = {
+    id: number;
+    name: string;
+};
+
 type LandParcel = {
     id: number;
     name: string;
     slug: string;
+    branch_id: number | null;
     title_deed_number: string | null;
     acreage: string | null;
     zoning: string;
@@ -67,6 +73,7 @@ type LandParcel = {
 type Props = {
     organization: Organization;
     parcel: LandParcel;
+    branches: Branch[];
     managers: Manager[];
     canDeleteLandParcel: boolean;
 };
@@ -82,11 +89,15 @@ const ZONING = [
 export default function LandParcelEdit({
     organization,
     parcel,
+    branches,
     managers,
     canDeleteLandParcel,
 }: Props) {
     const passwordInput = useRef<HTMLInputElement>(null);
     const [zoning, setZoning] = useState(parcel.zoning);
+    const [branchId, setBranchId] = useState(
+        parcel.branch_id ? String(parcel.branch_id) : '',
+    );
     const [status, setStatus] = useState(parcel.status);
     const [available, setAvailable] = useState(parcel.available_for_lease);
     const [managerIds, setManagerIds] = useState<number[]>(parcel.manager_ids);
@@ -133,10 +144,44 @@ export default function LandParcelEdit({
                                     <InputError message={errors.name} />
                                 </div>
 
+                                {branches.length > 1 ? (
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="branch">Branch</Label>
+                                        <input
+                                            type="hidden"
+                                            name="branch_id"
+                                            value={branchId}
+                                        />
+                                        <Select
+                                            value={branchId}
+                                            onValueChange={setBranchId}
+                                        >
+                                            <SelectTrigger id="branch">
+                                                <SelectValue placeholder="Choose a branch" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {branches.map((branch) => (
+                                                    <SelectItem
+                                                        key={branch.id}
+                                                        value={String(
+                                                            branch.id,
+                                                        )}
+                                                    >
+                                                        {branch.name}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <InputError
+                                            message={errors.branch_id}
+                                        />
+                                    </div>
+                                ) : null}
+
                                 <div className="grid gap-2">
                                     <Label htmlFor="title_deed_number">
                                         Title deed no. (optional)
-                                    </Label>
+                                    </Label>{' '}
                                     <Input
                                         id="title_deed_number"
                                         name="title_deed_number"

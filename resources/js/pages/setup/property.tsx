@@ -1,8 +1,10 @@
 import { Head, Link } from '@inertiajs/react';
 import { ArrowLeft } from 'lucide-react';
-import PropertyAssetForm, {
-    type AssetPlan,
-    type AssetPropertyType,
+import PropertyAssetForm from '@/components/assets/property-asset-form';
+import type {
+    AssetBranch,
+    AssetPlan,
+    AssetPropertyType,
 } from '@/components/assets/property-asset-form';
 import Heading from '@/components/heading';
 import {
@@ -21,6 +23,8 @@ type Props = {
     };
     plan: AssetPlan;
     propertyTypes: AssetPropertyType[];
+    branches: AssetBranch[];
+    defaultBranchId: number | null;
     canCreateProperty: boolean;
     setupProgress: SetupProgress;
 };
@@ -34,6 +38,8 @@ export default function SetupProperty({
     organization,
     plan,
     propertyTypes,
+    branches,
+    defaultBranchId,
     canCreateProperty,
     setupProgress,
 }: Props) {
@@ -71,6 +77,8 @@ export default function SetupProperty({
                     <PropertyAssetForm
                         plan={plan}
                         propertyTypes={propertyTypes}
+                        branches={branches}
+                        defaultBranchId={defaultBranchId}
                         canCreateProperty={canCreateProperty}
                         setup
                     />

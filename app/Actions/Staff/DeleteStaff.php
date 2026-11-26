@@ -19,7 +19,7 @@ class DeleteStaff extends Service
 
             if ($membership) {
                 $this->delete($membership);
-                $this->deletePropertyDelegations($membership);
+                $this->deleteDelegations($membership);
             }
 
             if ($staff->organizations()->count() <= 1) {

@@ -6,6 +6,7 @@ use App\Enums\SubPermissionKey;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Tenant\PropertyAccessRequest;
 use App\Http\Requests\Tenant\StorePropertyRequest;
+use App\Models\Branch;
 use App\Models\Organization;
 use App\Models\Property;
 use App\Models\PropertyType;
@@ -28,9 +29,16 @@ class PropertyController extends Controller
 
         $user = $request->user();
 
+        $branchId = $request->integer('branch');
+        $branch = $branchId > 0
+            ? $organization->branches()->whereKey($branchId)->first()
+            : null;
+
         $properties = $organization->properties()
             ->when(! $user->isOwnerOf($organization), fn ($query) => $query
                 ->whereIn('id', app(StaffService::class)->delegatedPropertyIds($user->membershipFor($organization))))
+            ->when($branch instanceof Branch, fn ($query) => $query->where('branch_id', $branch->id))
+            ->with('branch:id,name')
             ->withCount('units')
             ->orderBy('created_at', 'desc')
             ->get()
@@ -41,11 +49,15 @@ class PropertyController extends Controller
                 'city' => $property->city,
                 'status' => $property->status,
                 'units_count' => $property->units_count,
+                'branch' => $property->branch?->only('id', 'name'),
             ]);
 
         return Inertia::render('organisation/properties/index', [
             'organization' => $organization->only('id', 'name', 'slug'),
+            'is_owner' => $user->isOwnerOf($organization),
             'properties' => $properties,
+            'branches' => $organization->branches()->orderBy('name')->get(['id', 'name'])->all(),
+            'filters' => ['branch' => $branch?->id],
             'canCreateProperty' => ($user->isOwnerOf($organization)
                 || $user->hasSubPermission($organization, SubPermissionKey::PropertyCreate))
                 && $this->canCreateProperty($organization),
@@ -85,6 +97,10 @@ class PropertyController extends Controller
             'canCreateProperty' => ($request->user()->isOwnerOf($organization)
                 || $request->user()->hasSubPermission($organization, SubPermissionKey::PropertyCreate))
                 && $this->canCreateProperty($organization),
+            // Branches the new asset can belong to; single-branch orgs skip
+            // choosing (the form hides the select) and land on Main.
+            'branches' => $organization->branches()->orderBy('name')->get(['id', 'name'])->all(),
+            'defaultBranchId' => $organization->defaultBranch()->id,
             'setupProgress' => SetupProgress::forOrganization($organization),
         ];
 
