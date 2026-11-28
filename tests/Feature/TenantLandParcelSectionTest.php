@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\AgreementTemplates\CreateDefaultAgreementTemplate;
 use App\Models\AgreementTemplate;
 use App\Models\LandParcel;
 use App\Models\LandParcelSection;
@@ -131,6 +132,7 @@ test('leasing a section creates a lease and generates the agreement', function (
             'currency' => 'KES',
             'rent_frequency' => 'monthly',
             'starts_at' => now()->toDateString(),
+            'template_id' => $template->id,
         ])
         ->assertRedirect(parcelUrl($organization, "/land-parcels/{$parcel->slug}"));
 
@@ -144,6 +146,35 @@ test('leasing a section creates a lease and generates the agreement', function (
         ->and($lease->agreement_text)->toContain($section->name)
         ->and($lease->agreement_text)->toContain('Jane Doe')
         ->and($lease->agreement_text)->toContain(number_format(45000, 2));
+});
+
+test('a parcel lease without a picked template falls back to the shipped default', function () {
+    $owner = User::factory()->create(['onboarded_at' => now()]);
+    $organization = sectionOrg($owner);
+    $parcel = sectionParcel($organization, $owner);
+    $section = $parcel->sections()->create([
+        'name' => 'Block B',
+        'status' => 'vacant',
+        'created_by' => $owner->id,
+    ]);
+
+    $this->actingAs($owner)
+        ->post(parcelUrl($organization, "/land-parcels/{$parcel->slug}/sections/{$section->id}/leases"), [
+            'tenant_name' => 'John Doe',
+            'tenant_email' => 'john@example.com',
+            'rent_amount' => 30000, 'rent_frequency' => 'monthly',
+            'currency' => 'KES',
+            'rent_frequency' => 'monthly',
+            'starts_at' => now()->toDateString(),
+        ])
+        ->assertRedirect(parcelUrl($organization, "/land-parcels/{$parcel->slug}"));
+
+    $lease = Lease::where('land_parcel_section_id', $section->id)->firstOrFail();
+    $default = AgreementTemplate::where('organization_id', $organization->id)->whereNull('property_id')->firstOrFail();
+
+    expect($lease->agreement_text)->toContain('John Doe')
+        ->and($lease->agreement_text)->toContain(number_format(30000, 2))
+        ->and($default->name)->toBe(CreateDefaultAgreementTemplate::NAME);
 });
 
 function parcelUrl(Organization $organization, string $path = ''): string

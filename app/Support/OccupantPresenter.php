@@ -2,12 +2,17 @@
 
 namespace App\Support;
 
+use App\Enums\MoveOutNoticeStatus;
 use App\Models\AgreementTemplate;
+use App\Models\DepositRefund;
 use App\Models\Lease;
+use App\Models\MoveOutNotice;
 use App\Models\Occupant;
 use App\Models\Organization;
+use App\Models\Payment;
 use App\Models\Property;
 use App\Models\User;
+use App\Services\RentArrearsService;
 
 /**
  * Read-models for the occupant screens.
@@ -43,6 +48,81 @@ final class OccupantPresenter
             return null;
         }
 
+        return self::presentAgreementLease($lease);
+    }
+
+    /**
+     * The lease the occupant view sheet links for the agreement: the
+     * active one when it carries the agreement, else the pending booking,
+     * else the most recent ended lease that does. Ended tenancies keep
+     * printable history, so the button must not die with the lease. The
+     * agreement page resolves through this same rule, so the link never
+     * 404s on an empty current lease while an older one prints.
+     */
+    public static function resolveAgreementLease(Occupant $occupant, Property $property): ?Lease
+    {
+        $current = Lease::query()
+            ->where('occupant_id', $occupant->id)
+            ->where('property_id', $property->id)
+            ->whereIn('status', ['active', 'pending'])
+            ->with(['unit:id,name', 'property:id,name,organization_id', 'property.organization:id,name'])
+            ->orderByRaw("CASE status WHEN 'active' THEN 0 ELSE 1 END")
+            ->orderByDesc('id')
+            ->first();
+
+        if ($current instanceof Lease && self::leaseHasAgreement($current)) {
+            return $current;
+        }
+
+        $ended = Lease::query()
+            ->where('occupant_id', $occupant->id)
+            ->where('property_id', $property->id)
+            ->where('status', 'ended')
+            ->with(['unit:id,name', 'property:id,name,organization_id', 'property.organization:id,name'])
+            ->orderByDesc('id')
+            ->first();
+
+        if ($ended instanceof Lease && self::leaseHasAgreement($ended)) {
+            return $ended;
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public static function latestLeaseWithAgreement(Occupant $occupant, Property $property): ?array
+    {
+        $lease = self::resolveAgreementLease($occupant, $property);
+
+        if (! $lease instanceof Lease) {
+            return null;
+        }
+
+        return self::presentAgreementLease($lease);
+    }
+
+    /**
+     * An authored agreement survives as text or an uploaded document.
+     * An untouched editor posts `<p></p>`, which counts as no agreement.
+     */
+    private static function leaseHasAgreement(Lease $lease): bool
+    {
+        $text = trim((string) $lease->agreement_text);
+
+        if ($text !== '' && $text !== '<p></p>') {
+            return true;
+        }
+
+        return $lease->getFirstMedia('agreement') !== null;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private static function presentAgreementLease(Lease $lease): array
+    {
         $document = $lease->getFirstMedia('agreement');
 
         return [
@@ -56,6 +136,149 @@ final class OccupantPresenter
             'agreement_document_name' => $document?->file_name,
             'agreement_document_url' => $document?->getUrl(),
         ];
+    }
+
+    /**
+     * The occupant's story in one chronological list, newest first:
+     * tenancies started and ended, rent received, refunds filed, and
+     * move-out notices. Capped: this is a sheet, not a report.
+     *
+     * @return list<array{date: string|null, kind: string, title: string, detail: string|null, amount: string|null, currency: string|null, status: string|null}>
+     */
+    public static function history(Occupant $occupant, Property $property): array
+    {
+        $leaseIds = Lease::query()
+            ->where('person_id', $occupant->person_id)
+            ->where('property_id', $property->id)
+            ->pluck('id');
+
+        if ($leaseIds->isEmpty()) {
+            return [];
+        }
+
+        $events = [];
+
+        $leases = Lease::query()
+            ->whereKey($leaseIds)
+            ->with('unit:id,name')
+            ->orderByDesc('starts_at')
+            ->get();
+
+        foreach ($leases as $lease) {
+            $unit = $lease->unit?->name ?? 'a unit';
+            $rate = $lease->rent_amount !== null
+                ? number_format((float) $lease->rent_amount, 2).' '.($lease->currency ?? '')
+                : null;
+
+            $events[] = [
+                'date' => $lease->starts_at?->toDateString(),
+                'kind' => 'lease_started',
+                'title' => "Moved into {$unit}",
+                'detail' => $rate,
+                'amount' => null,
+                'currency' => null,
+                'status' => null,
+            ];
+
+            if ($lease->status === 'ended') {
+                $events[] = [
+                    'date' => $lease->ends_at?->toDateString(),
+                    'kind' => 'lease_ended',
+                    'title' => "Left {$unit}",
+                    'detail' => $rate,
+                    'amount' => null,
+                    'currency' => null,
+                    'status' => 'ended',
+                ];
+            }
+
+            foreach (MoveOutNotice::query()->where('lease_id', $lease->id)->orderByDesc('move_out_date')->get() as $notice) {
+                $events[] = [
+                    'date' => $notice->move_out_date?->toDateString(),
+                    'kind' => 'move_out_notice',
+                    'title' => "Notice to leave {$unit}",
+                    'detail' => $notice->note,
+                    'amount' => null,
+                    'currency' => null,
+                    'status' => $notice->status instanceof MoveOutNoticeStatus ? $notice->status->value : (string) $notice->status,
+                ];
+            }
+
+            foreach (DepositRefund::query()->where('lease_id', $lease->id)->orderByDesc('id')->get() as $refund) {
+                $events[] = [
+                    'date' => $refund->created_at?->toDateString(),
+                    'kind' => 'refund',
+                    'title' => "Deposit refund {$refund->status->value}",
+                    'detail' => "for {$unit}",
+                    'amount' => number_format($refund->amount_cents / 100, 2, '.', ''),
+                    'currency' => $refund->currency,
+                    'status' => $refund->status->value,
+                ];
+            }
+        }
+
+        foreach (Payment::query()->whereIn('lease_id', $leaseIds)->whereIn('status', ['received', 'refunded'])->orderByDesc('paid_on')->get() as $payment) {
+            $events[] = [
+                'date' => $payment->paid_on?->toDateString(),
+                'kind' => 'payment',
+                'title' => $payment->status === 'refunded' ? 'Payment refunded' : ucfirst((string) $payment->type).' received',
+                'detail' => $payment->method ? "via {$payment->method}" : null,
+                'amount' => (string) $payment->amount,
+                'currency' => $payment->currency,
+                'status' => $payment->status,
+            ];
+        }
+
+        usort($events, fn (array $a, array $b): int => strcmp((string) ($b['date'] ?? ''), (string) ($a['date'] ?? '')));
+
+        return array_slice(array_values($events), 0, 30);
+    }
+
+    /**
+     * Every tenancy in this property, active first, for the sheet's lease
+     * switcher. Each carries its live balance so the sheet can remind and
+     * link without another request.
+     *
+     * @return list<array{id: int, unit_id: int|null, unit_name: string|null, status: string, starts_at: string|null, ends_at: string|null, rent_amount: string|float|null, currency: string|null, outstanding: string, is_overdue: bool, has_agreement: bool, agreement_document_name: string|null, agreement_document_url: string|null}>
+     */
+    public static function leasesForSheet(Occupant $occupant, Property $property): array
+    {
+        $leases = Lease::query()
+            ->where('occupant_id', $occupant->id)
+            ->where('property_id', $property->id)
+            ->with('unit:id,name')
+            ->with(['media' => fn ($query) => $query->where('collection_name', 'agreement')])
+            ->orderByRaw("CASE WHEN status = 'active' THEN 0 WHEN status = 'pending' THEN 1 ELSE 2 END")
+            ->orderByDesc('starts_at')
+            ->get();
+
+        if ($leases->isEmpty()) {
+            return [];
+        }
+
+        $balances = app(RentArrearsService::class)->balancesFor($leases);
+
+        return $leases
+            ->map(function (Lease $lease) use ($balances) {
+                $document = $lease->getRelation('media')->first();
+
+                return [
+                    'id' => $lease->id,
+                    'unit_id' => $lease->unit_id,
+                    'unit_name' => $lease->unit?->name,
+                    'status' => $lease->status,
+                    'starts_at' => $lease->starts_at?->toDateString(),
+                    'ends_at' => $lease->ends_at?->toDateString(),
+                    'rent_amount' => $lease->rent_amount,
+                    'currency' => $lease->currency,
+                    'outstanding' => $balances[$lease->id]['outstanding'] ?? '0.00',
+                    'is_overdue' => $balances[$lease->id]['overdue'] ?? false,
+                    'has_agreement' => self::leaseHasAgreement($lease),
+                    'agreement_document_name' => $document?->file_name,
+                    'agreement_document_url' => $document?->getUrl(),
+                ];
+            })
+            ->all();
     }
 
     /**
@@ -166,13 +389,31 @@ final class OccupantPresenter
             ...self::present($occupant, $property, $actor, $organization),
             'gender' => $occupant->person->gender,
             'added_at' => $occupant->created_at?->toDateString(),
+            // Every unit this person holds in the property, across all of
+            // their rows: the edit sheet's unit picker works on the whole
+            // set (unchecking vacates that row, adding creates a new one).
+            'all_unit_ids' => $occupant->person->occupants()
+                ->where('occupants.organization_id', $property->organization_id)
+                ->with(['units' => fn ($query) => $query->where('units.property_id', $property->id)->select('units.id')])
+                ->get()
+                ->flatMap(fn (Occupant $row) => $row->units->pluck('id'))
+                ->unique()
+                ->values()
+                ->all(),
             // The full lease including agreement_text: the edit sheet loads
             // it into the editor, and the view sheet simply ignores the extra
             // fields.
             'lease' => self::activeLease($occupant, $property),
+            // Whatever carries the printable agreement (active or ended):
+            // the view sheet's Agreement button reads only this.
+            'agreement_lease' => self::latestLeaseWithAgreement($occupant, $property),
             // Bookings waiting on move-in: the view sheet offers the move-in
             // step from these, so they ride along only on the focused record.
             'pending_leases' => self::pendingLeases($occupant, $property),
+            // Every tenancy for the sheet's lease switcher, active first.
+            'leases' => self::leasesForSheet($occupant, $property),
+            // The story so far, newest first.
+            'history' => self::history($occupant, $property),
         ];
     }
 
@@ -204,9 +445,10 @@ final class OccupantPresenter
     }
 
     /**
+     * @param  array{lease_id: int, outstanding: string, currency: string|null}|null  $attention
      * @return array<string, mixed>
      */
-    public static function present(Occupant $occupant, Property $property, ?User $actor = null, ?Organization $organization = null): array
+    public static function present(Occupant $occupant, Property $property, ?User $actor = null, ?Organization $organization = null, ?array $attention = null): array
     {
         $org = $organization ?? $property->organization;
 
@@ -224,9 +466,16 @@ final class OccupantPresenter
                     'name' => $unit->name,
                     'type' => $unit->type,
                     'status' => $unit->status,
+                    'rent_amount' => $unit->rent_amount,
                 ])
                 ->all(),
             'deletable' => $actor !== null ? DeletionTier::allows($actor, $org, $occupant) : true,
+            // The row overflow offers the agreement link without a second
+            // request; the sheet resolves the full lease itself.
+            'has_agreement' => (bool) ($occupant->has_agreement ?? false),
+            // The row's one-tap action: a single overdue lease rides along
+            // with its balance; anything else defers to the sheet.
+            'attention' => $attention,
         ];
     }
 }

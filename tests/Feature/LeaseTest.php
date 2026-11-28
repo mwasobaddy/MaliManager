@@ -91,8 +91,8 @@ test('moving an occupant out of a unit ends that lease but keeps active ones, an
     // Still has an active lease (B), so the occupant role stays.
     expect(User::where('email', 'jane@acme.test')->first()->hasRole(PlatformRole::Occupant->value))->toBeTrue();
 
-    // Move out of B as well. Vacating the last unit while claiming to be
-    // active is rejected, so this goes through as a deactivation.
+    // Move out of B as well. Each vacated row reads moved_out (it has
+    // rental history); deactivation is for rows that never held a tenancy.
     app(OccupantService::class)->update($occupant, $property, $owner, [
         'first_name' => 'Jane',
         'email' => 'jane@acme.test',
@@ -102,7 +102,7 @@ test('moving an occupant out of a unit ends that lease but keeps active ones, an
 
     expect(Lease::where('person_id', $occupant->person_id)->where('status', 'active')->exists())->toBeFalse();
     expect(User::where('email', 'jane@acme.test')->first()->hasRole(PlatformRole::Occupant->value))->toBeFalse()
-        ->and($occupant->refresh()->status)->toBe('inactive');
+        ->and($occupant->refresh()->status)->toBe('moved_out');
 });
 
 test('lease visibility: own / org staff / admin, but not other users', function () {

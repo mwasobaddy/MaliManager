@@ -3,8 +3,10 @@
 namespace App\Actions\Occupants\Concerns;
 
 use App\Enums\PlatformRole;
+use App\Models\AgreementTemplate;
 use App\Models\Lease;
 use App\Models\Occupant;
+use App\Models\Organization;
 use App\Models\Person;
 use App\Models\Property;
 use App\Models\Unit;
@@ -66,13 +68,18 @@ trait OccupantHelpers
      * active lease, inactive otherwise. `moved_out` is terminal and is
      * never recomputed — only an explicit move-out sets it.
      */
+    /**
+     * Still running: occupants whose leases are all pending are waiting on
+     * move-in; anything with a live lease is active. Row-scoped: each
+     * tenancy row carries its own status.
+     */
     private function refreshOccupantStatus(Occupant $occupant): void
     {
         if ($occupant->status === 'moved_out') {
             return;
         }
 
-        $hasActive = Lease::where('person_id', $occupant->person_id)
+        $hasActive = Lease::where('occupant_id', $occupant->id)
             ->where('status', 'active')
             ->whereNull('ends_at')
             ->exists();
@@ -99,6 +106,54 @@ trait OccupantHelpers
             ->exists();
 
         $unit->fill(['status' => $occupied ? 'occupied' : 'vacant'])->save();
+    }
+
+    /**
+     * The occupant row that should carry a unit assignment: the active row
+     * already holding it (idempotent re-submits), else a unit-less row of
+     * the same person in this property (a prospect becoming a tenancy),
+     * else a fresh row. Moved-out rows never come back — a re-let is a
+     * new tenancy with its own history.
+     */
+    private function resolveRowForUnit(Organization $organization, Person $person, Property $property, int $unitId, User $actor, bool $moveIn): Occupant
+    {
+        $row = Occupant::query()
+            ->where('organization_id', $organization->id)
+            ->where('person_id', $person->id)
+            ->where('status', 'active')
+            ->whereHas('units', fn ($query) => $query->where('units.id', $unitId))
+            ->first();
+
+        if ($row instanceof Occupant) {
+            $row->fill(['status' => $moveIn ? 'active' : 'inactive']);
+
+            return $row;
+        }
+
+        $prospect = Occupant::query()
+            ->where('organization_id', $organization->id)
+            ->where('person_id', $person->id)
+            ->where('status', '!=', 'moved_out')
+            ->whereDoesntHave('units', fn ($query) => $query->where('units.property_id', $property->id))
+            ->orderBy('id')
+            ->first();
+
+        if ($prospect instanceof Occupant) {
+            $prospect->fill([
+                'status' => $moveIn ? 'active' : 'inactive',
+                'created_by' => $actor->id,
+            ]);
+            $prospect->deleted_at = null;
+
+            return $prospect;
+        }
+
+        return new Occupant([
+            'organization_id' => $organization->id,
+            'person_id' => $person->id,
+            'status' => $moveIn ? 'active' : 'inactive',
+            'created_by' => $actor->id,
+        ]);
     }
 
     /**
@@ -133,9 +188,14 @@ trait OccupantHelpers
             'rent_due_day' => $leaseData['rent_due_day'] ?? null,
             'rent_due_weekday' => $leaseData['rent_due_weekday'] ?? null,
             'rent_due_month' => $leaseData['rent_due_month'] ?? null,
-            'currency' => $leaseData['currency'] ?? null,
+            // A lease always carries a currency: the form's pick wins, else
+            // the org default, else KES — nothing downstream may assume null.
+            'currency' => $leaseData['currency'] ?? $property->organization->settings['currency'] ?? 'KES',
             'deposit' => $leaseData['deposit'] ?? null,
-            'agreement_text' => $leaseData['agreement_text'] ?? null,
+            // Quick add (and an untouched full-form editor) posts no
+            // agreement: attach the org default so the tenant prints with
+            // zero template decisions. An authored text is left alone.
+            'agreement_text' => $this->agreementText($property, $leaseData['agreement_text'] ?? null),
             'status' => $status,
             'created_by' => $actor->id,
         ]);
@@ -155,6 +215,25 @@ trait OccupantHelpers
         $this->refreshUnitStatus($unitId);
 
         return $lease;
+    }
+
+    /**
+     * The agreement a new lease carries: authored text wins, otherwise the
+     * org default (its oldest org-wide template — the copy shipped at
+     * creation). An untouched TipTap editor posts `<p></p>`, which counts
+     * as blank here.
+     */
+    private function agreementText(Property $property, ?string $authored): ?string
+    {
+        if ($authored !== null && trim($authored) !== '' && trim($authored) !== '<p></p>') {
+            return $authored;
+        }
+
+        return AgreementTemplate::query()
+            ->where('organization_id', $property->organization_id)
+            ->whereNull('property_id')
+            ->orderBy('id')
+            ->value('body_html');
     }
 
     /**

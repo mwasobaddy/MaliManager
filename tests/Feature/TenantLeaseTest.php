@@ -48,7 +48,7 @@ function leaseUrl(Organization $organization, string $path): string
     return "http://{$domain->domain}{$path}";
 }
 
-test('owners see the property leases index with active and ended leases', function () {
+test('the leases index defaults to the active book with an explicit archive', function () {
     $owner = User::factory()->create(['onboarded_at' => now()]);
     $organization = leaseOrganization($owner);
     $property = leaseProperty($organization, $owner);
@@ -76,18 +76,33 @@ test('owners see the property leases index with active and ended leases', functi
         'status' => 'ended',
     ]);
 
+    // No status: the active book only — ended leases leave the list.
     $this->actingAs($owner)
         ->get(leaseUrl($organization, '/sunset-heights/leases'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('organisation/leases/index')
-            ->where('leases.data', fn ($rows) => count($rows) === 2));
+            ->where('leases.data', fn ($rows) => count($rows) === 1 && $rows[0]['status'] === 'active')
+            ->where('filters.status', 'active'));
 
     $this->actingAs($owner)
         ->get(leaseUrl($organization, '/sunset-heights/leases?status=active'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('leases.data', fn ($rows) => count($rows) === 1 && $rows[0]['status'] === 'active'));
+
+    // The archive holds ended leases; `all` restores everything.
+    $this->actingAs($owner)
+        ->get(leaseUrl($organization, '/sunset-heights/leases?status=ended'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('leases.data', fn ($rows) => count($rows) === 1 && $rows[0]['status'] === 'ended'));
+
+    $this->actingAs($owner)
+        ->get(leaseUrl($organization, '/sunset-heights/leases?status=all'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('leases.data', fn ($rows) => count($rows) === 2));
 });
 
 test('ending a lease requires the current password and stamps the end date', function () {

@@ -38,6 +38,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
  * @property int|null $rent_due_month
  * @property \Carbon|null $overdue_since
  * @property string|null $currency
+ * @property array|null $rent_increment_schedule
  * @property float|null $deposit
  * @property string|null $agreement_text
  * @property string $status
@@ -76,6 +77,7 @@ class Lease extends Model implements HasMedia
         'rent_due_month',
         'overdue_since',
         'currency',
+        'rent_increment_schedule',
         'deposit',
         'agreement_text',
         'status',
@@ -95,6 +97,7 @@ class Lease extends Model implements HasMedia
         'rent_due_month' => 'integer',
         'overdue_since' => 'date',
         'last_reminded_at' => 'datetime',
+        'rent_increment_schedule' => 'array',
     ];
 
     public function person(): BelongsTo
@@ -192,8 +195,14 @@ class Lease extends Model implements HasMedia
                     },
                 ),
             )
+            // Ended leases are the explicit archive view; `all` (and anything
+            // unexpected) leaves the list unfiltered.
             ->when(
-                in_array($filters['status'] ?? '', ['active', 'ended', 'pending'], true),
+                ($filters['status'] ?? '') === 'ended',
+                fn (Builder $builder) => $builder->archived(),
+            )
+            ->when(
+                in_array($filters['status'] ?? '', ['active', 'pending'], true),
                 fn (Builder $builder) => $builder->where('leases.status', (string) $filters['status']),
             )
             // Expiring = active with an end date inside the next 60 days.
@@ -332,6 +341,48 @@ class Lease extends Model implements HasMedia
         return $query->where(function (Builder $inner): void {
             $inner->where('status', 'ended')->orWhereNotNull('ends_at');
         });
+    }
+
+    /**
+     * The explicit archive view: leases with status ended. Unlike
+     * scopeEnded (which also catches active leases past their end date),
+     * this is the settled history the archive filter shows.
+     */
+    public function scopeArchived(Builder $query): Builder
+    {
+        return $query->where('leases.status', 'ended');
+    }
+
+    /**
+     * The scheduled increment preview the renewal dialog shows: "rent
+     * becomes X from date Y". Pure arithmetic on the stored schedule —
+     * null when no schedule is set or the lease has no rent yet.
+     * Amounts stay decimal strings per the money rules; callers compare
+     * with (float) casts.
+     *
+     * @return array{amount: string, effective_date: string, annual_percent: float}|null
+     */
+    public function incrementPreview(): ?array
+    {
+        $schedule = $this->rent_increment_schedule ?? [];
+        $percent = $schedule['annual_percent'] ?? null;
+        $effectiveDate = $schedule['effective_date'] ?? null;
+
+        if (! is_numeric($percent) || ! is_string($effectiveDate) || $effectiveDate === '' || $this->rent_amount === null) {
+            return null;
+        }
+
+        $amount = bcmul(
+            (string) $this->rent_amount,
+            bcadd('1', bcdiv((string) $percent, '100', 6), 6),
+            2,
+        );
+
+        return [
+            'amount' => $amount,
+            'effective_date' => $effectiveDate,
+            'annual_percent' => (float) $percent,
+        ];
     }
 
     public function scopeForPerson(Builder $query, int|Person $person): Builder

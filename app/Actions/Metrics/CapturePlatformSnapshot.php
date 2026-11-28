@@ -89,7 +89,8 @@ class CapturePlatformSnapshot extends Service
                 $metric->fill([
                     'properties_count' => $propertyIds->count(),
                     'units_count' => $propertyIds->isEmpty() ? 0 : Unit::query()->whereIn('property_id', $propertyIds)->count(),
-                    'occupants_count' => Occupant::query()->where('organization_id', $organization->id)->count(),
+                    // People, not rows: one tenant may hold several tenancies.
+                    'occupants_count' => Occupant::query()->where('organization_id', $organization->id)->distinct('person_id')->count('person_id'),
                     'active_leases_count' => Lease::query()->where('organization_id', $organization->id)->active()->count(),
                     'rent_month_to_date' => (string) Payment::query()
                         ->where('organization_id', $organization->id)

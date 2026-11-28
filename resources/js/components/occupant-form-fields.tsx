@@ -231,8 +231,10 @@ export default function OccupantFormFields({
         }
 
         if (name === 'email') {
+            // Email or phone satisfies the server rule; an empty field is
+            // only wrong when malformed, never on its own.
             if (value.trim() === '') {
-                return 'Email address is required.';
+                return null;
             }
 
             return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())
@@ -437,12 +439,13 @@ export default function OccupantFormFields({
                 </div>
 
                 <div className="grid gap-2">
-                    <Label htmlFor={`${idPrefix}-email`}>Email address</Label>
+                    <Label htmlFor={`${idPrefix}-email`}>
+                        Email address (optional if phone given)
+                    </Label>
                     <Input
                         id={`${idPrefix}-email`}
                         name="email"
                         type="email"
-                        required
                         autoComplete="off"
                         placeholder="jane@example.com"
                         defaultValue={defaults.email ?? ''}

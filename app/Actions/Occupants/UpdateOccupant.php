@@ -6,6 +6,7 @@ use App\Actions\Occupants\Concerns\OccupantHelpers;
 use App\Models\Lease;
 use App\Models\Occupant;
 use App\Models\Property;
+use App\Models\Unit;
 use App\Models\User;
 use App\Services\Service;
 
@@ -37,57 +38,124 @@ class UpdateOccupant extends Service
                 }
             }
 
+            // One row per tenancy: the requested units are the person's
+            // whole set in this property. Added units get their own row
+            // (and lease); removed ones end and their row moves out.
+            $requestedIds = array_map('intval', array_unique((array) ($data['unit_ids'] ?? [])));
+            $rowsByUnit = $this->rowsByUnit($occupant, $property);
+            $currentIds = array_keys($rowsByUnit);
+
             $requestedStatus = $data['status'] ?? $occupant->status;
+            $leaseStatus = $requestedStatus === 'active' ? 'active' : 'pending';
 
-            $occupant->fill([
-                'status' => $requestedStatus,
-            ])->save();
+            foreach (array_diff($requestedIds, $currentIds) as $addedId) {
+                $unit = Unit::where('property_id', $property->id)->whereKey($addedId)->first();
 
-            // New units follow the requested state: an active occupant signs
-            // active leases, anything else books pending ones for a later
-            // move-in. Validation below reads the end state, so a single edit
-            // can both rotate units and resolve the status truthfully.
-            $this->syncUnitAssignments(
-                $occupant,
-                $property,
-                $data['unit_ids'] ?? [],
-                $actor,
-                $data['lease'] ?? [],
-                $requestedStatus === 'active' ? 'active' : 'pending',
-            );
+                if (! $unit) {
+                    continue;
+                }
 
-            // Status is a record of the leasing truth, not a free label:
-            // moving out with live leases would orphan them, and going
-            // active or staying inactive with a live lease invents or hides
-            // a tenancy. Those go through the move-in / move-out steps.
-            $hasActive = $this->hasActiveLeases($occupant->person_id);
+                $row = $this->resolveRowForUnit($property->organization, $person, $property, $addedId, $actor, $requestedStatus === 'active');
+                $row->save();
 
-            if ($requestedStatus === 'moved_out' && $hasActive) {
-                abort(422, 'This occupant still holds active leases — move them out instead of editing the status.');
+                $this->syncUnitAssignments($row, $property, [$addedId], $actor, $data['lease'] ?? [], $leaseStatus);
             }
 
-            if ($requestedStatus === 'active' && ! $hasActive) {
-                abort(422, 'There is no active lease to back this status — move the occupant in first.');
+            foreach (array_diff($currentIds, $requestedIds) as $removedId) {
+                $this->endLease($occupant, $removedId);
+                $this->cancelPendingLeases($occupant, $property, $removedId);
+
+                // The holder row loses the unit for good: detach it so the
+                // row no longer claims the tenancy. The edited row's own
+                // fate is decided below; siblings move out outright.
+                $holder = $rowsByUnit[$removedId] ?? null;
+
+                if ($holder instanceof Occupant) {
+                    $holder->units()->detach($removedId);
+
+                    if ($holder->id !== $occupant->id) {
+                        $holder->fill(['status' => 'moved_out'])->save();
+                    }
+                }
             }
 
-            if ($requestedStatus === 'inactive' && $hasActive) {
-                abort(422, 'This occupant still holds active leases — end them before deactivating.');
-            }
+            $this->stripOccupantRoleIfNoActiveLeases($person);
 
-            if ($requestedStatus === 'moved_out') {
-                $this->cancelPendingLeases($occupant, $property);
+            // The edited row follows its own lease truth: its units are the
+            // ones it still holds after this edit.
+            $rowUnitIds = $occupant->units()->where('units.property_id', $property->id)->pluck('units.id')->all();
+            $rowHasActive = ! empty($rowUnitIds) && Lease::query()
+                ->where('person_id', $person->id)
+                ->whereIn('unit_id', $rowUnitIds)
+                ->where('status', 'active')
+                ->whereNull('ends_at')
+                ->exists();
+
+            if (empty($rowUnitIds)) {
+                // Vacating the row is a move-out by another name when the
+                // row held a real tenancy; a unit-less row with no history
+                // simply takes the requested status (never active — there
+                // is no lease to back it).
+                $rowHadTenancy = Lease::query()
+                    ->where('person_id', $person->id)
+                    ->where('property_id', $property->id)
+                    ->where('occupant_id', $occupant->id)
+                    ->exists();
+
+                if ($rowHadTenancy) {
+                    $occupant->fill(['status' => 'moved_out'])->save();
+                } else {
+                    abort_if($requestedStatus === 'active', 422, 'There is no active lease to back this status — move the occupant in first.');
+
+                    $occupant->fill(['status' => $requestedStatus])->save();
+                }
+            } else {
+                // Status is a record of the leasing truth, not a free
+                // label: moving out with a live lease would orphan it, and
+                // going active or staying inactive with a live lease invents
+                // or hides a tenancy. Those go through the move-in /
+                // move-out steps.
+                if ($requestedStatus === 'moved_out' && $rowHasActive) {
+                    abort(422, 'This occupant still holds active leases — move them out instead of editing the status.');
+                }
+
+                if ($requestedStatus === 'active' && ! $rowHasActive) {
+                    abort(422, 'There is no active lease to back this status — move the occupant in first.');
+                }
+
+                if ($requestedStatus === 'inactive' && $rowHasActive) {
+                    abort(422, 'This occupant still holds active leases — end it before deactivating.');
+                }
+
+                $occupant->fill(['status' => $requestedStatus])->save();
             }
 
             return $occupant;
         });
     }
 
-    private function hasActiveLeases(int $personId): bool
+    /**
+     * Every live row of this person in the property, keyed by the unit it
+     * currently holds. One row holds at most one unit.
+     *
+     * @return array<int, Occupant>
+     */
+    private function rowsByUnit(Occupant $occupant, Property $property): array
     {
-        return Lease::query()
-            ->where('person_id', $personId)
-            ->where('status', 'active')
-            ->whereNull('ends_at')
-            ->exists();
+        $rows = Occupant::query()
+            ->where('organization_id', $property->organization_id)
+            ->where('person_id', $occupant->person_id)
+            ->with(['units' => fn ($query) => $query->where('units.property_id', $property->id)])
+            ->get();
+
+        $byUnit = [];
+
+        foreach ($rows as $row) {
+            foreach ($row->units as $unit) {
+                $byUnit[$unit->id] ??= $row;
+            }
+        }
+
+        return $byUnit;
     }
 }

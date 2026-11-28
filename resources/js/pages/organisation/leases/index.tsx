@@ -153,6 +153,17 @@ type LeaseRow = {
     additional_charges: LeaseExtra[];
     /** Dated rent history; present only on the server record. */
     rent_history: RentHistoryLine[];
+    /** Scheduled annual increment, if any; the renewal dialog previews it. */
+    rent_increment_schedule: {
+        annual_percent: number;
+        effective_date: string;
+    } | null;
+    /** Computed "rent becomes X from date Y", null when unscheduled. */
+    increment_preview: {
+        amount: string;
+        effective_date: string;
+        annual_percent: number;
+    } | null;
     /** Deposit-refund state; present only on the server record. */
     refund_state?: 'none' | 'open' | 'missing';
     /** Pending move-out notice, if any; present only on the server record. */
@@ -1230,10 +1241,10 @@ export default function LeasesIndex({ leases, focusedLease }: Props) {
                     <fieldset className="space-y-3">
                         <legend className="text-sm font-medium">Status</legend>
                         <RadioGroup
-                            value={filters.status || 'all'}
+                            value={filters.status || 'active'}
                             onValueChange={(value) =>
                                 applyFilters({
-                                    status: value === 'all' ? '' : value,
+                                    status: value === 'all' ? 'all' : value,
                                 })
                             }
                             className="space-y-3"
@@ -1242,7 +1253,10 @@ export default function LeasesIndex({ leases, focusedLease }: Props) {
                                 { value: 'all', label: 'Any status' },
                                 { value: 'active', label: 'Active' },
                                 { value: 'pending', label: 'Pending' },
-                                { value: 'ended', label: 'Ended' },
+                                {
+                                    value: 'ended',
+                                    label: 'Archived (ended)',
+                                },
                             ].map((option) => (
                                 <div
                                     key={option.value}
@@ -1598,6 +1612,34 @@ export default function LeasesIndex({ leases, focusedLease }: Props) {
                                             )}
                                         </dd>
                                     </div>
+                                    {viewedLease.increment_preview && (
+                                        <div className="grid grid-cols-[8rem_1fr_auto] items-baseline gap-2">
+                                            <dt className="text-muted-foreground">
+                                                Scheduled increase
+                                            </dt>
+                                            <dd className="min-w-0 text-xs text-muted-foreground">
+                                                {
+                                                    viewedLease
+                                                        .increment_preview
+                                                        .annual_percent
+                                                }
+                                                % yearly from{' '}
+                                                {
+                                                    viewedLease
+                                                        .increment_preview
+                                                        .effective_date
+                                                }
+                                            </dd>
+                                            <dd className="text-right font-medium tabular-nums">
+                                                {formatMoney(
+                                                    viewedLease
+                                                        .increment_preview
+                                                        .amount,
+                                                    viewedLease.currency,
+                                                )}
+                                            </dd>
+                                        </div>
+                                    )}
                                     {viewedLease.utility_breakdown.lines.map(
                                         (line) => (
                                             <div
@@ -2162,6 +2204,54 @@ export default function LeasesIndex({ leases, focusedLease }: Props) {
                                     />
                                     <InputError message={errors.rent_amount} />
                                 </div>
+
+                                <div className="grid gap-2">
+                                    <Label htmlFor="amend-increment-percent">
+                                        Yearly increase % (optional)
+                                    </Label>
+                                    <Input
+                                        id="amend-increment-percent"
+                                        name="increment_percent"
+                                        type="number"
+                                        inputMode="decimal"
+                                        step="0.1"
+                                        min="0"
+                                        max="100"
+                                        placeholder="5"
+                                        defaultValue={
+                                            viewedLease.rent_increment_schedule
+                                                ?.annual_percent ?? ''
+                                        }
+                                    />
+                                    <InputError
+                                        message={errors.increment_percent}
+                                    />
+                                </div>
+
+                                <div className="grid gap-2">
+                                    <Label htmlFor="amend-increment-date">
+                                        Increase takes effect
+                                    </Label>
+                                    <Input
+                                        id="amend-increment-date"
+                                        name="increment_effective_date"
+                                        type="date"
+                                        min={viewedLease.starts_at ?? undefined}
+                                        defaultValue={
+                                            viewedLease.rent_increment_schedule
+                                                ?.effective_date ?? ''
+                                        }
+                                    />
+                                    <InputError
+                                        message={
+                                            errors.increment_effective_date
+                                        }
+                                    />
+                                    <p className="text-xs text-muted-foreground">
+                                        Empty the percent to remove the
+                                        scheduled increase.
+                                    </p>
+                                </div>
                             </>
                         )}
                     </Form>
@@ -2230,6 +2320,19 @@ export default function LeasesIndex({ leases, focusedLease }: Props) {
                             suggestTarget?.currency,
                         )}
                         .
+                        {suggestTarget?.increment_preview && (
+                            <>
+                                {' '}
+                                Scheduled increment: rent becomes{' '}
+                                {formatMoney(
+                                    suggestTarget.increment_preview.amount,
+                                    suggestTarget?.currency,
+                                )}{' '}
+                                from{' '}
+                                {suggestTarget.increment_preview.effective_date}
+                                .
+                            </>
+                        )}
                     </DialogDescription>
 
                     {suggestBusy ? (

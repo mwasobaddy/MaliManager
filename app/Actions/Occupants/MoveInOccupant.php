@@ -28,7 +28,7 @@ class MoveInOccupant extends Service
             abort_if($occupant->status === 'moved_out', 422, 'This occupant moved out — re-add them before moving in.');
 
             $pending = Lease::query()
-                ->where('person_id', $occupant->person_id)
+                ->where('occupant_id', $occupant->id)
                 ->where('property_id', $property->id)
                 ->where('status', 'pending')
                 ->whereNull('ends_at')

@@ -62,17 +62,17 @@ test('owners can create, list, and delete organization-wide templates', function
         ]);
     fwrite(STDERR, 'STATUS: '.$response->getStatusCode().' LOC: '.$response->headers->get('Location').PHP_EOL);
 
-    $template = AgreementTemplate::first();
+    $template = AgreementTemplate::where('name', 'Standard Residential')->first();
     expect($template)->not->toBeNull()
         ->and($template->organization_id)->toBe($organization->id)
         ->and($template->property_id)->toBeNull()
         ->and($template->body_html)->not->toContain('<script>');
 
-    // The grouped picker exposes it under the organization scope.
+    // The grouped picker exposes it alongside the shipped default.
     $this->actingAs($owner)
         ->getJson(templateTenantUrl($organization, '/sunset-heights/agreement-templates/picker'))
         ->assertOk()
-        ->assertJsonCount(1, 'organization')
+        ->assertJsonCount(2, 'organization')
         ->assertJsonCount(0, 'property');
 
     // The management page lists it.
@@ -84,7 +84,7 @@ test('owners can create, list, and delete organization-wide templates', function
         ->deleteJson(templateTenantUrl($organization, "/agreement-templates/{$template->id}"))
         ->assertRedirect();
 
-    expect(AgreementTemplate::count())->toBe(0);
+    expect(AgreementTemplate::count())->toBe(1);
 });
 
 test('rejects duplicate template names within the same scope', function () {
@@ -144,11 +144,12 @@ test('delegated staff can read the picker but cannot manage templates', function
         'created_by' => $owner->id,
     ]);
 
-    // Delegated staff can read the grouped picker...
+    // Delegated staff can read the grouped picker (the shipped default
+    // plus the owner's template)...
     $this->actingAs($staff)
         ->getJson("{$domain}/sunset-heights/agreement-templates/picker")
         ->assertOk()
-        ->assertJsonCount(1, 'organization');
+        ->assertJsonCount(2, 'organization');
 
     // ...but management pages/endpoints stay blocked.
     // The global exception handler turns 403s into redirects + toast.
@@ -162,7 +163,7 @@ test('delegated staff can read the picker but cannot manage templates', function
             'body_html' => '<p>Nope</p>',
         ])->assertForbidden();
 
-    expect(AgreementTemplate::count())->toBe(1);
+    expect(AgreementTemplate::count())->toBe(2);
 });
 
 test('property-scoped templates are separate from organization-wide ones', function () {
@@ -185,14 +186,14 @@ test('property-scoped templates are separate from organization-wide ones', funct
             'body_html' => '<p>Property body</p>',
         ])->assertRedirect();
 
-    expect(AgreementTemplate::count())->toBe(2);
+    expect(AgreementTemplate::count())->toBe(3);
 
-    // Picker groups them separately.
+    // Picker groups them separately (org scope holds the shipped default too).
     $this->actingAs($owner)
         ->getJson("{$domain}/sunset-heights/agreement-templates/picker")
         ->assertOk()
         ->assertJsonCount(1, 'property')
-        ->assertJsonCount(1, 'organization')
+        ->assertJsonCount(2, 'organization')
         ->assertJsonPath('property.0.body_html', '<p>Property body</p>')
         ->assertJsonPath('organization.0.body_html', '<p>Org body</p>');
 

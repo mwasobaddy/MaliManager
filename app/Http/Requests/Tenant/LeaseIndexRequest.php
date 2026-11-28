@@ -9,9 +9,10 @@ use Illuminate\Validation\Rule;
 /**
  * Lease list filters for one property.
  *
- * `status` is limited to the two values the list understands; anything else used
- * to be ignored silently, which made a mistyped filter look like "no results"
- * rather than a bad link.
+ * With no status the list shows the active book — ended leases live in
+ * the explicit archive (`status=ended`), and `status=all` restores the
+ * unfiltered view. Anything else is rejected rather than silently
+ * looking like "no results".
  */
 class LeaseIndexRequest extends FormRequest
 {
@@ -35,7 +36,7 @@ class LeaseIndexRequest extends FormRequest
     {
         return [
             'search' => ['nullable', 'string', 'max:255'],
-            'status' => ['nullable', Rule::in(['active', 'ended', 'pending'])],
+            'status' => ['nullable', Rule::in(['active', 'ended', 'pending', 'all'])],
             'expiring' => ['nullable', 'boolean'],
             'overdue' => ['nullable', 'boolean'],
             'sort' => ['nullable', 'string', 'max:64'],

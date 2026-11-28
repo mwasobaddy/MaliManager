@@ -17,6 +17,7 @@ use App\Models\Lease;
 use App\Models\Occupant;
 use App\Models\Property;
 use App\Services\OccupantService;
+use App\Services\RentArrearsService;
 use App\Services\StaffService;
 use App\Support\DeletionTier;
 use App\Support\LeaseAgreementTemplate;
@@ -24,6 +25,7 @@ use App\Support\OccupantPresenter;
 use App\Support\TenancyContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -31,14 +33,14 @@ class OccupantController extends Controller
 {
     use FlashesImportResult;
 
-    public function index(OccupantIndexRequest $request, Property $property): Response
+    public function index(OccupantIndexRequest $request, Property $property, RentArrearsService $arrears): Response
     {
         $this->authorizePropertyAccess($request, $property);
 
         $actor = $request->user();
         $organization = $property->organization;
 
-        $occupants = Occupant::query()
+        $paginator = Occupant::query()
             ->tenantIndex((int) $property->organization_id, (int) $property->id, [
                 'search' => $request->string('search')->trim()->toString(),
                 'status' => $request->string('status')->toString(),
@@ -46,9 +48,21 @@ class OccupantController extends Controller
                 'direction' => $request->string('direction')->toString(),
             ])
             ->with(['person', 'units' => fn ($query) => $query->where('units.property_id', $property->id)])
+            ->withExists(['leases as has_agreement' => fn ($query) => $query
+                ->where('leases.property_id', $property->id)
+                ->where(fn ($inner) => $inner
+                    ->whereNotNull('leases.agreement_text')
+                    ->whereNotIn('leases.agreement_text', ['', '<p></p>'])
+                    ->orWhereHas('media', fn ($media) => $media->where('collection_name', 'agreement'))),
+            ])
             ->paginate(18)
-            ->withQueryString()
-            ->through(fn (Occupant $occupant) => OccupantPresenter::present($occupant, $property, $actor, $organization));
+            ->withQueryString();
+
+        // The row's one-tap action needs its tenancy: which single lease is
+        // overdue and for how much. Computed once for the page, not per row.
+        $attention = $this->attentionMap($property, $paginator->getCollection(), $arrears);
+
+        $occupants = $paginator->through(fn (Occupant $occupant) => OccupantPresenter::present($occupant, $property, $actor, $organization, $attention[$occupant->id] ?? null));
 
         return Inertia::render('organisation/occupants/index', [
             'organization' => TenancyContext::organization()->only('id', 'name', 'slug'),
@@ -67,6 +81,53 @@ class OccupantController extends Controller
             'templates' => Inertia::optional(fn () => OccupantPresenter::agreementTemplates($property)),
             'availableTokens' => Inertia::optional(fn () => LeaseAgreementTemplate::availableTokens()),
         ]);
+    }
+
+    /**
+     * The row's one-tap action, keyed by occupant id: when exactly one
+     * active lease is overdue, its id and balance ride along so the row
+     * can remind without a second request. Zero or several overdue leases
+     * offer nothing — the sheet (which can pick a tenancy) takes over.
+     *
+     * @return array<int, array{lease_id: int, outstanding: string, currency: string|null}>
+     */
+    private function attentionMap(Property $property, Collection $occupants, RentArrearsService $arrears): array
+    {
+        if ($occupants->isEmpty()) {
+            return [];
+        }
+
+        $leases = Lease::query()
+            ->whereIn('occupant_id', $occupants->modelKeys())
+            ->where('property_id', $property->id)
+            ->where('status', 'active')
+            ->get();
+
+        if ($leases->isEmpty()) {
+            return [];
+        }
+
+        $balances = $arrears->balancesFor($leases);
+
+        $overdueByOccupant = [];
+        foreach ($leases as $lease) {
+            if (($balances[$lease->id]['overdue'] ?? false) === true) {
+                $overdueByOccupant[$lease->occupant_id][] = $lease;
+            }
+        }
+
+        $attention = [];
+        foreach ($overdueByOccupant as $occupantId => $due) {
+            if (count($due) === 1) {
+                $attention[$occupantId] = [
+                    'lease_id' => $due[0]->id,
+                    'outstanding' => $balances[$due[0]->id]['outstanding'],
+                    'currency' => $due[0]->currency,
+                ];
+            }
+        }
+
+        return $attention;
     }
 
     /**
@@ -211,18 +272,18 @@ class OccupantController extends Controller
 
         abort_if($occupant->organization_id !== $property->organization_id, 403);
 
-        $lease = Lease::query()
-            ->where('occupant_id', $occupant->id)
-            ->where('property_id', $property->id)
-            ->whereIn('status', ['active', 'pending'])
-            ->with(['unit:id,name', 'property:id,name,organization_id', 'property.organization:id,name'])
-            ->first();
+        // Ended tenancies keep printable history: resolve through the same
+        // rule as the view sheet's button, so the link never 404s on an
+        // empty current lease while an older one prints.
+        $lease = OccupantPresenter::resolveAgreementLease($occupant, $property);
 
         abort_if(! $lease, 404);
 
+        $documentUrl = $lease->getFirstMedia('agreement')?->getUrl();
+
         return Inertia::render('organisation/occupants/agreement', [
             'agreementHtml' => LeaseAgreementTemplate::render((string) $lease->agreement_text, $lease),
-            'documentUrl' => $lease->getFirstMedia('agreement')?->getUrl(),
+            'documentUrl' => $documentUrl,
             'occupantName' => trim(($occupant->person->first_name ?? '').' '.($occupant->person->last_name ?? '')),
             'propertySlug' => $property->slug,
             'occupantId' => $occupant->id,
@@ -243,13 +304,16 @@ class OccupantController extends Controller
 
     /**
      * Attach (or remove) the uploaded agreement document on every active
-     * lease of this occupant within the property. singleFile() semantics
-     * mean a fresh upload replaces any previous document.
+     * lease of this person within the property. One occupant may now hold
+     * several rows, so this is scoped by person — not by the row the
+     * upload came through — or sister tenancies would miss the document.
+     * singleFile() semantics mean a fresh upload replaces any previous
+     * document.
      */
     private function syncAgreementDocument(Request $request, Occupant $occupant, Property $property): void
     {
         $leases = Lease::query()
-            ->where('occupant_id', $occupant->id)
+            ->where('person_id', $occupant->person_id)
             ->where('property_id', $property->id)
             ->where('status', 'active')
             ->get();

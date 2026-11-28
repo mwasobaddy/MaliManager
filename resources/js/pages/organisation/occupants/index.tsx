@@ -6,7 +6,10 @@ import {
     KeyRound,
     ListFilter,
     LogOut,
+    MoreHorizontal,
+    Power,
     Search,
+    Send,
     SquarePen,
     Trash2,
     Upload,
@@ -19,26 +22,17 @@ import { BulkDeleteBar } from '@/components/bulk-delete-bar';
 import ConfirmDeleteOverlay from '@/components/confirm-delete-overlay';
 import { CsvImportSheet } from '@/components/csv-actions';
 import { DataTable } from '@/components/data-table';
-import { LabelledIconButton } from '@/components/labelled-icon-button';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
+import { LabelledIconButton } from '@/components/labelled-icon-button';
 import OccupantFormFields from '@/components/occupant-form-fields';
 import { OverlayFooter } from '@/components/overlay-footer';
+import PasswordInput from '@/components/password-input';
 import { ResponsiveOverlay } from '@/components/responsive-overlay';
 import type { TemplateToken } from '@/components/rich-text-editor';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Empty } from '@/components/ui/empty';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
 import {
     Dialog,
     DialogContent,
@@ -46,11 +40,31 @@ import {
     DialogFooter,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Empty } from '@/components/ui/empty';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Pagination } from '@/components/ui/pagination';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
 import { useOverlayParam } from '@/hooks/use-overlay-param';
 import { formatMoney } from '@/lib/format-money';
+import {
+    index as leasesIndex,
+    remind as remindLease,
+} from '@/routes/tenant/leases';
 import {
     agreement as occupantAgreement,
     destroy as destroyOccupant,
@@ -92,6 +106,29 @@ type Lease = {
     agreement_document_url: string | null;
 };
 
+type OccupantLease = {
+    id: number;
+    unit_id: number | null;
+    unit_name: string | null;
+    status: string;
+    starts_at: string | null;
+    ends_at: string | null;
+    rent_amount: string | null;
+    currency: string | null;
+    outstanding: string;
+    is_overdue: boolean;
+    has_agreement: boolean;
+    agreement_document_name: string | null;
+    agreement_document_url: string | null;
+};
+
+/** Row-level one-tap action: a single overdue lease and its balance. */
+type Attention = {
+    lease_id: number;
+    outstanding: string;
+    currency: string | null;
+};
+
 type PendingLease = {
     lease_id: number;
     unit_id: number | null;
@@ -99,6 +136,16 @@ type PendingLease = {
     rent_amount: string | null;
     currency: string | null;
     deposit: string | null;
+};
+
+type HistoryLine = {
+    date: string | null;
+    kind: string;
+    title: string;
+    detail: string | null;
+    amount: string | null;
+    currency: string | null;
+    status: string | null;
 };
 
 type Occupant = {
@@ -111,11 +158,23 @@ type Occupant = {
     status: string;
     units: Unit[];
     deletable: boolean;
+    /** Row-level overflow offers the agreement without a second request. */
+    has_agreement?: boolean;
+    /** Row-level one-tap remind; null unless exactly one lease is overdue. */
+    attention?: Attention | null;
     // Present on the record resolved for the view sheet. List rows omit them
     // because the card does not show them, and the sheet is the only reader.
     gender?: string | null;
     added_at?: string | null;
     lease?: Lease | null;
+    /** Every tenancy for the sheet switcher; focused record only. */
+    leases?: OccupantLease[] | null;
+    /** All of the person's units in the property, across rows. */
+    all_unit_ids?: number[];
+    /** Chronological story, newest first; focused record only. */
+    history?: HistoryLine[] | null;
+    /** Whatever carries the printable agreement (active or ended lease). */
+    agreement_lease?: Lease | null;
     pending_leases?: PendingLease[] | null;
 };
 
@@ -244,6 +303,182 @@ function QuickAddFields({
     );
 }
 
+/**
+ * One occupant's tenancies with the actions each one needs: remind the
+ * overdue one where it stands, jump to the leases page for amend, charge
+ * and end, download that lease's own agreement document. The sheet picks
+ * the tenancy (tabs) so multi-unit occupants stop being ambiguous, and
+ * the parent keys this by occupant so the pick never leaks across rows.
+ */
+function OccupantLeasesSection({
+    leases,
+    currency,
+    canRemind,
+    canAmendRent,
+    canManageExtras,
+    canEndLease,
+    onRemind,
+    onOpenLease,
+}: {
+    leases: OccupantLease[];
+    currency: string;
+    canRemind: boolean;
+    canAmendRent: boolean;
+    canManageExtras: boolean;
+    canEndLease: boolean;
+    onRemind: (leaseId: number) => void;
+    onOpenLease: (leaseId: number, extra?: Record<string, string>) => void;
+}) {
+    const [selectedId, setSelectedId] = useState<number | null>(null);
+    const selected =
+        leases.find((lease) => lease.id === selectedId) ??
+        leases.find((lease) => lease.status === 'active') ??
+        leases[0] ??
+        null;
+
+    if (!selected) {
+        return (
+            <p className="text-sm text-muted-foreground">
+                No tenancies in this property.
+            </p>
+        );
+    }
+
+    return (
+        <div className="space-y-4">
+            {leases.length > 1 && (
+                <div className="flex flex-wrap gap-2">
+                    {leases.map((lease) => (
+                        <Button
+                            key={lease.id}
+                            type="button"
+                            size="sm"
+                            variant={
+                                lease.id === selected.id ? 'default' : 'outline'
+                            }
+                            onClick={() => setSelectedId(lease.id)}
+                        >
+                            {lease.unit_name ?? 'No unit'} · {lease.status}
+                        </Button>
+                    ))}
+                </div>
+            )}
+
+            <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
+                {(
+                    [
+                        [
+                            'Period',
+                            `${selected.starts_at ?? '—'} → ${selected.ends_at ?? 'open'}`,
+                        ],
+                        [
+                            'Rent',
+                            formatMoney(
+                                selected.rent_amount,
+                                selected.currency ?? currency,
+                            ),
+                        ],
+                        [
+                            'Outstanding',
+                            selected.is_overdue
+                                ? formatMoney(
+                                      selected.outstanding,
+                                      selected.currency ?? currency,
+                                  )
+                                : 'Paid up',
+                        ],
+                    ] as [string, string][]
+                ).map(([label, value]) => (
+                    <div
+                        key={label}
+                        className="grid grid-cols-[8rem_1fr] gap-2"
+                    >
+                        <dt className="text-muted-foreground">{label}</dt>
+                        <dd
+                            className={`min-w-0 break-words tabular-nums ${label === 'Outstanding' && selected.is_overdue ? 'font-semibold text-red-600 dark:text-red-400' : ''}`}
+                        >
+                            {value}
+                        </dd>
+                    </div>
+                ))}
+
+                <div className="grid grid-cols-[8rem_1fr] gap-2">
+                    <dt className="text-muted-foreground">Agreement</dt>
+                    <dd className="min-w-0 break-words">
+                        {selected.agreement_document_url ? (
+                            <a
+                                href={selected.agreement_document_url}
+                                className="underline underline-offset-4"
+                                target="_blank"
+                                rel="noreferrer"
+                            >
+                                {selected.agreement_document_name ?? 'Download'}
+                            </a>
+                        ) : (
+                            'None uploaded'
+                        )}
+                    </dd>
+                </div>
+            </dl>
+
+            <div className="flex flex-wrap gap-2">
+                {canRemind && selected.is_overdue && (
+                    <Button
+                        type="button"
+                        size="sm"
+                        className="bg-brand-accent text-on-accent hover:bg-brand-accent/90"
+                        onClick={() => onRemind(selected.id)}
+                    >
+                        <Send className="size-4" />
+                        Remind{' '}
+                        {formatMoney(selected.outstanding, selected.currency)}
+                    </Button>
+                )}
+                {canManageExtras && selected.status === 'active' && (
+                    <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                            onOpenLease(selected.id, { extra: 'new' })
+                        }
+                    >
+                        <Plus className="size-4" />
+                        Add charge
+                    </Button>
+                )}
+                {canAmendRent && selected.status === 'active' && (
+                    <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => onOpenLease(selected.id, { amend: '1' })}
+                    >
+                        <SquarePen className="size-4" />
+                        Amend rent
+                    </Button>
+                )}
+                {canEndLease && selected.status === 'active' && (
+                    <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="border-red-300 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950"
+                        onClick={() =>
+                            onOpenLease(selected.id, {
+                                dialog: 'end-lease',
+                            })
+                        }
+                    >
+                        <Power className="size-4" />
+                        End lease
+                    </Button>
+                )}
+            </div>
+        </div>
+    );
+}
+
 type Props = {
     property: Property;
     occupants: Paginator;
@@ -271,6 +506,35 @@ export default function OccupantsIndex({
     const canCreate = permissions.includes('occupant.create');
     const canEdit = permissions.includes('occupant.edit');
     const canDelete = permissions.includes('occupant.delete');
+    // Lease workbench gates, mirrored from the leases page: remind, amend,
+    // extras and end keep their own permission checks here too.
+    const canRemind = permissions.includes('lease.manage');
+    const canAmendRent = permissions.includes('lease.manage');
+    const canManageExtras = permissions.includes('lease.manage');
+    const canEndLease = permissions.includes('lease.delete');
+
+    function sendLeaseReminder(leaseId: number) {
+        router.post(
+            remindLease({ property: property.slug, lease: leaseId }).url,
+            {},
+            { preserveScroll: true },
+        );
+    }
+
+    function openLeaseOnLeasesPage(
+        leaseId: number,
+        extra: Record<string, string> = {},
+    ) {
+        router.visit(
+            leasesIndex(property.slug, {
+                query: {
+                    mode: 'view',
+                    lease: String(leaseId),
+                    ...extra,
+                },
+            }).url,
+        );
+    }
 
     const [bulkOpen, setBulkOpen] = useState(false);
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
@@ -718,12 +982,31 @@ export default function OccupantsIndex({
                     const occupant = row.original;
                     const name =
                         `${occupant.first_name} ${occupant.last_name ?? ''}`.trim();
+                    const attention = occupant.attention;
 
                     return (
                         <div
                             className="flex justify-end gap-1"
                             onClick={(event) => event.stopPropagation()}
                         >
+                            {canRemind && attention && (
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    className="h-9 gap-1 bg-brand-accent px-2.5 text-xs text-on-accent hover:bg-brand-accent/90"
+                                    title={`Remind ${name} — ${formatMoney(attention.outstanding, attention.currency)} outstanding`}
+                                    onClick={() =>
+                                        sendLeaseReminder(attention.lease_id)
+                                    }
+                                >
+                                    <Send className="size-4" />
+                                    Remind{' '}
+                                    {formatMoney(
+                                        attention.outstanding,
+                                        attention.currency,
+                                    )}
+                                </Button>
+                            )}
                             {canEdit && occupant.status !== 'moved_out' && (
                                 <ActionIconButton
                                     icon={<LogOut />}
@@ -760,18 +1043,46 @@ export default function OccupantsIndex({
                                     }
                                 />
                             )}
+                            {occupant.has_agreement && (
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            aria-label={`More actions for ${name}`}
+                                            className="text-muted-foreground coarse:min-h-11 coarse:min-w-11"
+                                        >
+                                            <MoreHorizontal className="size-4" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuItem
+                                            onSelect={() =>
+                                                router.visit(
+                                                    occupantAgreement({
+                                                        property: property.slug,
+                                                        occupant: occupant.id,
+                                                    }).url,
+                                                )
+                                            }
+                                        >
+                                            <FileText className="size-4" />
+                                            View agreement
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            )}
                         </div>
                     );
                 },
             },
         ],
+        // Stable per page: the property never changes under this table, so
+        // the row actions intentionally close over it (same as openEdit).
+        // eslint-disable-next-line react-hooks/exhaustive-deps
         [canEdit, canDelete],
     );
-
-    const money = (
-        currency: string | null | undefined,
-        amount: string | null,
-    ) => (amount === null ? '—' : `${currency ?? ''} ${amount}`.trim());
 
     function closeQuickAdd() {
         setOverlayParam('quick', null, {
@@ -1007,23 +1318,27 @@ export default function OccupantsIndex({
                     description={`Occupant of ${property.name}.`}
                     actions={
                         <>
-                            {viewedOccupant.lease && (
-                                <Button
-                                    type="button"
-                                    size="sm"
-                                    onClick={() =>
-                                        router.visit(
-                                            occupantAgreement({
-                                                property: property.slug,
-                                                occupant: viewedOccupant.id,
-                                            }).url,
-                                        )
-                                    }
-                                >
-                                    <FileText className="size-4" />
-                                    Agreement
-                                </Button>
-                            )}
+                            {viewedOccupant.agreement_lease &&
+                                (viewedOccupant.agreement_lease
+                                    .agreement_text ||
+                                    viewedOccupant.agreement_lease
+                                        .agreement_document_url) && (
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        onClick={() =>
+                                            router.visit(
+                                                occupantAgreement({
+                                                    property: property.slug,
+                                                    occupant: viewedOccupant.id,
+                                                }).url,
+                                            )
+                                        }
+                                    >
+                                        <FileText className="size-4" />
+                                        Agreement
+                                    </Button>
+                                )}
                             {canEdit &&
                                 viewedOccupant.status === 'inactive' &&
                                 (viewedOccupant.pending_leases?.length ?? 0) >
@@ -1122,7 +1437,14 @@ export default function OccupantsIndex({
                                             {unit.name}
                                         </span>
                                         <span className="text-on-accent/70">
-                                            {unit.type ?? '—'}
+                                            {[
+                                                unit.type,
+                                                unit.rent_amount !== null
+                                                    ? `${currency} ${unit.rent_amount}`
+                                                    : null,
+                                            ]
+                                                .filter(Boolean)
+                                                .join(' · ') || '—'}
                                         </span>
                                         <Badge
                                             variant="outline"
@@ -1141,81 +1463,63 @@ export default function OccupantsIndex({
                     </div>
 
                     <div className="mt-6 space-y-2">
-                        <h3 className="text-sm font-medium">Active lease</h3>
-                        {viewedOccupant.lease ? (
-                            <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
-                                {(
-                                    [
-                                        [
-                                            'Starts',
-                                            viewedOccupant.lease.starts_at ??
-                                                '—',
-                                        ],
-                                        [
-                                            'Rent',
-                                            `${money(
-                                                viewedOccupant.lease.currency,
-                                                viewedOccupant.lease
-                                                    .rent_amount,
-                                            )}${
-                                                viewedOccupant.lease
-                                                    .rent_frequency
-                                                    ? ` / ${viewedOccupant.lease.rent_frequency}`
-                                                    : ''
-                                            }`,
-                                        ],
-                                        [
-                                            'Deposit',
-                                            money(
-                                                viewedOccupant.lease.currency,
-                                                viewedOccupant.lease.deposit,
-                                            ),
-                                        ],
-                                    ] as [string, string][]
-                                ).map(([label, value]) => (
-                                    <div
-                                        key={label}
-                                        className="grid grid-cols-[8rem_1fr] gap-2"
-                                    >
-                                        <dt className="text-muted-foreground">
-                                            {label}
-                                        </dt>
-                                        <dd className="min-w-0 break-words">
-                                            {value}
-                                        </dd>
-                                    </div>
-                                ))}
+                        <h3 className="text-sm font-medium">
+                            Leases ({(viewedOccupant.leases ?? []).length})
+                        </h3>
+                        <OccupantLeasesSection
+                            key={viewedOccupant.id}
+                            leases={viewedOccupant.leases ?? []}
+                            currency={currency}
+                            canRemind={canRemind}
+                            canAmendRent={canAmendRent}
+                            canManageExtras={canManageExtras}
+                            canEndLease={canEndLease}
+                            onRemind={sendLeaseReminder}
+                            onOpenLease={openLeaseOnLeasesPage}
+                        />
+                    </div>
 
-                                <div className="grid grid-cols-[8rem_1fr] gap-2">
-                                    <dt className="text-muted-foreground">
-                                        Agreement
-                                    </dt>
-                                    <dd className="min-w-0 break-words">
-                                        {viewedOccupant.lease
-                                            .agreement_document_url ? (
-                                            <a
-                                                href={
-                                                    viewedOccupant.lease
-                                                        .agreement_document_url
-                                                }
-                                                className="underline underline-offset-4"
-                                                target="_blank"
-                                                rel="noreferrer"
-                                            >
-                                                {viewedOccupant.lease
-                                                    .agreement_document_name ??
-                                                    'Download'}
-                                            </a>
-                                        ) : (
-                                            'None uploaded'
-                                        )}
-                                    </dd>
-                                </div>
-                            </dl>
-                        ) : (
+                    <div className="mt-6 space-y-2">
+                        <h3 className="text-sm font-medium">History</h3>
+                        {(viewedOccupant.history ?? []).length === 0 ? (
                             <p className="text-sm text-muted-foreground">
-                                No active lease in this property.
+                                Nothing recorded yet — tenancies, payments,
+                                refunds and notices will appear here.
                             </p>
+                        ) : (
+                            <ul className="space-y-3 py-2 text-sm">
+                                {(viewedOccupant.history ?? []).map(
+                                    (event, index) => (
+                                        <li
+                                            key={`${event.kind}-${event.date ?? 'undated'}-${index}`}
+                                            className="grid grid-cols-[6.5rem_1fr] gap-2"
+                                        >
+                                            <span className="text-muted-foreground tabular-nums">
+                                                {event.date ?? '—'}
+                                            </span>
+                                            <span className="min-w-0">
+                                                <span className="font-medium">
+                                                    {event.title}
+                                                </span>
+                                                {event.detail && (
+                                                    <span className="text-muted-foreground">
+                                                        {' '}
+                                                        · {event.detail}
+                                                    </span>
+                                                )}
+                                                {event.amount !== null && (
+                                                    <span className="ml-2 font-medium tabular-nums">
+                                                        {event.currency
+                                                            ? `${event.currency} `
+                                                            : ''}
+                                                        {event.amount}
+                                                    </span>
+                                                )}
+                                            </span>
+                                        </li>
+                                    ),
+                                )}
+                            </ul>
                         )}
                     </div>
                 </ResponsiveOverlay>
@@ -1472,9 +1776,11 @@ export default function OccupantsIndex({
                                             focusedOccupant.national_id,
                                         gender: focusedOccupant.gender ?? null,
                                         status: focusedOccupant.status,
-                                        unit_ids: focusedOccupant.units.map(
-                                            (unit) => unit.id,
-                                        ),
+                                        unit_ids:
+                                            focusedOccupant.all_unit_ids ??
+                                            focusedOccupant.units.map(
+                                                (unit) => unit.id,
+                                            ),
                                         lease: focusedOccupant.lease
                                             ? {
                                                   starts_at:
@@ -1684,8 +1990,11 @@ export default function OccupantsIndex({
                             </DialogTitle>
                             <DialogDescription>
                                 This ends their active lease(s) — kept for their
-                                rental history — and frees their units. The
-                                renter reverts to a searcher.
+                                rental history — and frees their units. Each
+                                ended lease holding a deposit gets its refund
+                                auto-filed for inspection, and the renter
+                                reverts to a searcher. Confirm with your
+                                password.
                             </DialogDescription>
                             <Form
                                 {...moveOutOccupant.form({
@@ -1695,18 +2004,39 @@ export default function OccupantsIndex({
                                 options={{ preserveScroll: true }}
                                 className="space-y-6"
                             >
-                                <DialogFooter>
-                                    <OverlayFooter
-                                        cancelClosesDialog
-                                        actions={[
-                                            {
-                                                label: 'Move out',
-                                                tone: 'danger',
-                                                type: 'submit',
-                                            },
-                                        ]}
-                                    />
-                                </DialogFooter>
+                                {({ errors }) => (
+                                    <>
+                                        <div className="grid gap-2">
+                                            <Label
+                                                htmlFor="moveout-password"
+                                                className="sr-only"
+                                            >
+                                                Password
+                                            </Label>
+                                            <PasswordInput
+                                                id="moveout-password"
+                                                name="password"
+                                                placeholder="Password"
+                                                autoComplete="current-password"
+                                            />
+                                            <InputError
+                                                message={errors.password}
+                                            />
+                                        </div>
+                                        <DialogFooter>
+                                            <OverlayFooter
+                                                cancelClosesDialog
+                                                actions={[
+                                                    {
+                                                        label: 'Move out',
+                                                        tone: 'danger',
+                                                        type: 'submit',
+                                                    },
+                                                ]}
+                                            />
+                                        </DialogFooter>
+                                    </>
+                                )}
                             </Form>
                         </DialogContent>
                     </Dialog>

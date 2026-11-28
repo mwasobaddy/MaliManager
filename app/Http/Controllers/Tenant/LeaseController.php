@@ -36,9 +36,9 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Property-scoped lease management: lists every lease of the property
- * (active and ended) with links to the merged agreement, and supports
- * early termination with password confirmation.
+ * Property-scoped lease management: lists the active book by default (the
+ * archive holds ended leases) with links to the merged agreement, and
+ * supports early termination with password confirmation.
  */
 class LeaseController extends Controller
 {
@@ -47,6 +47,9 @@ class LeaseController extends Controller
         $this->authorizePropertyAccess($request, $property);
 
         $status = $request->string('status')->toString();
+        // No status means the active book: ended leases leave the list
+        // unless the archive (`ended`) or everything (`all`) is asked for.
+        $status = $status === '' ? 'active' : $status;
         $expiring = $request->boolean('expiring');
         $overdueOnly = $request->boolean('overdue');
 
@@ -230,6 +233,8 @@ class LeaseController extends Controller
                 && $lease->ends_at->between(now(), now()->addDays(60)),
             'has_agreement_text' => (bool) $lease->agreement_text,
             'has_agreement_document' => $lease->getFirstMedia('agreement') !== null,
+            'rent_increment_schedule' => $lease->rent_increment_schedule,
+            'increment_preview' => $lease->incrementPreview(),
             'outstanding' => $balances[$lease->id]['outstanding'] ?? '0.00',
             'is_overdue' => $balances[$lease->id]['overdue'] ?? false,
             'days_overdue' => $balances[$lease->id]['days_overdue'] ?? 0,

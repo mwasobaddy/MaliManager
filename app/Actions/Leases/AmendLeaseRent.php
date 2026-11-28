@@ -71,9 +71,33 @@ class AmendLeaseRent extends Service
             // The relation orders ascending; clear it before taking the
             // latest — chained orders append, and ASC would win.
             $latest = $lease->rentChanges()->reorder()->orderByDesc('effective_date')->firstOrFail();
-            $lease->fill(['rent_amount' => $latest->rent_amount])->save();
+            $lease->fill([
+                'rent_amount' => $latest->rent_amount,
+                // The amend sheet prefills these from the lease, so a plain
+                // amendment carries the schedule back unchanged; emptying
+                // the percent clears it.
+                'rent_increment_schedule' => self::incrementSchedule($data),
+            ])->save();
 
             return $lease->refresh();
         });
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array{annual_percent: float, effective_date: string}|null
+     */
+    private static function incrementSchedule(array $data): ?array
+    {
+        $percent = $data['increment_percent'] ?? null;
+
+        if ($percent === null || $percent === '') {
+            return null;
+        }
+
+        return [
+            'annual_percent' => (float) $percent,
+            'effective_date' => CarbonImmutable::parse((string) $data['increment_effective_date'])->toDateString(),
+        ];
     }
 }

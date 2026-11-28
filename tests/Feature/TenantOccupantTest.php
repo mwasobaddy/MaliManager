@@ -770,6 +770,8 @@ test('owner can update occupant details and unit assignments', function () {
 
     $occupant = addOccupant($organization, $owner, $property, [], [$unitA->id]);
 
+    // Rotating units vacates the edited row and opens a sibling row: one
+    // row per tenancy, same person throughout.
     $this->actingAs($owner)
         ->put(occupantTenantUrl($organization, "/sunset-heights/occupants/{$occupant->id}"), [
             'first_name' => 'Janet',
@@ -780,11 +782,18 @@ test('owner can update occupant details and unit assignments', function () {
         ])->assertRedirect(occupantTenantUrl($organization, '/sunset-heights/occupants'));
 
     $occupant->refresh();
-    expect($occupant->status)->toBe('inactive')
+    expect($occupant->status)->toBe('moved_out')
         ->and($occupant->person->first_name)->toBe('Janet')
         ->and($occupant->person->last_name)->toBe('Otieno')
-        ->and($occupant->units->pluck('id'))->toContain($unitB->id)
-        ->and($occupant->units->pluck('id'))->not->toContain($unitA->id);
+        ->and($occupant->units->pluck('id'))->toBeEmpty();
+
+    $sibling = Occupant::where('organization_id', $organization->id)
+        ->where('person_id', $occupant->person_id)
+        ->where('id', '!=', $occupant->id)
+        ->firstOrFail();
+    expect($sibling->status)->toBe('inactive')
+        ->and($sibling->units->pluck('id')->all())->toBe([$unitB->id])
+        ->and(Lease::where('occupant_id', $sibling->id)->where('status', 'pending')->exists())->toBeTrue();
 });
 
 test('removing an occupant requires the occupant.delete sub-permission', function () {

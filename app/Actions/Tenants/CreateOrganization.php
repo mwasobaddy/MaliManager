@@ -2,6 +2,7 @@
 
 namespace App\Actions\Tenants;
 
+use App\Actions\AgreementTemplates\CreateDefaultAgreementTemplate;
 use App\Actions\Tenants\Concerns\OrganizationHelpers;
 use App\Models\Organization;
 use App\Models\Plan;
@@ -44,6 +45,8 @@ class CreateOrganization extends Service
             ]);
 
             DefaultSubRoles::createFor($organization, $owner->id);
+
+            app(CreateDefaultAgreementTemplate::class)->ensureForOrg($organization, $owner);
 
             $organization->branches()->create([
                 'name' => 'Main',
