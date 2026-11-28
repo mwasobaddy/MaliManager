@@ -33,7 +33,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useOverlayParam } from '@/hooks/use-overlay-param';
-import * as roleRoutes from '@/routes/tenant/roles';
+import * as roleRoutes from '@/routes/tenant/staff/roles';
 
 type PermissionRef = { value: string; label: string };
 
@@ -61,19 +61,22 @@ type Props = {
         total: number;
     };
     permissionCatalog: PermissionGroup[];
+    filters: {
+        search: string;
+        type: string;
+    };
 };
 
 /** Debounce so a fast typist issues one request, not one per keystroke. */
 const SEARCH_DEBOUNCE_MS = 350;
 
-export default function StaffRolesIndex({ roles, permissionCatalog }: Props) {
+export default function StaffRolesIndex({
+    roles,
+    permissionCatalog,
+    filters,
+}: Props) {
     const { query, setOverlayParam } = useOverlayParam();
     const pageUrl = usePage().url;
-
-    const filters = {
-        search: query.get('search') ?? '',
-        type: query.get('type') ?? '',
-    };
 
     const sort = {
         column: query.get('sort') || null,
@@ -783,7 +786,3 @@ function PermissionChecklist({
         </>
     );
 }
-
-StaffRolesIndex.layout = {
-    breadcrumbs: [{ title: 'Roles' }],
-};

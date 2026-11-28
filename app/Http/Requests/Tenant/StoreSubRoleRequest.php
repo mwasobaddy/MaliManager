@@ -8,7 +8,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 /**
- * Guards POST /roles. Route middleware (sub-permission:role.manage)
+ * Guards POST /staff/roles. Route middleware (sub-permission:staff.manage)
  * is the gate; this form only validates shape.
  */
 class StoreSubRoleRequest extends FormRequest

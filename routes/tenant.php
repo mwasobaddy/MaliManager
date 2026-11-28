@@ -506,23 +506,24 @@ Route::middleware([
         Route::middleware('sub-permission:staff.manage')->group(function () {
             Route::get('/staff', [StaffController::class, 'index'])
                 ->name('tenant.staff.index');
+
+            // Sub-role bundles: the landlord shapes caretaker/agent and
+            // creates narrower roles here. Registered before any /staff/{id}
+            // route so `roles` can never bind as a staff id.
+            Route::get('/staff/roles', [SubRoleController::class, 'index'])
+                ->name('tenant.staff.roles.index');
+            Route::post('/staff/roles', [SubRoleController::class, 'store'])
+                ->name('tenant.staff.roles.store');
+            Route::put('/staff/roles/{subRole}', [SubRoleController::class, 'update'])
+                ->whereNumber('subRole')
+                ->name('tenant.staff.roles.update');
+            Route::delete('/staff/roles/{subRole}', [SubRoleController::class, 'destroy'])
+                ->whereNumber('subRole')
+                ->name('tenant.staff.roles.destroy');
         });
 
-        // Standalone roles: sub-roles are their own concept with their own
-        // gate, not a staff subsection. Single-segment literal, so no
-        // property slug can swallow it.
-        Route::middleware('sub-permission:role.manage')->group(function () {
-            Route::get('/roles', [SubRoleController::class, 'index'])
-                ->name('tenant.roles.index');
-            Route::post('/roles', [SubRoleController::class, 'store'])
-                ->name('tenant.roles.store');
-            Route::put('/roles/{subRole}', [SubRoleController::class, 'update'])
-                ->whereNumber('subRole')
-                ->name('tenant.roles.update');
-            Route::delete('/roles/{subRole}', [SubRoleController::class, 'destroy'])
-                ->whereNumber('subRole')
-                ->name('tenant.roles.destroy');
-        });
+        // Standalone roles have been folded into the staff section above:
+        // sub-roles are managed under `staff.manage`, not a separate gate.
 
         Route::middleware('sub-permission:staff.create')->group(function () {
             Route::get('/staff/create', [StaffController::class, 'create'])

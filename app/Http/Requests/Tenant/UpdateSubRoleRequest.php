@@ -8,7 +8,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 /**
- * Guards PUT /roles/{subRole}. The landlord bundle is locked in the
+ * Guards PUT /staff/roles/{subRole}. The landlord bundle is locked in the
  * action, not here: the form validates shape, the action owns the rule.
  */
 class UpdateSubRoleRequest extends FormRequest

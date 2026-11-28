@@ -78,7 +78,7 @@ import {
 } from '@/routes/tenant/properties';
 import { index as reportsNavIndex } from '@/routes/tenant/reports';
 import { index as staffIndex } from '@/routes/tenant/staff';
-import { index as staffRolesIndex } from '@/routes/tenant/roles';
+import { index as staffRolesIndex } from '@/routes/tenant/staff/roles';
 import { index as unitsIndex } from '@/routes/tenant/units';
 import type { NavItem } from '@/types';
 
@@ -88,8 +88,6 @@ export function AppSidebar() {
     const organization = context?.organization;
     const canManageStaff =
         context?.permissions?.includes('staff.manage') ?? false;
-    const canManageStaffRoles =
-        context?.permissions?.includes('role.manage') ?? false;
     const canManageOccupants =
         context?.permissions?.includes('occupant.manage') ?? false;
     const canManageLandParcels =
@@ -494,19 +492,17 @@ export function AppSidebar() {
             {
                 label: 'Administration',
                 items: [
-                    ...(canManageStaffRoles
+                    ...(canManageStaff
                         ? [
                               item(
                                   'Roles',
                                   staffRolesIndex(),
                                   Shield,
                                   undefined,
-                                  '/roles',
+                                  '/staff/roles',
                               ),
+                              item('Staff', staffIndex(), Users),
                           ]
-                        : []),
-                    ...(canManageStaff
-                        ? [item('Staff', staffIndex(), Users)]
                         : []),
                     ...(isOwner
                         ? [item('Billing', billingShow(), CreditCard)]

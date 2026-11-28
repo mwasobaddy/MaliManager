@@ -84,6 +84,10 @@ class SubRoleController extends Controller
         return Inertia::render('organisation/staff/roles', [
             'roles' => $roles,
             'permissionCatalog' => $this->permissionCatalog(),
+            'filters' => [
+                'search' => $search,
+                'type' => $type,
+            ],
         ]);
     }
 

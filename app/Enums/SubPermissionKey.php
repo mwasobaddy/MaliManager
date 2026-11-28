@@ -60,8 +60,6 @@ enum SubPermissionKey: string
 
     case UtilityManage = 'utility.manage';
 
-    case RoleManage = 'role.manage';
-
     case AiUse = 'ai.use';
 
     case AuditView = 'audit.view';
@@ -78,14 +76,12 @@ enum SubPermissionKey: string
             self::OccupantManage, self::OccupantCreate, self::OccupantEdit, self::OccupantDelete => 'occupant',
             self::LeaseManage, self::LeaseCreate, self::LeaseEdit, self::LeaseDelete, self::LeaseManageTemplates => 'lease',
             self::PaymentManage => 'payment',
-            self::DepositManage => 'deposit',
-            self::DepositReview => 'deposit',
+            self::DepositManage, self::DepositReview => 'deposit',
             self::ExpenseManage => 'expense',
             self::MaintenanceManage, self::MaintenanceCreate, self::MaintenanceEdit, self::MaintenanceDelete, self::MaintenanceDelegate => 'maintenance',
             self::StaffManage, self::StaffCreate, self::StaffEdit, self::StaffDelete => 'staff',
             self::InspectionManage => 'inspection',
             self::UtilityManage => 'utility',
-            self::RoleManage => 'role',
             self::AiUse => 'ai',
             self::AuditView => 'audit',
         };
@@ -109,7 +105,6 @@ enum SubPermissionKey: string
             'staff' => 'Staff',
             'inspection' => 'Inspections',
             'utility' => 'Utilities',
-            'role' => 'Roles',
             'ai' => 'AI assistant',
             'audit' => 'Audit log',
             default => ucfirst($this->module()),
@@ -157,7 +152,6 @@ enum SubPermissionKey: string
             self::MaintenanceDelegate => 'Delegate maintenance requests',
             self::InspectionManage => 'Manage inspections',
             self::UtilityManage => 'Manage utility charges',
-            self::RoleManage => 'Manage roles',
             self::AiUse => 'Use the AI assistant',
             self::StaffManage => 'Manage staff',
             self::StaffCreate => 'Create staff',

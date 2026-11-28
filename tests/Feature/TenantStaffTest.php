@@ -3,7 +3,6 @@
 use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\Plan;
-use App\Models\SubPermission;
 use App\Models\SubRole;
 use App\Models\User;
 use App\Models\UtilityCharge;
@@ -446,7 +445,7 @@ test('owner can create a sub-role with permissions', function () {
     $organization = createStaffOrganization($owner);
 
     $this->actingAs($owner)
-        ->post(staffTenantUrl($organization, '/roles'), [
+        ->post(staffTenantUrl($organization, '/staff/roles'), [
             'name' => 'Plumber',
             'description' => 'Fixes leaks, nothing else.',
             'permissions' => ['maintenance.manage', 'maintenance.create'],
@@ -465,8 +464,8 @@ test('built-in bundle names are reserved for sub-roles', function () {
     $organization = createStaffOrganization($owner);
 
     $this->actingAs($owner)
-        ->from(staffTenantUrl($organization, '/roles'))
-        ->post(staffTenantUrl($organization, '/roles'), [
+        ->from(staffTenantUrl($organization, '/staff/roles'))
+        ->post(staffTenantUrl($organization, '/staff/roles'), [
             'name' => 'Caretaker!',
             'permissions' => [],
         ])
@@ -483,8 +482,8 @@ test('the landlord bundle is locked against edits', function () {
     $landlord = $organization->subRoles()->where('slug', 'landlord')->firstOrFail();
 
     $this->actingAs($owner)
-        ->from(staffTenantUrl($organization, '/roles'))
-        ->put(staffTenantUrl($organization, "/roles/{$landlord->id}"), [
+        ->from(staffTenantUrl($organization, '/staff/roles'))
+        ->put(staffTenantUrl($organization, "/staff/roles/{$landlord->id}"), [
             'name' => 'Landlord',
             'permissions' => [],
         ])
@@ -502,8 +501,8 @@ test('deleting a sub-role with holders is rejected', function () {
     addStaffMember($organization, $owner);
 
     $this->actingAs($owner)
-        ->from(staffTenantUrl($organization, '/roles'))
-        ->delete(staffTenantUrl($organization, "/roles/{$caretaker->id}"), [
+        ->from(staffTenantUrl($organization, '/staff/roles'))
+        ->delete(staffTenantUrl($organization, "/staff/roles/{$caretaker->id}"), [
             'password' => 'password',
         ])
         ->assertRedirect();
@@ -511,31 +510,6 @@ test('deleting a sub-role with holders is rejected', function () {
 
     expect(SubRole::find($caretaker->id))->not->toBeNull()
         ->and(SubRole::withTrashed()->find($caretaker->id))->not->toBeNull();
-});
-
-test('staff.manage without role.manage cannot manage sub-roles', function () {
-    $owner = User::factory()->create(['onboarded_at' => now()]);
-    $organization = createStaffOrganization($owner);
-
-    $role = SubRole::create([
-        'organization_id' => $organization->id,
-        'name' => 'HR',
-        'slug' => 'hr',
-        'created_by' => $owner->id,
-    ]);
-    $role->subPermissions()->attach(
-        SubPermission::whereIn('key', ['staff.manage', 'staff.create', 'staff.edit'])->pluck('id')
-    );
-
-    $staff = User::factory()->create(['onboarded_at' => now()]);
-    $organization->users()->attach($staff->id, ['sub_role_id' => $role->id, 'status' => 'active']);
-
-    $this->actingAs($staff)
-        ->get(staffTenantUrl($organization, '/roles'))
-        ->assertRedirect();
-    assertErrorToast();
-
-    expect(SubRole::where('organization_id', $organization->id)->count())->toBe(4);
 });
 
 test('an empty custom sub-role can be deleted', function () {
@@ -550,7 +524,7 @@ test('an empty custom sub-role can be deleted', function () {
     ]);
 
     $this->actingAs($owner)
-        ->delete(staffTenantUrl($organization, "/roles/{$role->id}"), [
+        ->delete(staffTenantUrl($organization, "/staff/roles/{$role->id}"), [
             'password' => 'password',
         ])
         ->assertRedirect();
@@ -570,7 +544,7 @@ test('staff without staff.manage cannot open the roles page', function () {
     ]);
 
     $this->actingAs($agent)
-        ->get(staffTenantUrl($organization, '/roles'))
+        ->get(staffTenantUrl($organization, '/staff/roles'))
         ->assertRedirect();
     assertErrorToast();
 });
@@ -609,7 +583,7 @@ test('granting a permission to a bundle takes effect on next request', function 
     $bundle = $organization->subRoles()->where('slug', 'caretaker')->firstOrFail();
 
     $this->actingAs($owner)
-        ->put(staffTenantUrl($organization, "/roles/{$bundle->id}"), [
+        ->put(staffTenantUrl($organization, "/staff/roles/{$bundle->id}"), [
             'name' => 'Caretaker',
             'permissions' => ['unit.manage', 'utility.manage'],
         ])
@@ -640,7 +614,7 @@ test('staff without staff.manage cannot manage sub-roles', function () {
     ]);
 
     $this->actingAs($agent)
-        ->post(staffTenantUrl($organization, '/roles'), [
+        ->post(staffTenantUrl($organization, '/staff/roles'), [
             'name' => 'Sneaky',
             'permissions' => [],
         ])
@@ -655,7 +629,7 @@ test('the roles index searches, filters and paginates', function () {
     $organization = createStaffOrganization($owner);
 
     $this->actingAs($owner)
-        ->get(staffTenantUrl($organization, '/roles?search=caretaker'))
+        ->get(staffTenantUrl($organization, '/staff/roles?search=caretaker'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('organisation/staff/roles')
@@ -663,20 +637,20 @@ test('the roles index searches, filters and paginates', function () {
             ->where('roles.data.0.slug', 'caretaker'));
 
     $this->actingAs($owner)
-        ->get(staffTenantUrl($organization, '/roles?type=custom'))
+        ->get(staffTenantUrl($organization, '/staff/roles?type=custom'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('roles.total', 0));
 
     $this->actingAs($owner)
-        ->post(staffTenantUrl($organization, '/roles'), [
+        ->post(staffTenantUrl($organization, '/staff/roles'), [
             'name' => 'Plumber',
             'permissions' => ['maintenance.manage'],
         ])
         ->assertRedirect();
 
     $this->actingAs($owner)
-        ->get(staffTenantUrl($organization, '/roles?type=custom'))
+        ->get(staffTenantUrl($organization, '/staff/roles?type=custom'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('roles.total', 1)
