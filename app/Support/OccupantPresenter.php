@@ -141,9 +141,11 @@ final class OccupantPresenter
     /**
      * The occupant's story in one chronological list, newest first:
      * tenancies started and ended, rent received, refunds filed, and
-     * move-out notices. Capped: this is a sheet, not a report.
+     * move-out notices. Every event carries its unit so the sheet can
+     * filter one tenancy's story out of a multi-unit history. Capped:
+     * this is a sheet, not a report.
      *
-     * @return list<array{date: string|null, kind: string, title: string, detail: string|null, amount: string|null, currency: string|null, status: string|null}>
+     * @return list<array{date: string|null, kind: string, title: string, detail: string|null, amount: string|null, currency: string|null, status: string|null, unit_id: int|null, unit_name: string|null}>
      */
     public static function history(Occupant $occupant, Property $property): array
     {
@@ -164,6 +166,10 @@ final class OccupantPresenter
             ->orderByDesc('starts_at')
             ->get();
 
+        $unitsByLease = $leases->mapWithKeys(fn (Lease $lease) => [
+            $lease->id => ['id' => $lease->unit_id, 'name' => $lease->unit?->name],
+        ])->all();
+
         foreach ($leases as $lease) {
             $unit = $lease->unit?->name ?? 'a unit';
             $rate = $lease->rent_amount !== null
@@ -178,6 +184,8 @@ final class OccupantPresenter
                 'amount' => null,
                 'currency' => null,
                 'status' => null,
+                'unit_id' => $lease->unit_id,
+                'unit_name' => $lease->unit?->name,
             ];
 
             if ($lease->status === 'ended') {
@@ -189,6 +197,8 @@ final class OccupantPresenter
                     'amount' => null,
                     'currency' => null,
                     'status' => 'ended',
+                    'unit_id' => $lease->unit_id,
+                    'unit_name' => $lease->unit?->name,
                 ];
             }
 
@@ -201,6 +211,8 @@ final class OccupantPresenter
                     'amount' => null,
                     'currency' => null,
                     'status' => $notice->status instanceof MoveOutNoticeStatus ? $notice->status->value : (string) $notice->status,
+                    'unit_id' => $lease->unit_id,
+                    'unit_name' => $lease->unit?->name,
                 ];
             }
 
@@ -213,11 +225,15 @@ final class OccupantPresenter
                     'amount' => number_format($refund->amount_cents / 100, 2, '.', ''),
                     'currency' => $refund->currency,
                     'status' => $refund->status->value,
+                    'unit_id' => $lease->unit_id,
+                    'unit_name' => $lease->unit?->name,
                 ];
             }
         }
 
         foreach (Payment::query()->whereIn('lease_id', $leaseIds)->whereIn('status', ['received', 'refunded'])->orderByDesc('paid_on')->get() as $payment) {
+            $unit = $unitsByLease[$payment->lease_id] ?? ['id' => null, 'name' => null];
+
             $events[] = [
                 'date' => $payment->paid_on?->toDateString(),
                 'kind' => 'payment',
@@ -226,6 +242,8 @@ final class OccupantPresenter
                 'amount' => (string) $payment->amount,
                 'currency' => $payment->currency,
                 'status' => $payment->status,
+                'unit_id' => $unit['id'],
+                'unit_name' => $unit['name'],
             ];
         }
 
@@ -445,10 +463,10 @@ final class OccupantPresenter
     }
 
     /**
-     * @param  array{lease_id: int, outstanding: string, currency: string|null}|null  $attention
+     * @param  array{attention: array{lease_id: int, outstanding: string, currency: string|null}|null, active_lease_id: int|null}|null  $handles
      * @return array<string, mixed>
      */
-    public static function present(Occupant $occupant, Property $property, ?User $actor = null, ?Organization $organization = null, ?array $attention = null): array
+    public static function present(Occupant $occupant, Property $property, ?User $actor = null, ?Organization $organization = null, ?array $handles = null): array
     {
         $org = $organization ?? $property->organization;
 
@@ -473,9 +491,12 @@ final class OccupantPresenter
             // The row overflow offers the agreement link without a second
             // request; the sheet resolves the full lease itself.
             'has_agreement' => (bool) ($occupant->has_agreement ?? false),
-            // The row's one-tap action: a single overdue lease rides along
-            // with its balance; anything else defers to the sheet.
-            'attention' => $attention,
+            // The row's one-tap remind: a single overdue lease and its
+            // balance; anything else defers to the sheet.
+            'attention' => $handles['attention'] ?? null,
+            // The row's live tenancy for the overflow's End lease deep
+            // link; null once nothing is active.
+            'active_lease_id' => $handles['active_lease_id'] ?? null,
         ];
     }
 }

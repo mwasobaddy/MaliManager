@@ -1,5 +1,5 @@
 import { cva } from 'class-variance-authority';
-import type { ReactNode } from 'react';
+import type { ReactNode, Ref } from 'react';
 import { Button } from '@/components/ui/button';
 import {
     Tooltip,
@@ -108,6 +108,12 @@ type ActionIconButtonProps = React.ComponentProps<typeof Button> & {
      * in a span to keep the explanation reachable by mouse and keyboard.
      */
     disabledReason?: string | null;
+    /**
+     * Ref forwarded to the underlying button so the component can serve
+     * as a Radix `asChild` trigger (e.g. a dropdown menu trigger) while
+     * keeping its tooltip. React 19 passes ref as an ordinary prop.
+     */
+    ref?: Ref<HTMLButtonElement>;
 };
 
 /**
@@ -148,6 +154,7 @@ export function ActionIconButton({
     asChild = false,
     children,
     disabled,
+    ref,
     ...props
 }: ActionIconButtonProps) {
     const isDisabled = disabled || disabledReason != null;
@@ -160,6 +167,7 @@ export function ActionIconButton({
             size="icon"
             aria-label={label}
             disabled={isDisabled}
+            ref={ref}
             className={cn(
                 // Icon-only row actions meet the 44px touch target on
                 // coarse pointers; fine pointers keep the compact 36px.

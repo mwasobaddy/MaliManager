@@ -60,9 +60,9 @@ class OccupantController extends Controller
 
         // The row's one-tap action needs its tenancy: which single lease is
         // overdue and for how much. Computed once for the page, not per row.
-        $attention = $this->attentionMap($property, $paginator->getCollection(), $arrears);
+        $handles = $this->attentionMap($property, $paginator->getCollection(), $arrears);
 
-        $occupants = $paginator->through(fn (Occupant $occupant) => OccupantPresenter::present($occupant, $property, $actor, $organization, $attention[$occupant->id] ?? null));
+        $occupants = $paginator->through(fn (Occupant $occupant) => OccupantPresenter::present($occupant, $property, $actor, $organization, $handles[$occupant->id] ?? null));
 
         return Inertia::render('organisation/occupants/index', [
             'organization' => TenancyContext::organization()->only('id', 'name', 'slug'),
@@ -84,12 +84,14 @@ class OccupantController extends Controller
     }
 
     /**
-     * The row's one-tap action, keyed by occupant id: when exactly one
-     * active lease is overdue, its id and balance ride along so the row
-     * can remind without a second request. Zero or several overdue leases
-     * offer nothing — the sheet (which can pick a tenancy) takes over.
+     * Per-row lease handles, keyed by occupant id. `attention` is the
+     * one-tap remind: set only when exactly one active lease is overdue.
+     * `active_lease_id` always rides along when the row holds a live
+     * tenancy, so the overflow can deep-link End lease without a second
+     * request. Zero or several overdue leases offer no shortcut — the
+     * sheet (which can pick a tenancy) takes over.
      *
-     * @return array<int, array{lease_id: int, outstanding: string, currency: string|null}>
+     * @return array<int, array{attention: array{lease_id: int, outstanding: string, currency: string|null}|null, active_lease_id: int|null}>
      */
     private function attentionMap(Property $property, Collection $occupants, RentArrearsService $arrears): array
     {
@@ -109,25 +111,32 @@ class OccupantController extends Controller
 
         $balances = $arrears->balancesFor($leases);
 
+        $activeByOccupant = [];
         $overdueByOccupant = [];
         foreach ($leases as $lease) {
+            $activeByOccupant[$lease->occupant_id] ??= $lease->id;
+
             if (($balances[$lease->id]['overdue'] ?? false) === true) {
                 $overdueByOccupant[$lease->occupant_id][] = $lease;
             }
         }
 
-        $attention = [];
-        foreach ($overdueByOccupant as $occupantId => $due) {
-            if (count($due) === 1) {
-                $attention[$occupantId] = [
-                    'lease_id' => $due[0]->id,
-                    'outstanding' => $balances[$due[0]->id]['outstanding'],
-                    'currency' => $due[0]->currency,
-                ];
-            }
+        $handles = [];
+        foreach ($activeByOccupant as $occupantId => $leaseId) {
+            $due = $overdueByOccupant[$occupantId] ?? [];
+            $handles[$occupantId] = [
+                'attention' => count($due) === 1
+                    ? [
+                        'lease_id' => $due[0]->id,
+                        'outstanding' => $balances[$due[0]->id]['outstanding'],
+                        'currency' => $due[0]->currency,
+                    ]
+                    : null,
+                'active_lease_id' => $leaseId,
+            ];
         }
 
-        return $attention;
+        return $handles;
     }
 
     /**

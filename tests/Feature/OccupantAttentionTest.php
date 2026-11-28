@@ -90,7 +90,8 @@ test('a single overdue lease rides along for the row remind button', function ()
 
     expect($row['attention'])->not->toBeNull()
         ->and($row['attention']['lease_id'])->toBe($leases[0]->id)
-        ->and((float) $row['attention']['outstanding'])->toBeGreaterThan(0);
+        ->and((float) $row['attention']['outstanding'])->toBeGreaterThan(0)
+        ->and($row['active_lease_id'])->toBe($leases[0]->id);
 });
 
 test('zero or several overdue leases on one row offer no row shortcut', function () {
@@ -151,7 +152,8 @@ test('zero or several overdue leases on one row offer no row shortcut', function
     $rows = attentionRows($organization, $property);
     $byId = collect($rows)->keyBy('id');
 
-    expect($byId[$settled->id]['attention'])->toBeNull();
+    expect($byId[$settled->id]['attention'])->toBeNull()
+        ->and($byId[$settled->id]['active_lease_id'])->not->toBeNull();
 
     $multiRows = Occupant::where('organization_id', $organization->id)->where('person_id', $multi->person_id)->get();
     expect($multiRows)->toHaveCount(2);
@@ -161,6 +163,7 @@ test('zero or several overdue leases on one row offer no row shortcut', function
     }
 
     expect($byId[$ended->id]['attention'])->toBeNull()
+        ->and($byId[$ended->id]['active_lease_id'])->toBeNull()
         ->and($byId[$stacked->id]['attention'])->toBeNull();
 });
 

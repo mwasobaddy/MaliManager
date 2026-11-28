@@ -10,6 +10,7 @@ use App\Models\Organization;
 use App\Models\Payment;
 use App\Models\Plan;
 use App\Models\Property;
+use App\Models\Unit;
 use App\Models\User;
 use App\Services\OccupantService;
 use App\Services\TenantService;
@@ -208,7 +209,7 @@ test('the view sheet carries the occupant history newest first', function () {
     $this->actingAs($owner)
         ->get(moveOutUrl($organization, "/{$property->slug}/occupants?mode=view&occupant={$occupant->id}"))
         ->assertOk()
-        ->assertInertia(function ($page) {
+        ->assertInertia(function ($page) use ($property) {
             $page->where('focusedOccupant.history', function ($history) {
                 $rows = $history instanceof Collection ? $history->all() : (array) $history;
                 $kinds = array_column($rows, 'kind');
@@ -226,6 +227,11 @@ test('the view sheet carries the occupant history newest first', function () {
             foreach (['lease_started', 'lease_ended', 'payment', 'refund', 'move_out_notice'] as $kind) {
                 expect($kinds)->toContain($kind);
             }
+
+            // Every event is tagged with its tenancy for the sheet filter.
+            $unitId = Unit::where('property_id', $property->id)->where('name', 'A1')->value('id');
+            expect($rows->pluck('unit_id')->unique()->all())->toBe([$unitId])
+                ->and($rows->pluck('unit_name')->unique()->all())->toBe(['A1']);
 
             // Newest first: the refund filed today, then the March events,
             // then February's payment, then January's move-in.

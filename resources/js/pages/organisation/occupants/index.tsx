@@ -6,7 +6,6 @@ import {
     KeyRound,
     ListFilter,
     LogOut,
-    MoreHorizontal,
     Power,
     Search,
     Send,
@@ -25,6 +24,7 @@ import { DataTable } from '@/components/data-table';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import { LabelledIconButton } from '@/components/labelled-icon-button';
+import { OccupantActionsMenu } from '@/components/occupant-actions-menu';
 import OccupantFormFields from '@/components/occupant-form-fields';
 import { OverlayFooter } from '@/components/overlay-footer';
 import PasswordInput from '@/components/password-input';
@@ -40,12 +40,6 @@ import {
     DialogFooter,
     DialogTitle,
 } from '@/components/ui/dialog';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Empty } from '@/components/ui/empty';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -146,6 +140,8 @@ type HistoryLine = {
     amount: string | null;
     currency: string | null;
     status: string | null;
+    unit_id: number | null;
+    unit_name: string | null;
 };
 
 type Occupant = {
@@ -162,6 +158,8 @@ type Occupant = {
     has_agreement?: boolean;
     /** Row-level one-tap remind; null unless exactly one lease is overdue. */
     attention?: Attention | null;
+    /** The row's live tenancy for the overflow's End lease deep link. */
+    active_lease_id?: number | null;
     // Present on the record resolved for the view sheet. List rows omit them
     // because the card does not show them, and the sheet is the only reader.
     gender?: string | null;
@@ -479,6 +477,124 @@ function OccupantLeasesSection({
     );
 }
 
+/**
+ * The occupant's story, newest first, filterable to one tenancy. The
+ * filter defaults to the opened row's unit (that is the story the row's
+ * History button promises) with an all-units escape hatch. Keyed by
+ * occupant by the caller so the pick never leaks across rows.
+ */
+function OccupantHistorySection({
+    events,
+    rowUnitId,
+}: {
+    events: HistoryLine[];
+    rowUnitId: number | null;
+}) {
+    const units = useMemo(() => {
+        const seen = new Map<number, string>();
+
+        for (const event of events) {
+            if (event.unit_id !== null && !seen.has(event.unit_id)) {
+                seen.set(
+                    event.unit_id,
+                    event.unit_name ?? `Unit ${event.unit_id}`,
+                );
+            }
+        }
+
+        return [...seen.entries()].map(([id, name]) => ({ id, name }));
+    }, [events]);
+
+    const [unitFilter, setUnitFilter] = useState<number | 'all'>(
+        rowUnitId !== null && units.some((unit) => unit.id === rowUnitId)
+            ? rowUnitId
+            : 'all',
+    );
+
+    const visible =
+        unitFilter === 'all'
+            ? events
+            : events.filter((event) => event.unit_id === unitFilter);
+
+    return (
+        <div className="mt-6 space-y-2" id="occupant-history">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="text-sm font-medium">History</h3>
+                {units.length > 1 && (
+                    <div className="flex flex-wrap gap-1">
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant={
+                                unitFilter === 'all' ? 'default' : 'outline'
+                            }
+                            className="h-7 text-xs"
+                            onClick={() => setUnitFilter('all')}
+                        >
+                            All units
+                        </Button>
+                        {units.map((unit) => (
+                            <Button
+                                key={unit.id}
+                                type="button"
+                                size="sm"
+                                variant={
+                                    unitFilter === unit.id
+                                        ? 'default'
+                                        : 'outline'
+                                }
+                                className="h-7 text-xs"
+                                onClick={() => setUnitFilter(unit.id)}
+                            >
+                                {unit.name}
+                            </Button>
+                        ))}
+                    </div>
+                )}
+            </div>
+            {visible.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                    {unitFilter === 'all'
+                        ? 'Nothing recorded yet — tenancies, payments, refunds and notices will appear here.'
+                        : `Nothing recorded for ${units.find((unit) => unit.id === unitFilter)?.name ?? 'this unit'} yet.`}
+                </p>
+            ) : (
+                <ul className="space-y-3 py-2 text-sm">
+                    {visible.map((event, index) => (
+                        <li
+                            key={`${event.kind}-${event.date ?? 'undated'}-${index}`}
+                            className="grid grid-cols-[6.5rem_1fr] gap-2"
+                        >
+                            <span className="text-muted-foreground tabular-nums">
+                                {event.date ?? '—'}
+                            </span>
+                            <span className="min-w-0">
+                                <span className="font-medium">
+                                    {event.title}
+                                </span>
+                                {event.detail && (
+                                    <span className="text-muted-foreground">
+                                        {' '}
+                                        · {event.detail}
+                                    </span>
+                                )}
+                                {event.amount !== null && (
+                                    <span className="ml-2 font-medium tabular-nums">
+                                        {event.currency
+                                            ? `${event.currency} `
+                                            : ''}
+                                        {event.amount}
+                                    </span>
+                                )}
+                            </span>
+                        </li>
+                    ))}
+                </ul>
+            )}
+        </div>
+    );
+}
+
 type Props = {
     property: Property;
     occupants: Paginator;
@@ -534,6 +650,30 @@ export default function OccupantsIndex({
                 },
             }).url,
         );
+    }
+
+    /** Scroll the open sheet to its history timeline. */
+    function scrollToHistory(delay = 300) {
+        window.setTimeout(() => {
+            document
+                .querySelector('#occupant-history')
+                ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, delay);
+    }
+
+    /**
+     * Row overflow entry to the occupant's story, opened on the sheet and
+     * scrolled straight to the history (pre-filtered to the row's unit).
+     * Overlays never stack, so the menu closes first — same rule as the
+     * toolbar overflow.
+     */
+    function openHistorySheet(occupant: Occupant) {
+        setOverlayParam('mode', 'view', {
+            only: ['occupants', 'focusedOccupant'],
+            keep: { occupant: String(occupant.id) },
+        });
+
+        scrollToHistory(700);
     }
 
     const [bulkOpen, setBulkOpen] = useState(false);
@@ -696,6 +836,15 @@ export default function OccupantsIndex({
           occupants.data.find((occupant) => occupant.id === viewedOccupantId) ??
           null)
         : null;
+
+    // The sheet menu acts on the viewed tenancy: the active lease when
+    // there is one, mirroring the row's active_lease_id without another
+    // request.
+    const viewedActiveLeaseId =
+        viewedOccupant?.leases?.find((lease) => lease.status === 'active')
+            ?.id ??
+        viewedOccupant?.active_lease_id ??
+        null;
 
     const isCreateOpen = query.get('create') === '1';
     const isQuickOpen = query.get('quick') === '1';
@@ -990,22 +1139,14 @@ export default function OccupantsIndex({
                             onClick={(event) => event.stopPropagation()}
                         >
                             {canRemind && attention && (
-                                <Button
-                                    type="button"
-                                    size="sm"
-                                    className="h-9 gap-1 bg-brand-accent px-2.5 text-xs text-on-accent hover:bg-brand-accent/90"
-                                    title={`Remind ${name} — ${formatMoney(attention.outstanding, attention.currency)} outstanding`}
+                                <ActionIconButton
+                                    icon={<Send />}
+                                    label={`Remind ${name} — ${formatMoney(attention.outstanding, attention.currency)} outstanding`}
+                                    color="teal"
                                     onClick={() =>
                                         sendLeaseReminder(attention.lease_id)
                                     }
-                                >
-                                    <Send className="size-4" />
-                                    Remind{' '}
-                                    {formatMoney(
-                                        attention.outstanding,
-                                        attention.currency,
-                                    )}
-                                </Button>
+                                />
                             )}
                             {canEdit && occupant.status !== 'moved_out' && (
                                 <ActionIconButton
@@ -1043,36 +1184,51 @@ export default function OccupantsIndex({
                                     }
                                 />
                             )}
-                            {occupant.has_agreement && (
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="icon"
-                                            aria-label={`More actions for ${name}`}
-                                            className="text-muted-foreground coarse:min-h-11 coarse:min-w-11"
-                                        >
-                                            <MoreHorizontal className="size-4" />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                        <DropdownMenuItem
-                                            onSelect={() =>
-                                                router.visit(
-                                                    occupantAgreement({
-                                                        property: property.slug,
-                                                        occupant: occupant.id,
-                                                    }).url,
-                                                )
-                                            }
-                                        >
-                                            <FileText className="size-4" />
-                                            View agreement
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                            )}
+                            <OccupantActionsMenu
+                                label={`More actions for ${name}`}
+                                showViewAgreement={!!occupant.has_agreement}
+                                showAmend={
+                                    canAmendRent &&
+                                    occupant.active_lease_id != null
+                                }
+                                showAddCharge={
+                                    canManageExtras &&
+                                    occupant.active_lease_id != null
+                                }
+                                showEndLease={
+                                    canEndLease &&
+                                    occupant.active_lease_id != null
+                                }
+                                onHistory={() => openHistorySheet(occupant)}
+                                onViewAgreement={() =>
+                                    router.visit(
+                                        occupantAgreement({
+                                            property: property.slug,
+                                            occupant: occupant.id,
+                                        }).url,
+                                    )
+                                }
+                                onAmend={() =>
+                                    openLeaseOnLeasesPage(
+                                        occupant.active_lease_id as number,
+                                        { amend: '1' },
+                                    )
+                                }
+                                onAddCharge={() =>
+                                    openLeaseOnLeasesPage(
+                                        occupant.active_lease_id as number,
+                                        { extra: 'new' },
+                                    )
+                                }
+                                onEndLease={() =>
+                                    openLeaseOnLeasesPage(
+                                        occupant.active_lease_id as number,
+                                        {
+                                            dialog: 'end-lease',
+                                        },
+                                    )
+                                }
+                            />
                         </div>
                     );
                 },
@@ -1378,6 +1534,51 @@ export default function OccupantsIndex({
                                     Edit
                                 </Button>
                             )}
+                            <OccupantActionsMenu
+                                label={`More actions for ${viewedOccupant.first_name ?? 'occupant'}`}
+                                showViewAgreement={Boolean(
+                                    viewedOccupant.agreement_lease,
+                                )}
+                                showAmend={
+                                    canAmendRent && viewedActiveLeaseId != null
+                                }
+                                showAddCharge={
+                                    canManageExtras &&
+                                    viewedActiveLeaseId != null
+                                }
+                                showEndLease={
+                                    canEndLease && viewedActiveLeaseId != null
+                                }
+                                onHistory={() => scrollToHistory()}
+                                onViewAgreement={() =>
+                                    router.visit(
+                                        occupantAgreement({
+                                            property: property.slug,
+                                            occupant: viewedOccupant.id,
+                                        }).url,
+                                    )
+                                }
+                                onAmend={() =>
+                                    openLeaseOnLeasesPage(
+                                        viewedActiveLeaseId as number,
+                                        { amend: '1' },
+                                    )
+                                }
+                                onAddCharge={() =>
+                                    openLeaseOnLeasesPage(
+                                        viewedActiveLeaseId as number,
+                                        { extra: 'new' },
+                                    )
+                                }
+                                onEndLease={() =>
+                                    openLeaseOnLeasesPage(
+                                        viewedActiveLeaseId as number,
+                                        {
+                                            dialog: 'end-lease',
+                                        },
+                                    )
+                                }
+                            />
                         </>
                     }
                     footer={<OverlayFooter onCancel={closeView} />}
@@ -1479,49 +1680,11 @@ export default function OccupantsIndex({
                         />
                     </div>
 
-                    <div className="mt-6 space-y-2">
-                        <h3 className="text-sm font-medium">History</h3>
-                        {(viewedOccupant.history ?? []).length === 0 ? (
-                            <p className="text-sm text-muted-foreground">
-                                Nothing recorded yet — tenancies, payments,
-                                refunds and notices will appear here.
-                            </p>
-                        ) : (
-                            <ul className="space-y-3 py-2 text-sm">
-                                {(viewedOccupant.history ?? []).map(
-                                    (event, index) => (
-                                        <li
-                                            key={`${event.kind}-${event.date ?? 'undated'}-${index}`}
-                                            className="grid grid-cols-[6.5rem_1fr] gap-2"
-                                        >
-                                            <span className="text-muted-foreground tabular-nums">
-                                                {event.date ?? '—'}
-                                            </span>
-                                            <span className="min-w-0">
-                                                <span className="font-medium">
-                                                    {event.title}
-                                                </span>
-                                                {event.detail && (
-                                                    <span className="text-muted-foreground">
-                                                        {' '}
-                                                        · {event.detail}
-                                                    </span>
-                                                )}
-                                                {event.amount !== null && (
-                                                    <span className="ml-2 font-medium tabular-nums">
-                                                        {event.currency
-                                                            ? `${event.currency} `
-                                                            : ''}
-                                                        {event.amount}
-                                                    </span>
-                                                )}
-                                            </span>
-                                        </li>
-                                    ),
-                                )}
-                            </ul>
-                        )}
-                    </div>
+                    <OccupantHistorySection
+                        key={`history-${viewedOccupant.id}`}
+                        events={viewedOccupant.history ?? []}
+                        rowUnitId={viewedOccupant.units[0]?.id ?? null}
+                    />
                 </ResponsiveOverlay>
             )}
 
